@@ -19,7 +19,7 @@ Horizontal groundwork every feature depends on; strictly ordered.
 - [x] **M1 Scaffold** — Flutter project, Android target, application ID, `flutter_lints`,
       `.gitignore`, directories per the [project layout](architecture.md#project-layout).
 - [x] **M2 CI** — GitHub Actions workflow: format check, `flutter analyze`, tests on push.
-- [ ] **M3 Domain model** — entities (ingredient, tag, recipe, settings) and the model
+- [x] **M3 Domain model** — entities (ingredient, tag, recipe, settings) and the model
       root with unique-name invariants.
 - [ ] **M4 Line parser/formatter** — the compact-line grammar with round-trip tests; the
       single shared home later used by the codec (M6) and the recipe form (M14).
