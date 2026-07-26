@@ -2,7 +2,7 @@
 
 Technical design for the pilot defined in [requirements.md](requirements.md); direction in
 [vision.md](vision.md). Decision rationale lives in the [ADRs](adr/); this document records
-the resulting design.
+the resulting design at system level, [components.md](components.md) at module level.
 
 ## Technology stack
 
@@ -40,6 +40,10 @@ Three layers ([ADR 03](adr/03-app-structure-and-state.md)):
   derived state (availability, filtered views, optimizer output) lives in computed providers
   that recompute automatically when their inputs change. All mutations go through model-update
   methods that also trigger persistence.
+
+Each layer's public surface is its barrel file, over internals kept in `src/`; dependencies
+point inward only. The rules, the interfaces between the layers, and the data flows across
+them are in [components.md](components.md) ([ADR 04](adr/04-module-boundaries.md)).
 
 ## Storage isolation
 
@@ -99,8 +103,13 @@ Rules:
 - The app writes a canonical form: fixed key order, fixed indentation, no comments. Comments
   are legal in imported files but are not preserved once the app rewrites the store —
   the round-trip guarantee (FR-DAT-5) covers content, not comments.
+- Unit and stock tokens are declared as fields on their enums, never derived from Dart
+  identifier spellings, so renaming a member cannot change the format.
 - The pilot reads and writes format `1` only; a future format bump migrates old files on
   import inside the codec.
+- The round-trip guarantee (FR-DAT-5) is over canonical files: a hand-written `1.50` or
+  `2.0` normalises to `1.5` and `2` on the first rewrite. Content is preserved, byte-identity
+  only from the app's own output onward.
 - Dart's `yaml` package is parse-only, so the canonical writer is a small custom emitter —
   spec'd by this section and pinned by the round-trip tests.
 - Validation failures (FR-DAT-4) report the YAML line and the offending value — "what is
@@ -122,14 +131,10 @@ Rules:
 
 ## Project layout
 
-```
-lib/
-  domain/    # entities, availability, optimizer, parsing, validation — pure Dart
-  data/      # storage interface + YAML file adapter, backups
-  state/     # Riverpod providers (model + derived)
-  ui/        # screens and widgets
-test/        # mirrors lib/
-```
+One folder per layer under `lib/` — `domain/` (pure Dart entities and computations), `data/`
+(storage interface and YAML file adapter), `state/` (Riverpod providers), `ui/` (screens and
+widgets) — each exposing a barrel file over its `src/` internals. `test/` mirrors `lib/`.
+The full structure and the boundary rules are in [components.md](components.md).
 
 ## Platform facts
 
@@ -169,3 +174,5 @@ test/        # mirrors lib/
   model, single YAML store file identical to the export format
 - [03 — App structure and state management](adr/03-app-structure-and-state.md) — three
   layers, Riverpod
+- [04 — Module boundaries and public surface](adr/04-module-boundaries.md) — layer barrels
+  over `src/`, boundaries enforced by a test, declared wire tokens

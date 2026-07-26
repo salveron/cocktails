@@ -25,10 +25,18 @@ Horizontal groundwork every feature depends on; strictly ordered.
       single shared home later used by the codec (M6) and the recipe form (M14).
 - [x] **M5 Model validation** — referential integrity, duplicate names, malformed values:
       the rule set behind FR-DAT-4 and the recipe form.
+- [ ] **M5a Domain packaging** — the [module boundaries](components.md#boundary-rules) before
+      anything depends on them: domain files under `src/` behind a barrel, shared internals
+      in `helpers.dart`, declared wire tokens on the enums, `tryParseRecipeLine`, public
+      `validateRecipe`, value equality on `ValidationIssue`, and the architecture test.
+      Behaviour unchanged.
 - [ ] **M6 YAML codec** — parse + validate with line-position errors, canonical emitter,
       format-version gate, lossless round-trip test. (FR-DAT-2/4/5 core)
 - [ ] **M7 Storage adapter** — storage interface + file adapter: load at start, atomic
       save, backup rotation, corrupt/missing-file handling; temp-dir integration tests.
+- [ ] **M7a Model edit API** — [`ModelEdits`](components.md#editing-the-model): `copyWith` on
+      the entities, pure edit derivations including rename propagation and "made it", memoised
+      name lookups, and the reference queries behind FR-VOC-1 delete blocking.
 - [ ] **M8 State wiring** — Riverpod model provider, mutations persisting through M7,
       startup load.
 - [ ] **M9 App shell** — navigation between placeholder screens, theme, empty states.
@@ -83,5 +91,7 @@ First usable slice; recipes reference both vocabularies, so this precedes Phase 
 
 - Phase 0 is strictly sequential; later phases are ordered by value, with these hard
   dependencies: M16 before M18, M20, and M21 (they consume availability); M21 before M22.
+- M5a and M7a carry no user-visible behaviour; they fix the domain's shape before the layers
+  that consume it. M5a blocks M6; M7a blocks M8 and every editing screen (M10–M12, M14, M15).
 - M24–M25 depend only on Phase 0 and may be pulled ahead of Phases 1–3 if loading real
   migrated data early outweighs in-app editing.
