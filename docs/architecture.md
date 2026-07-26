@@ -149,8 +149,8 @@ test/        # mirrors lib/
 
 ## Repository, CI & testing
 
-- The repo lives on GitHub (private); GitHub Actions runs `dart analyze` and the test suite
-  on every push. APKs are built and signed locally, not in CI.
+- The repo lives on GitHub (private); GitHub Actions runs the format check, `flutter analyze`,
+  and the test suite on every push. APKs are built and signed locally, not in CI.
 - Unit tests (pure Dart, no device) are the backbone and cover the domain layer: availability
   computation, filtering/grouping, the optimizer, import validation, and the YAML codec's
   lossless round-trip (FR-DAT-5 is a test, not a hope).
