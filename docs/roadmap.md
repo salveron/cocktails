@@ -21,7 +21,7 @@ Horizontal groundwork every feature depends on; strictly ordered.
 - [x] **M2 CI** — GitHub Actions workflow: format check, `flutter analyze`, tests on push.
 - [x] **M3 Domain model** — entities (ingredient, tag, recipe, settings) and the model
       root with unique-name invariants.
-- [ ] **M4 Line parser/formatter** — the compact-line grammar with round-trip tests; the
+- [x] **M4 Line parser/formatter** — the compact-line grammar with round-trip tests; the
       single shared home later used by the codec (M6) and the recipe form (M14).
 - [ ] **M5 Model validation** — referential integrity, duplicate names, malformed values:
       the rule set behind FR-DAT-4 and the recipe form.
