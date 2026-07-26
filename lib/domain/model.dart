@@ -4,7 +4,7 @@
 /// not enforced here.
 library;
 
-enum StockLevel { inStock, lowStock, outOfStock }
+enum StockLevel { in_, low, out }
 
 enum Unit { part, ml, oz, dash, barspoon, drop, piece }
 
@@ -18,7 +18,7 @@ final class Ingredient {
   const Ingredient(
     this.name, {
     this.isBase = false,
-    this.stock = StockLevel.outOfStock,
+    this.stock = StockLevel.out,
   });
 
   @override

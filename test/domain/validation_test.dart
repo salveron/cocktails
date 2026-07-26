@@ -28,10 +28,10 @@ void main() {
     test('the architecture example is valid', () {
       final issues = validateModel(
         ingredients: [
-          const Ingredient('bourbon', isBase: true, stock: StockLevel.inStock),
-          const Ingredient('lemon juice', stock: StockLevel.lowStock),
+          const Ingredient('bourbon', isBase: true, stock: StockLevel.in_),
+          const Ingredient('lemon juice', stock: StockLevel.low),
           const Ingredient('rich demerara syrup'),
-          const Ingredient('egg white', stock: StockLevel.inStock),
+          const Ingredient('egg white', stock: StockLevel.in_),
         ],
         tags: [const Tag('sour'), const Tag('classic')],
         recipes: [

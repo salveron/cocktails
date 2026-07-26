@@ -34,13 +34,13 @@ void main() {
     Ingredient build({
       String name = 'gin',
       bool isBase = false,
-      StockLevel stock = StockLevel.outOfStock,
+      StockLevel stock = StockLevel.out,
     }) => Ingredient(name, isBase: isBase, stock: stock);
 
     test('defaults: not a base spirit, out of stock', () {
       const ingredient = Ingredient('bourbon');
       expect(ingredient.isBase, isFalse);
-      expect(ingredient.stock, StockLevel.outOfStock);
+      expect(ingredient.stock, StockLevel.out);
     });
 
     test('equality and hashCode isolate each field', () {
@@ -48,7 +48,7 @@ void main() {
       expect(build().hashCode, build().hashCode);
       expect(build(), isNot(build(name: 'rum')));
       expect(build(), isNot(build(isBase: true)));
-      expect(build(), isNot(build(stock: StockLevel.lowStock)));
+      expect(build(), isNot(build(stock: StockLevel.low)));
     });
   });
 
