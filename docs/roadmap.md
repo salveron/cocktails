@@ -16,7 +16,7 @@ Conventions:
 
 Horizontal groundwork every feature depends on; strictly ordered.
 
-- [ ] **M1 Scaffold** — Flutter project, Android target, application ID, `flutter_lints`,
+- [x] **M1 Scaffold** — Flutter project, Android target, application ID, `flutter_lints`,
       `.gitignore`, directories per the [project layout](architecture.md#project-layout).
 - [ ] **M2 CI** — GitHub Actions workflow: format check, `flutter analyze`, tests on push.
 - [ ] **M3 Domain model** — entities (ingredient, tag, recipe, settings) and the model
