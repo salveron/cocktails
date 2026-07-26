@@ -23,7 +23,7 @@ Horizontal groundwork every feature depends on; strictly ordered.
       root with unique-name invariants.
 - [x] **M4 Line parser/formatter** — the compact-line grammar with round-trip tests; the
       single shared home later used by the codec (M6) and the recipe form (M14).
-- [ ] **M5 Model validation** — referential integrity, duplicate names, malformed values:
+- [x] **M5 Model validation** — referential integrity, duplicate names, malformed values:
       the rule set behind FR-DAT-4 and the recipe form.
 - [ ] **M6 YAML codec** — parse + validate with line-position errors, canonical emitter,
       format-version gate, lossless round-trip test. (FR-DAT-2/4/5 core)

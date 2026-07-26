@@ -256,4 +256,15 @@ void main() {
       expect(build(), isNot(build(recipes: [Recipe('Negroni')])));
     });
   });
+
+  group('duplicateNameIndexes', () {
+    test('empty and unique lists have no duplicates', () {
+      expect(duplicateNameIndexes([]), isEmpty);
+      expect(duplicateNameIndexes(['a', 'b']), isEmpty);
+    });
+
+    test('reports every repeated position', () {
+      expect(duplicateNameIndexes(['a', 'b', 'a', 'a']), [2, 3]);
+    });
+  });
 }

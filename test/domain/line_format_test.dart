@@ -149,6 +149,15 @@ void main() {
     });
   });
 
+  group('formatAmount', () {
+    test('canonical amount text', () {
+      expect(formatAmount(const Amount(2)), '2');
+      expect(formatAmount(const Amount(0.75)), '0.75');
+      expect(formatAmount(const Amount.range(1.5, 2)), '1.5-2');
+      expect(formatAmount(const Amount.range(2, 2)), '2');
+    });
+  });
+
   group('round trip', () {
     test('canonical lines survive parse then format', () {
       const lines = [

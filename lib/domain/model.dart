@@ -1,7 +1,7 @@
 /// Domain entities and the model root. Shapes, defaults, and name-uniqueness
 /// rules follow the data format in docs/architecture.md. Value validation
-/// (malformed amounts, referential integrity) is M5's rule set, not enforced
-/// here.
+/// (malformed amounts, referential integrity) is validation.dart's rule set,
+/// not enforced here.
 library;
 
 enum StockLevel { inStock, lowStock, outOfStock }
@@ -190,9 +190,12 @@ final class Model {
   }) : ingredients = List.unmodifiable(ingredients),
        tags = List.unmodifiable(tags),
        recipes = List.unmodifiable(recipes) {
-    _requireUniqueNames('ingredient', this.ingredients.map((i) => i.name));
-    _requireUniqueNames('tag', this.tags.map((t) => t.name));
-    _requireUniqueNames('recipe', this.recipes.map((r) => r.name));
+    _requireUniqueNames(
+      'ingredient',
+      this.ingredients.map((i) => i.name).toList(),
+    );
+    _requireUniqueNames('tag', this.tags.map((t) => t.name).toList());
+    _requireUniqueNames('recipe', this.recipes.map((r) => r.name).toList());
   }
 
   @override
@@ -217,13 +220,23 @@ final class Model {
       '${recipes.length} recipes)';
 }
 
-void _requireUniqueNames(String kind, Iterable<String> names) {
+void _requireUniqueNames(String kind, List<String> names) {
+  final duplicates = duplicateNameIndexes(names);
+  if (duplicates.isNotEmpty) {
+    throw ArgumentError('Duplicate $kind name: "${names[duplicates.first]}"');
+  }
+}
+
+/// Indexes in [names] whose value already appeared at a lower index.
+List<int> duplicateNameIndexes(List<String> names) {
   final seen = <String>{};
-  for (final name in names) {
-    if (!seen.add(name)) {
-      throw ArgumentError('Duplicate $kind name: "$name"');
+  final duplicates = <int>[];
+  for (var i = 0; i < names.length; i++) {
+    if (!seen.add(names[i])) {
+      duplicates.add(i);
     }
   }
+  return duplicates;
 }
 
 bool _listEquals<T>(List<T> a, List<T> b) {

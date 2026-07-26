@@ -93,6 +93,9 @@ Rules:
   never made.
 - Every recipe line and tag reference must resolve to the vocabularies; names are unique
   within their kind (FR-DAT-4 validation).
+- Value rules (FR-DAT-4): names are non-empty, single-line, without surrounding
+  whitespace; amounts are positive with range ends in order; `part_ml` is positive;
+  `times` is at least 1; a recipe's tag list has no repeats.
 - The app writes a canonical form: fixed key order, fixed indentation, no comments. Comments
   are legal in imported files but are not preserved once the app rewrites the store —
   the round-trip guarantee (FR-DAT-5) covers content, not comments.

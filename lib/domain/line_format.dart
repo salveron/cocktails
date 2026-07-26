@@ -1,12 +1,14 @@
 /// Parser and canonical formatter for the compact recipe-line grammar in
 /// docs/architecture.md: `<amount> <unit> <ingredient name>`, optionally
 /// suffixed ` (optional)`. Enforces syntax only — value rules (positive
-/// amounts, ordered range ends) are M5's validation, matching model.dart.
+/// amounts, ordered range ends) live in validation.dart.
 library;
 
 import 'model.dart';
 
-const _optionalSuffix = ' (optional)';
+/// Reserved suffix marking a line optional; ingredient names cannot end
+/// with it.
+const optionalSuffix = ' (optional)';
 
 final _linePattern = RegExp(r'^(\S+)\s+(\S+)\s+(\S.*)$');
 final _amountPattern = RegExp(r'^(\d+(?:\.\d+)?)(?:-(\d+(?:\.\d+)?))?$');
@@ -15,11 +17,9 @@ final _amountPattern = RegExp(r'^(\d+(?:\.\d+)?)(?:-(\d+(?:\.\d+)?))?$');
 /// not match the grammar.
 RecipeLine parseRecipeLine(String line) {
   final trimmed = line.trim();
-  final isOptional = trimmed.endsWith(_optionalSuffix);
+  final isOptional = trimmed.endsWith(optionalSuffix);
   final text = isOptional
-      ? trimmed
-            .substring(0, trimmed.length - _optionalSuffix.length)
-            .trimRight()
+      ? trimmed.substring(0, trimmed.length - optionalSuffix.length).trimRight()
       : trimmed;
   final match = _linePattern.firstMatch(text);
   if (match == null) {
@@ -35,16 +35,18 @@ RecipeLine parseRecipeLine(String line) {
   );
 }
 
-/// Canonical form: single spaces, whole numbers without a trailing `.0`,
-/// equal range ends collapsed to a single amount.
+/// Canonical form: single spaces, the [formatAmount] amount text.
 String formatRecipeLine(RecipeLine line) {
-  final amount = line.amount;
-  final amountText = amount.isRange
-      ? '${_formatNumber(amount.min)}-${_formatNumber(amount.max)}'
-      : _formatNumber(amount.min);
-  final suffix = line.isOptional ? _optionalSuffix : '';
-  return '$amountText ${line.unit.name} ${line.ingredient}$suffix';
+  final suffix = line.isOptional ? optionalSuffix : '';
+  return '${formatAmount(line.amount)} ${line.unit.name} '
+      '${line.ingredient}$suffix';
 }
+
+/// Canonical amount text: whole numbers without a trailing `.0`, ranges as
+/// `a-b` with equal ends collapsed to the single value.
+String formatAmount(Amount amount) => amount.isRange
+    ? '${_formatNumber(amount.min)}-${_formatNumber(amount.max)}'
+    : _formatNumber(amount.min);
 
 Amount _parseAmount(String text) {
   final match = _amountPattern.firstMatch(text);
