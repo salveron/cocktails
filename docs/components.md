@@ -31,12 +31,12 @@ lib/
     data.dart                  # barrel — the store, the codec, and their result types
     src/
       sourced_issue.dart       # SourcedIssue — shared by the store and the codec
-      model_store.dart         # M7 — the storage interface and its outcome types
+      model_store.dart         # the storage interface and its outcome types
       yaml_codec.dart          # decode/encode, format-version gate
       yaml_reader.dart         # YAML tree → model parts, with source spans
       yaml_writer.dart         # canonical emitter
-      file_model_store.dart    # M7 — atomic write, backup rotation
-      memory_model_store.dart  # M7 — in-memory double for state and widget tests
+      file_model_store.dart    # atomic write, backup rotation
+      memory_model_store.dart  # in-memory double for state and widget tests
   state/
     state.dart                 # barrel — every provider
     src/
@@ -326,12 +326,16 @@ YAML module — the coupling [ADR 02](adr/02-persistence-and-export-format.md) i
 Step 5 is the **only** place data-format keys bind to source positions, which is why the domain
 needs no notion of YAML and the codec needs no second copy of the rules.
 
-`FileModelStore` (M7) writes to a temp file and renames, rotates a small set of backups, and
-serialises saves through one queue so overlapping calls collapse to the latest model — the
+`FileModelStore` writes to a temp file and renames, rotates a small set of backups, and
+serialises every call through one queue so overlapping saves collapse to the latest model — the
 single-writer discipline of [ADR 02](adr/02-persistence-and-export-format.md). A load whose
 file is unreadable falls back to the newest backup that decodes, returning `Corrupt` with both
-the issues and whatever was recovered. `MemoryModelStore` implements the same interface for
-tests.
+the issues and whatever was recovered; a load never throws, so a damaged file is reported like
+any other FR-DAT-4 failure. It takes its directory as a constructor argument — the platform
+path is resolved at the composition root (`main.dart`), which is what keeps the adapter
+testable against a temp directory. File names and backup depth are
+[platform facts](architecture.md#platform-facts). `MemoryModelStore` implements the same
+interface for tests.
 
 ## State contracts
 

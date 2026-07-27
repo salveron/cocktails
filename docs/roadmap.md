@@ -29,7 +29,7 @@ Horizontal groundwork every feature depends on; strictly ordered.
       documented order.
 - [x] **M6 YAML codec** — parse + validate with line-position errors, canonical emitter,
       format-version gate, lossless round-trip test. (FR-DAT-2/4/5 core)
-- [ ] **M7 Storage adapter** — storage interface + file adapter: load at start, atomic
+- [x] **M7 Storage adapter** — storage interface + file adapter: load at start, atomic
       save, backup rotation, corrupt/missing-file handling; temp-dir integration tests.
 - [ ] **M7a Model edit API** — [`ModelEdits`](components.md#editing-the-model): `copyWith` on
       the entities, pure edit derivations including rename propagation and "made it", memoised

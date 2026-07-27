@@ -134,6 +134,9 @@ Rules:
 ## Platform facts
 
 - Store and backups: app-private documents directory, shared via Android share sheet (FR-DAT-1/3).
+  `cocktails.yaml` is the store; each save copies the file it replaces into `cocktails.backup-1.yaml`,
+  shifting the previous backups down and dropping `cocktails.backup-3.yaml`; `cocktails-export.yaml`
+  is the shareable copy `exportSnapshot` writes. Writes land through a `.tmp` sibling and a rename.
 - Android Auto Backup enabled; device loss/reset does not mean data loss.
 - Application ID: `dev.salveron.cocktails` (permanent once installed).
 - Minimum Android version: Flutter default (minSdk 21+); no special device features needed.
