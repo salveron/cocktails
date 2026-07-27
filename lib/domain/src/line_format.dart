@@ -65,8 +65,14 @@ String formatRecipeLine(RecipeLine line) {
 /// Canonical amount text: whole numbers without a trailing `.0`, ranges as
 /// `a-b` with equal ends collapsed to the single value.
 String formatAmount(Amount amount) => amount.isRange
-    ? '${_formatNumber(amount.min)}-${_formatNumber(amount.max)}'
-    : _formatNumber(amount.min);
+    ? '${formatNumber(amount.min)}-${formatNumber(amount.max)}'
+    : formatNumber(amount.min);
+
+/// Canonical number text of the data format — whole values without `.0` —
+/// shared with the YAML emitter (`part_ml`).
+String formatNumber(double value) => value == value.truncateToDouble()
+    ? value.truncate().toString()
+    : value.toString();
 
 Amount? _tryParseAmount(String text) {
   final match = _amountPattern.firstMatch(text);
@@ -77,7 +83,3 @@ Amount? _tryParseAmount(String text) {
   final max = match[2];
   return max == null ? Amount(min) : Amount.range(min, double.parse(max));
 }
-
-String _formatNumber(double value) => value == value.truncateToDouble()
-    ? value.truncate().toString()
-    : value.toString();

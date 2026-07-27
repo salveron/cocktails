@@ -31,12 +31,12 @@ lib/
     data.dart                  # barrel — the store, the codec, and their result types
     src/
       sourced_issue.dart       # SourcedIssue — shared by the store and the codec
-      model_store.dart         # the storage interface and its outcome types
+      model_store.dart         # M7 — the storage interface and its outcome types
       yaml_codec.dart          # decode/encode, format-version gate
       yaml_reader.dart         # YAML tree → model parts, with source spans
       yaml_writer.dart         # canonical emitter
       file_model_store.dart    # M7 — atomic write, backup rotation
-      memory_model_store.dart  # in-memory double for state and widget tests
+      memory_model_store.dart  # M7 — in-memory double for state and widget tests
   state/
     state.dart                 # barrel — every provider
     src/
@@ -183,6 +183,7 @@ ParsedLine tryParseRecipeLine(String text);   // never throws — recipe form (M
 RecipeLine parseRecipeLine(String text);      // throws FormatException — built on tryParse
 String formatRecipeLine(RecipeLine line);     // canonical form
 String formatAmount(Amount amount);
+String formatNumber(double value);            // canonical number text — amounts, part_ml
 ```
 
 The grammar itself is specified in [architecture.md](architecture.md#data-format). This file
@@ -316,7 +317,9 @@ YAML module — the coupling [ADR 02](adr/02-persistence-and-export-format.md) i
 3. Read the tree into model parts, reporting shape errors (wrong type, missing `name`) against
    the offending node; compact lines go through `tryParseRecipeLine`, whose `problem` string
    becomes an issue at that line's path.
-4. Run `validateModel` on the parts for referential integrity and value rules.
+4. Run `validateModel` on the parts for referential integrity and value rules — only when
+   step 3 reported nothing, so a broken shape never cascades into spurious reference errors
+   (a rejected `ingredients` section must not flag every recipe line as unknown).
 5. Resolve each `ValidationIssue.path` against the parsed node tree to attach a line number.
 6. Build the `Model` — it cannot throw, because step 4 already ruled out duplicates.
 

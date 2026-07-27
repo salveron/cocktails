@@ -93,13 +93,15 @@ Rules:
   ` (optional)`. Amount is a decimal number or a range `a-b`; unit is one of
   `part ml oz dash barspoon drop piece` and is stored as entered. The ` (optional)` suffix
   is reserved — ingredient names cannot end with it.
-- `made` holds the made-history: `last` is an ISO date string, `times` a count. Absent =
-  never made.
+- `made` holds the made-history: `last` is an ISO date (`YYYY-MM-DD`, nothing looser),
+  `times` a count. Absent = never made.
 - Every recipe line and tag reference must resolve to the vocabularies; names are unique
   within their kind (FR-DAT-4 validation).
 - Value rules (FR-DAT-4): names are non-empty, single-line, without surrounding
   whitespace; amounts are positive with range ends in order; `part_ml` is positive;
   `times` is at least 1; a recipe's tag list has no repeats.
+- Unknown keys are structural errors (FR-DAT-4): on an import that replaces the whole
+  database, a misspelled key must be reported, not silently drop its content.
 - The app writes a canonical form: fixed key order, fixed indentation, no comments. Comments
   are legal in imported files but are not preserved once the app rewrites the store —
   the round-trip guarantee (FR-DAT-5) covers content, not comments.
