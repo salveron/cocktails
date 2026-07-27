@@ -1,6 +1,7 @@
 import 'package:cocktails/data/data.dart';
 import 'package:cocktails/state/state.dart';
-import 'package:flutter/material.dart';
+import 'package:cocktails/ui/app.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -17,16 +18,4 @@ Future<void> main() async {
       child: const CocktailsApp(),
     ),
   );
-}
-
-class CocktailsApp extends StatelessWidget {
-  const CocktailsApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const MaterialApp(
-      title: 'Cocktails',
-      home: Scaffold(body: Center(child: Text('Cocktails'))),
-    );
-  }
 }

@@ -36,7 +36,7 @@ Horizontal groundwork every feature depends on; strictly ordered.
       name lookups, and the reference queries behind FR-VOC-1 delete blocking.
 - [x] **M8 State wiring** — Riverpod model provider, mutations persisting through M7,
       startup load.
-- [ ] **M9 App shell** — navigation between placeholder screens, theme, empty states.
+- [x] **M9 App shell** — navigation between placeholder screens, theme, empty states.
 
 ## Phase 1 — Inventory & vocabularies
 

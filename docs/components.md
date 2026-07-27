@@ -43,9 +43,11 @@ lib/
       model_controller.dart    # the one writable provider
       derived.dart             # availability, visible recipes, grouping, optimizer
       filters.dart             # filter and search UI state
-  ui/
-    app.dart, theme.dart       # M9
-    screens/, widgets/         # no barrel — leaves, imported directly
+  ui/                          # no barrel — leaves, imported directly
+    app.dart                   # MaterialApp and the shell: destinations, app bar, gear
+    theme.dart                 # the seed colour and the two schemes
+    screens/                   # one file per destination, plus settings
+    widgets/                   # empty_state, model_view, startup_issues
 test/                          # mirrors lib/, plus test/architecture_test.dart
 ```
 
@@ -406,6 +408,28 @@ Two performance facts, recorded so later milestones do not over-engineer:
 - The optimizer is the one expensive computation. Its provider is watched only by the
   optimizer screen, so it never runs while the user is anywhere else.
 
+## UI shell
+
+`main.dart` builds the `ProviderScope` and hands off to `CocktailsApp`, which owns the
+`MaterialApp` — title, both themes, and `AppShell` as its home.
+
+- **Three destinations** — Recipes, Inventory, Shopping — in a Material 3 `NavigationBar`,
+  each one tap from any other (NFR-1). Settings is not a destination but sits behind the app
+  bar's gear: the ratio, the display toggle and data exchange are set once, not browsed.
+- **Destinations live in an `IndexedStack`**, so switching away and back keeps a screen's
+  scroll position and search text. Everything below a destination — recipe view, forms,
+  settings — is a `Navigator` push over the shell. Routing is `Navigator` 1.0: the pilot has
+  no deep links, no URL bar and no nested routers, so `go_router` would buy nothing.
+- **Theme** — one seed colour in `theme.dart` generates the light and dark schemes and the
+  platform setting picks between them. No per-component theming.
+- **`ModelView`** is the only reader of `modelProvider`'s `AsyncValue`: a spinner while the
+  startup load runs, a failure state if it throws, the model otherwise. Screens take the
+  loaded `Model` and never see the other two states.
+- **`EmptyState`** is the one shape of "nothing here yet" — icon, title, and a line naming
+  what would fill it.
+- **`StartupIssues`** shows what the startup load could not read (FR-DAT-4) above every
+  destination, until dismissed.
+
 ## Data flows
 
 1. **Startup** — `main` overrides `modelStoreProvider` with file store → `ModelController.build()` loads → `Loaded` seeds state, `Empty` seeds empty model, `Corrupt` seeds recovered model and surfaces issues.
@@ -421,5 +445,5 @@ Controller is the UI's only route to data layer; screens never hold `ModelStore`
 - **Domain** — unit tests, no device. Pure functions; clock and randomness passed in.
 - **Data** — codec unit-tested (round-trip FR-DAT-5, broken-file decode with line numbers). `FileModelStore` integration-tested (atomic write, backups, recovery).
 - **State** — controller tests against `MemoryModelStore`; mutation updates state and reaches store.
-- **UI** — widget tests for critical flows with store provider overridden.
+- **UI** — widget tests for critical flows; `test/ui/harness.dart` pumps them over the store override the composition root makes.
 - **Boundaries** — `test/architecture_test.dart` enforces import rules.
