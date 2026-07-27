@@ -4,11 +4,58 @@
 /// not enforced here.
 library;
 
-enum StockLevel { in_, low, out }
+import 'helpers.dart';
 
-enum Unit { part, ml, oz, dash, barspoon, drop, piece }
+enum StockLevel {
+  in_('in'),
+  low('low'),
+  out('out');
 
-enum DisplayUnit { part, ml }
+  final String token;
+  const StockLevel(this.token);
+
+  static StockLevel? fromToken(String text) =>
+      _fromToken(values, text, (v) => v.token);
+}
+
+enum Unit {
+  part('part'),
+  ml('ml'),
+  oz('oz'),
+  dash('dash'),
+  barspoon('barspoon'),
+  drop('drop'),
+  piece('piece');
+
+  final String token;
+  const Unit(this.token);
+
+  static Unit? fromToken(String text) =>
+      _fromToken(values, text, (v) => v.token);
+}
+
+enum DisplayUnit {
+  part('part'),
+  ml('ml');
+
+  final String token;
+  const DisplayUnit(this.token);
+
+  static DisplayUnit? fromToken(String text) =>
+      _fromToken(values, text, (v) => v.token);
+}
+
+/// Linear token lookup shared by the three enums above.
+T? _fromToken<T extends Enum>(
+  List<T> values,
+  String text,
+  String Function(T) token,
+) {
+  for (final value in values) {
+    if (token(value) == text) return value;
+  }
+  return null;
+}
 
 final class Ingredient {
   final String name;
@@ -32,7 +79,8 @@ final class Ingredient {
   int get hashCode => Object.hash(name, isBase, stock);
 
   @override
-  String toString() => 'Ingredient($name, base: $isBase, stock: ${stock.name})';
+  String toString() =>
+      'Ingredient($name, base: $isBase, stock: ${stock.token})';
 }
 
 final class Tag {
@@ -98,7 +146,7 @@ final class RecipeLine {
 
   @override
   String toString() =>
-      'RecipeLine($amount ${unit.name} $ingredient'
+      'RecipeLine($amount ${unit.token} $ingredient'
       '${isOptional ? ', optional' : ''})';
 }
 
@@ -135,7 +183,7 @@ final class Settings {
   int get hashCode => Object.hash(partMl, display);
 
   @override
-  String toString() => 'Settings($partMl ml/part, display: ${display.name})';
+  String toString() => 'Settings($partMl ml/part, display: ${display.token})';
 }
 
 final class Recipe {
@@ -158,8 +206,8 @@ final class Recipe {
   bool operator ==(Object other) =>
       other is Recipe &&
       other.name == name &&
-      _listEquals(other.tags, tags) &&
-      _listEquals(other.lines, lines) &&
+      listEquals(other.tags, tags) &&
+      listEquals(other.lines, lines) &&
       other.notes == notes &&
       other.made == made;
 
@@ -202,9 +250,9 @@ final class Model {
   bool operator ==(Object other) =>
       other is Model &&
       other.settings == settings &&
-      _listEquals(other.ingredients, ingredients) &&
-      _listEquals(other.tags, tags) &&
-      _listEquals(other.recipes, recipes);
+      listEquals(other.ingredients, ingredients) &&
+      listEquals(other.tags, tags) &&
+      listEquals(other.recipes, recipes);
 
   @override
   int get hashCode => Object.hash(
@@ -225,24 +273,4 @@ void _requireUniqueNames(String kind, List<String> names) {
   if (duplicates.isNotEmpty) {
     throw ArgumentError('Duplicate $kind name: "${names[duplicates.first]}"');
   }
-}
-
-/// Indexes in [names] whose value already appeared at a lower index.
-List<int> duplicateNameIndexes(List<String> names) {
-  final seen = <String>{};
-  final duplicates = <int>[];
-  for (var i = 0; i < names.length; i++) {
-    if (!seen.add(names[i])) {
-      duplicates.add(i);
-    }
-  }
-  return duplicates;
-}
-
-bool _listEquals<T>(List<T> a, List<T> b) {
-  if (a.length != b.length) return false;
-  for (var i = 0; i < a.length; i++) {
-    if (a[i] != b[i]) return false;
-  }
-  return true;
 }

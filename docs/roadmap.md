@@ -25,11 +25,13 @@ Horizontal groundwork every feature depends on; strictly ordered.
       single shared home later used by the codec (M6) and the recipe form (M14).
 - [x] **M5 Model validation** — referential integrity, duplicate names, malformed values:
       the rule set behind FR-DAT-4 and the recipe form.
-- [ ] **M5a Domain packaging** — the [module boundaries](components.md#boundary-rules) before
-      anything depends on them: domain files under `src/` behind a barrel, shared internals
-      in `helpers.dart`, declared wire tokens on the enums, `tryParseRecipeLine`, public
-      `validateRecipe`, value equality on `ValidationIssue`, and the architecture test.
-      Behaviour unchanged.
+- [x] **M5a Domain packaging** — the [module boundaries](components.md#boundary-rules) and the
+      [validation contract](adr/05-validation-contract.md) before anything depends on them:
+      domain files under `src/` behind a barrel, shared internals in `helpers.dart`, declared
+      wire tokens on the enums, `tryParseRecipeLine`, `ValidationIssueKind` and value equality
+      on `ValidationIssue`, one validation entry point per editable entity, and the
+      architecture test. The only behaviour change: `validateModel` reports issues in the
+      documented order.
 - [ ] **M6 YAML codec** — parse + validate with line-position errors, canonical emitter,
       format-version gate, lossless round-trip test. (FR-DAT-2/4/5 core)
 - [ ] **M7 Storage adapter** — storage interface + file adapter: load at start, atomic

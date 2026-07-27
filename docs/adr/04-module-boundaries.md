@@ -28,10 +28,10 @@ wire tokens are declared on the enums.**
   `lib/<layer>/src/`. Three visibility levels result: `_name` (file), public but unexported
   (layer), exported (app). Shared domain internals get a `src/helpers.dart` that the barrel
   does not export.
-- Dependencies point inward only — `ui → state → data → domain` — and no file imports another
-  layer's `src/`. `test/architecture_test.dart` reads the import directives under `lib/` and
-  fails on violations, including the "no Flutter in the domain" rule that is currently true
-  only by luck.
+- Dependencies point inward only — `ui → state → data → domain` — and a layer's barrel is the
+  only file another layer may reach. `test/architecture_test.dart` reads the dependency
+  directives under `lib/` and fails on violations, including the "no Flutter in the domain"
+  rule that is currently true only by luck.
 - Every enum that appears in the data format carries its token as a field
   (`Unit.part('part')`, `StockLevel.in_('in')`), so renaming a member cannot change the file
   format and the `in` collision disappears.

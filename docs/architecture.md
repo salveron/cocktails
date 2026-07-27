@@ -133,8 +133,9 @@ Rules:
 
 One folder per layer under `lib/` — `domain/` (pure Dart entities and computations), `data/`
 (storage interface and YAML file adapter), `state/` (Riverpod providers), `ui/` (screens and
-widgets) — each exposing a barrel file over its `src/` internals. `test/` mirrors `lib/`.
-The full structure and the boundary rules are in [components.md](components.md).
+widgets). Each layer nothing depends on exposes a barrel file over its `src/` internals.
+`test/` mirrors `lib/`. The full structure and the boundary rules, including which layers
+need a barrel, are in [components.md](components.md).
 
 ## Platform facts
 
@@ -176,3 +177,5 @@ The full structure and the boundary rules are in [components.md](components.md).
   layers, Riverpod
 - [04 — Module boundaries and public surface](adr/04-module-boundaries.md) — layer barrels
   over `src/`, boundaries enforced by a test, declared wire tokens
+- [05 — Validation contract and diagnostics](adr/05-validation-contract.md) — path, kind and
+  message on every issue; one validation entry point per editable entity

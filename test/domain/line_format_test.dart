@@ -1,5 +1,4 @@
-import 'package:cocktails/domain/line_format.dart';
-import 'package:cocktails/domain/model.dart';
+import 'package:cocktails/domain/domain.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -105,6 +104,84 @@ void main() {
           ),
         ),
       );
+    });
+  });
+
+  group('tryParseRecipeLine', () {
+    test('never throws, valid or not', () {
+      const lines = [
+        '0.75 part lemon juice',
+        '0.5 part egg white (optional)',
+        'bourbon',
+        'x part gin',
+        '1.5 cup sugar',
+      ];
+      for (final line in lines) {
+        expect(() => tryParseRecipeLine(line), returnsNormally, reason: line);
+      }
+    });
+
+    test('returns the line and no problem for a plain valid line', () {
+      final parsed = tryParseRecipeLine('0.75 part lemon juice');
+      expect(parsed.problem, isNull);
+      expect(
+        parsed.line,
+        const RecipeLine(Amount(0.75), Unit.part, 'lemon juice'),
+      );
+    });
+
+    test('returns the line and no problem for an (optional) valid line', () {
+      final parsed = tryParseRecipeLine('0.5 part egg white (optional)');
+      expect(parsed.problem, isNull);
+      expect(
+        parsed.line,
+        const RecipeLine(Amount(0.5), Unit.part, 'egg white', isOptional: true),
+      );
+    });
+
+    test('returns a problem and no line on a shape mismatch', () {
+      final parsed = tryParseRecipeLine('bourbon');
+      expect(parsed.line, isNull);
+      expect(parsed.problem, contains('Expected'));
+    });
+
+    test('returns a problem and no line on an invalid amount', () {
+      final parsed = tryParseRecipeLine('x part gin');
+      expect(parsed.line, isNull);
+      expect(parsed.problem, 'Invalid amount: "x"');
+    });
+
+    test('returns a problem and no line on an unknown unit', () {
+      final parsed = tryParseRecipeLine('1.5 cup sugar');
+      expect(parsed.line, isNull);
+      expect(parsed.problem, 'Unknown unit: "cup"');
+    });
+  });
+
+  group('parseRecipeLine behaves like tryParseRecipeLine', () {
+    test('returns the same line tryParseRecipeLine parses', () {
+      const lines = [
+        '0.75 part lemon juice',
+        '0.5 part egg white (optional)',
+        '1.5-2 part bourbon',
+      ];
+      for (final line in lines) {
+        expect(parseRecipeLine(line), tryParseRecipeLine(line).line);
+      }
+    });
+
+    test('throws the same message tryParseRecipeLine reports as a problem', () {
+      const lines = ['bourbon', 'x part gin', '1.5 cup sugar', ''];
+      for (final line in lines) {
+        final problem = tryParseRecipeLine(line).problem!;
+        expect(
+          () => parseRecipeLine(line),
+          throwsA(
+            isA<FormatException>().having((e) => e.message, 'message', problem),
+          ),
+          reason: line,
+        );
+      }
     });
   });
 

@@ -1,7 +1,64 @@
-import 'package:cocktails/domain/model.dart';
+import 'package:cocktails/domain/domain.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  group('StockLevel tokens', () {
+    test('tokens match the data format, including in_ -> "in"', () {
+      expect(StockLevel.in_.token, 'in');
+      expect(StockLevel.low.token, 'low');
+      expect(StockLevel.out.token, 'out');
+    });
+
+    test('fromToken round-trips every member', () {
+      for (final level in StockLevel.values) {
+        expect(StockLevel.fromToken(level.token), level);
+      }
+    });
+
+    test('fromToken returns null for an unknown token', () {
+      expect(StockLevel.fromToken('missing'), isNull);
+    });
+  });
+
+  group('Unit tokens', () {
+    test('tokens match the data format', () {
+      expect(Unit.part.token, 'part');
+      expect(Unit.ml.token, 'ml');
+      expect(Unit.oz.token, 'oz');
+      expect(Unit.dash.token, 'dash');
+      expect(Unit.barspoon.token, 'barspoon');
+      expect(Unit.drop.token, 'drop');
+      expect(Unit.piece.token, 'piece');
+    });
+
+    test('fromToken round-trips every member', () {
+      for (final unit in Unit.values) {
+        expect(Unit.fromToken(unit.token), unit);
+      }
+    });
+
+    test('fromToken returns null for an unknown token', () {
+      expect(Unit.fromToken('cup'), isNull);
+    });
+  });
+
+  group('DisplayUnit tokens', () {
+    test('tokens match the data format', () {
+      expect(DisplayUnit.part.token, 'part');
+      expect(DisplayUnit.ml.token, 'ml');
+    });
+
+    test('fromToken round-trips every member', () {
+      for (final unit in DisplayUnit.values) {
+        expect(DisplayUnit.fromToken(unit.token), unit);
+      }
+    });
+
+    test('fromToken returns null for an unknown token', () {
+      expect(DisplayUnit.fromToken('litre'), isNull);
+    });
+  });
+
   group('Amount', () {
     test('single value is not a range', () {
       const amount = Amount(1.5);
@@ -254,17 +311,6 @@ void main() {
       expect(build(), isNot(build(ingredients: const [Ingredient('gin')])));
       expect(build(), isNot(build(tags: const [Tag('classic')])));
       expect(build(), isNot(build(recipes: [Recipe('Negroni')])));
-    });
-  });
-
-  group('duplicateNameIndexes', () {
-    test('empty and unique lists have no duplicates', () {
-      expect(duplicateNameIndexes([]), isEmpty);
-      expect(duplicateNameIndexes(['a', 'b']), isEmpty);
-    });
-
-    test('reports every repeated position', () {
-      expect(duplicateNameIndexes(['a', 'b', 'a', 'a']), [2, 3]);
     });
   });
 }

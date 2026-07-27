@@ -28,8 +28,9 @@ lib/
       optimizer.dart           # M21
       helpers.dart             # not exported: duplicateNameIndexes, listEquals
   data/
-    data.dart                  # barrel — ModelStore, LoadOutcome, YamlCodec, DecodeResult
+    data.dart                  # barrel — the store, the codec, and their result types
     src/
+      sourced_issue.dart       # SourcedIssue — shared by the store and the codec
       model_store.dart         # the storage interface and its outcome types
       yaml_codec.dart          # decode/encode, format-version gate
       yaml_reader.dart         # YAML tree → model parts, with source spans
@@ -50,9 +51,8 @@ test/                          # mirrors lib/, plus test/architecture_test.dart
 
 `domain/src/helpers.dart` is the home for logic shared *between* domain files. Dart has no
 package-private modifier, so such helpers must be public within their file; keeping them out
-of the barrel is what makes them layer-private. This is where `duplicateNameIndexes`
-(currently public in `model.dart`) and the `_listEquals` copy that every new collection-holding
-file would otherwise repeat both belong.
+of the barrel is what makes them layer-private. It holds `duplicateNameIndexes` and the one
+`listEquals` that every collection-holding file would otherwise copy.
 
 ## Boundary rules
 
@@ -71,12 +71,19 @@ Dependencies point strictly inward — `ui → state → data → domain` — wi
 - `data/**` imports `domain/domain.dart` only.
 - `state/**` imports `domain/domain.dart` and `data/data.dart`.
 - `ui/**` imports `domain/domain.dart` and `state/state.dart`; never `data/`.
-- No file imports another layer's `src/` — only its barrel.
+- A layer's public surface is exactly its barrel: no file depends on another layer's `src/`,
+  nor on any other file of that layer. `ui/` is the exception that needs no barrel — nothing
+  depends on it, so `main.dart` imports its leaves directly.
 - Within a layer, `src/` files import each other by relative path.
+- A barrel re-exports only its own layer. Re-exporting a sibling layer — even one this layer
+  may legally import — would publish that layer's surface to everyone downstream and open a
+  transitive route around the rules above.
 
-`test/architecture_test.dart` (M5a) reads the import directives under `lib/` and fails on any
-violation, so the rules are enforced by the suite rather than by review habit. It needs no
-package beyond `dart:io` and the existing test harness.
+`test/architecture_test.dart` (M5a) reads the `import` and `export` directives under `lib/`
+and fails on any violation, so the rules are enforced by the suite rather than by review
+habit. It needs no package beyond `dart:io` and the existing test harness. Its rules are pure
+functions over a (path, directives) pair, exercised against constructed inputs as well as the
+real tree, so the suite cannot pass vacuously.
 
 ## Domain contracts
 
@@ -114,9 +121,9 @@ enum DisplayUnit { part('part'), ml('ml'); … }
 `Model` answers reference questions directly, so no consumer builds its own name index:
 
 ```dart
-Ingredient? ingredientNamed(String name);
-Recipe? recipeNamed(String name);
-bool hasTag(String name);
+Ingredient? ingredientNamed(String name);   // M7a
+Recipe? recipeNamed(String name);           // M7a
+bool hasTag(String name);                   // M7a
 ```
 
 These are backed by a `late final` map built on first use. `Model` stays immutable and the
@@ -186,27 +193,47 @@ enforces syntax only; value rules live in validation.
 
 ### Validation
 
+The contract and its rationale are [ADR 05](adr/05-validation-contract.md).
+
 ```dart
+enum ValidationIssueKind {
+  emptyName, whitespaceInName, lineBreakInName, duplicateName, reservedSuffix,
+  partMlNotPositive, unknownIngredient, unknownTag, duplicateTag,
+  amountNotPositive, rangeOutOfOrder, timesBelowOne,
+  unsupportedFormat, malformedLine, malformedValue,    // raised by the codec (M6)
+}
+
 final class ValidationIssue {
-  final List<Object> path;   // data-format keys and indexes, e.g. ['recipes', 0, 'lines', 2]
-  final String message;      // names the offending value
-  String get location;       // 'recipes[0].lines[2]'
+  final List<Object> path;         // data-format keys and indexes, e.g. ['recipes', 0, 'lines', 2]
+  final ValidationIssueKind kind;  // the rule that failed
+  final String message;            // ready to display, names the offending value
+  String get location;             // 'recipes[0].lines[2]'
 }
 
 List<ValidationIssue> validateModel({settings, ingredients, tags, recipes});
 List<ValidationIssue> validateRecipe(Recipe recipe,
-    {required Set<String> knownIngredients, required Set<String> knownTags});
+    {required Set<String> knownIngredients, required Set<String> knownTags,
+     Set<String> otherRecipeNames});
+List<ValidationIssue> validateIngredient(Ingredient ingredient,
+    {Set<String> otherIngredientNames});
+List<ValidationIssue> validateTag(Tag tag, {Set<String> otherTagNames});
 ```
 
-An empty result means valid; every issue is collected in one pass, never fail-fast, in a
-documented order (settings, then each vocabulary, then recipes in order) so the report reads
-top-to-bottom like the file. `ValidationIssue` carries value equality.
+An empty result means valid; every issue is collected in one pass, never fail-fast, so the
+report reads top-to-bottom like the file: settings, then each vocabulary, then recipes in
+order, and within each of those by entry index — every rule for one entry is applied before
+the next entry, so a later pass never emits behind an earlier one. That is what lets the codec
+render the list as it stands (M6). `ValidationIssue` carries value equality.
 
 `path` uses the **data-format key names** (`part_ml`, `made.times`), not Dart field names.
 This is the seam that lets the codec attach YAML line numbers and the recipe form attach field
-focus, without the domain knowing about either. `validateRecipe` is the entry point the recipe
-form uses to check one recipe against the current vocabularies (M14); `validateModel` is the
-whole-file entry point for import (M6).
+focus, without the domain knowing about either. Behaviour switches on `kind`; `message` is for
+display only, because matching on its text would make the wording API.
+
+`validateModel` is the whole-file entry point for import (M6). The other three each check the
+single entry a form is editing (M11/M12/M14) in one call: their paths are relative to that
+entry and empty for its name, and `other…Names` holds every *other* entry's name, so a rename
+never collides with itself. All four run the same rules over the same code.
 
 ### Computations
 
@@ -279,6 +306,11 @@ final class SourcedIssue {
   final int? line;                   // 1-based YAML line, null when unresolvable
 }
 ```
+
+`SourcedIssue` is its own module because both `Corrupt` and `Rejected` carry it: putting it in
+`model_store.dart` would make the codec depend on the storage module to name its own result,
+and putting it in `yaml_codec.dart` would make the storage interface depend on the concrete
+YAML module — the coupling [ADR 02](adr/02-persistence-and-export-format.md) isolates against.
 
 `decode` runs one pipeline, each stage feeding the same issue list:
 
