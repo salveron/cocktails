@@ -34,7 +34,7 @@ Horizontal groundwork every feature depends on; strictly ordered.
 - [x] **M7a Model edit API** — [`ModelEdits`](components.md#editing-the-model): `copyWith` on
       the entities, pure edit derivations including rename propagation and "made it", memoised
       name lookups, and the reference queries behind FR-VOC-1 delete blocking.
-- [ ] **M8 State wiring** — Riverpod model provider, mutations persisting through M7,
+- [x] **M8 State wiring** — Riverpod model provider, mutations persisting through M7,
       startup load.
 - [ ] **M9 App shell** — navigation between placeholder screens, theme, empty states.
 

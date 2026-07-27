@@ -1,7 +1,22 @@
+import 'package:cocktails/data/data.dart';
+import 'package:cocktails/state/state.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path_provider/path_provider.dart';
 
-void main() {
-  runApp(const CocktailsApp());
+/// The composition root: the only place that knows where the store lives
+/// (docs/architecture.md#platform-facts).
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  final directory = await getApplicationDocumentsDirectory();
+  runApp(
+    ProviderScope(
+      overrides: [
+        modelStoreProvider.overrideWithValue(FileModelStore(directory)),
+      ],
+      child: const CocktailsApp(),
+    ),
+  );
 }
 
 class CocktailsApp extends StatelessWidget {

@@ -12,7 +12,8 @@ the resulting design at system level, [components.md](components.md) at module l
 - Development on Linux with a physical Android phone over USB; no emulator required.
 - Third-party dependencies are held to a deliberate minimum: `flutter_riverpod`, `yaml`,
   `path_provider`, `share_plus`, `file_picker`; anything beyond these is a considered
-  addition, not a reflex.
+  addition, not a reflex. Riverpod is held at 2.x — 3.x pulls the analyzer, shelf, and test
+  packages into the app's own dependency graph, and the pilot uses nothing it adds.
 
 ## System overview
 

@@ -40,7 +40,7 @@ lib/
   state/
     state.dart                 # barrel — every provider
     src/
-      model_controller.dart    # M8 — the one writable provider
+      model_controller.dart    # the one writable provider
       derived.dart             # availability, visible recipes, grouping, optimizer
       filters.dart             # filter and search UI state
   ui/
@@ -348,16 +348,43 @@ interface for tests.
 
 ```dart
 final modelStoreProvider = Provider<ModelStore>((ref) => throw UnimplementedError());
+final clockProvider = Provider<DateTime Function()>((ref) => DateTime.now);
 final modelProvider = AsyncNotifierProvider<ModelController, Model>(ModelController.new);
+final startupIssuesProvider = Provider<List<String>>(…);
 ```
 
 `modelStoreProvider` is overridden in `main.dart` with the file store and in tests with the
-memory store — the seam that keeps state and widget tests device-free.
-`ModelController.build()` performs the startup load and is the only writable provider.
+memory store — the seam that keeps state and widget tests device-free. `clockProvider` is that
+seam for the made-it date (FR-REC-6): the state layer is the one place that reads the wall
+clock, so the domain stays pure and the stamp is testable.
 
-Each mutation is one controller method that calls a `ModelEdits` operation, sets state, and
-enqueues a save; the UI never constructs a `Model` and never touches `ModelStore`
-([ADR 03](adr/03-app-structure-and-state.md)). Everything else is derived and read-only:
+`ModelController.build()` performs the startup load and is the only writable provider. A
+`Corrupt` load starts the app on the recovered backup — empty when nothing decoded — and its
+issues reach the UI through `startupIssuesProvider`, already formatted as `line N: message`
+(FR-DAT-4). They arrive as strings because `SourcedIssue` is a data-layer type and `ui/` may
+not import one.
+
+```dart
+Future<void> setSettings(Settings settings);
+Future<void> upsertIngredient(Ingredient ingredient);   // add or replace by name
+Future<void> renameIngredient(String from, String to);
+Future<void> removeIngredient(String name);
+Future<void> setStock(String ingredient, StockLevel stock);
+Future<void> upsertTag(Tag tag);
+Future<void> renameTag(String from, String to);
+Future<void> removeTag(String name);
+Future<void> upsertRecipe(Recipe recipe);               // add or replace by name
+Future<void> removeRecipe(String name);
+Future<void> markMade(String name);                     // stamps clockProvider's date
+```
+
+Each mutation is one line over the matching `ModelEdits` derivation, and all of them run
+through a single private path: await the startup load, derive, publish the new state, save.
+Awaiting the load is what makes an edit during startup land on the loaded model instead of
+replacing it; an edit that leaves the model equal to what it was is not saved at all, since
+that write would only push a good backup out of the rotation. The UI never constructs a
+`Model` and never touches `ModelStore` ([ADR 03](adr/03-app-structure-and-state.md)).
+Everything else is derived and read-only:
 
 | Provider | Depends on | Milestone |
 |---|---|---|
@@ -384,7 +411,7 @@ Two performance facts, recorded so later milestones do not over-engineer:
 1. **Startup** — `main` overrides `modelStoreProvider` with file store → `ModelController.build()` loads → `Loaded` seeds state, `Empty` seeds empty model, `Corrupt` seeds recovered model and surfaces issues.
 2. **Edit** — widget calls `modelProvider.notifier.setStock(name, level)` → `ModelEdits` returns new `Model` → state updates, UI rebuilds from derived providers → save enqueued in background.
 3. **Recipe form** (M14) — `tryParseRecipeLine` on each field for live feedback → `validateRecipe` on save, issue paths map to fields → clean recipe reaches `notifier.upsertRecipe`.
-4. **Export** (FR-DAT-1) — `notifier.export()` returns location for share sheet; store file is the export.
+4. **Export** (FR-DAT-1) — `notifier.export()` (M24) returns location for share sheet; store file is the export.
 5. **Import** (FR-DAT-3/4) — `YamlCodec.decode` validates → `Rejected` shows issues ("line N: message"), `Decoded` confirms and atomically saves.
 
 Controller is the UI's only route to data layer; screens never hold `ModelStore` or `YamlCodec`.
