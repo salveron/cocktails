@@ -5,12 +5,7 @@ criteria live in [requirements.md](requirements.md), the design in
 [architecture.md](architecture.md); milestones reference both instead of restating them.
 Development-machine setup is out of scope — every milestone is repo content only.
 
-Conventions:
-
-- One milestone = one commit, landing together with its tests; `flutter analyze` and the
-  test suite stay green at every step (CI-enforced from M2 on).
-- Domain logic lands as pure Dart with unit tests; widget tests only where the
-  [testing strategy](architecture.md#repository-ci--testing) names them.
+**Conventions:** One milestone = one commit with tests. `flutter analyze` and test suite green at every step. Domain as pure Dart + unit tests; widget tests per [strategy](architecture.md#testing).
 
 ## Phase 0 — Foundation
 
@@ -91,9 +86,7 @@ First usable slice; recipes reference both vocabularies, so this precedes Phase 
 
 ## Ordering facts
 
-- Phase 0 is strictly sequential; later phases are ordered by value, with these hard
-  dependencies: M16 before M18, M20, and M21 (they consume availability); M21 before M22.
-- M5a and M7a carry no user-visible behaviour; they fix the domain's shape before the layers
-  that consume it. M5a blocks M6; M7a blocks M8 and every editing screen (M10–M12, M14, M15).
-- M24–M25 depend only on Phase 0 and may be pulled ahead of Phases 1–3 if loading real
-  migrated data early outweighs in-app editing.
+- **Phase 0:** strictly sequential. Later phases: ordered by value.
+- **Hard dependencies:** M16 before M18/M20/M21 (consume availability); M21 before M22.
+- **Shape milestones:** M5a blocks M6; M7a blocks M8 and editing screens (M10–12, M14–15).
+- **Data exchange:** M24–25 depend only on Phase 0; can move ahead if loading migrated data early.

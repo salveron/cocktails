@@ -129,53 +129,23 @@ Rules:
   in the domain layer, used identically by the recipe form and the YAML codec, and covered
   by round-trip unit tests.
 
-## Project layout
-
-One folder per layer under `lib/` — `domain/` (pure Dart entities and computations), `data/`
-(storage interface and YAML file adapter), `state/` (Riverpod providers), `ui/` (screens and
-widgets). Each layer nothing depends on exposes a barrel file over its `src/` internals.
-`test/` mirrors `lib/`. The full structure and the boundary rules, including which layers
-need a barrel, are in [components.md](components.md).
-
 ## Platform facts
 
-- Store file and rotated backups live in the app-private documents directory; export goes
-  through the Android share sheet, import through the system file picker (FR-DAT-1/3).
-- Android Auto Backup stays enabled: the store and its backups (kilobytes, far under the
-  25 MB quota) ride the phone's normal Google backup, so device loss or reset does not mean
-  data loss. Manual export remains the explicit, user-controlled off-device copy.
+- Store and backups: app-private documents directory, shared via Android share sheet (FR-DAT-1/3).
+- Android Auto Backup enabled; device loss/reset does not mean data loss.
 - Application ID: `dev.salveron.cocktails` (permanent once installed).
-- Minimum Android version: Flutter's current default (minSdk 21+); no device features used
-  beyond file storage and sharing.
-- UI language is English; no i18n framework in the pilot.
+- Minimum Android version: Flutter default (minSdk 21+); no special device features needed.
+- UI language: English only; no i18n framework in pilot.
 
 ## Build & distribution
 
-- Release APK built locally and sideloaded (USB or file share); no store presence in the pilot.
-- The APK is signed with a locally kept keystore; the keystore and its credentials are backed
-  up outside the repo — losing it means reinstalling instead of updating in place.
-- A Play Store track remains possible later without rework (new listing, same codebase).
+- Release APK built locally and sideloaded; no store presence in pilot.
+- Keystore stored outside repo (outside CI); losing it requires reinstall.
+- Play Store track possible later without rework.
 
-## Repository, CI & testing
+## Testing
 
-- The repo lives on GitHub (private); GitHub Actions runs the format check, `flutter analyze`,
-  and the test suite on every push. APKs are built and signed locally, not in CI.
-- Unit tests (pure Dart, no device) are the backbone and cover the domain layer: availability
-  computation, filtering/grouping, the optimizer, import validation, and the YAML codec's
-  lossless round-trip (FR-DAT-5 is a test, not a hope).
-- The storage adapter is integration-tested against temp files (atomic write, backup
-  rotation, corrupt-file recovery).
-- Widget tests cover the critical flows only (recipe form, stock toggle, import
-  confirmation); everything else is verified manually on the device.
-
-## Decision records
-
-- [01 — Technology stack](adr/01-technology-stack.md) — Flutter (Dart), Android pilot target
-- [02 — Persistence and export format](adr/02-persistence-and-export-format.md) — in-memory
-  model, single YAML store file identical to the export format
-- [03 — App structure and state management](adr/03-app-structure-and-state.md) — three
-  layers, Riverpod
-- [04 — Module boundaries and public surface](adr/04-module-boundaries.md) — layer barrels
-  over `src/`, boundaries enforced by a test, declared wire tokens
-- [05 — Validation contract and diagnostics](adr/05-validation-contract.md) — path, kind and
-  message on every issue; one validation entry point per editable entity
+- **Unit tests** (pure Dart, no device) cover domain layer: availability, filtering/grouping, optimizer, import validation, YAML codec round-trip (FR-DAT-5).
+- **Integration tests** on storage adapter: atomic write, backup rotation, corrupt-file recovery.
+- **Widget tests** on critical flows: recipe form, stock toggle, import confirmation.
+- CI runs format check, `flutter analyze`, and test suite on every push (local APK builds).

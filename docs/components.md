@@ -49,10 +49,7 @@ lib/
 test/                          # mirrors lib/, plus test/architecture_test.dart
 ```
 
-`domain/src/helpers.dart` is the home for logic shared *between* domain files. Dart has no
-package-private modifier, so such helpers must be public within their file; keeping them out
-of the barrel is what makes them layer-private. It holds `duplicateNameIndexes` and the one
-`listEquals` that every collection-holding file would otherwise copy.
+`domain/src/helpers.dart` holds logic shared between domain files (layer-private, not exported). Contains `duplicateNameIndexes` and `listEquals`.
 
 ## Boundary rules
 
@@ -370,41 +367,18 @@ Two performance facts, recorded so later milestones do not over-engineer:
 
 ## Data flows
 
-1. **Startup** — `main` builds a `ProviderScope` overriding `modelStoreProvider` with the file
-   store → `ModelController.build()` calls `load()` → `Loaded` seeds the state, `Empty` seeds
-   an empty model, `Corrupt` seeds what was recovered and surfaces the issues in the shell.
-2. **Edit** (stock toggle, FR-INV-2) — widget calls `modelProvider.notifier.setStock(name,
-   level)` → `ModelEdits.withStock` returns a new `Model` → state is set, the UI rebuilds from
-   the derived providers immediately → the save is enqueued and completes in the background.
-3. **Recipe form** (M14) — each line field runs `tryParseRecipeLine` for live feedback; on save
-   the assembled `Recipe` goes through `validateRecipe` against the current vocabularies, and
-   issue `path`s map to the offending field. Only a clean recipe reaches
-   `notifier.upsertRecipe`.
-4. **Export** (FR-DAT-1) — the screen calls `notifier.export()`, which forwards to
-   `exportSnapshot()` and returns the location for the share sheet. No domain or codec
-   involvement: the store file already *is* the export.
-5. **Import** (FR-DAT-3/4) — the file picker returns text, which the screen passes to
-   `notifier.previewImport(text)` → `YamlCodec.decode` → `Rejected` comes back as issues the
-   screen renders as "line N: message", changing nothing → on `Decoded` the screen confirms,
-   then `notifier.applyImport(model)` calls `exportSnapshot()` to preserve the current state,
-   `save(model)` to atomically replace the store, and swaps in the new model.
+1. **Startup** — `main` overrides `modelStoreProvider` with file store → `ModelController.build()` loads → `Loaded` seeds state, `Empty` seeds empty model, `Corrupt` seeds recovered model and surfaces issues.
+2. **Edit** — widget calls `modelProvider.notifier.setStock(name, level)` → `ModelEdits` returns new `Model` → state updates, UI rebuilds from derived providers → save enqueued in background.
+3. **Recipe form** (M14) — `tryParseRecipeLine` on each field for live feedback → `validateRecipe` on save, issue paths map to fields → clean recipe reaches `notifier.upsertRecipe`.
+4. **Export** (FR-DAT-1) — `notifier.export()` returns location for share sheet; store file is the export.
+5. **Import** (FR-DAT-3/4) — `YamlCodec.decode` validates → `Rejected` shows issues ("line N: message"), `Decoded` confirms and atomically saves.
 
-The controller is the UI's only route to the data layer in both cases — screens never hold a
-`ModelStore` or a `YamlCodec`.
+Controller is the UI's only route to data layer; screens never hold `ModelStore` or `YamlCodec`.
 
 ## Testing
 
-Follows the strategy in [architecture.md](architecture.md#repository-ci--testing); this is
-where each layer's seam makes it possible.
-
-- **Domain** — plain unit tests, no device. Everything is a pure function of its inputs,
-  including the clock (`withRecipeMade`) and randomness (`randomCanMake`).
-- **Data** — the codec is unit-tested, including the round-trip (FR-DAT-5) and a decode of a
-  deliberately broken file asserting both the issues and their line numbers. `FileModelStore`
-  is the only integration-tested component: temp directories, atomic write, backup rotation,
-  corrupt-file recovery.
-- **State** — controller tests run against `MemoryModelStore`, asserting that a mutation both
-  updates state and reaches the store.
-- **UI** — widget tests for the three flows the testing strategy names, each with the store
-  provider overridden.
-- **Boundaries** — `test/architecture_test.dart` enforces the rules above.
+- **Domain** — unit tests, no device. Pure functions; clock and randomness passed in.
+- **Data** — codec unit-tested (round-trip FR-DAT-5, broken-file decode with line numbers). `FileModelStore` integration-tested (atomic write, backups, recovery).
+- **State** — controller tests against `MemoryModelStore`; mutation updates state and reaches store.
+- **UI** — widget tests for critical flows with store provider overridden.
+- **Boundaries** — `test/architecture_test.dart` enforces import rules.
