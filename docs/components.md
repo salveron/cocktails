@@ -118,9 +118,9 @@ enum DisplayUnit { part('part'), ml('ml'); … }
 `Model` answers reference questions directly, so no consumer builds its own name index:
 
 ```dart
-Ingredient? ingredientNamed(String name);   // M7a
-Recipe? recipeNamed(String name);           // M7a
-bool hasTag(String name);                   // M7a
+Ingredient? ingredientNamed(String name);
+Recipe? recipeNamed(String name);
+bool hasTag(String name);
 ```
 
 These are backed by a `late final` map built on first use. `Model` stays immutable and the
@@ -143,7 +143,7 @@ Both sit on the single `duplicateNameIndexes` implementation in `helpers.dart`.
 ### Editing the model
 
 Every edit is a pure derivation returning a new `Model`, gathered in
-`extension ModelEdits on Model` (M7a) so `model.dart` stays the home of shape and invariants:
+`extension ModelEdits on Model` so `model.dart` stays the home of shape and invariants:
 
 ```dart
 Model withSettings(Settings settings);
@@ -162,10 +162,17 @@ List<String> recipesUsingIngredient(String name);     // FR-VOC-1 delete blockin
 List<String> recipesUsingTag(String name);
 ```
 
-Each entity gains `copyWith`, which is what the rename and stock edits are built from. The
-delete methods do not enforce FR-VOC-1's reference block themselves — the caller asks
-`recipesUsing…` first and shows the blocking message, because the UI needs the referencing
-names anyway.
+Three rules hold across the API. An edit naming an entry that is not there returns the model
+unchanged, so a screen holding a stale name cannot crash the app. An edit that would collide
+with an existing name throws `ArgumentError` from the `Model` constructor — the programmer
+contract above, which the caller keeps by validating first. And removal never cascades: the
+delete methods do not enforce FR-VOC-1's reference block themselves, because the caller asks
+`recipesUsing…` first and needs the referencing names for the blocking message anyway.
+
+`copyWith` goes on the values with more than one independently editable field — `Settings`,
+`Ingredient`, `RecipeLine`, `Recipe`, `Model` — and is what the rename, stock and made edits
+are built from; `Tag`, `Amount` and `MadeHistory` are rebuilt whole. `Recipe.copyWith` cannot
+clear `made`: the pilot stamps a recipe as made and never unmakes it (FR-REC-6).
 
 Rebuilding the whole `Model` on every edit is deliberate: at pilot scale the copy is a few
 thousand pointer writes, and it keeps every value immutable and every derived provider's

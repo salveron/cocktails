@@ -68,6 +68,13 @@ final class Ingredient {
     this.stock = StockLevel.out,
   });
 
+  Ingredient copyWith({String? name, bool? isBase, StockLevel? stock}) =>
+      Ingredient(
+        name ?? this.name,
+        isBase: isBase ?? this.isBase,
+        stock: stock ?? this.stock,
+      );
+
   @override
   bool operator ==(Object other) =>
       other is Ingredient &&
@@ -133,6 +140,18 @@ final class RecipeLine {
     this.isOptional = false,
   });
 
+  RecipeLine copyWith({
+    Amount? amount,
+    Unit? unit,
+    String? ingredient,
+    bool? isOptional,
+  }) => RecipeLine(
+    amount ?? this.amount,
+    unit ?? this.unit,
+    ingredient ?? this.ingredient,
+    isOptional: isOptional ?? this.isOptional,
+  );
+
   @override
   bool operator ==(Object other) =>
       other is RecipeLine &&
@@ -175,6 +194,9 @@ final class Settings {
 
   const Settings({this.partMl = 30, this.display = DisplayUnit.part});
 
+  Settings copyWith({double? partMl, DisplayUnit? display}) =>
+      Settings(partMl: partMl ?? this.partMl, display: display ?? this.display);
+
   @override
   bool operator ==(Object other) =>
       other is Settings && other.partMl == partMl && other.display == display;
@@ -201,6 +223,22 @@ final class Recipe {
     this.made,
   }) : tags = List.unmodifiable(tags),
        lines = List.unmodifiable(lines);
+
+  /// [made] only ever grows: the pilot stamps a recipe as made (FR-REC-6) and
+  /// never unmakes it, so a null argument keeps the current history.
+  Recipe copyWith({
+    String? name,
+    List<String>? tags,
+    List<RecipeLine>? lines,
+    String? notes,
+    MadeHistory? made,
+  }) => Recipe(
+    name ?? this.name,
+    tags: tags ?? this.tags,
+    lines: lines ?? this.lines,
+    notes: notes ?? this.notes,
+    made: made ?? this.made,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -245,6 +283,35 @@ final class Model {
     _requireUniqueNames('tag', this.tags.map((t) => t.name).toList());
     _requireUniqueNames('recipe', this.recipes.map((r) => r.name).toList());
   }
+
+  Model copyWith({
+    Settings? settings,
+    List<Ingredient>? ingredients,
+    List<Tag>? tags,
+    List<Recipe>? recipes,
+  }) => Model(
+    settings: settings ?? this.settings,
+    ingredients: ingredients ?? this.ingredients,
+    tags: tags ?? this.tags,
+    recipes: recipes ?? this.recipes,
+  );
+
+  Ingredient? ingredientNamed(String name) => _ingredientsByName[name];
+
+  Recipe? recipeNamed(String name) => _recipesByName[name];
+
+  bool hasTag(String name) => _tagNames.contains(name);
+
+  /// Built on first lookup and kept, which is what makes repeated reference
+  /// questions O(1) at NFR-2 scale. Safe behind an immutable face: the lists
+  /// they index can never change.
+  late final Map<String, Ingredient> _ingredientsByName = {
+    for (final ingredient in ingredients) ingredient.name: ingredient,
+  };
+  late final Map<String, Recipe> _recipesByName = {
+    for (final recipe in recipes) recipe.name: recipe,
+  };
+  late final Set<String> _tagNames = {for (final tag in tags) tag.name};
 
   @override
   bool operator ==(Object other) =>

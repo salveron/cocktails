@@ -107,6 +107,23 @@ void main() {
       expect(build(), isNot(build(isBase: true)));
       expect(build(), isNot(build(stock: StockLevel.low)));
     });
+
+    test('copyWith replaces one field and carries the rest', () {
+      const ingredient = Ingredient('gin', isBase: true, stock: StockLevel.low);
+      expect(ingredient.copyWith(), ingredient);
+      expect(
+        ingredient.copyWith(name: 'rum'),
+        const Ingredient('rum', isBase: true, stock: StockLevel.low),
+      );
+      expect(
+        ingredient.copyWith(isBase: false),
+        const Ingredient('gin', stock: StockLevel.low),
+      );
+      expect(
+        ingredient.copyWith(stock: StockLevel.in_),
+        const Ingredient('gin', isBase: true, stock: StockLevel.in_),
+      );
+    });
   });
 
   group('Tag', () {
@@ -137,6 +154,27 @@ void main() {
       expect(build(), isNot(build(unit: Unit.ml)));
       expect(build(), isNot(build(ingredient: 'gin')));
       expect(build(), isNot(build(isOptional: true)));
+    });
+
+    test('copyWith replaces one field and carries the rest', () {
+      const line = RecipeLine(Amount(0.5), Unit.part, 'egg white');
+      expect(line.copyWith(), line);
+      expect(
+        line.copyWith(amount: const Amount(1)),
+        const RecipeLine(Amount(1), Unit.part, 'egg white'),
+      );
+      expect(
+        line.copyWith(unit: Unit.ml),
+        const RecipeLine(Amount(0.5), Unit.ml, 'egg white'),
+      );
+      expect(
+        line.copyWith(ingredient: 'gin'),
+        const RecipeLine(Amount(0.5), Unit.part, 'gin'),
+      );
+      expect(
+        line.copyWith(isOptional: true),
+        const RecipeLine(Amount(0.5), Unit.part, 'egg white', isOptional: true),
+      );
     });
   });
 
@@ -169,6 +207,19 @@ void main() {
       expect(const Settings().hashCode, const Settings().hashCode);
       expect(const Settings(), isNot(const Settings(partMl: 22.5)));
       expect(const Settings(), isNot(const Settings(display: DisplayUnit.ml)));
+    });
+
+    test('copyWith replaces one field and carries the rest', () {
+      const settings = Settings(partMl: 25, display: DisplayUnit.ml);
+      expect(settings.copyWith(), settings);
+      expect(
+        settings.copyWith(partMl: 30),
+        const Settings(partMl: 30, display: DisplayUnit.ml),
+      );
+      expect(
+        settings.copyWith(display: DisplayUnit.part),
+        const Settings(partMl: 25),
+      );
     });
   });
 
@@ -229,6 +280,29 @@ void main() {
       expect(build(), isNot(build(notes: 'stirred')));
       expect(build(), isNot(build(madeTimes: 13)));
       expect(build(), isNot(build(madeTimes: null)));
+    });
+
+    test('copyWith replaces one field and carries the rest', () {
+      final recipe = build();
+      expect(recipe.copyWith(), recipe);
+      expect(recipe.copyWith(name: 'Sazerac'), build(name: 'Sazerac'));
+      expect(
+        recipe.copyWith(tags: ['classic']),
+        build(tags: const ['classic']),
+      );
+      expect(
+        recipe.copyWith(lines: [const RecipeLine(Amount(2), Unit.ml, 'rye')]),
+        build(lines: const [RecipeLine(Amount(2), Unit.ml, 'rye')]),
+      );
+      expect(recipe.copyWith(notes: 'stirred'), build(notes: 'stirred'));
+      expect(
+        recipe.copyWith(made: MadeHistory(DateTime(2026, 7, 18), 13)),
+        build(madeTimes: 13),
+      );
+    });
+
+    test('copyWith cannot unmake a recipe: null keeps the history', () {
+      expect(build().copyWith(made: null).made?.times, 12);
     });
   });
 
@@ -311,6 +385,69 @@ void main() {
       expect(build(), isNot(build(ingredients: const [Ingredient('gin')])));
       expect(build(), isNot(build(tags: const [Tag('classic')])));
       expect(build(), isNot(build(recipes: [Recipe('Negroni')])));
+    });
+
+    test('copyWith replaces one field and carries the rest', () {
+      final model = build();
+      expect(model.copyWith(), model);
+      expect(
+        model.copyWith(settings: const Settings()),
+        build(settings: const Settings()),
+      );
+      expect(
+        model.copyWith(ingredients: const [Ingredient('gin')]),
+        build(ingredients: const [Ingredient('gin')]),
+      );
+      expect(
+        model.copyWith(tags: const [Tag('classic')]),
+        build(tags: const [Tag('classic')]),
+      );
+      expect(
+        model.copyWith(recipes: [Recipe('Negroni')]),
+        build(recipes: [Recipe('Negroni')]),
+      );
+    });
+
+    test('copyWith still rejects a duplicate name', () {
+      expect(
+        () => build().copyWith(
+          ingredients: [const Ingredient('gin'), const Ingredient('gin')],
+        ),
+        throwsArgumentError,
+      );
+    });
+
+    group('name lookups', () {
+      test('answer with the entry of that name', () {
+        final model = build();
+        expect(
+          model.ingredientNamed('bourbon'),
+          const Ingredient('bourbon', isBase: true),
+        );
+        expect(model.recipeNamed('Whiskey Sour')?.tags, ['sour']);
+        expect(model.hasTag('sour'), isTrue);
+      });
+
+      test('answer for an unknown name without throwing', () {
+        final model = build();
+        expect(model.ingredientNamed('gin'), isNull);
+        expect(model.recipeNamed('Negroni'), isNull);
+        expect(model.hasTag('classic'), isFalse);
+      });
+
+      test('an empty model answers nothing', () {
+        final model = Model();
+        expect(model.ingredientNamed('bourbon'), isNull);
+        expect(model.recipeNamed('Whiskey Sour'), isNull);
+        expect(model.hasTag('sour'), isFalse);
+      });
+
+      test('repeated lookups keep answering, index and all', () {
+        final model = build();
+        expect(model.ingredientNamed('bourbon')?.name, 'bourbon');
+        expect(model.ingredientNamed('bourbon')?.name, 'bourbon');
+        expect(model.ingredientNamed('gin'), isNull);
+      });
     });
   });
 }
