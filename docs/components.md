@@ -3,7 +3,8 @@
 Module-level design for the pilot: the folder structure, what each layer exposes, the
 interfaces between them, and how data flows across them. The system-level design is in
 [architecture.md](architecture.md); rationale for the boundaries is in
-[ADR 04](adr/04-module-boundaries.md). Signatures marked with a milestone
+[ADR 04](adr/04-module-boundaries.md); screen and shell design is in
+[ui-design.md](ui-design.md). Signatures marked with a milestone
 ([roadmap.md](roadmap.md)) do not exist yet — they are named here so the layers that consume
 them can be designed against a fixed shape.
 
@@ -43,11 +44,11 @@ lib/
       model_controller.dart    # the one writable provider
       derived.dart             # availability, visible recipes, grouping, optimizer
       filters.dart             # filter and search UI state
-  ui/                          # no barrel — leaves, imported directly
+  ui/                          # no barrel — leaves, imported directly; design in ui-design.md
     app.dart                   # MaterialApp and the shell: destinations, app bar, gear
     theme.dart                 # the seed colour and the two schemes
     screens/                   # one file per destination, plus settings
-    widgets/                   # empty_state, model_view, startup_issues
+    widgets/                   # empty_state, model_view, search_field, startup_issues
 test/                          # mirrors lib/, plus test/architecture_test.dart
 ```
 
@@ -407,28 +408,6 @@ Two performance facts, recorded so later milestones do not over-engineer:
   recomputation is not needed and should not be added (NFR-2).
 - The optimizer is the one expensive computation. Its provider is watched only by the
   optimizer screen, so it never runs while the user is anywhere else.
-
-## UI shell
-
-`main.dart` builds the `ProviderScope` and hands off to `CocktailsApp`, which owns the
-`MaterialApp` — title, both themes, and `AppShell` as its home.
-
-- **Three destinations** — Recipes, Inventory, Shopping — in a Material 3 `NavigationBar`,
-  each one tap from any other (NFR-1). Settings is not a destination but sits behind the app
-  bar's gear: the ratio, the display toggle and data exchange are set once, not browsed.
-- **Destinations live in an `IndexedStack`**, so switching away and back keeps a screen's
-  scroll position and search text. Everything below a destination — recipe view, forms,
-  settings — is a `Navigator` push over the shell. Routing is `Navigator` 1.0: the pilot has
-  no deep links, no URL bar and no nested routers, so `go_router` would buy nothing.
-- **Theme** — one seed colour in `theme.dart` generates the light and dark schemes and the
-  platform setting picks between them. No per-component theming.
-- **`ModelView`** is the only reader of `modelProvider`'s `AsyncValue`: a spinner while the
-  startup load runs, a failure state if it throws, the model otherwise. Screens take the
-  loaded `Model` and never see the other two states.
-- **`EmptyState`** is the one shape of "nothing here yet" — icon, title, and a line naming
-  what would fill it.
-- **`StartupIssues`** shows what the startup load could not read (FR-DAT-4) above every
-  destination, until dismissed.
 
 ## Data flows
 

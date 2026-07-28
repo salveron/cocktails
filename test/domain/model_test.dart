@@ -20,6 +20,14 @@ void main() {
     });
   });
 
+  group('StockLevel.next', () {
+    test('follows a bottle: in -> low -> out -> in', () {
+      expect(StockLevel.in_.next, StockLevel.low);
+      expect(StockLevel.low.next, StockLevel.out);
+      expect(StockLevel.out.next, StockLevel.in_);
+    });
+  });
+
   group('Unit tokens', () {
     test('tokens match the data format', () {
       expect(Unit.part.token, 'part');

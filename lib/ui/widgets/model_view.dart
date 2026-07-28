@@ -6,7 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'empty_state.dart';
 
 /// The three faces of the startup load — spinner, failure, model — in one
-/// place, so no screen writes its own (docs/components.md#ui-shell).
+/// place, so no screen writes its own (docs/ui-design.md#app-shell).
 class ModelView extends ConsumerWidget {
   const ModelView(this.builder, {super.key});
 

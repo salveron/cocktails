@@ -42,8 +42,13 @@ Horizontal groundwork every feature depends on; strictly ordered.
 
 First usable slice; recipes reference both vocabularies, so this precedes Phase 2.
 
-- [ ] **M10 Inventory screen** — ingredient list, name search, single-tap stock toggle
+- [x] **M10 Inventory screen** — ingredient list, name search, single-tap stock toggle
       (FR-INV-1/2); stock-toggle widget test.
+- [ ] **M10a Base spirit on the line** — base-ness moves from the ingredient to the recipe
+      line, where it belongs: a bottle is a base *in a recipe*, not in itself. An ADR for the
+      format change, the line-grammar token, domain and codec, and the requirement edits
+      (FR-VOC-2, FR-DIS-4, FR-DAT-1). Must precede M11, which would otherwise build a screen
+      for the flag it removes.
 - [ ] **M11 Ingredient management** — add, rename with propagation, reference-blocked
       delete, base-spirit flag (FR-VOC-1/2).
 - [ ] **M12 Tag management** — add, rename with propagation, reference-blocked delete
@@ -88,5 +93,6 @@ First usable slice; recipes reference both vocabularies, so this precedes Phase 
 
 - **Phase 0:** strictly sequential. Later phases: ordered by value.
 - **Hard dependencies:** M16 before M18/M20/M21 (consume availability); M21 before M22.
-- **Shape milestones:** M5a blocks M6; M7a blocks M8 and editing screens (M10–12, M14–15).
+- **Shape milestones:** M5a blocks M6; M7a blocks M8 and editing screens (M10–12, M14–15);
+  M10a blocks M11, M14 and M19.
 - **Data exchange:** M24–25 depend only on Phase 0; can move ahead if loading migrated data early.

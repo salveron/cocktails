@@ -1,6 +1,6 @@
 /// The app frame: the Material 3 shell every screen lives in — three
 /// destinations in the bottom bar, settings behind the app bar's gear
-/// (docs/components.md#ui-shell).
+/// (docs/ui-design.md#app-shell).
 library;
 
 import 'package:flutter/material.dart';

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 /// The one shape every "nothing here yet" screen takes
-/// (docs/components.md#ui-shell).
+/// (docs/ui-design.md#app-shell).
 class EmptyState extends StatelessWidget {
   const EmptyState({
     required this.icon,

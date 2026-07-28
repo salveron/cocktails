@@ -14,6 +14,12 @@ enum StockLevel {
   final String token;
   const StockLevel(this.token);
 
+  /// The next step in a bottle's life — full, running low, empty, bought
+  /// again — and so what one tap on the inventory list does (FR-INV-2).
+  /// Declaration order is that life; the wire tokens above are independent
+  /// of it.
+  StockLevel get next => values[(index + 1) % values.length];
+
   static StockLevel? fromToken(String text) =>
       _fromToken(values, text, (v) => v.token);
 }
