@@ -44,13 +44,12 @@ First usable slice; recipes reference both vocabularies, so this precedes Phase 
 
 - [x] **M10 Inventory screen** — ingredient list, name search, single-tap stock toggle
       (FR-INV-1/2); stock-toggle widget test.
-- [ ] **M10a Base spirit on the line** — base-ness moves from the ingredient to the recipe
-      line, where it belongs: a bottle is a base *in a recipe*, not in itself. An ADR for the
-      format change, the line-grammar token, domain and codec, and the requirement edits
-      (FR-VOC-2, FR-DIS-4, FR-DAT-1). Must precede M11, which would otherwise build a screen
-      for the flag it removes.
+- [x] **M10a Base spirit on the line** — base-ness moved from the ingredient to the recipe
+      line ([ADR 06](adr/06-base-spirit-on-the-line.md)): one `LineMark?` per line, so base
+      and optional cannot combine (FR-REC-8), a ` (base)` suffix in the line grammar, and the
+      requirement edits it forced (FR-VOC-2 retired, FR-DIS-4, FR-DAT-1).
 - [ ] **M11 Ingredient management** — add, rename with propagation, reference-blocked
-      delete, base-spirit flag (FR-VOC-1/2).
+      delete (FR-VOC-1).
 - [ ] **M12 Tag management** — add, rename with propagation, reference-blocked delete
       (FR-VOC-1).
 
@@ -58,8 +57,8 @@ First usable slice; recipes reference both vocabularies, so this precedes Phase 
 
 - [ ] **M13 Recipe list & view** — read-only: list with name search (FR-DIS-2); view with
       lines, tags, notes, made-history.
-- [ ] **M14 Recipe form** — create, edit, delete via the shared line parser and tag picker
-      (FR-REC-1..5); recipe-form widget test.
+- [ ] **M14 Recipe form** — create, edit, delete via the shared line parser and tag picker,
+      per-line base and optional marks (FR-REC-1..5/8); recipe-form widget test.
 - [ ] **M15 Made it** — the action and its stamped display (FR-REC-6).
 - [ ] **M16 Availability** — domain computation, derived provider, list badges, per-line
       low/out marks (FR-DIS-1).
@@ -94,5 +93,5 @@ First usable slice; recipes reference both vocabularies, so this precedes Phase 
 - **Phase 0:** strictly sequential. Later phases: ordered by value.
 - **Hard dependencies:** M16 before M18/M20/M21 (consume availability); M21 before M22.
 - **Shape milestones:** M5a blocks M6; M7a blocks M8 and editing screens (M10–12, M14–15);
-  M10a blocks M11, M14 and M19.
+  M10a blocked M11, M14 and M19.
 - **Data exchange:** M24–25 depend only on Phase 0; can move ahead if loading migrated data early.

@@ -27,7 +27,24 @@ void main() {
     test('strips the (optional) suffix', () {
       expect(
         parseRecipeLine('0.5 part egg white (optional)'),
-        const RecipeLine(Amount(0.5), Unit.part, 'egg white', isOptional: true),
+        const RecipeLine(
+          Amount(0.5),
+          Unit.part,
+          'egg white',
+          mark: LineMark.optional,
+        ),
+      );
+    });
+
+    test('strips the (base) suffix', () {
+      expect(
+        parseRecipeLine('1.5 part bourbon (base)'),
+        const RecipeLine(
+          Amount(1.5),
+          Unit.part,
+          'bourbon',
+          mark: LineMark.base,
+        ),
       );
     });
 
@@ -35,6 +52,18 @@ void main() {
       expect(
         parseRecipeLine('1 part gin(optional)'),
         const RecipeLine(Amount(1), Unit.part, 'gin(optional)'),
+      );
+    });
+
+    test('two suffixes cannot combine: only the last one is the mark', () {
+      expect(
+        parseRecipeLine('1 part gin (base) (optional)'),
+        const RecipeLine(
+          Amount(1),
+          Unit.part,
+          'gin (base)',
+          mark: LineMark.optional,
+        ),
       );
     });
 
@@ -135,7 +164,12 @@ void main() {
       expect(parsed.problem, isNull);
       expect(
         parsed.line,
-        const RecipeLine(Amount(0.5), Unit.part, 'egg white', isOptional: true),
+        const RecipeLine(
+          Amount(0.5),
+          Unit.part,
+          'egg white',
+          mark: LineMark.optional,
+        ),
       );
     });
 
@@ -218,10 +252,24 @@ void main() {
             Amount(0.5),
             Unit.part,
             'egg white',
-            isOptional: true,
+            mark: LineMark.optional,
           ),
         ),
         '0.5 part egg white (optional)',
+      );
+    });
+
+    test('appends the (base) suffix', () {
+      expect(
+        formatRecipeLine(
+          const RecipeLine(
+            Amount(1.5),
+            Unit.part,
+            'bourbon',
+            mark: LineMark.base,
+          ),
+        ),
+        '1.5 part bourbon (base)',
       );
     });
   });
@@ -242,6 +290,7 @@ void main() {
         '0.75 part lemon juice',
         '0.5 part rich demerara syrup',
         '0.5 part egg white (optional)',
+        '2 oz rye whiskey (base)',
         '2 oz gin',
         '1 barspoon maraschino liqueur',
         '2 dash angostura bitters',
@@ -256,7 +305,13 @@ void main() {
         RecipeLine(Amount(2), Unit.oz, 'gin'),
         RecipeLine(Amount(0.75), Unit.part, 'lemon juice'),
         RecipeLine(Amount.range(1.5, 2), Unit.part, 'bourbon'),
-        RecipeLine(Amount(0.5), Unit.part, 'egg white', isOptional: true),
+        RecipeLine(
+          Amount(0.5),
+          Unit.part,
+          'egg white',
+          mark: LineMark.optional,
+        ),
+        RecipeLine(Amount(2), Unit.oz, 'rye whiskey', mark: LineMark.base),
         RecipeLine(Amount(1), Unit.drop, 'saline solution'),
       ];
       for (final line in lines) {

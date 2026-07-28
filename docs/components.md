@@ -99,7 +99,7 @@ wrapped with `List.unmodifiable` on construction.
 Two identity conventions hold throughout and explain the shape of the model:
 
 - **Vocabulary entries are entities; references are names.** `Model.ingredients` holds
-  `Ingredient` values with their stock and base flag; `RecipeLine.ingredient` and
+  `Ingredient` values with their stock; `RecipeLine.ingredient` and
   `Recipe.tags` hold plain `String` names. There are no surrogate IDs — a rename is a model
   mutation that rewrites every reference ([architecture.md](architecture.md#system-overview)).
 - **Wire tokens are declared, not inferred.** The on-disk spelling of an enum is a field on
@@ -116,7 +116,12 @@ enum Unit {
 }
 enum StockLevel { in_('in'), low('low'), out('out'); … }   // token differs from the identifier
 enum DisplayUnit { part('part'), ml('ml'); … }
+enum LineMark { base('base'), optional('optional'); … }    // ADR 06
 ```
+
+`RecipeLine.mark` holds that one `LineMark?`, so a base line can never also be optional
+(FR-REC-8); `isBase` and `isOptional` are getters over it, and `marked(LineMark?)` is what
+sets and clears it — `copyWith` cannot, since null is its "keep what you have".
 
 `Model` answers reference questions directly, so no consumer builds its own name index:
 
@@ -174,8 +179,10 @@ delete methods do not enforce FR-VOC-1's reference block themselves, because the
 
 `copyWith` goes on the values with more than one independently editable field — `Settings`,
 `Ingredient`, `RecipeLine`, `Recipe`, `Model` — and is what the rename, stock and made edits
-are built from; `Tag`, `Amount` and `MadeHistory` are rebuilt whole. `Recipe.copyWith` cannot
-clear `made`: the pilot stamps a recipe as made and never unmakes it (FR-REC-6).
+are built from; `Tag`, `Amount` and `MadeHistory` are rebuilt whole. Two fields it cannot
+reach have their own method or none: `RecipeLine.marked` clears a mark, and `Recipe.copyWith`
+cannot clear `made` at all — the pilot stamps a recipe as made and never unmakes it
+(FR-REC-6).
 
 Rebuilding the whole `Model` on every edit is deliberate: at pilot scale the copy is a few
 thousand pointer writes, and it keeps every value immutable and every derived provider's
@@ -267,8 +274,9 @@ List<Ingredient> runningLow(Model model);                               // M22, 
 ```
 
 Availability is computed over required lines only; the algorithms are specified in
-[architecture.md](architecture.md#domain-computations). `groupByBaseSpirit` keys the ungrouped
-tail section with `null`. `randomCanMake` takes its `Random` so the pick is testable.
+[architecture.md](architecture.md#domain-computations). `groupByBaseSpirit` reads each
+recipe's base-marked lines and keys the ungrouped tail section with `null`. `randomCanMake`
+takes its `Random` so the pick is testable.
 
 ## Data contracts
 

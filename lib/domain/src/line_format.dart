@@ -1,14 +1,18 @@
 /// Parser and canonical formatter for the compact recipe-line grammar in
 /// docs/architecture.md: `<amount> <unit> <ingredient name>`, optionally
-/// suffixed ` (optional)`. Enforces syntax only — value rules (positive
+/// suffixed with one mark. Enforces syntax only — value rules (positive
 /// amounts, ordered range ends) live in validation.dart.
 library;
 
 import 'model.dart';
 
-/// Reserved suffix marking a line optional; ingredient names cannot end
-/// with it.
-const optionalSuffix = ' (optional)';
+/// The mark suffixes — ` (base)`, ` (optional)` — reserved so that ingredient
+/// names cannot end with one.
+final reservedSuffixes = List<String>.unmodifiable([
+  for (final mark in LineMark.values) _suffix(mark),
+]);
+
+String _suffix(LineMark mark) => ' (${mark.token})';
 
 final _linePattern = RegExp(r'^(\S+)\s+(\S+)\s+(\S.*)$');
 final _amountPattern = RegExp(r'^(\d+(?:\.\d+)?)(?:-(\d+(?:\.\d+)?))?$');
@@ -19,10 +23,10 @@ typedef ParsedLine = ({RecipeLine? line, String? problem});
 /// The single grammar implementation; [parseRecipeLine] is built on it.
 ParsedLine tryParseRecipeLine(String text) {
   final trimmed = text.trim();
-  final isOptional = trimmed.endsWith(optionalSuffix);
-  final body = isOptional
-      ? trimmed.substring(0, trimmed.length - optionalSuffix.length).trimRight()
-      : trimmed;
+  final mark = _markOf(trimmed);
+  final body = mark == null
+      ? trimmed
+      : trimmed.substring(0, trimmed.length - _suffix(mark).length).trimRight();
   final match = _linePattern.firstMatch(body);
   if (match == null) {
     return (
@@ -38,10 +42,16 @@ ParsedLine tryParseRecipeLine(String text) {
   if (unit == null) {
     return (line: null, problem: 'Unknown unit: "${match[2]}"');
   }
-  return (
-    line: RecipeLine(amount, unit, match[3]!, isOptional: isOptional),
-    problem: null,
-  );
+  return (line: RecipeLine(amount, unit, match[3]!, mark: mark), problem: null);
+}
+
+/// The mark [trimmed] ends with, if any. Only the last suffix counts: a second
+/// one is part of the ingredient name, where the reserved-suffix rule sees it.
+LineMark? _markOf(String trimmed) {
+  for (final mark in LineMark.values) {
+    if (trimmed.endsWith(_suffix(mark))) return mark;
+  }
+  return null;
 }
 
 /// Throws a [FormatException] naming the offending part when [line] does
@@ -57,9 +67,9 @@ RecipeLine parseRecipeLine(String line) {
 
 /// Canonical form: single spaces, the [formatAmount] amount text.
 String formatRecipeLine(RecipeLine line) {
-  final suffix = line.isOptional ? optionalSuffix : '';
+  final mark = line.mark;
   return '${formatAmount(line.amount)} ${line.unit.token} '
-      '${line.ingredient}$suffix';
+      '${line.ingredient}${mark == null ? '' : _suffix(mark)}';
 }
 
 /// Canonical amount text: whole numbers without a trailing `.0`, ranges as

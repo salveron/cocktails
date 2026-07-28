@@ -6,7 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 /// file and memory store suites alike (docs/components.md#data-contracts).
 void modelStoreContract(ModelStore Function() storeOf) {
   final model = Model(
-    ingredients: const [Ingredient('gin', isBase: true, stock: StockLevel.in_)],
+    ingredients: const [Ingredient('gin', stock: StockLevel.in_)],
     tags: const [Tag('classic')],
   );
 

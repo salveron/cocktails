@@ -13,7 +13,7 @@ settings:
   display: part
 
 ingredients:
-  - {name: bourbon, base: true, stock: in}
+  - {name: bourbon, stock: in}
   - {name: lemon juice, stock: low}
   - {name: rich demerara syrup}
   - {name: egg white, stock: in}
@@ -24,7 +24,7 @@ recipes:
   - name: Whiskey Sour
     tags: [sour, classic]
     lines:
-      - 1.5-2 part bourbon
+      - 1.5-2 part bourbon (base)
       - 0.75 part lemon juice
       - 0.5 part rich demerara syrup
       - 0.5 part egg white (optional)
@@ -41,7 +41,7 @@ settings:
   display: part        # part | ml
 
 ingredients:
-  - {name: bourbon, base: true, stock: in}
+  - {name: bourbon, stock: in}
   - {name: lemon juice, stock: low}
   - {name: rich demerara syrup}        # stock omitted = out
   - {name: egg white, stock: in}
@@ -52,7 +52,7 @@ recipes:
   - name: Whiskey Sour
     tags: [sour, classic]
     lines:
-      - 1.5-2 part bourbon
+      - 1.5-2 part bourbon (base)
       - 0.75 part lemon juice
       - 0.5 part rich demerara syrup
       - 0.5 part egg white (optional)
@@ -62,7 +62,7 @@ recipes:
 
 Model docModel() => Model(
   ingredients: const [
-    Ingredient('bourbon', isBase: true, stock: StockLevel.in_),
+    Ingredient('bourbon', stock: StockLevel.in_),
     Ingredient('lemon juice', stock: StockLevel.low),
     Ingredient('rich demerara syrup'),
     Ingredient('egg white', stock: StockLevel.in_),
@@ -73,10 +73,20 @@ Model docModel() => Model(
       'Whiskey Sour',
       tags: const ['sour', 'classic'],
       lines: const [
-        RecipeLine(Amount.range(1.5, 2), Unit.part, 'bourbon'),
+        RecipeLine(
+          Amount.range(1.5, 2),
+          Unit.part,
+          'bourbon',
+          mark: LineMark.base,
+        ),
         RecipeLine(Amount(0.75), Unit.part, 'lemon juice'),
         RecipeLine(Amount(0.5), Unit.part, 'rich demerara syrup'),
-        RecipeLine(Amount(0.5), Unit.part, 'egg white', isOptional: true),
+        RecipeLine(
+          Amount(0.5),
+          Unit.part,
+          'egg white',
+          mark: LineMark.optional,
+        ),
       ],
       notes: 'dry shake, then shake with ice',
       made: MadeHistory(DateTime(2026, 7, 18), 12),
@@ -311,7 +321,7 @@ recipes: []
     });
 
     test('a missing name', () {
-      final issues = rejected('format: 1\ningredients:\n  - {base: true}\n');
+      final issues = rejected('format: 1\ningredients:\n  - {stock: in}\n');
       expectIssue(
         issues.single,
         ValidationIssueKind.malformedValue,
@@ -337,7 +347,7 @@ recipes: []
         'format: 1\n'
         'ingredients:\n'
         '  - {name: gin, stock: high}\n'
-        '  - {name: rum, base: yes}\n',
+        '  - {name: rum, stock: 7}\n',
       );
       expect(issues, hasLength(2));
       expectIssue(
@@ -350,9 +360,9 @@ recipes: []
       expectIssue(
         issues[1],
         ValidationIssueKind.malformedValue,
-        'ingredients[1].base',
+        'ingredients[1].stock',
         4,
-        messagePart: 'base must be true or false: "yes"',
+        messagePart: 'stock must be one of in, low, out: 7',
       );
     });
 
@@ -364,6 +374,19 @@ recipes: []
         'recipies',
         2,
         messagePart: 'Unknown key: "recipies"',
+      );
+    });
+
+    test('the retired ingredient base key — a base is a line mark now', () {
+      final issues = rejected(
+        'format: 1\ningredients:\n  - {name: gin, base: true}\n',
+      );
+      expectIssue(
+        issues.single,
+        ValidationIssueKind.malformedValue,
+        'ingredients[0].base',
+        3,
+        messagePart: 'Unknown key: "base"',
       );
     });
 
@@ -637,7 +660,7 @@ recipes: []
       final model = Model(
         settings: const Settings(partMl: 22.5, display: DisplayUnit.ml),
         ingredients: const [
-          Ingredient('bourbon', isBase: true, stock: StockLevel.in_),
+          Ingredient('bourbon', stock: StockLevel.in_),
           Ingredient('true'),
           Ingredient('1976', stock: StockLevel.low),
           Ingredient('lime, fresh', stock: StockLevel.in_),
@@ -655,7 +678,7 @@ recipes: []
                 Amount.range(1, 2.5),
                 Unit.drop,
                 'lime, fresh',
-                isOptional: true,
+                mark: LineMark.optional,
               ),
               RecipeLine(Amount(0.5), Unit.barspoon, 'crème de violette'),
             ],

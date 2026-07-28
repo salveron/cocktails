@@ -79,7 +79,7 @@ void main() {
     test('the architecture example is valid', () {
       final issues = validateModel(
         ingredients: [
-          const Ingredient('bourbon', isBase: true, stock: StockLevel.in_),
+          const Ingredient('bourbon', stock: StockLevel.in_),
           const Ingredient('lemon juice', stock: StockLevel.low),
           const Ingredient('rich demerara syrup'),
           const Ingredient('egg white', stock: StockLevel.in_),
@@ -90,10 +90,20 @@ void main() {
             'Whiskey Sour',
             tags: ['sour', 'classic'],
             lines: const [
-              RecipeLine(Amount.range(1.5, 2), Unit.part, 'bourbon'),
+              RecipeLine(
+                Amount.range(1.5, 2),
+                Unit.part,
+                'bourbon',
+                mark: LineMark.base,
+              ),
               RecipeLine(Amount(0.75), Unit.part, 'lemon juice'),
               RecipeLine(Amount(0.5), Unit.part, 'rich demerara syrup'),
-              RecipeLine(Amount(0.5), Unit.part, 'egg white', isOptional: true),
+              RecipeLine(
+                Amount(0.5),
+                Unit.part,
+                'egg white',
+                mark: LineMark.optional,
+              ),
             ],
             notes: 'dry shake, then shake with ice',
             made: MadeHistory(DateTime(2026, 7, 18), 12),
@@ -125,13 +135,13 @@ void main() {
       expect(issues[2].message, contains('Line break'));
     });
 
-    test('flags an ingredient name ending with the reserved suffix', () {
-      final issues = validateModel(
-        ingredients: [const Ingredient('silly (optional)')],
-      );
-      expect(issues, hasLength(1));
-      expect(issues.single.path, ['ingredients', 0]);
-      expect(issues.single.message, contains('reserved'));
+    test('flags an ingredient name ending with a reserved suffix', () {
+      for (final name in ['silly (optional)', 'silly (base)']) {
+        final issues = validateModel(ingredients: [Ingredient(name)]);
+        expect(issues, hasLength(1), reason: name);
+        expect(issues.single.path, ['ingredients', 0]);
+        expect(issues.single.message, contains('reserved'));
+      }
     });
 
     test('the reserved suffix rule is ingredient-only', () {

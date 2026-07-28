@@ -43,7 +43,6 @@ String _section(String key, Iterable<List<String>> entries) {
 List<String> _ingredientEntry(Ingredient ingredient) {
   final fields = [
     'name: ${_scalar(ingredient.name, inFlow: true)}',
-    if (ingredient.isBase) 'base: true',
     if (ingredient.stock != StockLevel.out) 'stock: ${ingredient.stock.token}',
   ];
   return ['{${fields.join(', ')}}'];

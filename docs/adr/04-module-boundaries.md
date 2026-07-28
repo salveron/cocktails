@@ -4,7 +4,7 @@
 
 ## Context
 
-[Three layers](03-app-structure-and-state.md) are folders only; Dart's `_` privacy is file-scoped. No layer-private mechanism exists; shared helpers become app-public. Example: `duplicateNameIndexes` shared by model and validation; `optionalSuffix` shared for reserved-suffix check. File-scoped privacy also leaked wire-format knowledge: parser uses `Unit.name` as both parse and emit token. Commit `7a78015` renamed `StockLevel` members but could not reach reserved word `in`.
+[Three layers](03-app-structure-and-state.md) are folders only; Dart's `_` privacy is file-scoped. No layer-private mechanism exists; shared helpers become app-public. Example: `duplicateNameIndexes` shared by model and validation; `reservedSuffixes` shared for reserved-suffix check. File-scoped privacy also leaked wire-format knowledge: parser uses `Unit.name` as both parse and emit token. Commit `7a78015` renamed `StockLevel` members but could not reach reserved word `in`.
 
 ## Decision
 

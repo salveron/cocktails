@@ -177,23 +177,8 @@ Ingredient? _readIngredient(
     _report(issues, path, 'Ingredient entry must be a mapping', node);
     return null;
   }
-  _checkKeys(node, const {'name', 'base', 'stock'}, path, issues);
+  _checkKeys(node, const {'name', 'stock'}, path, issues);
   final name = _readName(node, path, issues);
-  var isBase = false;
-  final baseNode = node.nodes['base'];
-  if (baseNode != null) {
-    final value = baseNode.value;
-    if (value is bool) {
-      isBase = value;
-    } else {
-      _report(
-        issues,
-        [...path, 'base'],
-        'base must be true or false',
-        baseNode,
-      );
-    }
-  }
   var stock = StockLevel.out;
   final stockNode = node.nodes['stock'];
   if (stockNode != null) {
@@ -210,7 +195,7 @@ Ingredient? _readIngredient(
       stock = parsed;
     }
   }
-  return name == null ? null : Ingredient(name, isBase: isBase, stock: stock);
+  return name == null ? null : Ingredient(name, stock: stock);
 }
 
 Tag? _readTag(YamlNode node, List<Object> path, List<ValidationIssue> issues) {

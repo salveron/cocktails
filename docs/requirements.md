@@ -8,7 +8,7 @@ sharing. Why and where it's heading: [vision.md](vision.md).
 | Concept | Definition |
 |---|---|
 | Ingredient | Generic name ("bourbon", "lemon juice") from one flat, user-managed vocabulary shared by recipes and inventory. No brands, hierarchy, or substitutions. |
-| Base spirit | An ingredient flagged as a grouping anchor — the strong spirits (whiskey, gin, rum, tequila, vodka, absinthe, …). The flag is set by the user, not derived. |
+| Base spirit | The spirit a recipe is built on — marked by the user on that recipe's own line, not on the ingredient: a bottle is a base *in a recipe*, never by itself. A recipe may mark more than one. |
 | Stock level | Per ingredient: **in stock**, **running low**, or **out** (default for new ingredients). |
 | Tag | Label from a separate, user-managed vocabulary — the single mechanism for interest, style, and category (successor of the Telegram emojis). |
 | Recipe | Name + ingredient lines + tags + free-text notes + made-history (last-made date and times-made count). |
@@ -32,12 +32,13 @@ Recipe, ingredient, and tag names are each unique within their kind.
   counter; the recipe shows both.
 - **FR-REC-7** The recipe view can scale ingredient amounts ×2/×3/×4 (display only; range
   ends scale together).
+- **FR-REC-8** An ingredient line may be marked as a base spirit of the recipe; the mark can
+  be cleared. The two line marks are mutually exclusive — a base line cannot be optional.
 
 ### Vocabularies
 
 - **FR-VOC-1** Ingredients and tags can be added, renamed (propagates everywhere), and
   deleted; deletion is blocked while any recipe references the entry.
-- **FR-VOC-2** An ingredient can be flagged as a base spirit; the flag can be cleared.
 
 ### Inventory
 
@@ -54,8 +55,8 @@ Recipe, ingredient, and tag names are each unique within their kind.
 - **FR-DIS-3** The list can be filtered by tag(s), by ingredient(s) — any ingredient,
   not only base spirits — and by availability state; filters combine.
 - **FR-DIS-4** Recipes can be browsed grouped by base spirit. A recipe appears under every
-  base spirit it contains; recipes with none form a single ungrouped section at the end of
-  the view.
+  ingredient it marks as a base; recipes marking none form a single ungrouped section at the
+  end of the view.
 - **FR-DIS-5** A random-pick action suggests one can-make recipe, respecting active
   filters.
 - **FR-DIS-6** The shopping optimizer takes a purchase budget **N** (selectable 1–3) and
@@ -72,9 +73,9 @@ Recipe, ingredient, and tag names are each unique within their kind.
 
 ### Data exchange
 
-- **FR-DAT-1** A single action exports all data (vocabularies, base-spirit flags, stock
-  levels, recipes with made-history, settings) to one text file that can be moved
-  off-device through the platform's normal file sharing.
+- **FR-DAT-1** A single action exports all data (vocabularies, stock levels, recipes with
+  their line marks and made-history, settings) to one text file that can be moved off-device
+  through the platform's normal file sharing.
 - **FR-DAT-2** The export file is human-readable and self-describing — its structure is
   understandable and editable without the app, by a person or an AI assistant — and it
   carries a format version.

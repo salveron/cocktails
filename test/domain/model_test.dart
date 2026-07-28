@@ -67,6 +67,23 @@ void main() {
     });
   });
 
+  group('LineMark tokens', () {
+    test('tokens match the data format', () {
+      expect(LineMark.base.token, 'base');
+      expect(LineMark.optional.token, 'optional');
+    });
+
+    test('fromToken round-trips every member', () {
+      for (final mark in LineMark.values) {
+        expect(LineMark.fromToken(mark.token), mark);
+      }
+    });
+
+    test('fromToken returns null for an unknown token', () {
+      expect(LineMark.fromToken('garnish'), isNull);
+    });
+  });
+
   group('Amount', () {
     test('single value is not a range', () {
       const amount = Amount(1.5);
@@ -98,13 +115,11 @@ void main() {
   group('Ingredient', () {
     Ingredient build({
       String name = 'gin',
-      bool isBase = false,
       StockLevel stock = StockLevel.out,
-    }) => Ingredient(name, isBase: isBase, stock: stock);
+    }) => Ingredient(name, stock: stock);
 
-    test('defaults: not a base spirit, out of stock', () {
+    test('defaults to out of stock', () {
       const ingredient = Ingredient('bourbon');
-      expect(ingredient.isBase, isFalse);
       expect(ingredient.stock, StockLevel.out);
     });
 
@@ -112,24 +127,19 @@ void main() {
       expect(build(), build());
       expect(build().hashCode, build().hashCode);
       expect(build(), isNot(build(name: 'rum')));
-      expect(build(), isNot(build(isBase: true)));
       expect(build(), isNot(build(stock: StockLevel.low)));
     });
 
     test('copyWith replaces one field and carries the rest', () {
-      const ingredient = Ingredient('gin', isBase: true, stock: StockLevel.low);
+      const ingredient = Ingredient('gin', stock: StockLevel.low);
       expect(ingredient.copyWith(), ingredient);
       expect(
         ingredient.copyWith(name: 'rum'),
-        const Ingredient('rum', isBase: true, stock: StockLevel.low),
-      );
-      expect(
-        ingredient.copyWith(isBase: false),
-        const Ingredient('gin', stock: StockLevel.low),
+        const Ingredient('rum', stock: StockLevel.low),
       );
       expect(
         ingredient.copyWith(stock: StockLevel.in_),
-        const Ingredient('gin', isBase: true, stock: StockLevel.in_),
+        const Ingredient('gin', stock: StockLevel.in_),
       );
     });
   });
@@ -147,12 +157,33 @@ void main() {
       Amount amount = const Amount(0.5),
       Unit unit = Unit.part,
       String ingredient = 'egg white',
-      bool isOptional = false,
-    }) => RecipeLine(amount, unit, ingredient, isOptional: isOptional);
+      LineMark? mark,
+    }) => RecipeLine(amount, unit, ingredient, mark: mark);
 
-    test('defaults to required', () {
+    test('defaults to unmarked: neither base nor optional', () {
       const line = RecipeLine(Amount(1.5), Unit.part, 'bourbon');
+      expect(line.mark, isNull);
+      expect(line.isBase, isFalse);
       expect(line.isOptional, isFalse);
+    });
+
+    test('one mark answers both questions', () {
+      const base = RecipeLine(
+        Amount(1.5),
+        Unit.part,
+        'bourbon',
+        mark: LineMark.base,
+      );
+      expect(base.isBase, isTrue);
+      expect(base.isOptional, isFalse);
+      const optional = RecipeLine(
+        Amount(0.5),
+        Unit.part,
+        'egg white',
+        mark: LineMark.optional,
+      );
+      expect(optional.isBase, isFalse);
+      expect(optional.isOptional, isTrue);
     });
 
     test('equality and hashCode isolate each field', () {
@@ -161,28 +192,63 @@ void main() {
       expect(build(), isNot(build(amount: const Amount(1))));
       expect(build(), isNot(build(unit: Unit.ml)));
       expect(build(), isNot(build(ingredient: 'gin')));
-      expect(build(), isNot(build(isOptional: true)));
+      expect(build(), isNot(build(mark: LineMark.optional)));
+      expect(build(mark: LineMark.base), isNot(build(mark: LineMark.optional)));
     });
 
     test('copyWith replaces one field and carries the rest', () {
-      const line = RecipeLine(Amount(0.5), Unit.part, 'egg white');
+      const line = RecipeLine(
+        Amount(0.5),
+        Unit.part,
+        'egg white',
+        mark: LineMark.optional,
+      );
       expect(line.copyWith(), line);
       expect(
         line.copyWith(amount: const Amount(1)),
-        const RecipeLine(Amount(1), Unit.part, 'egg white'),
+        const RecipeLine(
+          Amount(1),
+          Unit.part,
+          'egg white',
+          mark: LineMark.optional,
+        ),
       );
       expect(
         line.copyWith(unit: Unit.ml),
-        const RecipeLine(Amount(0.5), Unit.ml, 'egg white'),
+        const RecipeLine(
+          Amount(0.5),
+          Unit.ml,
+          'egg white',
+          mark: LineMark.optional,
+        ),
       );
       expect(
         line.copyWith(ingredient: 'gin'),
-        const RecipeLine(Amount(0.5), Unit.part, 'gin'),
+        const RecipeLine(
+          Amount(0.5),
+          Unit.part,
+          'gin',
+          mark: LineMark.optional,
+        ),
+      );
+    });
+
+    test('marked sets, replaces and clears the mark', () {
+      const line = RecipeLine(Amount(1.5), Unit.part, 'bourbon');
+      expect(
+        line.marked(LineMark.base),
+        const RecipeLine(
+          Amount(1.5),
+          Unit.part,
+          'bourbon',
+          mark: LineMark.base,
+        ),
       );
       expect(
-        line.copyWith(isOptional: true),
-        const RecipeLine(Amount(0.5), Unit.part, 'egg white', isOptional: true),
+        line.marked(LineMark.base).marked(LineMark.optional).mark,
+        LineMark.optional,
       );
+      expect(line.marked(LineMark.base).marked(null), line);
     });
   });
 
@@ -317,9 +383,7 @@ void main() {
   group('Model', () {
     Model build({
       Settings settings = const Settings(partMl: 25),
-      List<Ingredient> ingredients = const [
-        Ingredient('bourbon', isBase: true),
-      ],
+      List<Ingredient> ingredients = const [Ingredient('bourbon')],
       List<Tag> tags = const [Tag('sour')],
       List<Recipe>? recipes,
     }) => Model(
@@ -428,10 +492,7 @@ void main() {
     group('name lookups', () {
       test('answer with the entry of that name', () {
         final model = build();
-        expect(
-          model.ingredientNamed('bourbon'),
-          const Ingredient('bourbon', isBase: true),
-        );
+        expect(model.ingredientNamed('bourbon'), const Ingredient('bourbon'));
         expect(model.recipeNamed('Whiskey Sour')?.tags, ['sour']);
         expect(model.hasTag('sour'), isTrue);
       });

@@ -15,7 +15,7 @@ void main() {
   );
   final stored = Model(
     ingredients: const [
-      Ingredient('gin', isBase: true, stock: StockLevel.in_),
+      Ingredient('gin', stock: StockLevel.in_),
       Ingredient('campari'),
     ],
     tags: const [Tag('classic')],
@@ -132,7 +132,10 @@ void main() {
     test('renameIngredient propagates into the recipes', () async {
       final container = await started();
       await controllerOf(container).renameIngredient('gin', 'dry gin');
-      expect(modelOf(container).ingredientNamed('dry gin')?.isBase, isTrue);
+      expect(
+        modelOf(container).ingredientNamed('dry gin')?.stock,
+        StockLevel.in_,
+      );
       expect(
         modelOf(container).recipeNamed('Negroni')?.lines.first.ingredient,
         'dry gin',
@@ -150,7 +153,7 @@ void main() {
       await controllerOf(container).setStock('gin', StockLevel.low);
       expect(
         modelOf(container).ingredientNamed('gin'),
-        const Ingredient('gin', isBase: true, stock: StockLevel.low),
+        const Ingredient('gin', stock: StockLevel.low),
       );
     });
 

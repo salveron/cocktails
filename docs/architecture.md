@@ -66,7 +66,7 @@ settings:
   display: part        # part | ml
 
 ingredients:
-  - {name: bourbon, base: true, stock: in}
+  - {name: bourbon, stock: in}
   - {name: lemon juice, stock: low}
   - {name: rich demerara syrup}        # stock omitted = out
   - {name: egg white, stock: in}
@@ -77,7 +77,7 @@ recipes:
   - name: Whiskey Sour
     tags: [sour, classic]
     lines:
-      - 1.5-2 part bourbon
+      - 1.5-2 part bourbon (base)
       - 0.75 part lemon juice
       - 0.5 part rich demerara syrup
       - 0.5 part egg white (optional)
@@ -88,12 +88,12 @@ recipes:
 Rules:
 
 - `format` is the schema version; imports of unsupported versions are rejected (FR-DAT-4).
-- Ingredient entries: `name` required; `base` (default `false`) marks a base spirit; `stock`
-  is `in` | `low` | `out` (default `out`).
-- An ingredient line is `<amount> <unit> <ingredient name>`, optionally suffixed
-  ` (optional)`. Amount is a decimal number or a range `a-b`; unit is one of
-  `part ml oz dash barspoon drop piece` and is stored as entered. The ` (optional)` suffix
-  is reserved — ingredient names cannot end with it.
+- Ingredient entries: `name` required; `stock` is `in` | `low` | `out` (default `out`).
+- An ingredient line is `<amount> <unit> <ingredient name>`, optionally suffixed with one
+  mark — ` (base)` or ` (optional)`, never both ([ADR 06](adr/06-base-spirit-on-the-line.md)).
+  Amount is a decimal number or a range `a-b`; unit is one of
+  `part ml oz dash barspoon drop piece` and is stored as entered. Both mark suffixes are
+  reserved — ingredient names cannot end with one.
 - `made` holds the made-history: `last` is an ISO date (`YYYY-MM-DD`, nothing looser),
   `times` a count. Absent = never made.
 - Every recipe line and tag reference must resolve to the vocabularies; names are unique
@@ -106,7 +106,7 @@ Rules:
 - The app writes a canonical form: fixed key order, fixed indentation, no comments. Comments
   are legal in imported files but are not preserved once the app rewrites the store —
   the round-trip guarantee (FR-DAT-5) covers content, not comments.
-- Unit and stock tokens are declared as fields on their enums, never derived from Dart
+- Unit, stock and mark tokens are declared as fields on their enums, never derived from Dart
   identifier spellings, so renaming a member cannot change the format.
 - The pilot reads and writes format `1` only; a future format bump migrates old files on
   import inside the codec.

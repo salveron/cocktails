@@ -51,7 +51,21 @@ enum DisplayUnit {
       _fromToken(values, text, (v) => v.token);
 }
 
-/// Linear token lookup shared by the three enums above.
+/// What a recipe makes of one of its lines — its base spirit, or a line it can
+/// go without (docs/adr/06-base-spirit-on-the-line.md). One field, so a base
+/// line can never also be optional.
+enum LineMark {
+  base('base'),
+  optional('optional');
+
+  final String token;
+  const LineMark(this.token);
+
+  static LineMark? fromToken(String text) =>
+      _fromToken(values, text, (v) => v.token);
+}
+
+/// Linear token lookup shared by the enums above.
 T? _fromToken<T extends Enum>(
   List<T> values,
   String text,
@@ -65,35 +79,22 @@ T? _fromToken<T extends Enum>(
 
 final class Ingredient {
   final String name;
-  final bool isBase;
   final StockLevel stock;
 
-  const Ingredient(
-    this.name, {
-    this.isBase = false,
-    this.stock = StockLevel.out,
-  });
+  const Ingredient(this.name, {this.stock = StockLevel.out});
 
-  Ingredient copyWith({String? name, bool? isBase, StockLevel? stock}) =>
-      Ingredient(
-        name ?? this.name,
-        isBase: isBase ?? this.isBase,
-        stock: stock ?? this.stock,
-      );
+  Ingredient copyWith({String? name, StockLevel? stock}) =>
+      Ingredient(name ?? this.name, stock: stock ?? this.stock);
 
   @override
   bool operator ==(Object other) =>
-      other is Ingredient &&
-      other.name == name &&
-      other.isBase == isBase &&
-      other.stock == stock;
+      other is Ingredient && other.name == name && other.stock == stock;
 
   @override
-  int get hashCode => Object.hash(name, isBase, stock);
+  int get hashCode => Object.hash(name, stock);
 
   @override
-  String toString() =>
-      'Ingredient($name, base: $isBase, stock: ${stock.token})';
+  String toString() => 'Ingredient($name, stock: ${stock.token})';
 }
 
 final class Tag {
@@ -137,26 +138,26 @@ final class RecipeLine {
   final Amount amount;
   final Unit unit;
   final String ingredient;
-  final bool isOptional;
+  final LineMark? mark;
 
-  const RecipeLine(
-    this.amount,
-    this.unit,
-    this.ingredient, {
-    this.isOptional = false,
-  });
+  const RecipeLine(this.amount, this.unit, this.ingredient, {this.mark});
 
-  RecipeLine copyWith({
-    Amount? amount,
-    Unit? unit,
-    String? ingredient,
-    bool? isOptional,
-  }) => RecipeLine(
-    amount ?? this.amount,
-    unit ?? this.unit,
-    ingredient ?? this.ingredient,
-    isOptional: isOptional ?? this.isOptional,
-  );
+  bool get isBase => mark == LineMark.base;
+
+  bool get isOptional => mark == LineMark.optional;
+
+  RecipeLine copyWith({Amount? amount, Unit? unit, String? ingredient}) =>
+      RecipeLine(
+        amount ?? this.amount,
+        unit ?? this.unit,
+        ingredient ?? this.ingredient,
+        mark: mark,
+      );
+
+  /// The only way to change the mark, and the only one that can clear it —
+  /// `copyWith` cannot, since null is its "keep what you have".
+  RecipeLine marked(LineMark? mark) =>
+      RecipeLine(amount, unit, ingredient, mark: mark);
 
   @override
   bool operator ==(Object other) =>
@@ -164,15 +165,17 @@ final class RecipeLine {
       other.amount == amount &&
       other.unit == unit &&
       other.ingredient == ingredient &&
-      other.isOptional == isOptional;
+      other.mark == mark;
 
   @override
-  int get hashCode => Object.hash(amount, unit, ingredient, isOptional);
+  int get hashCode => Object.hash(amount, unit, ingredient, mark);
 
   @override
-  String toString() =>
-      'RecipeLine($amount ${unit.token} $ingredient'
-      '${isOptional ? ', optional' : ''})';
+  String toString() {
+    final mark = this.mark;
+    return 'RecipeLine($amount ${unit.token} $ingredient'
+        '${mark == null ? '' : ', ${mark.token}'})';
+  }
 }
 
 /// Made-history stamps a date (FR-REC-6): [last] keeps no time of day.

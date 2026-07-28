@@ -175,7 +175,7 @@ void main() {
       final barrel = File('lib/domain/domain.dart').readAsStringSync();
       final exported = _directivesOf(barrel).map((d) => d.target);
       expect(exported, isNot(contains('src/helpers.dart')));
-      expect(barrel, contains('hide optionalSuffix'));
+      expect(barrel, contains('hide reservedSuffixes'));
     });
 
     // lib/main.dart sits outside every layer (docs/components.md module

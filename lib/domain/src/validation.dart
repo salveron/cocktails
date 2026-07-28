@@ -225,14 +225,18 @@ void _addProblems(
   }
 }
 
-_Problem? _reservedSuffixProblem(String name) => name.endsWith(optionalSuffix)
-    ? (
+_Problem? _reservedSuffixProblem(String name) {
+  for (final suffix in reservedSuffixes) {
+    if (name.endsWith(suffix)) {
+      return (
         kind: ValidationIssueKind.reservedSuffix,
         message:
-            'Ingredient name ends with the reserved "$optionalSuffix" '
-            'suffix: "$name"',
-      )
-    : null;
+            'Ingredient name ends with the reserved "$suffix" suffix: "$name"',
+      );
+    }
+  }
+  return null;
+}
 
 _Problem? _nameProblem(String entity, String name) {
   if (name.isEmpty) {

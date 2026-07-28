@@ -6,9 +6,14 @@ void main() {
     'Whiskey Sour',
     tags: ['sour', 'classic'],
     lines: const [
-      RecipeLine(Amount.range(1.5, 2), Unit.part, 'bourbon'),
+      RecipeLine(
+        Amount.range(1.5, 2),
+        Unit.part,
+        'bourbon',
+        mark: LineMark.base,
+      ),
       RecipeLine(Amount(0.75), Unit.part, 'lemon juice'),
-      RecipeLine(Amount(0.5), Unit.part, 'egg white', isOptional: true),
+      RecipeLine(Amount(0.5), Unit.part, 'egg white', mark: LineMark.optional),
     ],
     notes: 'dry shake, then shake with ice',
   );
@@ -20,10 +25,10 @@ void main() {
   final model = Model(
     settings: const Settings(partMl: 25),
     ingredients: const [
-      Ingredient('bourbon', isBase: true, stock: StockLevel.in_),
+      Ingredient('bourbon', stock: StockLevel.in_),
       Ingredient('lemon juice', stock: StockLevel.low),
       Ingredient('egg white'),
-      Ingredient('gin', isBase: true),
+      Ingredient('gin'),
     ],
     tags: const [Tag('sour'), Tag('classic')],
     recipes: [whiskeySour, negroni],
@@ -77,7 +82,7 @@ void main() {
       final edited = model.withStock('bourbon', StockLevel.low);
       expect(
         edited.ingredientNamed('bourbon'),
-        const Ingredient('bourbon', isBase: true, stock: StockLevel.low),
+        const Ingredient('bourbon', stock: StockLevel.low),
       );
       expect(namesOf(edited.ingredients), namesOf(model.ingredients));
     });
@@ -96,13 +101,15 @@ void main() {
         'egg white',
         'gin',
       ]);
-      expect(edited.ingredientNamed('rye')?.isBase, isTrue);
+      expect(edited.ingredientNamed('rye')?.stock, StockLevel.in_);
       expect(edited.ingredientNamed('bourbon'), isNull);
     });
 
     test('rewrites every referencing line', () {
       final edited = model.withIngredientRenamed('bourbon', 'rye');
-      expect(edited.recipeNamed('Whiskey Sour')?.lines.first.ingredient, 'rye');
+      final line = edited.recipeNamed('Whiskey Sour')?.lines.first;
+      expect(line?.ingredient, 'rye');
+      expect(line?.mark, LineMark.base);
     });
 
     test('rewrites optional lines too', () {
