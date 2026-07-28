@@ -32,6 +32,17 @@ Future<void> chooseOnRow(
   await tester.pumpAndSettle();
 }
 
+/// The colour behind the chip reading [label]. The bang holds because the chip
+/// always paints a background — a null here is the defect, and it reports as one.
+Color chipColor(WidgetTester tester, String label) {
+  final chip = tester.widget<DecoratedBox>(
+    find
+        .ancestor(of: find.text(label), matching: find.byType(DecoratedBox))
+        .first,
+  );
+  return (chip.decoration as BoxDecoration).color!;
+}
+
 /// The dialog's own field, told apart from the search field behind it.
 final dialogField = find.descendant(
   of: find.byType(AlertDialog),
@@ -61,6 +72,32 @@ void main() {
         store: MemoryModelStore(fixtureModel),
       );
       expect(rowTexts(tester), ['campari', 'Out', 'gin', 'In stock']);
+    });
+
+    testWidgets('each chip wears the traffic light its level means', (
+      tester,
+    ) async {
+      await pumpScreen(
+        tester,
+        const InventoryScreen(),
+        store: MemoryModelStore(
+          fixtureModel.withIngredient(
+            const Ingredient('absinthe', stock: StockLevel.low),
+          ),
+        ),
+      );
+      final inStock = chipColor(tester, 'In stock');
+      final low = chipColor(tester, 'Low');
+      final out = chipColor(tester, 'Out');
+
+      expect(inStock.g, greaterThan(inStock.r), reason: 'in stock reads green');
+      expect(out.r, greaterThan(out.g), reason: 'out reads red');
+      expect(low.b, lessThan(low.g), reason: 'low reads amber');
+      expect(
+        {inStock, low, out},
+        hasLength(3),
+        reason: 'three distinct signals',
+      );
     });
 
     testWidgets('a tap moves the bottle one step through its life', (

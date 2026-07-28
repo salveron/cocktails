@@ -129,18 +129,25 @@ class _Row extends ConsumerWidget {
   final Ingredient ingredient;
   final Model model;
 
+  /// Each bottle on its own tinted ground: separation by mass rather than by a
+  /// rule between rows. The clip keeps the tap ripple inside the corners.
   @override
-  Widget build(BuildContext context, WidgetRef ref) => ListTile(
+  Widget build(BuildContext context, WidgetRef ref) => Card.filled(
     key: ValueKey(ingredient.name),
-    title: Text(ingredient.name),
-    trailing: Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [_StockChip(ingredient.stock), _RowMenu(ingredient, model)],
-    ),
-    onTap: () => unawaited(
-      ref
-          .read(modelProvider.notifier)
-          .setStock(ingredient.name, ingredient.stock.next),
+    margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+    color: Theme.of(context).colorScheme.surfaceContainer,
+    clipBehavior: Clip.antiAlias,
+    child: ListTile(
+      title: Text(ingredient.name),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [_StockChip(ingredient.stock), _RowMenu(ingredient, model)],
+      ),
+      onTap: () => unawaited(
+        ref
+            .read(modelProvider.notifier)
+            .setStock(ingredient.name, ingredient.stock.next),
+      ),
     ),
   );
 }
@@ -203,22 +210,11 @@ class _StockChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final (label, foreground, background) = switch (stock) {
-      StockLevel.in_ => (
-        'In stock',
-        theme.colorScheme.onPrimaryContainer,
-        theme.colorScheme.primaryContainer,
-      ),
-      StockLevel.low => (
-        'Low',
-        theme.colorScheme.onTertiaryContainer,
-        theme.colorScheme.tertiaryContainer,
-      ),
-      StockLevel.out => (
-        'Out',
-        theme.colorScheme.onSurfaceVariant,
-        theme.colorScheme.surfaceContainerHighest,
-      ),
+    final (background, foreground) = _stockColors(stock, theme.brightness);
+    final label = switch (stock) {
+      StockLevel.in_ => 'In stock',
+      StockLevel.low => 'Low',
+      StockLevel.out => 'Out',
     };
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -234,6 +230,22 @@ class _StockChip extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Green, amber, red — the traffic light the three levels already mean. Fixed
+/// hues rather than scheme roles: the amber seed makes `primaryContainer` brown
+/// and `tertiaryContainer` green, so in-stock and low wore each other's signal.
+/// The pale tone grounds the chip in light and letters it in dark.
+(Color background, Color foreground) _stockColors(
+  StockLevel stock,
+  Brightness brightness,
+) {
+  final (pale, deep) = switch (stock) {
+    StockLevel.in_ => const (Color(0xFFC8E6C9), Color(0xFF1B5E20)),
+    StockLevel.low => const (Color(0xFFFFECB3), Color(0xFF6B4E00)),
+    StockLevel.out => const (Color(0xFFFFCDD2), Color(0xFFB71C1C)),
+  };
+  return brightness == Brightness.light ? (pale, deep) : (deep, pale);
 }
 
 class _NoIngredients extends StatelessWidget {

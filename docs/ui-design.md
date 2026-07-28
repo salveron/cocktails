@@ -57,9 +57,13 @@ new entry could land outside the query and the screen would look as if nothing h
 
 ## Inventory screen
 
-- **Flat A→Z**, one row per ingredient: the name and a chip that spells the stock level out
-  instead of leaving it to colour. Nothing re-sorts under a tap, so a row never moves away
-  mid-restock.
+- **Flat A→Z**, one row per ingredient on its own filled card — a tinted ground and rounded
+  corners, separating rows by mass rather than by a rule between them. Nothing re-sorts under a
+  tap, so a row never moves away mid-restock.
+- **The stock chip is a traffic light** — green in stock, amber low, red out — and spells the
+  level out in words as well, so the row never asks the reader to decode a hue. Those hues are
+  fixed rather than scheme roles: with the amber seed, `primaryContainer` comes out brown and
+  `tertiaryContainer` green, which marked in-stock and low with each other's signal.
 - **A tap on the row advances the stock one step** — `StockLevel.next`, in → low → out → in.
   That is the life of a bottle, so every real transition costs one tap (FR-INV-2), and each
   one saves through the model controller.

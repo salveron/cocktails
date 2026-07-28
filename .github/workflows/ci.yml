@@ -7,6 +7,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # Pinned rather than left to the runner image: AGP 9 and Gradle 9 both
+      # require 17, and a runner default moving under us fails the build.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: 3.44.8
@@ -15,3 +21,6 @@ jobs:
       - run: dart format --set-exit-if-changed .
       - run: flutter analyze
       - run: flutter test
+      # The only check that exercises the Gradle side: a plugin incompatible
+      # with the Android toolchain fails here, not at release packaging.
+      - run: flutter build apk --debug
