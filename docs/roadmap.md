@@ -48,8 +48,9 @@ First usable slice; recipes reference both vocabularies, so this precedes Phase 
       line ([ADR 06](adr/06-base-spirit-on-the-line.md)): one `LineMark?` per line, so base
       and optional cannot combine (FR-REC-8), a ` (base)` suffix in the line grammar, and the
       requirement edits it forced (FR-VOC-2 retired, FR-DIS-4, FR-DAT-1).
-- [ ] **M11 Ingredient management** — add, rename with propagation, reference-blocked
-      delete (FR-VOC-1).
+- [x] **M11 Ingredient management** — add, rename with propagation, reference-blocked
+      delete (FR-VOC-1) on the inventory screen, through the two shared
+      [vocabulary dialogs](ui-design.md#vocabulary-editing) M12 reuses.
 - [ ] **M12 Tag management** — add, rename with propagation, reference-blocked delete
       (FR-VOC-1).
 
