@@ -1,6 +1,8 @@
 import 'package:cocktails/data/data.dart';
 import 'package:cocktails/ui/screens/recipes_screen.dart';
+import 'package:cocktails/ui/screens/settings_screen.dart';
 import 'package:cocktails/ui/screens/shopping_screen.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'harness.dart';
@@ -20,6 +22,15 @@ void main() {
       );
       expect(find.text('Recipes: 1'), findsOneWidget);
       expect(find.text('No recipes yet'), findsNothing);
+    });
+  });
+
+  group('settings screen', () {
+    testWidgets('the tags tile opens both vocabularies', (tester) async {
+      await pumpScreen(tester, const SettingsScreen());
+      await tap(tester, find.text('Tags'));
+      expect(find.widgetWithText(Tab, 'Recipe'), findsOneWidget);
+      expect(find.widgetWithText(Tab, 'Ingredient'), findsOneWidget);
     });
   });
 

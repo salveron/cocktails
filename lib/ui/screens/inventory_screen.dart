@@ -5,70 +5,118 @@ import 'package:cocktails/state/state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../palette.dart';
+import '../widgets/color_chip.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/model_view.dart';
-import '../widgets/search_field.dart';
 import '../widgets/vocabulary_dialogs.dart';
+import '../widgets/vocabulary_list.dart';
 
 /// Every ingredient and what is left of it — searchable by name, one tap per
 /// stock change (FR-INV-1/2) — and the vocabulary itself: add, rename, delete
 /// (FR-VOC-1). Designed in docs/ui-design.md#inventory-screen.
-class InventoryScreen extends ConsumerStatefulWidget {
+class InventoryScreen extends ConsumerWidget {
   const InventoryScreen({super.key});
 
   @override
-  ConsumerState<InventoryScreen> createState() => _InventoryScreenState();
-}
-
-class _InventoryScreenState extends ConsumerState<InventoryScreen> {
-  final _search = TextEditingController();
-
-  @override
-  void initState() {
-    super.initState();
-    _search.addListener(() => setState(() {}));
-  }
-
-  @override
-  void dispose() {
-    _search.dispose();
-    super.dispose();
-  }
-
-  /// The screen brings its own [Scaffold]: the destinations share the shell's
-  /// one, which has no room for a per-screen button.
-  @override
-  Widget build(BuildContext context) => ModelView(
-    (model) => Scaffold(
-      body: model.ingredients.isEmpty
-          ? const _NoIngredients()
-          : _Ingredients(
-              model: model,
-              search: _search,
-              onAdd: (name) => unawaited(_add(model, initial: name)),
-            ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => unawaited(_add(model)),
-        tooltip: 'Add ingredient',
-        child: const Icon(Icons.add),
+  Widget build(BuildContext context, WidgetRef ref) => ModelView(
+    (model) => VocabularyList<Ingredient>(
+      entries: model.ingredients,
+      nameOf: (ingredient) => ingredient.name,
+      rowOf: (ingredient) => _row(context, ref, model, ingredient),
+      onAdd: (query) => _add(context, ref, model, query),
+      noun: 'ingredient',
+      plural: 'ingredients',
+      empty: const EmptyState(
+        icon: Icons.inventory_2_outlined,
+        title: 'No ingredients yet',
+        message:
+            'Every ingredient your recipes use is listed here, with what you '
+            'have in stock.',
       ),
     ),
   );
+}
 
-  /// Clears the search before saving, so the new entry cannot land outside the
-  /// query and leave the screen looking as if nothing happened.
-  Future<void> _add(Model model, {String initial = ''}) async {
-    final name = await promptForName(
-      context,
-      title: 'New ingredient',
-      hintText: 'Ingredient name',
-      validate: _nameRule(model),
-      initial: initial,
-    );
-    if (name == null || !mounted) return;
-    _search.clear();
-    await ref.read(modelProvider.notifier).upsertIngredient(Ingredient(name));
-  }
+/// The row's own tap belongs to stock — the life of a bottle is in → low → out
+/// → in, so every real transition costs one tap (FR-INV-2). Rename and delete
+/// take the ⋮ instead of a hidden gesture.
+VocabularyRow _row(
+  BuildContext context,
+  WidgetRef ref,
+  Model model,
+  Ingredient ingredient,
+) => VocabularyRow(
+  title: Text(ingredient.name),
+  trailing: Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      _StockChip(ingredient.stock),
+      RowMenu({
+        'Rename': () => unawaited(_rename(context, ref, model, ingredient)),
+        'Delete': () => unawaited(_delete(context, ref, model, ingredient)),
+      }),
+    ],
+  ),
+  onTap: () => unawaited(
+    ref
+        .read(modelProvider.notifier)
+        .setStock(ingredient.name, ingredient.stock.next),
+  ),
+);
+
+/// True once an ingredient was added, which is what clears the search.
+Future<bool> _add(
+  BuildContext context,
+  WidgetRef ref,
+  Model model,
+  String query,
+) async {
+  final name = await promptForName(
+    context,
+    title: 'New ingredient',
+    hintText: 'Ingredient name',
+    validate: _nameRule(model),
+    initial: query,
+  );
+  if (name == null || !context.mounted) return false;
+  await ref.read(modelProvider.notifier).upsertIngredient(Ingredient(name));
+  return true;
+}
+
+Future<void> _rename(
+  BuildContext context,
+  WidgetRef ref,
+  Model model,
+  Ingredient ingredient,
+) async {
+  final name = await promptForName(
+    context,
+    title: 'Rename "${ingredient.name}"',
+    hintText: 'Ingredient name',
+    validate: _nameRule(model, except: ingredient.name),
+    initial: ingredient.name,
+  );
+  if (name == null || !context.mounted) return;
+  await ref
+      .read(modelProvider.notifier)
+      .renameIngredient(ingredient.name, name);
+}
+
+Future<void> _delete(
+  BuildContext context,
+  WidgetRef ref,
+  Model model,
+  Ingredient ingredient,
+) async {
+  final confirmed = await confirmDelete(
+    context,
+    what: ingredient.name,
+    blockedBy: model.recipesUsingIngredient(ingredient.name),
+    blockedByNoun: 'recipes',
+  );
+  if (!confirmed || !context.mounted) return;
+  await ref.read(modelProvider.notifier).removeIngredient(ingredient.name);
 }
 
 /// The vocabulary's rules bound to the model, with [except] left out so a
@@ -86,197 +134,17 @@ List<ValidationIssue> Function(String) _nameRule(
       },
     );
 
-class _Ingredients extends StatelessWidget {
-  const _Ingredients({
-    required this.model,
-    required this.search,
-    required this.onAdd,
-  });
-
-  final Model model;
-  final TextEditingController search;
-  final void Function(String name) onAdd;
-
-  @override
-  Widget build(BuildContext context) {
-    final matches =
-        model.ingredients
-            .where((ingredient) => matchesQuery(ingredient.name, search.text))
-            .toList()
-          ..sort(
-            (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
-          );
-    return Column(
-      children: [
-        SearchField(controller: search, hintText: 'Search ingredients'),
-        Expanded(
-          child: matches.isEmpty
-              ? _NoMatch(search.text.trim(), onAdd: onAdd)
-              : ListView.builder(
-                  // Room for the last row to clear the button above it.
-                  padding: const EdgeInsets.only(bottom: 88),
-                  itemCount: matches.length,
-                  itemBuilder: (context, index) => _Row(matches[index], model),
-                ),
-        ),
-      ],
-    );
-  }
-}
-
-class _Row extends ConsumerWidget {
-  const _Row(this.ingredient, this.model);
-
-  final Ingredient ingredient;
-  final Model model;
-
-  /// Each bottle on its own tinted ground: separation by mass rather than by a
-  /// rule between rows. The clip keeps the tap ripple inside the corners.
-  @override
-  Widget build(BuildContext context, WidgetRef ref) => Card.filled(
-    key: ValueKey(ingredient.name),
-    margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-    color: Theme.of(context).colorScheme.surfaceContainer,
-    clipBehavior: Clip.antiAlias,
-    child: ListTile(
-      title: Text(ingredient.name),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [_StockChip(ingredient.stock), _RowMenu(ingredient, model)],
-      ),
-      onTap: () => unawaited(
-        ref
-            .read(modelProvider.notifier)
-            .setStock(ingredient.name, ingredient.stock.next),
-      ),
-    ),
-  );
-}
-
-enum _RowAction { rename, delete }
-
-/// Rename and delete live here because the row's tap belongs to stock.
-class _RowMenu extends ConsumerWidget {
-  const _RowMenu(this.ingredient, this.model);
-
-  final Ingredient ingredient;
-  final Model model;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) =>
-      PopupMenuButton<_RowAction>(
-        tooltip: 'More',
-        onSelected: (action) => unawaited(switch (action) {
-          _RowAction.rename => _rename(context, ref),
-          _RowAction.delete => _delete(context, ref),
-        }),
-        itemBuilder: (context) => const [
-          PopupMenuItem(value: _RowAction.rename, child: Text('Rename')),
-          PopupMenuItem(value: _RowAction.delete, child: Text('Delete')),
-        ],
-      );
-
-  Future<void> _rename(BuildContext context, WidgetRef ref) async {
-    final name = await promptForName(
-      context,
-      title: 'Rename "${ingredient.name}"',
-      hintText: 'Ingredient name',
-      validate: _nameRule(model, except: ingredient.name),
-      initial: ingredient.name,
-    );
-    if (name == null || !context.mounted) return;
-    await ref
-        .read(modelProvider.notifier)
-        .renameIngredient(ingredient.name, name);
-  }
-
-  Future<void> _delete(BuildContext context, WidgetRef ref) async {
-    final confirmed = await confirmDelete(
-      context,
-      what: ingredient.name,
-      blockedBy: model.recipesUsingIngredient(ingredient.name),
-    );
-    if (!confirmed || !context.mounted) return;
-    await ref.read(modelProvider.notifier).removeIngredient(ingredient.name);
-  }
-}
-
-/// The stock level in words as well as colour, so the row does not ask the
-/// reader to decode a hue.
+/// The stock level in words as well as colour, so the row never asks the reader
+/// to decode a hue.
 class _StockChip extends StatelessWidget {
   const _StockChip(this.stock);
 
   final StockLevel stock;
 
   @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final (background, foreground) = _stockColors(stock, theme.brightness);
-    final label = switch (stock) {
-      StockLevel.in_ => 'In stock',
-      StockLevel.low => 'Low',
-      StockLevel.out => 'Out',
-    };
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-        child: Text(
-          label,
-          style: theme.textTheme.labelMedium?.copyWith(color: foreground),
-        ),
-      ),
-    );
-  }
-}
-
-/// Green, amber, red — the traffic light the three levels already mean. Fixed
-/// hues rather than scheme roles: the amber seed makes `primaryContainer` brown
-/// and `tertiaryContainer` green, so in-stock and low wore each other's signal.
-/// The pale tone grounds the chip in light and letters it in dark.
-(Color background, Color foreground) _stockColors(
-  StockLevel stock,
-  Brightness brightness,
-) {
-  final (pale, deep) = switch (stock) {
-    StockLevel.in_ => const (Color(0xFFC8E6C9), Color(0xFF1B5E20)),
-    StockLevel.low => const (Color(0xFFFFECB3), Color(0xFF6B4E00)),
-    StockLevel.out => const (Color(0xFFFFCDD2), Color(0xFFB71C1C)),
-  };
-  return brightness == Brightness.light ? (pale, deep) : (deep, pale);
-}
-
-class _NoIngredients extends StatelessWidget {
-  const _NoIngredients();
-
-  @override
-  Widget build(BuildContext context) => const EmptyState(
-    icon: Icons.inventory_2_outlined,
-    title: 'No ingredients yet',
-    message:
-        'Every ingredient your recipes use is listed here, with what you '
-        'have in stock.',
-  );
-}
-
-class _NoMatch extends StatelessWidget {
-  const _NoMatch(this.query, {required this.onAdd});
-
-  final String query;
-  final void Function(String name) onAdd;
-
-  @override
-  Widget build(BuildContext context) => EmptyState(
-    icon: Icons.search_off_outlined,
-    title: 'Nothing matches',
-    message: 'No ingredient here is called "$query".',
-    action: FilledButton.tonalIcon(
-      onPressed: () => onAdd(query),
-      icon: const Icon(Icons.add),
-      label: Text('Add "$query"'),
-    ),
-  );
+  Widget build(BuildContext context) => ColorChip(switch (stock) {
+    StockLevel.in_ => 'In stock',
+    StockLevel.low => 'Low',
+    StockLevel.out => 'Out',
+  }, swatch: stockColors(stock, Theme.of(context).brightness));
 }

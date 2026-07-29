@@ -47,9 +47,12 @@ lib/
   ui/                          # no barrel — leaves, imported directly; design in ui-design.md
     app.dart                   # MaterialApp and the shell: destinations, app bar, gear
     theme.dart                 # the seed colour and the two schemes
-    screens/                   # one file per destination, plus settings
+    palette.dart               # the fixed hues: stock signals and the tag palette
+    screens/                   # one file per destination, plus settings and tags
     widgets/                   # empty_state, model_view, search_field, startup_issues,
-                               #   vocabulary_dialogs — name entry and blocked delete
+                               #   color_chip — the pill a fixed hue is drawn as
+                               #   vocabulary_list — the list every vocabulary screen is
+                               #   vocabulary_dialogs — name/colour entry, blocked delete
 test/                          # mirrors lib/, plus test/architecture_test.dart
 ```
 

@@ -47,7 +47,7 @@ void main() {
       await tester.tap(find.byTooltip('Settings'));
       await tester.pumpAndSettle();
       expect(find.widgetWithText(AppBar, 'Settings'), findsOneWidget);
-      expect(find.text('Nothing to set yet'), findsOneWidget);
+      expect(find.text('Tags'), findsOneWidget);
       expect(find.byType(NavigationBar), findsNothing);
 
       await tester.tap(find.byTooltip('Back'));

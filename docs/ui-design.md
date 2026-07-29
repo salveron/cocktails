@@ -11,7 +11,8 @@ screen itself. Module boundaries and the interfaces `ui/` consumes are in
 
 - **Three destinations** — Recipes, Inventory, Shopping — in a Material 3 `NavigationBar`,
   each one tap from any other (NFR-1). Settings is not a destination but sits behind the app
-  bar's gear: the ratio, the display toggle and data exchange are set once, not browsed.
+  bar's gear: the ratio, the display toggle, the tag vocabularies and data exchange are set
+  once, not browsed.
 - **Destinations live in an `IndexedStack`**, so switching away and back keeps a screen's
   scroll position and search text. Everything below a destination — recipe view, forms,
   settings — is a `Navigator` push over the shell. Routing is `Navigator` 1.0: the pilot has
@@ -37,22 +38,31 @@ separate concern and get their own provider.
 
 ## Vocabulary editing
 
-Ingredients and tags are edited through the same two dialogs, so the two screens cannot drift
+The inventory and the two tag tabs are one widget, `VocabularyList`: the pinned search, the
+A→Z sort, the three faces, the add button, and the query the "nothing matches" face hands to
+it. A screen supplies only what a row shows and what its tap does — the stock chip and one tap
+per bottle on the inventory, the tag itself and its edit dialog on a tag tab. Three lists that
+behave alike because they are the same list.
+
+Ingredients and tags are edited through the same two dialogs, so the screens cannot drift
 apart:
 
 - **The name dialog** — one field, for a new entry or a rename. It takes the vocabulary's
   `validate…` function rather than holding any rule of its own, shows the first issue under the
   field, and keeps Save out of reach until there is none: the app refuses exactly what the codec
   refuses, reserved mark suffixes included. An untouched empty field is not a mistake yet, so it
-  is left unmarked.
+  is left unmarked. For a tag the same dialog also carries the palette — a row of swatches under
+  the field, the chosen one checked — so name and colour are settled together and colour is
+  picked in exactly one place (FR-VOC-3). A new tag opens on the first colour its vocabulary has
+  not spent yet: distinct colours without being asked for.
 - **The delete dialog** has two faces over the model's `…Using…` queries: a plain confirmation
   when nothing references the entry, and a refusal naming what does (FR-VOC-1) — recipes for an
   ingredient or a recipe tag, ingredients for an ingredient tag. The reason shows where the
   delete was attempted — never a disabled control with no explanation.
 
-Adding is a `FloatingActionButton` the screen owns: the destinations share the shell's
-`Scaffold`, which has no per-screen button slot, so each screen brings its own `Scaffold` for
-it. The "nothing matches" face carries that same add prefilled with the query, so a search that
+Adding is a `FloatingActionButton` the list brings with it: the destinations share the shell's
+`Scaffold`, which has no per-screen button slot, so `VocabularyList` carries a `Scaffold` of its
+own. The "nothing matches" face carries that same add prefilled with the query, so a search that
 found nothing is one tap from creating it. A successful add clears the search — otherwise the
 new entry could land outside the query and the screen would look as if nothing had happened.
 
@@ -72,3 +82,26 @@ new entry could land outside the query and the screen would look as if nothing h
   stock: the vocabulary actions get a target of their own instead of a hidden gesture. A new
   bottle starts out of stock, which one tap on its row corrects.
 - **Three faces:** the empty inventory, the query nothing matched, the list.
+
+## Tags screen
+
+Behind Settings rather than in the bottom bar: a vocabulary is arranged once and then used from
+the screens that reference it.
+
+- **A tab per vocabulary** — Recipe, Ingredient — in the screen's own app bar. They are peers
+  with nothing to say to each other (FR-VOC-4), so tabs keep both one tap away instead of
+  stacking them into one scroll where the boundary has to be explained.
+- **A tag is drawn as its own chip**, its name lettered on its colour at full strength. Judging
+  a colour means seeing it, and this is the screen where it is chosen.
+- **The row's tap opens the edit dialog** — a tag row has no other action to spend it on, unlike
+  an inventory row, whose tap belongs to stock. The ⋮ carries that same Edit beside Delete, so
+  the menu is never the only way in.
+
+## Tag and stock colours
+
+Each token maps to a pair — a fill and the ink that stays legible on it — one pair per theme;
+`palette.dart` is the single home for both maps. A chip fills with the first and letters with
+the second. Dots go the other way, drawn in the *second*: it is the half chosen to contrast with
+the page, so a dot reads on a light card and on a dark one alike, where a fill would sink into
+either. The `switch` over `TagColor` is exhaustive, so a new palette member ([ADR
+07](adr/07-tag-colour.md)) does not compile until it has been given a pair.

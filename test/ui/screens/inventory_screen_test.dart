@@ -7,53 +7,6 @@ import 'package:flutter_test/flutter_test.dart';
 
 import '../harness.dart';
 
-/// Every row's text in list order — names and stock chips interleaved.
-Iterable<String?> rowTexts(WidgetTester tester) => tester
-    .widgetList<Text>(
-      find.descendant(of: find.byType(ListTile), matching: find.byType(Text)),
-    )
-    .map((text) => text.data);
-
-/// The overflow menu of the row named [name].
-Finder rowMenu(String name) => find.descendant(
-  of: find.ancestor(of: find.text(name), matching: find.byType(ListTile)),
-  matching: find.byTooltip('More'),
-);
-
-/// Picks [action] out of that row's menu.
-Future<void> chooseOnRow(
-  WidgetTester tester,
-  String name,
-  String action,
-) async {
-  await tester.tap(rowMenu(name));
-  await tester.pumpAndSettle();
-  await tester.tap(find.text(action));
-  await tester.pumpAndSettle();
-}
-
-/// The colour behind the chip reading [label]. The bang holds because the chip
-/// always paints a background — a null here is the defect, and it reports as one.
-Color chipColor(WidgetTester tester, String label) {
-  final chip = tester.widget<DecoratedBox>(
-    find
-        .ancestor(of: find.text(label), matching: find.byType(DecoratedBox))
-        .first,
-  );
-  return (chip.decoration as BoxDecoration).color!;
-}
-
-/// The dialog's own field, told apart from the search field behind it.
-final dialogField = find.descendant(
-  of: find.byType(AlertDialog),
-  matching: find.byType(TextField),
-);
-
-Future<void> tap(WidgetTester tester, Finder target) async {
-  await tester.tap(target);
-  await tester.pumpAndSettle();
-}
-
 void main() {
   group('inventory screen', () {
     testWidgets('says what will fill it while it is empty', (tester) async {
@@ -123,8 +76,7 @@ void main() {
         const InventoryScreen(),
         store: MemoryModelStore(fixtureModel),
       );
-      await tester.enterText(find.byType(TextField), 'CAMP');
-      await tester.pumpAndSettle();
+      await search(tester, 'CAMP');
       expect(rowTexts(tester), ['campari', 'Out']);
     });
 
@@ -134,8 +86,7 @@ void main() {
         const InventoryScreen(),
         store: MemoryModelStore(fixtureModel),
       );
-      await tester.enterText(find.byType(TextField), '  camp  ');
-      await tester.pumpAndSettle();
+      await search(tester, '  camp  ');
       expect(rowTexts(tester), ['campari', 'Out']);
     });
 
@@ -147,8 +98,7 @@ void main() {
           Model(ingredients: [Ingredient('Green Chartreuse')]),
         ),
       );
-      await tester.enterText(find.byType(TextField), 'chartreuse');
-      await tester.pumpAndSettle();
+      await search(tester, 'chartreuse');
       expect(rowTexts(tester), ['Green Chartreuse', 'Out']);
     });
 
@@ -160,8 +110,7 @@ void main() {
         const InventoryScreen(),
         store: MemoryModelStore(fixtureModel),
       );
-      await tester.enterText(find.byType(TextField), 'camp');
-      await tester.pumpAndSettle();
+      await search(tester, 'camp');
       await tester.tap(find.byTooltip('Clear'));
       await tester.pumpAndSettle();
       expect(rowTexts(tester), ['campari', 'Out', 'gin', 'In stock']);
@@ -175,8 +124,7 @@ void main() {
         const InventoryScreen(),
         store: MemoryModelStore(fixtureModel),
       );
-      await tester.enterText(find.byType(TextField), 'absinthe');
-      await tester.pumpAndSettle();
+      await search(tester, 'absinthe');
       expect(find.text('No ingredient here is called "absinthe".'), findsOne);
       expect(find.byType(SearchField), findsOneWidget);
     });
@@ -187,8 +135,7 @@ void main() {
       final store = MemoryModelStore(fixtureModel);
       await pumpScreen(tester, const InventoryScreen(), store: store);
       await tap(tester, find.byTooltip('Add ingredient'));
-      await tester.enterText(dialogField, 'absinthe');
-      await tester.pumpAndSettle();
+      await type(tester, 'absinthe');
       await tap(tester, find.text('Save'));
 
       expect(rowTexts(tester), [
@@ -210,8 +157,7 @@ void main() {
         const InventoryScreen(),
         store: MemoryModelStore(fixtureModel),
       );
-      await tester.enterText(find.byType(TextField), 'absinthe');
-      await tester.pumpAndSettle();
+      await search(tester, 'absinthe');
       await tap(tester, find.text('Add "absinthe"'));
       // Saving without typing is what proves the query came along.
       await tap(tester, find.text('Save'));
@@ -224,6 +170,20 @@ void main() {
         'gin',
         'In stock',
       ]);
+    });
+
+    testWidgets('an add backed out of leaves the search where it was', (
+      tester,
+    ) async {
+      await pumpScreen(
+        tester,
+        const InventoryScreen(),
+        store: MemoryModelStore(fixtureModel),
+      );
+      await search(tester, 'camp');
+      await tap(tester, find.byTooltip('Add ingredient'));
+      await tap(tester, find.text('Cancel'));
+      expect(rowTexts(tester), ['campari', 'Out']);
     });
 
     testWidgets('renaming an ingredient follows it into the recipes', (
@@ -239,8 +199,7 @@ void main() {
             .onPressed,
         isNotNull,
       );
-      await tester.enterText(dialogField, 'sloe gin');
-      await tester.pumpAndSettle();
+      await type(tester, 'sloe gin');
       await tap(tester, find.text('Save'));
 
       expect(rowTexts(tester), ['campari', 'Out', 'sloe gin', 'In stock']);

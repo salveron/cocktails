@@ -60,11 +60,11 @@ First usable slice; recipes reference both vocabularies, so this precedes Phase 
       as peer sections behind `Model.recipeTags`/`ingredientTags`, `Ingredient.tags`, a colour
       now required on every tag (`neutral` dropped), per-vocabulary rename propagation and
       delete blocking (FR-VOC-3/4, FR-INV-3). Shape only — both screens are M12's and M12a's.
-- [ ] **M12 Tag management** — both vocabularies on one screen behind Settings, a tab each:
-      add, rename with propagation, reference-blocked delete (FR-VOC-1), and the colour picker
-      on create and as its own action. Extracts the vocabulary list the inventory screen
-      already is, so all three lists come from one widget, and the token → swatch map lands in
-      `ui/` beside the stock colours.
+- [x] **M12 Tag management** — both vocabularies behind Settings, a tab each: add, rename with
+      propagation, reference-blocked delete (FR-VOC-1), and the colour, picked in the same
+      dialog as the name on create and on edit alike (FR-VOC-3). Extracts the vocabulary list
+      the inventory screen already was, so all three lists are one widget, and lands the
+      token → swatch map in `palette.dart` beside the stock colours it now shares a shape with.
 - [ ] **M12a Ingredient tags on the inventory screen** — a small borderless colour dot per tag
       after the ingredient's name, a pinned filter-chip row under the search that doubles as
       the legend for those dots, and tag assignment behind the row's existing ⋮ (FR-INV-3).

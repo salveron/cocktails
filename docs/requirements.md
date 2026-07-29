@@ -46,7 +46,7 @@ are separate kinds, so one name may stand in both and mean two different things.
   amber or red — those signal stock and availability ([ADR 07](adr/07-tag-colour.md)).
 - **FR-VOC-4** Ingredients are tagged from their own vocabulary, separate from the recipe tags:
   a tag defined for ingredients is never offered on a recipe, nor the reverse. Both vocabularies
-  are managed on one screen, a section each.
+  are managed on one screen, a tab each.
 
 FR-VOC-2 left for FR-REC-8 in [ADR 06](adr/06-base-spirit-on-the-line.md); its number stays
 empty so no reference to it can mean two things.
