@@ -1,5 +1,5 @@
-/// The marks a fixed hue is drawn as — the pill, and a tag's own chip and dot
-/// (docs/ui-design.md#tag-and-stock-colours).
+/// The marks a fixed hue is drawn as — the pill, a tag's own chip and dot, and
+/// the name-with-dots row (docs/ui-design.md#tag-and-stock-colours).
 library;
 
 import 'package:cocktails/domain/domain.dart';
@@ -62,6 +62,32 @@ class TagChip extends StatelessWidget {
     tag.name,
     swatch: tagColors(tag.color, Theme.of(context).brightness),
     chosen: chosen,
+  );
+}
+
+/// A name with the tags it wears as dots after it, in vocabulary order so two
+/// entries wearing the same tags wear the same dots. The name gives way first:
+/// a clipped run of dots would misreport how many tags there are.
+class DottedName extends StatelessWidget {
+  const DottedName(
+    this.name, {
+    required this.vocabulary,
+    required this.worn,
+    super.key,
+  });
+
+  final String name;
+  final List<Tag> vocabulary;
+  final List<String> worn;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    children: [
+      Flexible(child: Text(name, overflow: TextOverflow.ellipsis)),
+      for (final tag in vocabulary)
+        if (worn.contains(tag.name))
+          Padding(padding: const EdgeInsets.only(left: 6), child: TagDot(tag)),
+    ],
   );
 }
 

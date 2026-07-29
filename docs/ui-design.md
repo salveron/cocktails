@@ -14,8 +14,9 @@ screen itself. Module boundaries and the interfaces `ui/` consumes are in
   bar's gear: the ratio, the display toggle, the tag vocabularies and data exchange are set
   once, not browsed.
 - **Destinations live in an `IndexedStack`**, so switching away and back keeps a screen's
-  scroll position and search text. Everything below a destination — recipe view, forms,
-  settings — is a `Navigator` push over the shell. Routing is `Navigator` 1.0: the pilot has
+  scroll position and search text. Everything below a destination — forms, settings — is a
+  `Navigator` push over the shell; the recipe view alone is not below the list but inside
+  it ([Recipes screen](#recipes-screen)). Routing is `Navigator` 1.0: the pilot has
   no deep links, no URL bar and no nested routers, so `go_router` would buy nothing.
 - **Theme** — one seed colour in `theme.dart` generates the light and dark schemes and the
   platform setting picks between them. No per-component theming.
@@ -38,9 +39,9 @@ separate concern and get their own provider.
 
 ## Vocabulary editing
 
-The inventory and the two tag tabs are one widget, `VocabularyList`: the pinned search, the
-A→Z sort, the three faces, the add button, and the query the "nothing matches" face hands to
-it. A screen supplies only what a row shows and what its tap does — the stock chip and one tap
+The inventory, the two tag tabs and the recipe list are one widget, `VocabularyList`: the
+pinned search, the A→Z sort, the three faces, the add button, and the query the "nothing
+matches" face hands to it. A screen supplies only what a row shows and what its tap does — the stock chip and one tap
 per bottle on the inventory, the tag itself and its edit dialog on a tag tab. Three lists that
 behave alike because they are the same list. A screen with something else to narrow by hands
 over a filter as one piece — the row drawn under the search, the test an entry must pass, and
@@ -74,7 +75,30 @@ Adding is a `FloatingActionButton` the list brings with it: the destinations sha
 `Scaffold`, which has no per-screen button slot, so `VocabularyList` carries a `Scaffold` of its
 own. The "nothing matches" face carries that same add prefilled with the query, so a search that
 found nothing is one tap from creating it. A successful add clears the search — otherwise the
-new entry could land outside the query and the screen would look as if nothing had happened.
+new entry could land outside the query and the screen would look as if nothing had happened. A
+screen with no way to add yet — the recipes until M14 — leaves the button out, and its "nothing
+matches" face keeps the reason but not the offer.
+
+## Recipes screen
+
+- **The view lives inside the list** — every recipe is a card that expands in place, so
+  looking one up is a single tap with nothing pushed and nothing to come back from (NFR-1).
+  Cards expand independently and collapse on the same tap: two recipes can be open side by
+  side, and no card ever collapses unbidden, so the scroll never jumps.
+- **The compact card is two lines.** The name, with a tag dot per recipe tag after it — the
+  inventory's idiom: fill colour, vocabulary order, name in the tooltip — and under it the
+  ingredient names in the recipe's own order, dot-separated and ellipsized on one line:
+  what goes in it at a glance, the amounts one tap deeper. Optional ingredients are listed
+  undistinguished.
+- **The full card replaces both summaries with the real thing** — the tags as their chips,
+  and the ingredient lines exactly as `formatRecipeLine` writes them ("1.5 part gin (base)"),
+  so the card reads like the file and each mark carries its own words. Then the notes as
+  typed, then the made-history line — "Made 4 times · last 12 Jul 2026". A section with
+  nothing to say is absent: no notes, no history, no empty heading.
+- **Read-only until M14** — no add button, no per-row ⋮, and the "nothing matches" face
+  offers no add. The compact line's trailing end is reserved for M16's availability chip;
+  M15 puts the "made it" action on the full card, M17's scaling sits by the lines, and
+  M18's filter row slots under the search, becoming the legend the dots are read against.
 
 ## Inventory screen
 

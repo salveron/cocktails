@@ -27,25 +27,52 @@ typedef ListFilter<T> = ({
 class VocabularyRow extends StatelessWidget {
   const VocabularyRow({
     required this.title,
+    this.subtitle,
     this.trailing,
+    this.body,
     this.onTap,
     super.key,
   });
 
   final Widget title;
+  final Widget? subtitle;
+
+  /// What the card carries below its lines — a recipe card expanded in place.
+  final Widget? body;
+
   final Widget? trailing;
 
   /// Whatever the row's tap means on this screen — stock on the inventory, the
-  /// edit dialog on a tag tab.
+  /// edit dialog on a tag tab, expansion on the recipe list.
   final VoidCallback? onTap;
 
   @override
-  Widget build(BuildContext context) => Card.filled(
-    margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-    color: Theme.of(context).colorScheme.surfaceContainer,
-    clipBehavior: Clip.antiAlias,
-    child: ListTile(title: title, trailing: trailing, onTap: onTap),
-  );
+  Widget build(BuildContext context) {
+    final body = this.body;
+    final tile = ListTile(
+      title: title,
+      subtitle: subtitle,
+      trailing: trailing,
+      onTap: onTap,
+    );
+    return Card.filled(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      color: Theme.of(context).colorScheme.surfaceContainer,
+      clipBehavior: Clip.antiAlias,
+      child: body == null
+          ? tile
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                tile,
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                  child: body,
+                ),
+              ],
+            ),
+    );
+  }
 }
 
 /// The per-row ⋮: whatever the row's own tap is not, labelled and in order. It
@@ -75,10 +102,10 @@ class VocabularyList<T> extends StatefulWidget {
     required this.entries,
     required this.nameOf,
     required this.rowOf,
-    required this.onAdd,
     required this.noun,
     required this.plural,
     required this.empty,
+    this.onAdd,
     this.filter,
     super.key,
   });
@@ -92,8 +119,10 @@ class VocabularyList<T> extends StatefulWidget {
   final ListFilter<T>? filter;
 
   /// Adds an entry, [query] prefilling its name where the search found nothing.
-  /// True when one was added — a cancelled add must not clear the search.
-  final Future<bool> Function(String query) onAdd;
+  /// True when one was added — a cancelled add must not clear the search. Null
+  /// for a screen with no way to add yet, which drops the button and the
+  /// "nothing matches" offer with it.
+  final Future<bool> Function(String query)? onAdd;
 
   /// What one entry is called, singular and plural: the search hint, the add
   /// tooltip and the "nothing matches" line are worded from these.
@@ -125,16 +154,21 @@ class _VocabularyListState<T> extends State<VocabularyList<T>> {
   /// The list brings its own [Scaffold]: the destinations share the shell's
   /// one, which has no room for a per-screen button.
   @override
-  Widget build(BuildContext context) => Scaffold(
-    body: widget.entries.isEmpty ? widget.empty : _searchable(),
-    floatingActionButton: FloatingActionButton(
-      onPressed: () => unawaited(_add('')),
-      tooltip: 'Add ${widget.noun}',
-      child: const Icon(Icons.add),
-    ),
-  );
+  Widget build(BuildContext context) {
+    final add = widget.onAdd;
+    return Scaffold(
+      body: widget.entries.isEmpty ? widget.empty : _searchable(add),
+      floatingActionButton: add == null
+          ? null
+          : FloatingActionButton(
+              onPressed: () => unawaited(_add(add, '')),
+              tooltip: 'Add ${widget.noun}',
+              child: const Icon(Icons.add),
+            ),
+    );
+  }
 
-  Widget _searchable() {
+  Widget _searchable(Future<bool> Function(String query)? add) {
     final filter = widget.filter;
     final matches =
         widget.entries
@@ -158,7 +192,7 @@ class _VocabularyListState<T> extends State<VocabularyList<T>> {
                   query: query,
                   narrowing: filter?.narrowing,
                   noun: widget.noun,
-                  onAdd: () => unawaited(_add(query)),
+                  onAdd: add == null ? null : () => unawaited(_add(add, query)),
                 )
               : ListView.builder(
                   // Room for the last row to clear the button above it.
@@ -176,8 +210,11 @@ class _VocabularyListState<T> extends State<VocabularyList<T>> {
 
   /// Clears the search once something was added, so the new entry cannot land
   /// outside the query and leave the screen looking as if nothing happened.
-  Future<void> _add(String query) async {
-    if (await widget.onAdd(query) && mounted) _search.clear();
+  Future<void> _add(
+    Future<bool> Function(String query) add,
+    String query,
+  ) async {
+    if (await add(query) && mounted) _search.clear();
   }
 }
 
@@ -192,7 +229,7 @@ class _NoMatch extends StatelessWidget {
   final String query;
   final String? narrowing;
   final String noun;
-  final VoidCallback onAdd;
+  final VoidCallback? onAdd;
 
   /// Whatever narrowed the list is named, and both when both did: an empty
   /// list that blames only half of it sends the reader hunting for the rest.
@@ -206,16 +243,19 @@ class _NoMatch extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) => EmptyState(
-    icon: Icons.search_off_outlined,
-    title: 'Nothing matches',
-    message: _reason,
-    action: query.isEmpty
-        ? null
-        : FilledButton.tonalIcon(
-            onPressed: onAdd,
-            icon: const Icon(Icons.add),
-            label: Text('Add "$query"'),
-          ),
-  );
+  Widget build(BuildContext context) {
+    final onAdd = this.onAdd;
+    return EmptyState(
+      icon: Icons.search_off_outlined,
+      title: 'Nothing matches',
+      message: _reason,
+      action: query.isEmpty || onAdd == null
+          ? null
+          : FilledButton.tonalIcon(
+              onPressed: onAdd,
+              icon: const Icon(Icons.add),
+              label: Text('Add "$query"'),
+            ),
+    );
+  }
 }

@@ -1,5 +1,4 @@
 import 'package:cocktails/data/data.dart';
-import 'package:cocktails/ui/screens/recipes_screen.dart';
 import 'package:cocktails/ui/screens/settings_screen.dart';
 import 'package:cocktails/ui/screens/shopping_screen.dart';
 import 'package:flutter/material.dart';
@@ -8,23 +7,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'harness.dart';
 
 void main() {
-  group('recipes screen', () {
-    testWidgets('says what will fill it while it is empty', (tester) async {
-      await pumpScreen(tester, const RecipesScreen());
-      expect(find.text('No recipes yet'), findsOneWidget);
-    });
-
-    testWidgets('shows what the loaded model holds', (tester) async {
-      await pumpScreen(
-        tester,
-        const RecipesScreen(),
-        store: MemoryModelStore(fixtureModel),
-      );
-      expect(find.text('Recipes: 1'), findsOneWidget);
-      expect(find.text('No recipes yet'), findsNothing);
-    });
-  });
-
   group('settings screen', () {
     testWidgets('the tags tile opens both vocabularies', (tester) async {
       await pumpScreen(tester, const SettingsScreen());

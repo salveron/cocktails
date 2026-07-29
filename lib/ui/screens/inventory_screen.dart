@@ -78,18 +78,10 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
     List<Tag> vocabulary,
     Ingredient ingredient,
   ) => VocabularyRow(
-    title: Row(
-      children: [
-        // The name gives way first: a clipped run of dots would misreport how
-        // many tags the bottle wears.
-        Flexible(child: Text(ingredient.name, overflow: TextOverflow.ellipsis)),
-        for (final tag in vocabulary)
-          if (ingredient.tags.contains(tag.name))
-            Padding(
-              padding: const EdgeInsets.only(left: 6),
-              child: TagDot(tag),
-            ),
-      ],
+    title: DottedName(
+      ingredient.name,
+      vocabulary: vocabulary,
+      worn: ingredient.tags,
     ),
     trailing: Row(
       mainAxisSize: MainAxisSize.min,

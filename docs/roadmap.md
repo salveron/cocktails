@@ -74,8 +74,10 @@ First usable slice; recipes reference both vocabularies, so this precedes Phase 
 
 ## Phase 2 — Recipes
 
-- [ ] **M13 Recipe list & view** — read-only: list with name search (FR-DIS-2); view with
-      lines, tags, notes, made-history.
+- [x] **M13 Recipe list & view** — read-only: the recipe list joins the shared searchable
+      list (FR-DIS-2), each recipe a card expanding in place from name + tag dots +
+      ingredient summary to the full view — chips, the lines as the file writes them,
+      notes, made-history. No pushed view: the view is the expanded card.
 - [ ] **M14 Recipe form** — create, edit, delete via the shared line parser and tag picker,
       per-line base and optional marks (FR-REC-1..5/8); recipe-form widget test.
 - [ ] **M15 Made it** — the action and its stamped display (FR-REC-6).
