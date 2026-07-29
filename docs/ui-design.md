@@ -45,9 +45,10 @@ apart:
   field, and keeps Save out of reach until there is none: the app refuses exactly what the codec
   refuses, reserved mark suffixes included. An untouched empty field is not a mistake yet, so it
   is left unmarked.
-- **The delete dialog** has two faces over `recipesUsing…`: a plain confirmation when nothing
-  references the entry, and a refusal naming the recipes that do (FR-VOC-1). The reason shows
-  where the delete was attempted — never a disabled control with no explanation.
+- **The delete dialog** has two faces over the model's `…Using…` queries: a plain confirmation
+  when nothing references the entry, and a refusal naming what does (FR-VOC-1) — recipes for an
+  ingredient or a recipe tag, ingredients for an ingredient tag. The reason shows where the
+  delete was attempted — never a disabled control with no explanation.
 
 Adding is a `FloatingActionButton` the screen owns: the destinations share the shell's
 `Scaffold`, which has no per-screen button slot, so each screen brings its own `Scaffold` for

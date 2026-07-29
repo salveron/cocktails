@@ -20,7 +20,8 @@ String encodeModel(Model model) {
         '  part_ml: ${formatNumber(settings.partMl)}\n'
         '  display: ${settings.display.token}',
     _section('ingredients', model.ingredients.map(_ingredientEntry)),
-    _section('tags', model.tags.map(_tagEntry)),
+    _section('ingredient_tags', model.ingredientTags.map(_tagEntry)),
+    _section('recipe_tags', model.recipeTags.map(_tagEntry)),
     _section('recipes', model.recipes.map(_recipeEntry)),
   ];
   return '${sections.join('\n\n')}\n';
@@ -40,23 +41,22 @@ String _section(String key, Iterable<List<String>> entries) {
   return buffer.toString();
 }
 
-/// The one-line `{name: …}` entry both vocabularies write, [field] carrying
-/// whatever else the entry has to say when it is not at its default.
-List<String> _vocabularyEntry(String name, String? field) => [
-  '{${['name: ${_scalar(name, inFlow: true)}', ?field].join(', ')}}',
+/// The one-line `{name: …}` entry every vocabulary writes, [fields] carrying
+/// whatever else the entry has to say once its defaults are left out.
+List<String> _vocabularyEntry(String name, List<String> fields) => [
+  '{${['name: ${_scalar(name, inFlow: true)}', ...fields].join(', ')}}',
 ];
 
-List<String> _ingredientEntry(Ingredient ingredient) => _vocabularyEntry(
-  ingredient.name,
-  ingredient.stock == StockLevel.out
-      ? null
-      : 'stock: ${ingredient.stock.token}',
-);
+List<String> _ingredientEntry(Ingredient ingredient) =>
+    _vocabularyEntry(ingredient.name, [
+      if (ingredient.stock != StockLevel.out)
+        'stock: ${ingredient.stock.token}',
+      if (ingredient.tags.isNotEmpty) 'tags: ${_flowList(ingredient.tags)}',
+    ]);
 
-List<String> _tagEntry(Tag tag) => _vocabularyEntry(
-  tag.name,
-  tag.color == TagColor.neutral ? null : 'color: ${tag.color.token}',
-);
+/// A tag's colour is never omitted — there is no default to omit it against.
+List<String> _tagEntry(Tag tag) =>
+    _vocabularyEntry(tag.name, ['color: ${tag.color.token}']);
 
 List<String> _recipeEntry(Recipe recipe) {
   final made = recipe.made;

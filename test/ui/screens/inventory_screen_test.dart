@@ -82,7 +82,7 @@ void main() {
         const InventoryScreen(),
         store: MemoryModelStore(
           fixtureModel.withIngredient(
-            const Ingredient('absinthe', stock: StockLevel.low),
+            Ingredient('absinthe', stock: StockLevel.low),
           ),
         ),
       );
@@ -144,7 +144,7 @@ void main() {
         tester,
         const InventoryScreen(),
         store: MemoryModelStore(
-          Model(ingredients: const [Ingredient('Green Chartreuse')]),
+          Model(ingredients: [Ingredient('Green Chartreuse')]),
         ),
       );
       await tester.enterText(find.byType(TextField), 'chartreuse');
@@ -266,7 +266,7 @@ void main() {
       tester,
     ) async {
       final store = MemoryModelStore(
-        fixtureModel.withIngredient(const Ingredient('absinthe')),
+        fixtureModel.withIngredient(Ingredient('absinthe')),
       );
       await pumpScreen(tester, const InventoryScreen(), store: store);
       await chooseOnRow(tester, 'absinthe', 'Delete');

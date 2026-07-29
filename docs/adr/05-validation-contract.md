@@ -14,7 +14,8 @@ M5 created rule set (FR-DAT-4) with six known consumers (M6, M11/M12, M14, plus 
 - `ValidationIssueKind` covers codec findings (`unsupportedFormat`, `malformedLine`, `malformedValue`); data layer reports through this type only.
 - Four entry points: `validateModel` (whole file), `validateRecipe`, `validateIngredient`, `validateTag` (one entry). Single-entry calls take `otherNames` (every other entry's name) so rename never collides. Paths relative to entry; empty for its name.
 - One implementation per rule regardless of entry point. Duplicate detection shared with `Model` constructor.
-- Issues in data-format order: settings, ingredients, tags, recipes; within list by entry index.
+- Issues in data-format order: settings, ingredients, the tag vocabularies, recipes; within a
+  list by entry index.
 
 Signatures in [components.md](../components.md#validation).
 

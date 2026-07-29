@@ -63,13 +63,26 @@ final class ModelController extends AsyncNotifier<Model> {
   Future<void> setStock(String ingredient, StockLevel stock) =>
       _edit((model) => model.withStock(ingredient, stock));
 
-  Future<void> upsertTag(Tag tag) => _edit((model) => model.withTag(tag));
+  Future<void> setIngredientTags(String ingredient, List<String> tags) =>
+      _edit((model) => model.withIngredientTags(ingredient, tags));
 
-  Future<void> renameTag(String from, String to) =>
-      _edit((model) => model.withTagRenamed(from, to));
+  Future<void> upsertRecipeTag(Tag tag) =>
+      _edit((model) => model.withRecipeTag(tag));
 
-  Future<void> removeTag(String name) =>
-      _edit((model) => model.withoutTag(name));
+  Future<void> renameRecipeTag(String from, String to) =>
+      _edit((model) => model.withRecipeTagRenamed(from, to));
+
+  Future<void> removeRecipeTag(String name) =>
+      _edit((model) => model.withoutRecipeTag(name));
+
+  Future<void> upsertIngredientTag(Tag tag) =>
+      _edit((model) => model.withIngredientTag(tag));
+
+  Future<void> renameIngredientTag(String from, String to) =>
+      _edit((model) => model.withIngredientTagRenamed(from, to));
+
+  Future<void> removeIngredientTag(String name) =>
+      _edit((model) => model.withoutIngredientTag(name));
 
   Future<void> upsertRecipe(Recipe recipe) =>
       _edit((model) => model.withRecipe(recipe));

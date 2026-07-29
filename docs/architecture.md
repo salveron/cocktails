@@ -23,9 +23,9 @@ byte-identical to the export format ([ADR 02](adr/02-persistence-and-export-form
 
 - Export shares a copy of the store file; import validates a candidate file, auto-exports
   the current state (FR-DAT-3), then atomically replaces the store.
-- Names are identity throughout: recipes reference ingredients and tags by name, and a
-  vocabulary rename (FR-VOC-1) is one model mutation that rewrites every reference before
-  the single save.
+- Names are identity throughout: recipes reference ingredients and recipe tags by name and
+  ingredients reference ingredient tags the same way, so a vocabulary rename (FR-VOC-1) is one
+  model mutation that rewrites every reference before the single save.
 - Writes are atomic (temp file, then rename) and rotate a small set of backups.
 - Single-writer by design; future guest access is read-only publishing, never a second writer.
 
@@ -67,13 +67,18 @@ settings:
 
 ingredients:
   - {name: bourbon, stock: in}
-  - {name: lemon juice, stock: low}
-  - {name: rich demerara syrup}        # stock omitted = out
-  - {name: egg white, stock: in}
+  - {name: lemon juice, stock: low, tags: [citrus]}
+  - {name: rich demerara syrup, tags: [syrup, homemade]}   # stock omitted = out
+  - {name: egg white, stock: in}                           # untagged
 
-tags:
+ingredient_tags:                       # what a bottle can be labelled
+  - {name: citrus, color: sand}
+  - {name: homemade, color: slate}
+  - {name: syrup, color: indigo}
+
+recipe_tags:                           # a separate vocabulary (ADR 07)
   - {name: sour, color: rose}
-  - {name: classic}                    # color omitted = neutral
+  - {name: classic, color: teal}
 
 recipes:
   - name: Whiskey Sour
@@ -90,11 +95,14 @@ recipes:
 Rules:
 
 - `format` is the schema version; imports of unsupported versions are rejected (FR-DAT-4).
-- Ingredient entries: `name` required; `stock` is `in` | `low` | `out` (default `out`).
-- Tag entries: `name` required; `color` is one of `teal` | `indigo` | `plum` | `rose` |
-  `sand` | `slate` | `neutral` (default `neutral`), the closed palette of
-  [ADR 07](adr/07-tag-colour.md). A recipe's `tags` list holds names only — the colour lives
-  with the tag.
+- Ingredient entries: `name` required; `stock` is `in` | `low` | `out` (default `out`); `tags`
+  is a list of `ingredient_tags` names, absent when there are none.
+- Tag entries: `name` and `color` both required — `color` is one of `teal` | `indigo` | `plum` |
+  `rose` | `sand` | `slate`, the palette of [ADR 07](adr/07-tag-colour.md). The two tag
+  sections are separate vocabularies of the same shape, each unique within itself; one name may
+  stand in both.
+- A `tags` list — on a recipe or on an ingredient — holds names only, resolved against that
+  side's vocabulary. The colour lives with the tag, once.
 - An ingredient line is `<amount> <unit> <ingredient name>`, optionally suffixed with one
   mark — ` (base)` or ` (optional)`, never both ([ADR 06](adr/06-base-spirit-on-the-line.md)).
   Amount is a decimal number or a range `a-b`; unit is one of
@@ -102,11 +110,11 @@ Rules:
   reserved — ingredient names cannot end with one.
 - `made` holds the made-history: `last` is an ISO date (`YYYY-MM-DD`, nothing looser),
   `times` a count. Absent = never made.
-- Every recipe line and tag reference must resolve to the vocabularies; names are unique
+- Every recipe line and tag reference must resolve to the matching vocabulary; names are unique
   within their kind (FR-DAT-4 validation).
 - Value rules (FR-DAT-4): names are non-empty, single-line, without surrounding
   whitespace; amounts are positive with range ends in order; `part_ml` is positive;
-  `times` is at least 1; a recipe's tag list has no repeats.
+  `times` is at least 1; a `tags` list has no repeats.
 - Unknown keys are structural errors (FR-DAT-4): on an import that replaces the whole
   database, a misspelled key must be reported, not silently drop its content.
 - The app writes a canonical form: fixed key order, fixed indentation, no comments. Comments

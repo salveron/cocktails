@@ -14,11 +14,15 @@ void main() {
     ],
   );
   final stored = Model(
-    ingredients: const [
+    ingredients: [
       Ingredient('gin', stock: StockLevel.in_),
-      Ingredient('campari'),
+      Ingredient('campari', tags: const ['italian']),
     ],
-    tags: const [Tag('classic')],
+    ingredientTags: const [
+      Tag('italian', color: TagColor.teal),
+      Tag('juniper', color: TagColor.sand),
+    ],
+    recipeTags: const [Tag('classic', color: TagColor.rose)],
     recipes: [negroni],
   );
   // A date the real clock cannot return, so the stamp proves the injection.
@@ -117,11 +121,11 @@ void main() {
       final container = await started();
       await controllerOf(
         container,
-      ).upsertIngredient(const Ingredient('sweet vermouth'));
+      ).upsertIngredient(Ingredient('sweet vermouth'));
       expect(modelOf(container).ingredientNamed('sweet vermouth'), isNotNull);
       await controllerOf(
         container,
-      ).upsertIngredient(const Ingredient('campari', stock: StockLevel.in_));
+      ).upsertIngredient(Ingredient('campari', stock: StockLevel.in_));
       expect(modelOf(container).ingredients, hasLength(3));
       expect(
         modelOf(container).ingredientNamed('campari')?.stock,
@@ -153,27 +157,60 @@ void main() {
       await controllerOf(container).setStock('gin', StockLevel.low);
       expect(
         modelOf(container).ingredientNamed('gin'),
-        const Ingredient('gin', stock: StockLevel.low),
+        Ingredient('gin', stock: StockLevel.low),
       );
     });
 
-    test('upsertTag adds an entry the vocabulary lacked', () async {
+    test('upsertRecipeTag adds an entry the vocabulary lacked', () async {
       final container = await started();
-      await controllerOf(container).upsertTag(const Tag('bitter'));
-      expect(modelOf(container).hasTag('bitter'), isTrue);
+      await controllerOf(
+        container,
+      ).upsertRecipeTag(const Tag('bitter', color: TagColor.plum));
+      expect(modelOf(container).hasRecipeTag('bitter'), isTrue);
     });
 
-    test('renameTag propagates into the recipes', () async {
+    test('renameRecipeTag propagates into the recipes', () async {
       final container = await started();
-      await controllerOf(container).renameTag('classic', 'classics');
-      expect(modelOf(container).hasTag('classics'), isTrue);
+      await controllerOf(container).renameRecipeTag('classic', 'classics');
+      expect(modelOf(container).hasRecipeTag('classics'), isTrue);
       expect(modelOf(container).recipeNamed('Negroni')?.tags, ['classics']);
     });
 
-    test('removeTag drops the entry', () async {
+    test('removeRecipeTag drops the entry', () async {
       final container = await started();
-      await controllerOf(container).removeTag('classic');
-      expect(modelOf(container).hasTag('classic'), isFalse);
+      await controllerOf(container).removeRecipeTag('classic');
+      expect(modelOf(container).hasRecipeTag('classic'), isFalse);
+    });
+
+    test('upsertIngredientTag lands in the other vocabulary', () async {
+      final container = await started();
+      await controllerOf(
+        container,
+      ).upsertIngredientTag(const Tag('bitter', color: TagColor.plum));
+      expect(modelOf(container).hasIngredientTag('bitter'), isTrue);
+      expect(modelOf(container).hasRecipeTag('bitter'), isFalse);
+    });
+
+    test('renameIngredientTag propagates into the ingredients', () async {
+      final container = await started();
+      await controllerOf(container).renameIngredientTag('italian', 'italiano');
+      expect(modelOf(container).hasIngredientTag('italiano'), isTrue);
+      expect(modelOf(container).ingredientNamed('campari')?.tags, ['italiano']);
+    });
+
+    test('removeIngredientTag drops the entry', () async {
+      final container = await started();
+      await controllerOf(container).removeIngredientTag('juniper');
+      expect(modelOf(container).hasIngredientTag('juniper'), isFalse);
+    });
+
+    test('setIngredientTags replaces what the ingredient carried', () async {
+      final container = await started();
+      final controller = controllerOf(container);
+      await controller.setIngredientTags('gin', const ['juniper']);
+      expect(modelOf(container).ingredientNamed('gin')?.tags, ['juniper']);
+      await controller.setIngredientTags('gin', const []);
+      expect(modelOf(container).ingredientNamed('gin')?.tags, isEmpty);
     });
 
     test('upsertRecipe adds and replaces by name', () async {
@@ -224,7 +261,9 @@ void main() {
     test('every edit is written, in the order it was made', () async {
       final container = await started();
       final controller = controllerOf(container);
-      await controller.upsertTag(const Tag('bitter'));
+      await controller.upsertRecipeTag(
+        const Tag('bitter', color: TagColor.plum),
+      );
       await controller.setStock('campari', StockLevel.low);
       await controller.markMade('Negroni');
       expect(store.saveCount, 3);
@@ -235,7 +274,7 @@ void main() {
       final container = await started();
       final controller = controllerOf(container);
       await controller.setStock('rye', StockLevel.in_);
-      await controller.renameTag('sour', 'sours');
+      await controller.renameRecipeTag('sour', 'sours');
       await controller.markMade('Sazerac');
       expect(store.saveCount, 0);
       expect(modelOf(container), same(stored));

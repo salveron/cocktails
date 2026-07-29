@@ -22,6 +22,14 @@ extension ModelEdits on Model {
     return entry == null ? this : withIngredient(entry.copyWith(stock: stock));
   }
 
+  /// Sets which ingredient-tag names [ingredient] carries, replacing whatever
+  /// it carried before (FR-VOC-4) — the vocabulary itself is edited through
+  /// [withIngredientTag].
+  Model withIngredientTags(String ingredient, List<String> tags) {
+    final entry = ingredientNamed(ingredient);
+    return entry == null ? this : withIngredient(entry.copyWith(tags: tags));
+  }
+
   /// Renames the entry and rewrites every recipe line that referenced it —
   /// a name is the only reference there is (FR-VOC-1).
   Model withIngredientRenamed(String from, String to) {
@@ -37,20 +45,44 @@ extension ModelEdits on Model {
     );
   }
 
-  Model withTag(Tag tag) => copyWith(tags: _upserted(tags, tag, (t) => t.name));
+  Model withRecipeTag(Tag tag) =>
+      copyWith(recipeTags: _upserted(recipeTags, tag, _tagName));
 
-  Model withoutTag(String name) =>
-      copyWith(tags: _without(tags, name, (t) => t.name));
+  Model withoutRecipeTag(String name) =>
+      copyWith(recipeTags: _without(recipeTags, name, _tagName));
 
   /// Renames the entry and rewrites every recipe that carried the tag.
-  Model withTagRenamed(String from, String to) {
-    if (!hasTag(from)) return this;
+  Model withRecipeTagRenamed(String from, String to) {
+    if (!hasRecipeTag(from)) return this;
     return copyWith(
-      tags: [
-        for (final tag in tags) tag.name == from ? tag.copyWith(name: to) : tag,
-      ],
+      recipeTags: _renamedTag(recipeTags, from, to),
       recipes: [
-        for (final recipe in recipes) _withTagsRenamed(recipe, from, to),
+        for (final recipe in recipes)
+          switch (_tagsRenamed(recipe.tags, from, to)) {
+            null => recipe,
+            final tags => recipe.copyWith(tags: tags),
+          },
+      ],
+    );
+  }
+
+  Model withIngredientTag(Tag tag) =>
+      copyWith(ingredientTags: _upserted(ingredientTags, tag, _tagName));
+
+  Model withoutIngredientTag(String name) =>
+      copyWith(ingredientTags: _without(ingredientTags, name, _tagName));
+
+  /// Renames the entry and rewrites every ingredient that carried the tag.
+  Model withIngredientTagRenamed(String from, String to) {
+    if (!hasIngredientTag(from)) return this;
+    return copyWith(
+      ingredientTags: _renamedTag(ingredientTags, from, to),
+      ingredients: [
+        for (final ingredient in ingredients)
+          switch (_tagsRenamed(ingredient.tags, from, to)) {
+            null => ingredient,
+            final tags => ingredient.copyWith(tags: tags),
+          },
       ],
     );
   }
@@ -83,12 +115,28 @@ extension ModelEdits on Model {
       if (recipe.lines.any((line) => line.ingredient == name)) recipe.name,
   ];
 
-  /// [recipesUsingIngredient] for tags.
+  /// [recipesUsingIngredient] for recipe tags.
   List<String> recipesUsingTag(String name) => [
     for (final recipe in recipes)
       if (recipe.tags.contains(name)) recipe.name,
   ];
+
+  /// [recipesUsingIngredient] for ingredient tags. A tag is blocked by
+  /// references from its own vocabulary's side only.
+  List<String> ingredientsUsingTag(String name) => [
+    for (final ingredient in ingredients)
+      if (ingredient.tags.contains(name)) ingredient.name,
+  ];
 }
+
+String _tagName(Tag tag) => tag.name;
+
+/// The vocabulary with the entry named [from] renamed to [to] — through
+/// [Tag.copyWith], so the colour comes along; building a fresh [Tag] here
+/// would drop it.
+List<Tag> _renamedTag(List<Tag> tags, String from, String to) => [
+  for (final tag in tags) tag.name == from ? tag.copyWith(name: to) : tag,
+];
 
 /// [item] in place of the entry sharing its name, appended when there is none.
 List<T> _upserted<T>(List<T> items, T item, String Function(T) nameOf) {
@@ -114,9 +162,10 @@ Recipe _withLinesRenamed(Recipe recipe, String from, String to) =>
       )
     : recipe;
 
-Recipe _withTagsRenamed(Recipe recipe, String from, String to) =>
-    recipe.tags.contains(from)
-    ? recipe.copyWith(
-        tags: [for (final tag in recipe.tags) tag == from ? to : tag],
-      )
-    : recipe;
+/// [tags] with [from] rewritten to [to], or null when it held no [from] — the
+/// caller then keeps the entry it has rather than rebuilding it. One home for
+/// rewriting tag references, whichever vocabulary is being renamed.
+List<String>? _tagsRenamed(List<String> tags, String from, String to) =>
+    tags.contains(from)
+    ? [for (final tag in tags) tag == from ? to : tag]
+    : null;

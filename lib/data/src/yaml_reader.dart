@@ -10,14 +10,16 @@ import 'package:yaml/yaml.dart';
 final class ModelParts {
   final Settings settings;
   final List<Ingredient> ingredients;
-  final List<Tag> tags;
+  final List<Tag> ingredientTags;
+  final List<Tag> recipeTags;
   final List<Recipe> recipes;
   final List<ValidationIssue> issues;
 
   ModelParts({
     required this.settings,
     required this.ingredients,
-    required this.tags,
+    required this.ingredientTags,
+    required this.recipeTags,
     required this.recipes,
     required this.issues,
   });
@@ -28,12 +30,20 @@ typedef _EntryReader<T> =
 
 ModelParts readModelParts(YamlMap root) {
   final issues = <ValidationIssue>[];
-  const sections = {'format', 'settings', 'ingredients', 'tags', 'recipes'};
+  const sections = {
+    'format',
+    'settings',
+    'ingredients',
+    'ingredient_tags',
+    'recipe_tags',
+    'recipes',
+  };
   _checkKeys(root, sections, const [], issues);
   return ModelParts(
     settings: _readSettings(root.nodes['settings'], issues),
     ingredients: _readEntries(root, 'ingredients', issues, _readIngredient),
-    tags: _readEntries(root, 'tags', issues, _readTag),
+    ingredientTags: _readEntries(root, 'ingredient_tags', issues, _readTag),
+    recipeTags: _readEntries(root, 'recipe_tags', issues, _readTag),
     recipes: _readEntries(root, 'recipes', issues, _readRecipe),
     issues: issues,
   );
@@ -177,20 +187,25 @@ Ingredient? _readIngredient(
     _report(issues, path, 'Ingredient entry must be a mapping', node);
     return null;
   }
-  _checkKeys(node, const {'name', 'stock'}, path, issues);
+  _checkKeys(node, const {'name', 'stock', 'tags'}, path, issues);
   final name = _readName(node, path, issues);
-  final stock = _readToken(
-    node,
-    'stock',
-    path,
-    issues,
-    fromToken: StockLevel.fromToken,
-    tokens: [for (final value in StockLevel.values) value.token],
-    fallback: StockLevel.out,
-  );
-  return name == null ? null : Ingredient(name, stock: stock);
+  final stock =
+      _readToken(
+        node.nodes['stock'],
+        'stock',
+        path,
+        issues,
+        fromToken: StockLevel.fromToken,
+        tokens: [for (final value in StockLevel.values) value.token],
+      ) ??
+      StockLevel.out;
+  final tags = _readTagNames(node, path, issues);
+  return name == null ? null : Ingredient(name, stock: stock, tags: tags);
 }
 
+/// Unlike `stock`, `color` has no default to fall back on: every tag carries
+/// one (docs/adr/07-tag-colour.md), so an entry without it is as incomplete as
+/// one without a name.
 Tag? _readTag(YamlNode node, List<Object> path, List<ValidationIssue> issues) {
   if (node is! YamlMap) {
     _report(issues, path, 'Tag entry must be a mapping', node);
@@ -198,33 +213,32 @@ Tag? _readTag(YamlNode node, List<Object> path, List<ValidationIssue> issues) {
   }
   _checkKeys(node, const {'name', 'color'}, path, issues);
   final name = _readName(node, path, issues);
+  final colorNode = node.nodes['color'];
+  if (colorNode == null) _reportMissing(issues, path, 'color');
   final color = _readToken(
-    node,
+    colorNode,
     'color',
     path,
     issues,
     fromToken: TagColor.fromToken,
     tokens: [for (final value in TagColor.values) value.token],
-    fallback: TagColor.neutral,
   );
-  return name == null ? null : Tag(name, color: color);
+  return name == null || color == null ? null : Tag(name, color: color);
 }
 
-/// An optional enum-token key, the shape both vocabulary entries have. An
-/// absent key and an unreadable one both answer [fallback], so one bad token
-/// costs its own value and nothing else in the entry. [tokens] only spells the
-/// legal set out in the message — the lookup stays the enum's own.
-T _readToken<T extends Enum>(
-  YamlMap node,
+/// An enum-token key's value, or null when it is absent or unreadable — one
+/// bad token costs its own value and nothing else in the entry. [tokens] only
+/// spells the legal set out in the message, so a palette that grows says so
+/// without anyone editing the wording; the lookup stays the enum's own.
+T? _readToken<T extends Enum>(
+  YamlNode? valueNode,
   String key,
   List<Object> path,
   List<ValidationIssue> issues, {
   required T? Function(String) fromToken,
   required List<String> tokens,
-  required T fallback,
 }) {
-  final valueNode = node.nodes[key];
-  if (valueNode == null) return fallback;
+  if (valueNode == null) return null;
   final value = valueNode.value;
   final parsed = value is String ? fromToken(value) : null;
   if (parsed == null) {
@@ -234,9 +248,23 @@ T _readToken<T extends Enum>(
       '$key must be one of ${tokens.join(', ')}',
       valueNode,
     );
-    return fallback;
   }
   return parsed;
+}
+
+/// The `tags:` list an entry carries — names only, since the colour lives with
+/// the tag. Shared by the two kinds of entry that reference a vocabulary.
+List<String> _readTagNames(
+  YamlMap node,
+  List<Object> path,
+  List<ValidationIssue> issues,
+) {
+  final tags = <String>[];
+  _forEachEntry(node, 'tags', path, issues, (entryNode, entryPath) {
+    final tag = _stringValue(entryNode, entryPath, issues, 'Tag');
+    if (tag != null) tags.add(tag);
+  });
+  return tags;
 }
 
 Recipe? _readRecipe(
@@ -251,11 +279,7 @@ Recipe? _readRecipe(
   const keys = {'name', 'tags', 'lines', 'notes', 'made'};
   _checkKeys(node, keys, path, issues);
   final name = _readName(node, path, issues);
-  final tags = <String>[];
-  _forEachEntry(node, 'tags', path, issues, (entryNode, entryPath) {
-    final tag = _stringValue(entryNode, entryPath, issues, 'Tag');
-    if (tag != null) tags.add(tag);
-  });
+  final tags = _readTagNames(node, path, issues);
   final lines = <RecipeLine>[];
   _forEachEntry(node, 'lines', path, issues, (entryNode, entryPath) {
     final text = _stringValue(entryNode, entryPath, issues, 'Recipe line');
@@ -321,9 +345,7 @@ MadeHistory? _readMade(
   DateTime? last;
   final lastNode = node.nodes['last'];
   if (lastNode == null) {
-    issues.add(
-      ValidationIssue(path, ValidationIssueKind.malformedValue, 'Missing last'),
-    );
+    _reportMissing(issues, path, 'last');
   } else {
     final text = _stringValue(lastNode, [...path, 'last'], issues, 'last');
     if (text != null) {
@@ -341,13 +363,7 @@ MadeHistory? _readMade(
   int? times;
   final timesNode = node.nodes['times'];
   if (timesNode == null) {
-    issues.add(
-      ValidationIssue(
-        path,
-        ValidationIssueKind.malformedValue,
-        'Missing times',
-      ),
-    );
+    _reportMissing(issues, path, 'times');
   } else {
     final value = timesNode.value;
     if (value is int) {
@@ -372,13 +388,21 @@ String? _readName(
 ) {
   final node = map.nodes['name'];
   if (node == null) {
-    issues.add(
-      ValidationIssue(path, ValidationIssueKind.malformedValue, 'Missing name'),
-    );
+    _reportMissing(issues, path, 'name');
     return null;
   }
   return _stringValue(node, [...path, 'name'], issues, 'name');
 }
+
+/// A required key the entry did not carry. The path stays the entry's own —
+/// there is no node to point at inside it.
+void _reportMissing(
+  List<ValidationIssue> issues,
+  List<Object> path,
+  String key,
+) => issues.add(
+  ValidationIssue(path, ValidationIssueKind.malformedValue, 'Missing $key'),
+);
 
 String? _stringValue(
   YamlNode node,

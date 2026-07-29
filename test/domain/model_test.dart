@@ -88,8 +88,14 @@ void main() {
     test('tokens match the data format', () {
       expect(
         [for (final color in TagColor.values) color.token],
-        ['teal', 'indigo', 'plum', 'rose', 'sand', 'slate', 'neutral'],
+        ['teal', 'indigo', 'plum', 'rose', 'sand', 'slate'],
       );
+    });
+
+    test('the palette spends no colour stock or availability needs', () {
+      expect([
+        for (final color in TagColor.values) color.token,
+      ], isNot(contains(anyOf('green', 'amber', 'red'))));
     });
 
     test('fromToken round-trips every member', () {
@@ -135,11 +141,13 @@ void main() {
     Ingredient build({
       String name = 'gin',
       StockLevel stock = StockLevel.out,
-    }) => Ingredient(name, stock: stock);
+      List<String> tags = const [],
+    }) => Ingredient(name, stock: stock, tags: tags);
 
-    test('defaults to out of stock', () {
-      const ingredient = Ingredient('bourbon');
+    test('defaults to out of stock and untagged', () {
+      final ingredient = Ingredient('bourbon');
       expect(ingredient.stock, StockLevel.out);
+      expect(ingredient.tags, isEmpty);
     });
 
     test('equality and hashCode isolate each field', () {
@@ -147,29 +155,42 @@ void main() {
       expect(build().hashCode, build().hashCode);
       expect(build(), isNot(build(name: 'rum')));
       expect(build(), isNot(build(stock: StockLevel.low)));
+      expect(build(), isNot(build(tags: const ['juniper'])));
     });
 
     test('copyWith replaces one field and carries the rest', () {
-      const ingredient = Ingredient('gin', stock: StockLevel.low);
+      final ingredient = Ingredient(
+        'gin',
+        stock: StockLevel.low,
+        tags: const ['juniper'],
+      );
       expect(ingredient.copyWith(), ingredient);
       expect(
         ingredient.copyWith(name: 'rum'),
-        const Ingredient('rum', stock: StockLevel.low),
+        Ingredient('rum', stock: StockLevel.low, tags: const ['juniper']),
       );
       expect(
         ingredient.copyWith(stock: StockLevel.in_),
-        const Ingredient('gin', stock: StockLevel.in_),
+        Ingredient('gin', stock: StockLevel.in_, tags: const ['juniper']),
       );
+      expect(
+        ingredient.copyWith(tags: const []),
+        Ingredient('gin', stock: StockLevel.low),
+      );
+    });
+
+    test('the tag list cannot be changed from outside', () {
+      final tags = ['juniper'];
+      final ingredient = Ingredient('gin', tags: tags);
+      tags.add('botanical');
+      expect(ingredient.tags, ['juniper']);
+      expect(() => ingredient.tags.add('botanical'), throwsUnsupportedError);
     });
   });
 
   group('Tag', () {
-    Tag build({String name = 'sour', TagColor color = TagColor.neutral}) =>
+    Tag build({String name = 'sour', TagColor color = TagColor.teal}) =>
         Tag(name, color: color);
-
-    test('defaults to neutral', () {
-      expect(const Tag('sour').color, TagColor.neutral);
-    });
 
     test('equality and hashCode isolate each field', () {
       expect(build(), build());
@@ -423,13 +444,19 @@ void main() {
   group('Model', () {
     Model build({
       Settings settings = const Settings(partMl: 25),
-      List<Ingredient> ingredients = const [Ingredient('bourbon')],
-      List<Tag> tags = const [Tag('sour')],
+      List<Ingredient>? ingredients,
+      List<Tag> ingredientTags = const [Tag('oaked', color: TagColor.sand)],
+      List<Tag> recipeTags = const [Tag('sour', color: TagColor.rose)],
       List<Recipe>? recipes,
     }) => Model(
       settings: settings,
-      ingredients: ingredients,
-      tags: tags,
+      ingredients:
+          ingredients ??
+          [
+            Ingredient('bourbon', tags: const ['oaked']),
+          ],
+      ingredientTags: ingredientTags,
+      recipeTags: recipeTags,
       recipes:
           recipes ??
           [
@@ -440,16 +467,15 @@ void main() {
     test('starts empty with default settings', () {
       final model = Model();
       expect(model.ingredients, isEmpty);
-      expect(model.tags, isEmpty);
+      expect(model.ingredientTags, isEmpty);
+      expect(model.recipeTags, isEmpty);
       expect(model.recipes, isEmpty);
       expect(model.settings, const Settings());
     });
 
     test('rejects duplicate names within each kind', () {
       expect(
-        () => Model(
-          ingredients: [const Ingredient('gin'), const Ingredient('gin')],
-        ),
+        () => Model(ingredients: [Ingredient('gin'), Ingredient('gin')]),
         throwsA(
           isA<ArgumentError>().having(
             (e) => e.message,
@@ -459,8 +485,34 @@ void main() {
         ),
       );
       expect(
-        () => Model(tags: [const Tag('sour'), const Tag('sour')]),
-        throwsArgumentError,
+        () => Model(
+          recipeTags: const [
+            Tag('sour', color: TagColor.rose),
+            Tag('sour', color: TagColor.teal),
+          ],
+        ),
+        throwsA(
+          isA<ArgumentError>().having(
+            (e) => e.message,
+            'message',
+            contains('recipe tag'),
+          ),
+        ),
+      );
+      expect(
+        () => Model(
+          ingredientTags: const [
+            Tag('citrus', color: TagColor.sand),
+            Tag('citrus', color: TagColor.teal),
+          ],
+        ),
+        throwsA(
+          isA<ArgumentError>().having(
+            (e) => e.message,
+            'message',
+            contains('ingredient tag'),
+          ),
+        ),
       );
       expect(
         () => Model(recipes: [Recipe('Negroni'), Recipe('Negroni')]),
@@ -468,22 +520,30 @@ void main() {
       );
     });
 
-    test('allows the same name across kinds', () {
+    test('allows the same name across kinds, both vocabularies included', () {
       final model = Model(
-        ingredients: [const Ingredient('sour')],
-        tags: [const Tag('sour')],
+        ingredients: [Ingredient('sour')],
+        ingredientTags: const [Tag('sour', color: TagColor.sand)],
+        recipeTags: const [Tag('sour', color: TagColor.rose)],
         recipes: [Recipe('sour')],
       );
       expect(model.ingredients.single.name, 'sour');
+      expect(model.ingredientTags.single.color, TagColor.sand);
+      expect(model.recipeTags.single.color, TagColor.rose);
     });
 
     test('collections are unmodifiable', () {
       final model = Model();
       expect(
-        () => model.ingredients.add(const Ingredient('gin')),
+        () => model.ingredients.add(Ingredient('gin')),
         throwsUnsupportedError,
       );
-      expect(() => model.tags.add(const Tag('sour')), throwsUnsupportedError);
+      for (final tags in [model.ingredientTags, model.recipeTags]) {
+        expect(
+          () => tags.add(const Tag('sour', color: TagColor.rose)),
+          throwsUnsupportedError,
+        );
+      }
       expect(
         () => model.recipes.add(Recipe('Negroni')),
         throwsUnsupportedError,
@@ -494,26 +554,38 @@ void main() {
       expect(build(), build());
       expect(build().hashCode, build().hashCode);
       expect(build(), isNot(build(settings: const Settings())));
-      expect(build(), isNot(build(ingredients: const [Ingredient('gin')])));
-      expect(build(), isNot(build(tags: const [Tag('classic')])));
+      expect(build(), isNot(build(ingredients: [Ingredient('gin')])));
+      expect(
+        build(),
+        isNot(
+          build(ingredientTags: const [Tag('peaty', color: TagColor.sand)]),
+        ),
+      );
+      expect(
+        build(),
+        isNot(build(recipeTags: const [Tag('classic', color: TagColor.rose)])),
+      );
       expect(build(), isNot(build(recipes: [Recipe('Negroni')])));
     });
 
     test('copyWith replaces one field and carries the rest', () {
       final model = build();
+      const classic = [Tag('classic', color: TagColor.rose)];
+      const peaty = [Tag('peaty', color: TagColor.sand)];
       expect(model.copyWith(), model);
       expect(
         model.copyWith(settings: const Settings()),
         build(settings: const Settings()),
       );
       expect(
-        model.copyWith(ingredients: const [Ingredient('gin')]),
-        build(ingredients: const [Ingredient('gin')]),
+        model.copyWith(ingredients: [Ingredient('gin')]),
+        build(ingredients: [Ingredient('gin')]),
       );
       expect(
-        model.copyWith(tags: const [Tag('classic')]),
-        build(tags: const [Tag('classic')]),
+        model.copyWith(ingredientTags: peaty),
+        build(ingredientTags: peaty),
       );
+      expect(model.copyWith(recipeTags: classic), build(recipeTags: classic));
       expect(
         model.copyWith(recipes: [Recipe('Negroni')]),
         build(recipes: [Recipe('Negroni')]),
@@ -523,7 +595,7 @@ void main() {
     test('copyWith still rejects a duplicate name', () {
       expect(
         () => build().copyWith(
-          ingredients: [const Ingredient('gin'), const Ingredient('gin')],
+          ingredients: [Ingredient('gin'), Ingredient('gin')],
         ),
         throwsArgumentError,
       );
@@ -532,23 +604,35 @@ void main() {
     group('name lookups', () {
       test('answer with the entry of that name', () {
         final model = build();
-        expect(model.ingredientNamed('bourbon'), const Ingredient('bourbon'));
+        expect(
+          model.ingredientNamed('bourbon'),
+          Ingredient('bourbon', tags: const ['oaked']),
+        );
         expect(model.recipeNamed('Whiskey Sour')?.tags, ['sour']);
-        expect(model.hasTag('sour'), isTrue);
+        expect(model.hasRecipeTag('sour'), isTrue);
+        expect(model.hasIngredientTag('oaked'), isTrue);
       });
 
       test('answer for an unknown name without throwing', () {
         final model = build();
         expect(model.ingredientNamed('gin'), isNull);
         expect(model.recipeNamed('Negroni'), isNull);
-        expect(model.hasTag('classic'), isFalse);
+        expect(model.hasRecipeTag('classic'), isFalse);
+        expect(model.hasIngredientTag('peaty'), isFalse);
+      });
+
+      test('one vocabulary never answers for the other', () {
+        final model = build();
+        expect(model.hasRecipeTag('oaked'), isFalse);
+        expect(model.hasIngredientTag('sour'), isFalse);
       });
 
       test('an empty model answers nothing', () {
         final model = Model();
         expect(model.ingredientNamed('bourbon'), isNull);
         expect(model.recipeNamed('Whiskey Sour'), isNull);
-        expect(model.hasTag('sour'), isFalse);
+        expect(model.hasRecipeTag('sour'), isFalse);
+        expect(model.hasIngredientTag('oaked'), isFalse);
       });
 
       test('repeated lookups keep answering, index and all', () {

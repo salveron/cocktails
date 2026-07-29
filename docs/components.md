@@ -95,14 +95,19 @@ chance-dependent is passed in, which is what keeps the layer unit-testable.
 
 `Ingredient`, `Tag`, `Amount`, `RecipeLine`, `MadeHistory`, `Settings`, `Recipe` and `Model`
 are immutable `final class` values with structural equality. Collections are copied and
-wrapped with `List.unmodifiable` on construction.
+wrapped with `List.unmodifiable` on construction — which is why the ones holding a list
+(`Ingredient`, `Recipe`, `Model`) are not `const`-constructible.
 
 Two identity conventions hold throughout and explain the shape of the model:
 
 - **Vocabulary entries are entities; references are names.** `Model.ingredients` holds
-  `Ingredient` values with their stock; `RecipeLine.ingredient` and
-  `Recipe.tags` hold plain `String` names. There are no surrogate IDs — a rename is a model
+  `Ingredient` values with their stock; `RecipeLine.ingredient`, `Recipe.tags` and
+  `Ingredient.tags` hold plain `String` names. There are no surrogate IDs — a rename is a model
   mutation that rewrites every reference ([architecture.md](architecture.md#system-overview)).
+- **The two tag vocabularies are peers, not variants.** `Model.recipeTags` and
+  `Model.ingredientTags` are separate lists of the one `Tag` type, each unique within itself
+  ([ADR 07](adr/07-tag-colour.md)). Nothing carries a scope: which list an operation means is
+  in its name, so no lookup can be ambiguous.
 - **Wire tokens are declared, not inferred.** The on-disk spelling of an enum is a field on
   the enum, never its Dart identifier, so renaming a member cannot silently change the file
   format:
@@ -118,6 +123,7 @@ enum Unit {
 enum StockLevel { in_('in'), low('low'), out('out'); … }   // token differs from the identifier
 enum DisplayUnit { part('part'), ml('ml'); … }
 enum LineMark { base('base'), optional('optional'); … }    // ADR 06
+enum TagColor { teal('teal'), … slate('slate'); … }        // ADR 07, open to new members
 ```
 
 `RecipeLine.mark` holds that one `LineMark?`, so a base line can never also be optional
@@ -129,7 +135,8 @@ sets and clears it — `copyWith` cannot, since null is its "keep what you have"
 ```dart
 Ingredient? ingredientNamed(String name);
 Recipe? recipeNamed(String name);
-bool hasTag(String name);
+bool hasRecipeTag(String name);
+bool hasIngredientTag(String name);
 ```
 
 These are backed by a `late final` map built on first use. `Model` stays immutable and the
@@ -160,16 +167,26 @@ Model withIngredient(Ingredient ingredient);          // add, or replace the ent
 Model withIngredientRenamed(String from, String to);  // rewrites every referencing recipe line
 Model withoutIngredient(String name);
 Model withStock(String ingredient, StockLevel stock);
-Model withTag(Tag tag);
-Model withTagRenamed(String from, String to);         // rewrites every referencing recipe
-Model withoutTag(String name);
+Model withIngredientTags(String ingredient, List<String> tags);   // what one bottle carries
+Model withRecipeTag(Tag tag);
+Model withRecipeTagRenamed(String from, String to);   // rewrites every referencing recipe
+Model withoutRecipeTag(String name);
+Model withIngredientTag(Tag tag);                     // the other vocabulary, same shape
+Model withIngredientTagRenamed(String from, String to);  // rewrites every referencing ingredient
+Model withoutIngredientTag(String name);
 Model withRecipe(Recipe recipe);                      // add or replace by name
 Model withoutRecipe(String name);
 Model withRecipeMade(String name, DateTime today);    // the clock is a parameter (FR-REC-6)
 
 List<String> recipesUsingIngredient(String name);     // FR-VOC-1 delete blocking
 List<String> recipesUsingTag(String name);
+List<String> ingredientsUsingTag(String name);
 ```
+
+`withIngredientTag` adds to the vocabulary; `withIngredientTags` sets what one ingredient
+carries — the plural and the argument types are the difference. A rename touches only its own
+side: renaming a recipe tag never reads an ingredient, and each `…UsingTag` query blocks
+deletion from its own side only.
 
 Three rules hold across the API. An edit naming an entry that is not there returns the model
 unchanged, so a screen holding a stale name cannot crash the app. An edit that would collide
@@ -179,8 +196,9 @@ delete methods do not enforce FR-VOC-1's reference block themselves, because the
 `recipesUsing…` first and needs the referencing names for the blocking message anyway.
 
 `copyWith` goes on the values with more than one independently editable field — `Settings`,
-`Ingredient`, `RecipeLine`, `Recipe`, `Model` — and is what the rename, stock and made edits
-are built from; `Tag`, `Amount` and `MadeHistory` are rebuilt whole. Two fields it cannot
+`Ingredient`, `Tag`, `RecipeLine`, `Recipe`, `Model` — and is what the rename, stock and made
+edits are built from; a tag rename goes through it so the colour survives. `Amount` and
+`MadeHistory` are rebuilt whole. Two fields it cannot
 reach have their own method or none: `RecipeLine.marked` clears a mark, and `Recipe.copyWith`
 cannot clear `made` at all — the pilot stamps a recipe as made and never unmakes it
 (FR-REC-6).
@@ -226,19 +244,19 @@ final class ValidationIssue {
   String get location;             // 'recipes[0].lines[2]'
 }
 
-List<ValidationIssue> validateModel({settings, ingredients, tags, recipes});
+List<ValidationIssue> validateModel({settings, ingredients, ingredientTags, recipeTags, recipes});
 List<ValidationIssue> validateRecipe(Recipe recipe,
     {required Set<String> knownIngredients, required Set<String> knownTags,
      Set<String> otherRecipeNames});
 List<ValidationIssue> validateIngredient(Ingredient ingredient,
-    {Set<String> otherIngredientNames});
+    {required Set<String> knownIngredientTags, Set<String> otherIngredientNames});
 List<ValidationIssue> validateTag(Tag tag, {Set<String> otherTagNames});
 ```
 
 An empty result means valid; every issue is collected in one pass, never fail-fast, so the
-report reads top-to-bottom like the file: settings, then each vocabulary, then recipes in
-order, and within each of those by entry index — every rule for one entry is applied before
-the next entry, so a later pass never emits behind an earlier one. That is what lets the codec
+report reads top-to-bottom like the file: settings, ingredients, the two tag vocabularies,
+then recipes, and within each of those by entry index — every rule for one entry is applied
+before the next entry, so a later pass never emits behind an earlier one. That is what lets the codec
 render the list as it stands (M6). `ValidationIssue` carries value equality.
 
 `path` uses the **data-format key names** (`part_ml`, `made.times`), not Dart field names.
@@ -382,9 +400,13 @@ Future<void> upsertIngredient(Ingredient ingredient);   // add or replace by nam
 Future<void> renameIngredient(String from, String to);
 Future<void> removeIngredient(String name);
 Future<void> setStock(String ingredient, StockLevel stock);
-Future<void> upsertTag(Tag tag);
-Future<void> renameTag(String from, String to);
-Future<void> removeTag(String name);
+Future<void> setIngredientTags(String ingredient, List<String> tags);
+Future<void> upsertRecipeTag(Tag tag);
+Future<void> renameRecipeTag(String from, String to);
+Future<void> removeRecipeTag(String name);
+Future<void> upsertIngredientTag(Tag tag);
+Future<void> renameIngredientTag(String from, String to);
+Future<void> removeIngredientTag(String name);
 Future<void> upsertRecipe(Recipe recipe);               // add or replace by name
 Future<void> removeRecipe(String name);
 Future<void> markMade(String name);                     // stamps clockProvider's date

@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'model_store_contract.dart';
 
 void main() {
-  final model = Model(tags: const [Tag('classic')]);
+  final model = Model(recipeTags: const [Tag('classic', color: TagColor.rose)]);
 
   group('ModelStore contract', () => modelStoreContract(MemoryModelStore.new));
 

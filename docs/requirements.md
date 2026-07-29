@@ -7,14 +7,15 @@ sharing. Why and where it's heading: [vision.md](vision.md).
 
 | Concept | Definition |
 |---|---|
-| Ingredient | Generic name ("bourbon", "lemon juice") from one flat, user-managed vocabulary shared by recipes and inventory. No brands, hierarchy, or substitutions. |
+| Ingredient | Generic name ("bourbon", "lemon juice") from one flat, user-managed vocabulary shared by recipes and inventory, optionally carrying ingredient tags. No brands, hierarchy, or substitutions. |
 | Base spirit | The spirit a recipe is built on — marked by the user on that recipe's own line, not on the ingredient: a bottle is a base *in a recipe*, never by itself. A recipe may mark more than one. |
 | Stock level | Per ingredient: **in stock**, **running low**, or **out** (default for new ingredients). |
-| Tag | Label from a separate, user-managed vocabulary — the single mechanism for interest, style, and category (successor of the Telegram emojis). |
+| Tag | Coloured label from a user-managed vocabulary — the single mechanism for interest, style, and category (successor of the Telegram emojis). There are **two** such vocabularies, one labelling recipes and one labelling ingredients ([ADR 07](adr/07-tag-colour.md)); tagging is optional on both sides. |
 | Recipe | Name + ingredient lines + tags + free-text notes + made-history (last-made date and times-made count). |
 | Availability | Computed per recipe over its required (non-optional) ingredient lines: **makeable** (all in stock), **makeable-low** (none out, at least one running low), **missing** (at least one out). The first two together: **can-make**. |
 
-Recipe, ingredient, and tag names are each unique within their kind.
+Recipe, ingredient, and tag names are each unique within their kind. The two tag vocabularies
+are separate kinds, so one name may stand in both and mean two different things.
 
 ## Functional requirements
 
@@ -37,11 +38,15 @@ Recipe, ingredient, and tag names are each unique within their kind.
 
 ### Vocabularies
 
-- **FR-VOC-1** Ingredients and tags can be added, renamed (propagates everywhere), and
-  deleted; deletion is blocked while any recipe references the entry.
-- **FR-VOC-3** A tag carries a colour picked from a fixed palette and shown wherever the tag
-  appears; a tag whose colour was never picked shows neutral. The palette holds no green,
+- **FR-VOC-1** Ingredients and the tags of either vocabulary can be added, renamed (propagates
+  everywhere), and deleted; deletion is blocked while anything references the entry — a recipe
+  for an ingredient or a recipe tag, an ingredient for an ingredient tag.
+- **FR-VOC-3** Every tag carries a colour from a fixed palette, chosen when the tag is created
+  and changeable afterwards, and shown wherever the tag appears. The palette holds no green,
   amber or red — those signal stock and availability ([ADR 07](adr/07-tag-colour.md)).
+- **FR-VOC-4** Ingredients are tagged from their own vocabulary, separate from the recipe tags:
+  a tag defined for ingredients is never offered on a recipe, nor the reverse. Both vocabularies
+  are managed on one screen, a section each.
 
 FR-VOC-2 left for FR-REC-8 in [ADR 06](adr/06-base-spirit-on-the-line.md); its number stays
 empty so no reference to it can mean two things.
@@ -51,6 +56,8 @@ empty so no reference to it can mean two things.
 - **FR-INV-1** The inventory screen lists all ingredients with their stock level,
   searchable by name.
 - **FR-INV-2** Stock level changes with a single-tap toggle per ingredient.
+- **FR-INV-3** The inventory screen shows each ingredient's tags in their colours and can
+  filter the list by them; the tag filter combines with the name search.
 
 ### Discovery
 

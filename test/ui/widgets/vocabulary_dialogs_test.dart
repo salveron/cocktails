@@ -35,8 +35,11 @@ Future<Answer<T>> openDialog<T>(
 }
 
 /// The real ingredient rules, with "gin" already taken.
-List<ValidationIssue> rule(String name) =>
-    validateIngredient(Ingredient(name), otherIngredientNames: const {'gin'});
+List<ValidationIssue> rule(String name) => validateIngredient(
+  Ingredient(name),
+  knownIngredientTags: const {},
+  otherIngredientNames: const {'gin'},
+);
 
 bool saveEnabled(WidgetTester tester) =>
     tester

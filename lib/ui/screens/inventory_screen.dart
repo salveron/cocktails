@@ -79,6 +79,7 @@ List<ValidationIssue> Function(String) _nameRule(
 }) =>
     (name) => validateIngredient(
       Ingredient(name),
+      knownIngredientTags: {for (final tag in model.ingredientTags) tag.name},
       otherIngredientNames: {
         for (final ingredient in model.ingredients)
           if (ingredient.name != except) ingredient.name,

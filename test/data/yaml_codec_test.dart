@@ -14,13 +14,18 @@ settings:
 
 ingredients:
   - {name: bourbon, stock: in}
-  - {name: lemon juice, stock: low}
-  - {name: rich demerara syrup}
+  - {name: lemon juice, stock: low, tags: [citrus]}
+  - {name: rich demerara syrup, tags: [syrup, homemade]}
   - {name: egg white, stock: in}
 
-tags:
+ingredient_tags:
+  - {name: citrus, color: sand}
+  - {name: homemade, color: slate}
+  - {name: syrup, color: indigo}
+
+recipe_tags:
   - {name: sour, color: rose}
-  - {name: classic}
+  - {name: classic, color: teal}
 
 recipes:
   - name: Whiskey Sour
@@ -44,13 +49,18 @@ settings:
 
 ingredients:
   - {name: bourbon, stock: in}
-  - {name: lemon juice, stock: low}
-  - {name: rich demerara syrup}        # stock omitted = out
-  - {name: egg white, stock: in}
+  - {name: lemon juice, stock: low, tags: [citrus]}
+  - {name: rich demerara syrup, tags: [syrup, homemade]}   # stock omitted = out
+  - {name: egg white, stock: in}                           # untagged
 
-tags:
+ingredient_tags:                       # what a bottle can be labelled
+  - {name: citrus, color: sand}
+  - {name: homemade, color: slate}
+  - {name: syrup, color: indigo}
+
+recipe_tags:                           # a separate vocabulary (ADR 07)
   - {name: sour, color: rose}
-  - {name: classic}                    # color omitted = neutral
+  - {name: classic, color: teal}
 
 recipes:
   - name: Whiskey Sour
@@ -65,15 +75,20 @@ recipes:
 ''';
 
 Model docModel() => Model(
-  ingredients: const [
+  ingredients: [
     Ingredient('bourbon', stock: StockLevel.in_),
-    Ingredient('lemon juice', stock: StockLevel.low),
-    Ingredient('rich demerara syrup'),
+    Ingredient('lemon juice', stock: StockLevel.low, tags: const ['citrus']),
+    Ingredient('rich demerara syrup', tags: const ['syrup', 'homemade']),
     Ingredient('egg white', stock: StockLevel.in_),
   ],
-  tags: const [
+  ingredientTags: const [
+    Tag('citrus', color: TagColor.sand),
+    Tag('homemade', color: TagColor.slate),
+    Tag('syrup', color: TagColor.indigo),
+  ],
+  recipeTags: const [
     Tag('sour', color: TagColor.rose),
-    Tag('classic'),
+    Tag('classic', color: TagColor.teal),
   ],
   recipes: [
     Recipe(
@@ -146,7 +161,9 @@ settings:
 
 ingredients: []
 
-tags: []
+ingredient_tags: []
+
+recipe_tags: []
 
 recipes: []
 ''');
@@ -154,12 +171,25 @@ recipes: []
 
     test('omits entry defaults and empty recipe fields', () {
       final model = Model(
-        ingredients: const [Ingredient('gin')],
+        ingredients: [Ingredient('gin')],
         recipes: [Recipe('Nothing Yet')],
       );
       final text = codec.encode(model);
       expect(text, contains('\ningredients:\n  - {name: gin}\n'));
       expect(text, contains('\nrecipes:\n  - name: Nothing Yet\n'));
+    });
+
+    test('a tag colour is written even though nothing is default', () {
+      final model = Model(
+        ingredientTags: const [Tag('citrus', color: TagColor.sand)],
+        recipeTags: const [Tag('sour', color: TagColor.rose)],
+      );
+      final text = codec.encode(model);
+      expect(
+        text,
+        contains('\ningredient_tags:\n  - {name: citrus, color: sand}\n'),
+      );
+      expect(text, contains('\nrecipe_tags:\n  - {name: sour, color: rose}\n'));
     });
 
     test('writes non-default settings', () {
@@ -174,21 +204,27 @@ recipes: []
 
     test('quotes scalars YAML would read as other types', () {
       final model = Model(
-        ingredients: const [Ingredient('1976'), Ingredient('true')],
-        tags: const [Tag('true'), Tag('no')],
+        ingredients: [Ingredient('1976'), Ingredient('true')],
+        recipeTags: const [
+          Tag('true', color: TagColor.teal),
+          Tag('no', color: TagColor.teal),
+        ],
       );
       final text = codec.encode(model);
       expect(text, contains('- {name: "1976"}'));
       expect(text, contains('- {name: "true"}'));
-      expect(text, contains('tags:\n  - {name: "true"}\n  - {name: no}\n'));
+      expect(
+        text,
+        contains(
+          'recipe_tags:\n  - {name: "true", color: teal}\n'
+          '  - {name: no, color: teal}\n',
+        ),
+      );
     });
 
     test('quotes structure-breaking text', () {
       final model = Model(
-        ingredients: const [
-          Ingredient('lime, fresh'),
-          Ingredient('rum # dark'),
-        ],
+        ingredients: [Ingredient('lime, fresh'), Ingredient('rum # dark')],
         recipes: [
           Recipe(
             'gin: a study',
@@ -286,7 +322,9 @@ recipes: []
     });
 
     test('duplicate YAML keys', () {
-      final issues = rejected('format: 1\ntags: [a]\ntags: [b]\n');
+      final issues = rejected(
+        'format: 1\nrecipe_tags: [a]\nrecipe_tags: [b]\n',
+      );
       expect(issues.single.issue.message, contains('Not valid YAML'));
     });
 
@@ -411,42 +449,72 @@ recipes: []
     });
 
     test('a tag written the pre-colour way, as a bare name', () {
-      final issues = rejected('format: 1\ntags: [sour, classic]\n');
+      final issues = rejected('format: 1\nrecipe_tags: [sour, classic]\n');
       expect(issues, hasLength(2));
       expectIssue(
         issues[0],
         ValidationIssueKind.malformedValue,
-        'tags[0]',
+        'recipe_tags[0]',
         2,
         messagePart: 'Tag entry must be a mapping: "sour"',
       );
     });
 
-    test('a colour outside the palette names the whole palette', () {
-      final issues = rejected(
-        'format: 1\ntags:\n  - {name: sour, color: puce}\n',
-      );
+    test('the one tags section from before the split', () {
+      final issues = rejected('format: 1\ntags: []\n');
       expectIssue(
         issues.single,
         ValidationIssueKind.malformedValue,
-        'tags[0].color',
-        3,
-        messagePart:
-            'color must be one of teal, indigo, plum, rose, sand, slate, '
-            'neutral: "puce"',
+        'tags',
+        2,
+        messagePart: 'Unknown key: "tags"',
       );
     });
 
-    test('an unknown tag key', () {
+    test('a tag entry with no colour at all', () {
+      final issues = rejected('format: 1\nrecipe_tags:\n  - {name: sour}\n');
+      expectIssue(
+        issues.single,
+        ValidationIssueKind.malformedValue,
+        'recipe_tags[0]',
+        3,
+        messagePart: 'Missing color',
+      );
+    });
+
+    test('a colour outside the palette names the whole palette', () {
       final issues = rejected(
-        'format: 1\ntags:\n  - {name: sour, colour: rose}\n',
+        'format: 1\ningredient_tags:\n  - {name: citrus, color: puce}\n',
       );
       expectIssue(
         issues.single,
         ValidationIssueKind.malformedValue,
-        'tags[0].colour',
+        'ingredient_tags[0].color',
+        3,
+        messagePart:
+            'color must be one of teal, indigo, plum, rose, sand, slate: '
+            '"puce"',
+      );
+    });
+
+    test('an unknown tag key costs the key and the colour with it', () {
+      final issues = rejected(
+        'format: 1\nrecipe_tags:\n  - {name: sour, colour: rose}\n',
+      );
+      expect(issues, hasLength(2));
+      expectIssue(
+        issues[0],
+        ValidationIssueKind.malformedValue,
+        'recipe_tags[0].colour',
         3,
         messagePart: 'Unknown key: "colour"',
+      );
+      expectIssue(
+        issues[1],
+        ValidationIssueKind.malformedValue,
+        'recipe_tags[0]',
+        3,
+        messagePart: 'Missing color',
       );
     });
 
@@ -565,15 +633,17 @@ recipes: []
         '  part_ml: thirty\n'
         'ingredients:\n'
         '  - {name: 1}\n'
-        'tags: [2]\n'
+        'ingredient_tags: [2]\n'
+        'recipe_tags: [3]\n'
         'recipes:\n'
-        '  - 3\n',
+        '  - 4\n',
       );
-      expect(issues.map((issue) => issue.line).toList(), [3, 5, 6, 8]);
+      expect(issues.map((issue) => issue.line).toList(), [3, 5, 6, 7, 9]);
       expect(issues.map((issue) => issue.issue.location).toList(), [
         'settings.part_ml',
         'ingredients[0].name',
-        'tags[0]',
+        'ingredient_tags[0]',
+        'recipe_tags[0]',
         'recipes[0]',
       ]);
     });
@@ -612,8 +682,8 @@ recipes: []
         'format: 1\n'
         'ingredients:\n'
         '  - {name: gin}\n'
-        'tags:\n'
-        '  - {name: classic}\n'
+        'recipe_tags:\n'
+        '  - {name: classic, color: teal}\n'
         'recipes:\n'
         '  - name: Martini\n'
         '    tags: [sour, classic, classic]\n'
@@ -681,6 +751,31 @@ recipes: []
       );
     });
 
+    test('an ingredient reaching into the other vocabulary', () {
+      final issues = rejected(
+        'format: 1\n'
+        'ingredients:\n'
+        '  - {name: gin, tags: [juniper, juniper]}\n'
+        'recipe_tags:\n'
+        '  - {name: juniper, color: teal}\n',
+      );
+      expect(issues, hasLength(3));
+      expectIssue(
+        issues[0],
+        ValidationIssueKind.unknownTag,
+        'ingredients[0].tags[0]',
+        3,
+        messagePart: 'Unknown tag: "juniper"',
+      );
+      expectIssue(
+        issues[2],
+        ValidationIssueKind.duplicateTag,
+        'ingredients[0].tags[1]',
+        3,
+        messagePart: 'Duplicate tag on the ingredient: "juniper"',
+      );
+    });
+
     test('an empty name at the line of its entry', () {
       final issues = rejected('format: 1\ningredients:\n  - {name: ""}\n');
       expectIssue(
@@ -696,15 +791,29 @@ recipes: []
     test('encode → decode → encode is the identity on canonical text', () {
       final model = Model(
         settings: const Settings(partMl: 22.5, display: DisplayUnit.ml),
-        ingredients: const [
+        ingredients: [
           Ingredient('bourbon', stock: StockLevel.in_),
-          Ingredient('true'),
+          Ingredient('true', tags: const ['no']),
           Ingredient('1976', stock: StockLevel.low),
-          Ingredient('lime, fresh', stock: StockLevel.in_),
+          Ingredient(
+            'lime, fresh',
+            stock: StockLevel.in_,
+            tags: const ['citrus, fresh', 'no'],
+          ),
           Ingredient('rum # dark', stock: StockLevel.in_),
           Ingredient('crème de violette'),
         ],
-        tags: const [Tag('sour'), Tag('no'), Tag('1976')],
+        // "no" stands in both vocabularies, in different colours: the same
+        // name means two things, which is what the split is for.
+        ingredientTags: const [
+          Tag('citrus, fresh', color: TagColor.sand),
+          Tag('no', color: TagColor.slate),
+        ],
+        recipeTags: const [
+          Tag('sour', color: TagColor.rose),
+          Tag('no', color: TagColor.indigo),
+          Tag('1976', color: TagColor.plum),
+        ],
         recipes: [
           Recipe(
             'gin: a study',
@@ -758,7 +867,9 @@ settings:
 ingredients:
   - {name: gin, stock: in}
 
-tags: []
+ingredient_tags: []
+
+recipe_tags: []
 
 recipes:
   - name: Gin Shot

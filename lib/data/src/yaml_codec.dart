@@ -60,7 +60,7 @@ final class YamlCodec {
             const [],
             ValidationIssueKind.malformedValue,
             'The top level must be a mapping with format, settings, '
-            'ingredients, tags, recipes',
+            'ingredients, ingredient_tags, recipe_tags, recipes',
           ),
         ),
       ]);
@@ -75,7 +75,8 @@ final class YamlCodec {
         : validateModel(
             settings: parts.settings,
             ingredients: parts.ingredients,
-            tags: parts.tags,
+            ingredientTags: parts.ingredientTags,
+            recipeTags: parts.recipeTags,
             recipes: parts.recipes,
           );
     if (issues.isNotEmpty) {
@@ -85,7 +86,8 @@ final class YamlCodec {
       Model(
         settings: parts.settings,
         ingredients: parts.ingredients,
-        tags: parts.tags,
+        ingredientTags: parts.ingredientTags,
+        recipeTags: parts.recipeTags,
         recipes: parts.recipes,
       ),
     );

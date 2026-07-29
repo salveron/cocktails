@@ -67,16 +67,17 @@ enum LineMark {
 
 /// The palette a tag's colour comes from (docs/adr/07-tag-colour.md). Green,
 /// amber and red are absent by design: stock and availability already spend
-/// them on meaning. Declaration order is the order the picker offers, with the
-/// default last. What each token looks like is the UI's to say.
+/// them on meaning. Every tag has one — there is no unpainted member, so a
+/// colour on screen is always a choice someone made. Declaration order is the
+/// order the picker offers, and the set is open to new members. What each
+/// token looks like is the UI's to say.
 enum TagColor {
   teal('teal'),
   indigo('indigo'),
   plum('plum'),
   rose('rose'),
   sand('sand'),
-  slate('slate'),
-  neutral('neutral');
+  slate('slate');
 
   final String token;
   const TagColor(this.token);
@@ -101,27 +102,47 @@ final class Ingredient {
   final String name;
   final StockLevel stock;
 
-  const Ingredient(this.name, {this.stock = StockLevel.out});
+  /// Names from the ingredient-tag vocabulary, as [Recipe.tags] holds names
+  /// from the recipe one (FR-VOC-4). Optional: most bottles carry none.
+  final List<String> tags;
 
-  Ingredient copyWith({String? name, StockLevel? stock}) =>
-      Ingredient(name ?? this.name, stock: stock ?? this.stock);
+  Ingredient(
+    this.name, {
+    this.stock = StockLevel.out,
+    List<String> tags = const [],
+  }) : tags = List.unmodifiable(tags);
+
+  Ingredient copyWith({String? name, StockLevel? stock, List<String>? tags}) =>
+      Ingredient(
+        name ?? this.name,
+        stock: stock ?? this.stock,
+        tags: tags ?? this.tags,
+      );
 
   @override
   bool operator ==(Object other) =>
-      other is Ingredient && other.name == name && other.stock == stock;
+      other is Ingredient &&
+      other.name == name &&
+      other.stock == stock &&
+      listEquals(other.tags, tags);
 
   @override
-  int get hashCode => Object.hash(name, stock);
+  int get hashCode => Object.hash(name, stock, Object.hashAll(tags));
 
   @override
-  String toString() => 'Ingredient($name, stock: ${stock.token})';
+  String toString() =>
+      'Ingredient($name, stock: ${stock.token}'
+      '${tags.isEmpty ? '' : ', tags: $tags'})';
 }
 
+/// One label in either vocabulary — they differ in what they name, not in what
+/// they are (docs/adr/07-tag-colour.md). The colour is required: an unpainted
+/// tag is not a thing the app can hold.
 final class Tag {
   final String name;
   final TagColor color;
 
-  const Tag(this.name, {this.color = TagColor.neutral});
+  const Tag(this.name, {required this.color});
 
   Tag copyWith({String? name, TagColor? color}) =>
       Tag(name ?? this.name, color: color ?? this.color);
@@ -299,34 +320,50 @@ final class Recipe {
 final class Model {
   final Settings settings;
   final List<Ingredient> ingredients;
-  final List<Tag> tags;
+
+  /// The two tag vocabularies (docs/adr/07-tag-colour.md). Peers of one shape,
+  /// each unique within itself — the same name may stand in both and mean two
+  /// different things.
+  final List<Tag> recipeTags;
+  final List<Tag> ingredientTags;
   final List<Recipe> recipes;
 
   Model({
     this.settings = const Settings(),
     List<Ingredient> ingredients = const [],
-    List<Tag> tags = const [],
+    List<Tag> recipeTags = const [],
+    List<Tag> ingredientTags = const [],
     List<Recipe> recipes = const [],
   }) : ingredients = List.unmodifiable(ingredients),
-       tags = List.unmodifiable(tags),
+       recipeTags = List.unmodifiable(recipeTags),
+       ingredientTags = List.unmodifiable(ingredientTags),
        recipes = List.unmodifiable(recipes) {
     _requireUniqueNames(
       'ingredient',
       this.ingredients.map((i) => i.name).toList(),
     );
-    _requireUniqueNames('tag', this.tags.map((t) => t.name).toList());
+    _requireUniqueNames(
+      'recipe tag',
+      this.recipeTags.map((t) => t.name).toList(),
+    );
+    _requireUniqueNames(
+      'ingredient tag',
+      this.ingredientTags.map((t) => t.name).toList(),
+    );
     _requireUniqueNames('recipe', this.recipes.map((r) => r.name).toList());
   }
 
   Model copyWith({
     Settings? settings,
     List<Ingredient>? ingredients,
-    List<Tag>? tags,
+    List<Tag>? recipeTags,
+    List<Tag>? ingredientTags,
     List<Recipe>? recipes,
   }) => Model(
     settings: settings ?? this.settings,
     ingredients: ingredients ?? this.ingredients,
-    tags: tags ?? this.tags,
+    recipeTags: recipeTags ?? this.recipeTags,
+    ingredientTags: ingredientTags ?? this.ingredientTags,
     recipes: recipes ?? this.recipes,
   );
 
@@ -334,7 +371,9 @@ final class Model {
 
   Recipe? recipeNamed(String name) => _recipesByName[name];
 
-  bool hasTag(String name) => _tagNames.contains(name);
+  bool hasRecipeTag(String name) => _recipeTagNames.contains(name);
+
+  bool hasIngredientTag(String name) => _ingredientTagNames.contains(name);
 
   /// Built on first lookup and kept, which is what makes repeated reference
   /// questions O(1) at NFR-2 scale. Safe behind an immutable face: the lists
@@ -345,27 +384,35 @@ final class Model {
   late final Map<String, Recipe> _recipesByName = {
     for (final recipe in recipes) recipe.name: recipe,
   };
-  late final Set<String> _tagNames = {for (final tag in tags) tag.name};
+  late final Set<String> _recipeTagNames = {
+    for (final tag in recipeTags) tag.name,
+  };
+  late final Set<String> _ingredientTagNames = {
+    for (final tag in ingredientTags) tag.name,
+  };
 
   @override
   bool operator ==(Object other) =>
       other is Model &&
       other.settings == settings &&
       listEquals(other.ingredients, ingredients) &&
-      listEquals(other.tags, tags) &&
+      listEquals(other.recipeTags, recipeTags) &&
+      listEquals(other.ingredientTags, ingredientTags) &&
       listEquals(other.recipes, recipes);
 
   @override
   int get hashCode => Object.hash(
     settings,
     Object.hashAll(ingredients),
-    Object.hashAll(tags),
+    Object.hashAll(recipeTags),
+    Object.hashAll(ingredientTags),
     Object.hashAll(recipes),
   );
 
   @override
   String toString() =>
-      'Model(${ingredients.length} ingredients, ${tags.length} tags, '
+      'Model(${ingredients.length} ingredients, ${recipeTags.length} recipe '
+      'tags, ${ingredientTags.length} ingredient tags, '
       '${recipes.length} recipes)';
 }
 

@@ -78,7 +78,8 @@ typedef _Problem = ({ValidationIssueKind kind, String message});
 List<ValidationIssue> validateModel({
   Settings settings = const Settings(),
   List<Ingredient> ingredients = const [],
-  List<Tag> tags = const [],
+  List<Tag> ingredientTags = const [],
+  List<Tag> recipeTags = const [],
   List<Recipe> recipes = const [],
 }) {
   final issues = <ValidationIssue>[];
@@ -92,46 +93,69 @@ List<ValidationIssue> validateModel({
     );
   }
   final ingredientNames = ingredients.map((i) => i.name).toList();
-  final tagNames = tags.map((t) => t.name).toList();
+  final ingredientTagNames = ingredientTags.map((t) => t.name).toList();
+  final recipeTagNames = recipeTags.map((t) => t.name).toList();
+  final knownIngredientTags = ingredientTagNames.toSet();
   _checkNames(
     issues,
     'ingredients',
     'ingredient',
     ingredientNames,
     extraRule: _reservedSuffixProblem,
+    entryIssues: (i) => _checkTagReferences(
+      ingredients[i].tags,
+      ['ingredients', i],
+      known: knownIngredientTags,
+      entity: 'ingredient',
+    ),
   );
-  _checkNames(issues, 'tags', 'tag', tagNames);
+  _checkNames(issues, 'ingredient_tags', 'ingredient tag', ingredientTagNames);
+  _checkNames(issues, 'recipe_tags', 'recipe tag', recipeTagNames);
   final knownIngredients = ingredientNames.toSet();
-  final knownTags = tagNames.toSet();
+  final knownRecipeTags = recipeTagNames.toSet();
   _checkNames(
     issues,
     'recipes',
     'recipe',
     recipes.map((r) => r.name).toList(),
-    entryIssues: (i) =>
-        _checkRecipe(recipes[i], knownIngredients, knownTags, ['recipes', i]),
+    entryIssues: (i) => _checkRecipe(recipes[i], knownIngredients, [
+      'recipes',
+      i,
+    ], knownTags: knownRecipeTags),
   );
   return issues;
 }
 
-/// Checks one ingredient before it enters the vocabulary (M11); an empty
-/// result means valid. [otherIngredientNames] holds every *other* entry's
-/// name, so renaming an entry never collides with itself.
+/// Checks one ingredient — its name and its tag references — before it enters
+/// the vocabulary (M11); an empty result means valid. [otherIngredientNames]
+/// holds every *other* entry's name, so renaming an entry never collides with
+/// itself.
 ///
 /// Paths are relative to the entry, so a name issue carries an empty path —
 /// the same convention as [validateRecipe].
 List<ValidationIssue> validateIngredient(
   Ingredient ingredient, {
+  required Set<String> knownIngredientTags,
   Set<String> otherIngredientNames = const {},
-}) => _checkName(
-  'ingredient',
-  ingredient.name,
-  isDuplicate: otherIngredientNames.contains(ingredient.name),
-  extraRule: _reservedSuffixProblem,
-);
+}) => [
+  ..._checkName(
+    'ingredient',
+    ingredient.name,
+    isDuplicate: otherIngredientNames.contains(ingredient.name),
+    extraRule: _reservedSuffixProblem,
+  ),
+  ..._checkTagReferences(
+    ingredient.tags,
+    const [],
+    known: knownIngredientTags,
+    entity: 'ingredient',
+  ),
+];
 
-/// Checks one tag before it enters the vocabulary (M12); an empty result
-/// means valid. Argument and path conventions as in [validateIngredient].
+/// Checks one tag before it enters a vocabulary (M12); an empty result means
+/// valid. Serves either vocabulary — [otherTagNames] is what says which, and
+/// the colour needs no checking, being an enum. Argument and path conventions
+/// as in [validateIngredient].
 List<ValidationIssue> validateTag(
   Tag tag, {
   Set<String> otherTagNames = const {},
@@ -157,7 +181,7 @@ List<ValidationIssue> validateRecipe(
     recipe.name,
     isDuplicate: otherRecipeNames.contains(recipe.name),
   ),
-  ..._checkRecipe(recipe, knownIngredients, knownTags, const []),
+  ..._checkRecipe(recipe, knownIngredients, const [], knownTags: knownTags),
 ];
 
 /// Every rule for one list of named entries, applied entry by entry so issues
@@ -257,35 +281,53 @@ _Problem? _nameProblem(String entity, String name) {
   return null;
 }
 
-List<ValidationIssue> _checkRecipe(
-  Recipe recipe,
-  Set<String> knownIngredients,
-  Set<String> knownTags,
-  List<Object> basePath,
-) {
+/// Every rule on one entry's tag references — the name resolves, and no name
+/// twice — applied wherever a list of tag names hangs off an entry. [known]
+/// is the vocabulary that list draws from; [entity] only words the message.
+List<ValidationIssue> _checkTagReferences(
+  List<String> tags,
+  List<Object> basePath, {
+  required Set<String> known,
+  required String entity,
+}) {
   final issues = <ValidationIssue>[];
-  final duplicateTags = duplicateNameIndexes(recipe.tags).toSet();
-  for (var t = 0; t < recipe.tags.length; t++) {
-    final tag = recipe.tags[t];
+  final duplicates = duplicateNameIndexes(tags).toSet();
+  for (var t = 0; t < tags.length; t++) {
+    final tag = tags[t];
     _addProblems(
       issues,
       [...basePath, 'tags', t],
       [
-        knownTags.contains(tag)
+        known.contains(tag)
             ? null
             : (
                 kind: ValidationIssueKind.unknownTag,
                 message: 'Unknown tag: "$tag"',
               ),
-        duplicateTags.contains(t)
+        duplicates.contains(t)
             ? (
                 kind: ValidationIssueKind.duplicateTag,
-                message: 'Duplicate tag on the recipe: "$tag"',
+                message: 'Duplicate tag on the $entity: "$tag"',
               )
             : null,
       ],
     );
   }
+  return issues;
+}
+
+List<ValidationIssue> _checkRecipe(
+  Recipe recipe,
+  Set<String> knownIngredients,
+  List<Object> basePath, {
+  required Set<String> knownTags,
+}) {
+  final issues = _checkTagReferences(
+    recipe.tags,
+    basePath,
+    known: knownTags,
+    entity: 'recipe',
+  );
   for (var l = 0; l < recipe.lines.length; l++) {
     final line = recipe.lines[l];
     final amount = formatAmount(line.amount);

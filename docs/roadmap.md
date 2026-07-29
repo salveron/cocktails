@@ -55,8 +55,19 @@ First usable slice; recipes reference both vocabularies, so this precedes Phase 
       ([ADR 07](adr/07-tag-colour.md)): `TagColor` with declared tokens, `Tag.color` defaulting
       to neutral and surviving a rename, and the tag entry becoming a mapping like the
       ingredient entry (FR-VOC-3). Shape only — the picker is M12's.
-- [ ] **M12 Tag management** — add, rename with propagation, reference-blocked delete
-      (FR-VOC-1), and the colour picker, on a tag screen behind Settings.
+- [x] **M11b Ingredient tags** — the second tag vocabulary, decided before any screen was built
+      on the first ([ADR 07](adr/07-tag-colour.md), amended): `recipe_tags` and `ingredient_tags`
+      as peer sections behind `Model.recipeTags`/`ingredientTags`, `Ingredient.tags`, a colour
+      now required on every tag (`neutral` dropped), per-vocabulary rename propagation and
+      delete blocking (FR-VOC-3/4, FR-INV-3). Shape only — both screens are M12's and M12a's.
+- [ ] **M12 Tag management** — both vocabularies on one screen behind Settings, a tab each:
+      add, rename with propagation, reference-blocked delete (FR-VOC-1), and the colour picker
+      on create and as its own action. Extracts the vocabulary list the inventory screen
+      already is, so all three lists come from one widget, and the token → swatch map lands in
+      `ui/` beside the stock colours.
+- [ ] **M12a Ingredient tags on the inventory screen** — a small borderless colour dot per tag
+      after the ingredient's name, a pinned filter-chip row under the search that doubles as
+      the legend for those dots, and tag assignment behind the row's existing ⋮ (FR-INV-3).
 
 ## Phase 2 — Recipes
 
@@ -98,5 +109,5 @@ First usable slice; recipes reference both vocabularies, so this precedes Phase 
 - **Phase 0:** strictly sequential. Later phases: ordered by value.
 - **Hard dependencies:** M16 before M18/M20/M21 (consume availability); M21 before M22.
 - **Shape milestones:** M5a blocks M6; M7a blocks M8 and editing screens (M10–12, M14–15);
-  M10a blocked M11, M14 and M19.
+  M10a blocked M11, M14 and M19; M11a/M11b blocked M12, M12a and every later tag surface.
 - **Data exchange:** M24–25 depend only on Phase 0; can move ahead if loading migrated data early.

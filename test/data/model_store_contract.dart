@@ -6,8 +6,8 @@ import 'package:flutter_test/flutter_test.dart';
 /// file and memory store suites alike (docs/components.md#data-contracts).
 void modelStoreContract(ModelStore Function() storeOf) {
   final model = Model(
-    ingredients: const [Ingredient('gin', stock: StockLevel.in_)],
-    tags: const [Tag('classic')],
+    ingredients: [Ingredient('gin', stock: StockLevel.in_)],
+    recipeTags: const [Tag('classic', color: TagColor.rose)],
   );
 
   test('an untouched store loads as Empty', () async {
@@ -25,7 +25,9 @@ void modelStoreContract(ModelStore Function() storeOf) {
   test('the last of several saves wins', () async {
     final store = storeOf();
     await store.save(model);
-    await store.save(Model(tags: const [Tag('sour')]));
+    await store.save(
+      Model(recipeTags: const [Tag('sour', color: TagColor.teal)]),
+    );
     expect(((await store.load()) as Loaded).model.ingredients, isEmpty);
   });
 

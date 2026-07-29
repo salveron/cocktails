@@ -8,11 +8,11 @@ import 'package:flutter_test/flutter_test.dart';
 
 /// Two ingredients under one recipe — enough for every "not empty" screen.
 final fixtureModel = Model(
-  ingredients: const [
+  ingredients: [
     Ingredient('gin', stock: StockLevel.in_),
     Ingredient('campari'),
   ],
-  tags: const [Tag('classic')],
+  recipeTags: const [Tag('classic', color: TagColor.rose)],
   recipes: [
     Recipe(
       'Negroni',

@@ -79,12 +79,15 @@ void main() {
     test('the architecture example is valid', () {
       final issues = validateModel(
         ingredients: [
-          const Ingredient('bourbon', stock: StockLevel.in_),
-          const Ingredient('lemon juice', stock: StockLevel.low),
-          const Ingredient('rich demerara syrup'),
-          const Ingredient('egg white', stock: StockLevel.in_),
+          Ingredient('bourbon', stock: StockLevel.in_),
+          Ingredient('lemon juice', stock: StockLevel.low),
+          Ingredient('rich demerara syrup'),
+          Ingredient('egg white', stock: StockLevel.in_),
         ],
-        tags: [const Tag('sour'), const Tag('classic')],
+        recipeTags: [
+          const Tag('sour', color: TagColor.rose),
+          const Tag('classic', color: TagColor.rose),
+        ],
         recipes: [
           Recipe(
             'Whiskey Sour',
@@ -122,17 +125,23 @@ void main() {
 
     test('flags malformed names in every vocabulary', () {
       final issues = validateModel(
-        ingredients: [const Ingredient('')],
-        tags: [const Tag(' sour')],
+        ingredients: [Ingredient('')],
+        ingredientTags: [const Tag(' citrus', color: TagColor.sand)],
+        recipeTags: [const Tag(' sour', color: TagColor.rose)],
         recipes: [Recipe('Old\nFashioned')],
       );
-      expect(issues, hasLength(3));
+      expect(issues, hasLength(4));
       expect(issues[0].path, ['ingredients', 0]);
       expect(issues[0].message, contains('Empty'));
-      expect(issues[1].path, ['tags', 0]);
-      expect(issues[1].message, contains('whitespace'));
-      expect(issues[2].path, ['recipes', 0]);
-      expect(issues[2].message, contains('Line break'));
+      expect(issues[1].path, ['ingredient_tags', 0]);
+      expect(
+        issues[1].message,
+        'Surrounding whitespace in ingredient tag name: " citrus"',
+      );
+      expect(issues[2].path, ['recipe_tags', 0]);
+      expect(issues[2].message, contains('whitespace'));
+      expect(issues[3].path, ['recipes', 0]);
+      expect(issues[3].message, contains('Line break'));
     });
 
     test('flags an ingredient name ending with a reserved suffix', () {
@@ -146,7 +155,7 @@ void main() {
 
     test('the reserved suffix rule is ingredient-only', () {
       final issues = validateModel(
-        tags: [const Tag('odd (optional)')],
+        recipeTags: [const Tag('odd (optional)', color: TagColor.rose)],
         recipes: [Recipe('Strange (optional)')],
       );
       expect(issues, isEmpty);
@@ -154,15 +163,35 @@ void main() {
 
     test('flags duplicate names at the repeated position', () {
       final issues = validateModel(
-        ingredients: [const Ingredient('gin'), const Ingredient('gin')],
-        tags: [const Tag('sour'), const Tag('sour')],
+        ingredients: [Ingredient('gin'), Ingredient('gin')],
+        ingredientTags: [
+          const Tag('citrus', color: TagColor.sand),
+          const Tag('citrus', color: TagColor.teal),
+        ],
+        recipeTags: [
+          const Tag('sour', color: TagColor.rose),
+          const Tag('sour', color: TagColor.rose),
+        ],
         recipes: [Recipe('Negroni'), Recipe('Negroni')],
       );
-      expect(issues, hasLength(3));
+      expect(issues, hasLength(4));
       expect(issues[0].path, ['ingredients', 1]);
       expect(issues[0].message, 'Duplicate ingredient name: "gin"');
-      expect(issues[1].path, ['tags', 1]);
-      expect(issues[2].path, ['recipes', 1]);
+      expect(issues[1].path, ['ingredient_tags', 1]);
+      expect(issues[1].message, 'Duplicate ingredient tag name: "citrus"');
+      expect(issues[2].path, ['recipe_tags', 1]);
+      expect(issues[2].message, 'Duplicate recipe tag name: "sour"');
+      expect(issues[3].path, ['recipes', 1]);
+    });
+
+    test('a name in both vocabularies at once is no duplicate', () {
+      expect(
+        validateModel(
+          ingredientTags: [const Tag('sour', color: TagColor.sand)],
+          recipeTags: [const Tag('sour', color: TagColor.rose)],
+        ),
+        isEmpty,
+      );
     });
 
     test('flags unknown ingredient and tag references', () {
@@ -184,7 +213,7 @@ void main() {
 
     test('flags a tag repeated on one recipe', () {
       final issues = validateModel(
-        tags: [const Tag('sour')],
+        recipeTags: [const Tag('sour', color: TagColor.rose)],
         recipes: [
           Recipe('Daiquiri', tags: ['sour', 'sour']),
         ],
@@ -196,7 +225,7 @@ void main() {
 
     test('flags non-positive and out-of-order amounts', () {
       final issues = validateModel(
-        ingredients: [const Ingredient('gin')],
+        ingredients: [Ingredient('gin')],
         recipes: [
           Recipe(
             'Martini',
@@ -227,7 +256,7 @@ void main() {
     test('collects every issue in one pass', () {
       final issues = validateModel(
         settings: const Settings(partMl: -1),
-        ingredients: [const Ingredient('gin'), const Ingredient('gin')],
+        ingredients: [Ingredient('gin'), Ingredient('gin')],
         recipes: [
           Recipe(
             'Negroni',
@@ -240,7 +269,7 @@ void main() {
 
     test('ordering: ingredient issue before recipe issue', () {
       final issues = validateModel(
-        ingredients: [const Ingredient('silly (optional)')],
+        ingredients: [Ingredient('silly (optional)')],
         recipes: [Recipe('Negroni'), Recipe('Negroni')],
       );
       expect(issues, hasLength(2));
@@ -250,30 +279,49 @@ void main() {
       expect(issues[1].message, contains('Duplicate'));
     });
 
-    test('ordering: settings, then ingredients, tags, recipes', () {
+    test('ordering follows the file: settings, ingredients, both tag '
+        'vocabularies, recipes', () {
       final issues = validateModel(
         settings: const Settings(partMl: 0),
-        ingredients: [const Ingredient('silly (optional)')],
-        tags: [const Tag('sour'), const Tag('sour')],
+        ingredients: [Ingredient('silly (optional)')],
+        ingredientTags: [
+          const Tag('citrus', color: TagColor.sand),
+          const Tag('citrus', color: TagColor.sand),
+        ],
+        recipeTags: [
+          const Tag('sour', color: TagColor.rose),
+          const Tag('sour', color: TagColor.rose),
+        ],
         recipes: [Recipe('Negroni'), Recipe('Negroni')],
       );
-      expect(issues, hasLength(4));
-      expect(issues[0].path, ['settings', 'part_ml']);
-      expect(issues[0].message, contains('positive'));
-      expect(issues[1].path, ['ingredients', 0]);
-      expect(issues[1].message, contains('reserved'));
-      expect(issues[2].path, ['tags', 1]);
-      expect(issues[2].message, contains('Duplicate'));
-      expect(issues[3].path, ['recipes', 1]);
-      expect(issues[3].message, contains('Duplicate'));
+      expect(issues.map((i) => i.path).toList(), [
+        ['settings', 'part_ml'],
+        ['ingredients', 0],
+        ['ingredient_tags', 1],
+        ['recipe_tags', 1],
+        ['recipes', 1],
+      ]);
+    });
+
+    test("an ingredient's tag issues follow its own name issues", () {
+      final issues = validateModel(
+        ingredients: [
+          Ingredient(' gin', tags: const ['juniper']),
+          Ingredient('rum'),
+        ],
+      );
+      expect(issues.map((i) => i.path).toList(), [
+        ['ingredients', 0],
+        ['ingredients', 0, 'tags', 0],
+      ]);
     });
 
     test('ordering: within one vocabulary, by entry index', () {
       final issues = validateModel(
         ingredients: [
-          const Ingredient('absinthe (optional)'),
-          const Ingredient('gin'),
-          const Ingredient('gin'),
+          Ingredient('absinthe (optional)'),
+          Ingredient('gin'),
+          Ingredient('gin'),
         ],
       );
       expect(issues, hasLength(2));
@@ -285,7 +333,7 @@ void main() {
 
     test('ordering: every rule on one entry stays on that entry', () {
       final issues = validateModel(
-        ingredients: [const Ingredient(' gin (optional)')],
+        ingredients: [Ingredient(' gin (optional)')],
       );
       expect(issues.map((i) => i.path), [
         ['ingredients', 0],
@@ -297,7 +345,7 @@ void main() {
 
     test('ordering: a recipe\'s own issues precede the next recipe\'s', () {
       final issues = validateModel(
-        ingredients: [const Ingredient('gin')],
+        ingredients: [Ingredient('gin')],
         recipes: [
           Recipe(
             'Martini',
@@ -419,12 +467,22 @@ void main() {
   });
 
   group('validateIngredient', () {
+    List<ValidationIssue> check(
+      Ingredient ingredient, {
+      Set<String> known = const {},
+      Set<String> others = const {},
+    }) => validateIngredient(
+      ingredient,
+      knownIngredientTags: known,
+      otherIngredientNames: others,
+    );
+
     test('a clean entry is valid', () {
-      expect(validateIngredient(const Ingredient('gin')), isEmpty);
+      expect(check(Ingredient('gin')), isEmpty);
     });
 
     test('name rules apply, at an entry-relative empty path', () {
-      final issues = validateIngredient(const Ingredient(' gin (optional)'));
+      final issues = check(Ingredient(' gin (optional)'));
       expect(issues.map((i) => i.path), [const [], const []]);
       expect(issues.map((i) => i.kind), [
         ValidationIssueKind.whitespaceInName,
@@ -433,47 +491,55 @@ void main() {
     });
 
     test('a name collides with another entry, never with itself', () {
+      expect(check(Ingredient('gin'), others: {'rum'}), isEmpty);
       expect(
-        validateIngredient(
-          const Ingredient('gin'),
-          otherIngredientNames: {'rum'},
-        ),
-        isEmpty,
-      );
-      expect(
-        validateIngredient(
-          const Ingredient('gin'),
-          otherIngredientNames: {'gin'},
-        ).single.kind,
+        check(Ingredient('gin'), others: {'gin'}).single.kind,
         ValidationIssueKind.duplicateName,
       );
     });
 
+    test('tag references resolve against the vocabulary it is given', () {
+      final tagged = Ingredient('gin', tags: const ['juniper']);
+      expect(check(tagged, known: {'juniper'}), isEmpty);
+      final issue = check(tagged).single;
+      expect(issue.kind, ValidationIssueKind.unknownTag);
+      expect(issue.path, ['tags', 0]);
+    });
+
     test('reports what validateModel reports for the same entry', () {
-      const entry = Ingredient(' gin (optional)');
+      final entry = Ingredient(' gin (optional)', tags: const ['juniper']);
       expect(
         validateModel(ingredients: [entry]).map((i) => i.message).toList(),
-        validateIngredient(entry).map((i) => i.message).toList(),
+        check(entry).map((i) => i.message).toList(),
       );
     });
   });
 
   group('validateTag', () {
     test('a clean tag is valid', () {
-      expect(validateTag(const Tag('sour')), isEmpty);
+      expect(validateTag(const Tag('sour', color: TagColor.rose)), isEmpty);
     });
 
     test('the reserved suffix is an ingredient rule only', () {
-      expect(validateTag(const Tag('sour (optional)')), isEmpty);
+      expect(
+        validateTag(const Tag('sour (optional)', color: TagColor.rose)),
+        isEmpty,
+      );
     });
 
     test('a name collides with another entry, never with itself', () {
       expect(
-        validateTag(const Tag('sour'), otherTagNames: {'classic'}),
+        validateTag(
+          const Tag('sour', color: TagColor.rose),
+          otherTagNames: {'classic'},
+        ),
         isEmpty,
       );
       expect(
-        validateTag(const Tag('sour'), otherTagNames: {'sour'}).single.kind,
+        validateTag(
+          const Tag('sour', color: TagColor.rose),
+          otherTagNames: {'sour'},
+        ).single.kind,
         ValidationIssueKind.duplicateName,
       );
     });
@@ -486,26 +552,26 @@ void main() {
         ValidationIssueKind.partMlNotPositive,
       );
       expect(
-        validateModel(ingredients: [const Ingredient('')]).single.kind,
+        validateModel(ingredients: [Ingredient('')]).single.kind,
         ValidationIssueKind.emptyName,
       );
       expect(
-        validateModel(ingredients: [const Ingredient(' gin')]).single.kind,
+        validateModel(ingredients: [Ingredient(' gin')]).single.kind,
         ValidationIssueKind.whitespaceInName,
       );
       expect(
-        validateModel(ingredients: [const Ingredient('gin\nrum')]).single.kind,
+        validateModel(ingredients: [Ingredient('gin\nrum')]).single.kind,
         ValidationIssueKind.lineBreakInName,
       );
       expect(
         validateModel(
-          ingredients: [const Ingredient('gin'), const Ingredient('gin')],
+          ingredients: [Ingredient('gin'), Ingredient('gin')],
         ).single.kind,
         ValidationIssueKind.duplicateName,
       );
       expect(
         validateModel(
-          ingredients: [const Ingredient('bitters (optional)')],
+          ingredients: [Ingredient('bitters (optional)')],
         ).single.kind,
         ValidationIssueKind.reservedSuffix,
       );
