@@ -84,6 +84,25 @@ void main() {
     });
   });
 
+  group('TagColor tokens', () {
+    test('tokens match the data format', () {
+      expect(
+        [for (final color in TagColor.values) color.token],
+        ['teal', 'indigo', 'plum', 'rose', 'sand', 'slate', 'neutral'],
+      );
+    });
+
+    test('fromToken round-trips every member', () {
+      for (final color in TagColor.values) {
+        expect(TagColor.fromToken(color.token), color);
+      }
+    });
+
+    test('fromToken returns null for an unknown token', () {
+      expect(TagColor.fromToken('puce'), isNull);
+    });
+  });
+
   group('Amount', () {
     test('single value is not a range', () {
       const amount = Amount(1.5);
@@ -145,10 +164,31 @@ void main() {
   });
 
   group('Tag', () {
-    test('equality and hashCode', () {
-      expect(const Tag('sour'), const Tag('sour'));
-      expect(const Tag('sour').hashCode, const Tag('sour').hashCode);
-      expect(const Tag('sour'), isNot(const Tag('classic')));
+    Tag build({String name = 'sour', TagColor color = TagColor.neutral}) =>
+        Tag(name, color: color);
+
+    test('defaults to neutral', () {
+      expect(const Tag('sour').color, TagColor.neutral);
+    });
+
+    test('equality and hashCode isolate each field', () {
+      expect(build(), build());
+      expect(build().hashCode, build().hashCode);
+      expect(build(), isNot(build(name: 'classic')));
+      expect(build(), isNot(build(color: TagColor.rose)));
+    });
+
+    test('copyWith replaces one field and carries the rest', () {
+      const tag = Tag('sour', color: TagColor.rose);
+      expect(tag.copyWith(), tag);
+      expect(
+        tag.copyWith(name: 'sours'),
+        const Tag('sours', color: TagColor.rose),
+      );
+      expect(
+        tag.copyWith(color: TagColor.plum),
+        const Tag('sour', color: TagColor.plum),
+      );
     });
   });
 

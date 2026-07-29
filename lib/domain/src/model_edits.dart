@@ -46,7 +46,9 @@ extension ModelEdits on Model {
   Model withTagRenamed(String from, String to) {
     if (!hasTag(from)) return this;
     return copyWith(
-      tags: [for (final tag in tags) tag.name == from ? Tag(to) : tag],
+      tags: [
+        for (final tag in tags) tag.name == from ? tag.copyWith(name: to) : tag,
+      ],
       recipes: [
         for (final recipe in recipes) _withTagsRenamed(recipe, from, to),
       ],

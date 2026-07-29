@@ -65,6 +65,26 @@ enum LineMark {
       _fromToken(values, text, (v) => v.token);
 }
 
+/// The palette a tag's colour comes from (docs/adr/07-tag-colour.md). Green,
+/// amber and red are absent by design: stock and availability already spend
+/// them on meaning. Declaration order is the order the picker offers, with the
+/// default last. What each token looks like is the UI's to say.
+enum TagColor {
+  teal('teal'),
+  indigo('indigo'),
+  plum('plum'),
+  rose('rose'),
+  sand('sand'),
+  slate('slate'),
+  neutral('neutral');
+
+  final String token;
+  const TagColor(this.token);
+
+  static TagColor? fromToken(String text) =>
+      _fromToken(values, text, (v) => v.token);
+}
+
 /// Linear token lookup shared by the enums above.
 T? _fromToken<T extends Enum>(
   List<T> values,
@@ -99,17 +119,22 @@ final class Ingredient {
 
 final class Tag {
   final String name;
+  final TagColor color;
 
-  const Tag(this.name);
+  const Tag(this.name, {this.color = TagColor.neutral});
 
-  @override
-  bool operator ==(Object other) => other is Tag && other.name == name;
-
-  @override
-  int get hashCode => name.hashCode;
+  Tag copyWith({String? name, TagColor? color}) =>
+      Tag(name ?? this.name, color: color ?? this.color);
 
   @override
-  String toString() => 'Tag($name)';
+  bool operator ==(Object other) =>
+      other is Tag && other.name == name && other.color == color;
+
+  @override
+  int get hashCode => Object.hash(name, color);
+
+  @override
+  String toString() => 'Tag($name, color: ${color.token})';
 }
 
 /// A single value when [min] == [max], a range otherwise (FR-REC-2).

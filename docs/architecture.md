@@ -71,7 +71,9 @@ ingredients:
   - {name: rich demerara syrup}        # stock omitted = out
   - {name: egg white, stock: in}
 
-tags: [sour, classic]
+tags:
+  - {name: sour, color: rose}
+  - {name: classic}                    # color omitted = neutral
 
 recipes:
   - name: Whiskey Sour
@@ -89,6 +91,10 @@ Rules:
 
 - `format` is the schema version; imports of unsupported versions are rejected (FR-DAT-4).
 - Ingredient entries: `name` required; `stock` is `in` | `low` | `out` (default `out`).
+- Tag entries: `name` required; `color` is one of `teal` | `indigo` | `plum` | `rose` |
+  `sand` | `slate` | `neutral` (default `neutral`), the closed palette of
+  [ADR 07](adr/07-tag-colour.md). A recipe's `tags` list holds names only — the colour lives
+  with the tag.
 - An ingredient line is `<amount> <unit> <ingredient name>`, optionally suffixed with one
   mark — ` (base)` or ` (optional)`, never both ([ADR 06](adr/06-base-spirit-on-the-line.md)).
   Amount is a decimal number or a range `a-b`; unit is one of
@@ -106,8 +112,8 @@ Rules:
 - The app writes a canonical form: fixed key order, fixed indentation, no comments. Comments
   are legal in imported files but are not preserved once the app rewrites the store —
   the round-trip guarantee (FR-DAT-5) covers content, not comments.
-- Unit, stock and mark tokens are declared as fields on their enums, never derived from Dart
-  identifier spellings, so renaming a member cannot change the format.
+- Unit, stock, mark and tag-colour tokens are declared as fields on their enums, never derived
+  from Dart identifier spellings, so renaming a member cannot change the format.
 - The pilot reads and writes format `1` only; a future format bump migrates old files on
   import inside the codec.
 - The round-trip guarantee (FR-DAT-5) is over canonical files: a hand-written `1.50` or

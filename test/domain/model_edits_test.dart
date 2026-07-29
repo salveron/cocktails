@@ -184,6 +184,14 @@ void main() {
       expect(model.withTagRenamed('stirred', 'sour'), same(model));
     });
 
+    test('the colour follows the new name', () {
+      final coloured = model.withTag(const Tag('sour', color: TagColor.rose));
+      expect(coloured.withTagRenamed('sour', 'sours').tags, const [
+        Tag('sours', color: TagColor.rose),
+        Tag('classic'),
+      ]);
+    });
+
     test('renaming onto an existing name is rejected', () {
       expect(
         () => model.withTagRenamed('sour', 'classic'),

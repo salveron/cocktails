@@ -18,7 +18,9 @@ ingredients:
   - {name: rich demerara syrup}
   - {name: egg white, stock: in}
 
-tags: [sour, classic]
+tags:
+  - {name: sour, color: rose}
+  - {name: classic}
 
 recipes:
   - name: Whiskey Sour
@@ -46,7 +48,9 @@ ingredients:
   - {name: rich demerara syrup}        # stock omitted = out
   - {name: egg white, stock: in}
 
-tags: [sour, classic]
+tags:
+  - {name: sour, color: rose}
+  - {name: classic}                    # color omitted = neutral
 
 recipes:
   - name: Whiskey Sour
@@ -67,7 +71,10 @@ Model docModel() => Model(
     Ingredient('rich demerara syrup'),
     Ingredient('egg white', stock: StockLevel.in_),
   ],
-  tags: const [Tag('sour'), Tag('classic')],
+  tags: const [
+    Tag('sour', color: TagColor.rose),
+    Tag('classic'),
+  ],
   recipes: [
     Recipe(
       'Whiskey Sour',
@@ -173,7 +180,7 @@ recipes: []
       final text = codec.encode(model);
       expect(text, contains('- {name: "1976"}'));
       expect(text, contains('- {name: "true"}'));
-      expect(text, contains('tags: ["true", no]'));
+      expect(text, contains('tags:\n  - {name: "true"}\n  - {name: no}\n'));
     });
 
     test('quotes structure-breaking text', () {
@@ -403,14 +410,43 @@ recipes: []
       );
     });
 
-    test('a tag that is not a string', () {
-      final issues = rejected('format: 1\ntags: [sour, 1976]\n');
+    test('a tag written the pre-colour way, as a bare name', () {
+      final issues = rejected('format: 1\ntags: [sour, classic]\n');
+      expect(issues, hasLength(2));
+      expectIssue(
+        issues[0],
+        ValidationIssueKind.malformedValue,
+        'tags[0]',
+        2,
+        messagePart: 'Tag entry must be a mapping: "sour"',
+      );
+    });
+
+    test('a colour outside the palette names the whole palette', () {
+      final issues = rejected(
+        'format: 1\ntags:\n  - {name: sour, color: puce}\n',
+      );
       expectIssue(
         issues.single,
         ValidationIssueKind.malformedValue,
-        'tags[1]',
-        2,
-        messagePart: 'Tag must be a string: 1976',
+        'tags[0].color',
+        3,
+        messagePart:
+            'color must be one of teal, indigo, plum, rose, sand, slate, '
+            'neutral: "puce"',
+      );
+    });
+
+    test('an unknown tag key', () {
+      final issues = rejected(
+        'format: 1\ntags:\n  - {name: sour, colour: rose}\n',
+      );
+      expectIssue(
+        issues.single,
+        ValidationIssueKind.malformedValue,
+        'tags[0].colour',
+        3,
+        messagePart: 'Unknown key: "colour"',
       );
     });
 
@@ -576,7 +612,8 @@ recipes: []
         'format: 1\n'
         'ingredients:\n'
         '  - {name: gin}\n'
-        'tags: [classic]\n'
+        'tags:\n'
+        '  - {name: classic}\n'
         'recipes:\n'
         '  - name: Martini\n'
         '    tags: [sour, classic, classic]\n'
@@ -589,33 +626,33 @@ recipes: []
         issues[0],
         ValidationIssueKind.unknownTag,
         'recipes[0].tags[0]',
-        7,
+        8,
         messagePart: 'Unknown tag: "sour"',
       );
       expectIssue(
         issues[1],
         ValidationIssueKind.duplicateTag,
         'recipes[0].tags[2]',
-        7,
+        8,
       );
       expectIssue(
         issues[2],
         ValidationIssueKind.unknownIngredient,
         'recipes[0].lines[0]',
-        9,
+        10,
         messagePart: 'Unknown ingredient: "vermouth"',
       );
       expectIssue(
         issues[3],
         ValidationIssueKind.rangeOutOfOrder,
         'recipes[0].lines[0]',
-        9,
+        10,
       );
       expectIssue(
         issues[4],
         ValidationIssueKind.amountNotPositive,
         'recipes[0].lines[1]',
-        10,
+        11,
       );
     });
 

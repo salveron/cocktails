@@ -39,6 +39,12 @@ Recipe, ingredient, and tag names are each unique within their kind.
 
 - **FR-VOC-1** Ingredients and tags can be added, renamed (propagates everywhere), and
   deleted; deletion is blocked while any recipe references the entry.
+- **FR-VOC-3** A tag carries a colour picked from a fixed palette and shown wherever the tag
+  appears; a tag whose colour was never picked shows neutral. The palette holds no green,
+  amber or red — those signal stock and availability ([ADR 07](adr/07-tag-colour.md)).
+
+FR-VOC-2 left for FR-REC-8 in [ADR 06](adr/06-base-spirit-on-the-line.md); its number stays
+empty so no reference to it can mean two things.
 
 ### Inventory
 

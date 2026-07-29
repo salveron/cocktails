@@ -51,8 +51,12 @@ First usable slice; recipes reference both vocabularies, so this precedes Phase 
 - [x] **M11 Ingredient management** — add, rename with propagation, reference-blocked
       delete (FR-VOC-1) on the inventory screen, through the two shared
       [vocabulary dialogs](ui-design.md#vocabulary-editing) M12 reuses.
+- [x] **M11a Tag colour** — a tag carries a colour from a closed palette
+      ([ADR 07](adr/07-tag-colour.md)): `TagColor` with declared tokens, `Tag.color` defaulting
+      to neutral and surviving a rename, and the tag entry becoming a mapping like the
+      ingredient entry (FR-VOC-3). Shape only — the picker is M12's.
 - [ ] **M12 Tag management** — add, rename with propagation, reference-blocked delete
-      (FR-VOC-1).
+      (FR-VOC-1), and the colour picker, on a tag screen behind Settings.
 
 ## Phase 2 — Recipes
 

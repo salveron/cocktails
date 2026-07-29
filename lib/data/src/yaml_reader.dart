@@ -179,28 +179,64 @@ Ingredient? _readIngredient(
   }
   _checkKeys(node, const {'name', 'stock'}, path, issues);
   final name = _readName(node, path, issues);
-  var stock = StockLevel.out;
-  final stockNode = node.nodes['stock'];
-  if (stockNode != null) {
-    final value = stockNode.value;
-    final parsed = value is String ? StockLevel.fromToken(value) : null;
-    if (parsed == null) {
-      _report(
-        issues,
-        [...path, 'stock'],
-        'stock must be one of in, low, out',
-        stockNode,
-      );
-    } else {
-      stock = parsed;
-    }
-  }
+  final stock = _readToken(
+    node,
+    'stock',
+    path,
+    issues,
+    fromToken: StockLevel.fromToken,
+    tokens: [for (final value in StockLevel.values) value.token],
+    fallback: StockLevel.out,
+  );
   return name == null ? null : Ingredient(name, stock: stock);
 }
 
 Tag? _readTag(YamlNode node, List<Object> path, List<ValidationIssue> issues) {
-  final name = _stringValue(node, path, issues, 'Tag');
-  return name == null ? null : Tag(name);
+  if (node is! YamlMap) {
+    _report(issues, path, 'Tag entry must be a mapping', node);
+    return null;
+  }
+  _checkKeys(node, const {'name', 'color'}, path, issues);
+  final name = _readName(node, path, issues);
+  final color = _readToken(
+    node,
+    'color',
+    path,
+    issues,
+    fromToken: TagColor.fromToken,
+    tokens: [for (final value in TagColor.values) value.token],
+    fallback: TagColor.neutral,
+  );
+  return name == null ? null : Tag(name, color: color);
+}
+
+/// An optional enum-token key, the shape both vocabulary entries have. An
+/// absent key and an unreadable one both answer [fallback], so one bad token
+/// costs its own value and nothing else in the entry. [tokens] only spells the
+/// legal set out in the message — the lookup stays the enum's own.
+T _readToken<T extends Enum>(
+  YamlMap node,
+  String key,
+  List<Object> path,
+  List<ValidationIssue> issues, {
+  required T? Function(String) fromToken,
+  required List<String> tokens,
+  required T fallback,
+}) {
+  final valueNode = node.nodes[key];
+  if (valueNode == null) return fallback;
+  final value = valueNode.value;
+  final parsed = value is String ? fromToken(value) : null;
+  if (parsed == null) {
+    _report(
+      issues,
+      [...path, key],
+      '$key must be one of ${tokens.join(', ')}',
+      valueNode,
+    );
+    return fallback;
+  }
+  return parsed;
 }
 
 Recipe? _readRecipe(
