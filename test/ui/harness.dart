@@ -2,7 +2,9 @@ import 'package:cocktails/data/data.dart';
 import 'package:cocktails/domain/domain.dart';
 import 'package:cocktails/state/state.dart';
 import 'package:cocktails/ui/app.dart';
+import 'package:cocktails/ui/widgets/color_chip.dart';
 import 'package:cocktails/ui/widgets/search_field.dart';
+import 'package:cocktails/ui/widgets/tag_choices.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -154,3 +156,55 @@ Future<void> pick(WidgetTester tester, TagColor color) async {
   await tester.tap(find.byTooltip(color.token));
   await tester.pumpAndSettle();
 }
+
+/// Whether the chip reading [label] is wearing its ring. The outermost box in
+/// a choosable chip is the ring, drawn transparent while it is not picked.
+bool isPicked(WidgetTester tester, String label) {
+  final ring = tester.widget<DecoratedBox>(
+    find
+        .descendant(
+          of: find.widgetWithText(ColorChip, label),
+          matching: find.byType(DecoratedBox),
+        )
+        .first,
+  );
+  final border = (ring.decoration as BoxDecoration).border;
+  return border != null && border.top.color != Colors.transparent;
+}
+
+/// Toggles the tag [name] in the dialog — never in the filter row behind it.
+Future<void> chooseTag(WidgetTester tester, String name) => tap(
+  tester,
+  find.descendant(of: find.byType(AlertDialog), matching: find.text(name)),
+);
+
+/// Toggles the tag [name] in a list's filter row.
+Future<void> filterBy(WidgetTester tester, String name) => tap(
+  tester,
+  find.descendant(of: find.byType(TagChoices), matching: find.text(name)),
+);
+
+/// Every dot on the row named [name], in the order they are drawn.
+Finder _dotsOn(String name) => find.descendant(
+  of: find.ancestor(of: find.text(name), matching: find.byType(ListTile)),
+  matching: find.byType(TagDot),
+);
+
+/// The tags those dots stand for.
+Iterable<String> dotsOn(WidgetTester tester, String name) =>
+    tester.widgetList<TagDot>(_dotsOn(name)).map((dot) => dot.tag.name);
+
+/// The colour the first of them is drawn in, on [chipColor]'s terms.
+Color dotColor(WidgetTester tester, String name) =>
+    (tester
+                .widget<DecoratedBox>(
+                  find
+                      .descendant(
+                        of: _dotsOn(name),
+                        matching: find.byType(DecoratedBox),
+                      )
+                      .first,
+                )
+                .decoration
+            as BoxDecoration)
+        .color!;

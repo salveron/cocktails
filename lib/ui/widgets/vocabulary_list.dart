@@ -9,6 +9,18 @@ import 'package:flutter/material.dart';
 import 'empty_state.dart';
 import 'search_field.dart';
 
+/// The one order a vocabulary is read in: A→Z, case ignored.
+int byName(String a, String b) => a.toLowerCase().compareTo(b.toLowerCase());
+
+/// What narrows a list beyond its name: the [row] of controls under the search,
+/// the [test] an entry must pass, and [narrowing] — what those controls
+/// currently come to, worded to follow "matches", or null while none is set.
+typedef ListFilter<T> = ({
+  Widget row,
+  bool Function(T entry) test,
+  String? narrowing,
+});
+
 /// One row on the tinted ground every vocabulary shares: separation by mass
 /// rather than by a rule between rows. The clip keeps the tap ripple inside the
 /// corners.
@@ -67,12 +79,17 @@ class VocabularyList<T> extends StatefulWidget {
     required this.noun,
     required this.plural,
     required this.empty,
+    this.filter,
     super.key,
   });
 
   final List<T> entries;
   final String Function(T entry) nameOf;
   final VocabularyRow Function(T entry) rowOf;
+
+  /// What narrows the list besides its search, for a screen that has such a
+  /// thing — null for one that has not.
+  final ListFilter<T>? filter;
 
   /// Adds an entry, [query] prefilling its name where the search found nothing.
   /// True when one was added — a cancelled add must not clear the search.
@@ -118,24 +135,28 @@ class _VocabularyListState<T> extends State<VocabularyList<T>> {
   );
 
   Widget _searchable() {
+    final filter = widget.filter;
     final matches =
         widget.entries
-            .where((entry) => matchesQuery(widget.nameOf(entry), _search.text))
+            .where(
+              (entry) =>
+                  matchesQuery(widget.nameOf(entry), _search.text) &&
+                  (filter?.test(entry) ?? true),
+            )
             .toList()
-          ..sort(
-            (a, b) => widget
-                .nameOf(a)
-                .toLowerCase()
-                .compareTo(widget.nameOf(b).toLowerCase()),
-          );
+          ..sort((a, b) => byName(widget.nameOf(a), widget.nameOf(b)));
     final query = _search.text.trim();
     return Column(
+      // The search and whatever narrows below it run the list's full width.
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         SearchField(controller: _search, hintText: 'Search ${widget.plural}'),
+        if (filter != null) filter.row,
         Expanded(
           child: matches.isEmpty
               ? _NoMatch(
                   query: query,
+                  narrowing: filter?.narrowing,
                   noun: widget.noun,
                   onAdd: () => unawaited(_add(query)),
                 )
@@ -163,23 +184,38 @@ class _VocabularyListState<T> extends State<VocabularyList<T>> {
 class _NoMatch extends StatelessWidget {
   const _NoMatch({
     required this.query,
+    required this.narrowing,
     required this.noun,
     required this.onAdd,
   });
 
   final String query;
+  final String? narrowing;
   final String noun;
   final VoidCallback onAdd;
+
+  /// Whatever narrowed the list is named, and both when both did: an empty
+  /// list that blames only half of it sends the reader hunting for the rest.
+  String get _reason {
+    final narrowing = this.narrowing;
+    final causes = [
+      if (query.isNotEmpty) 'is called "$query"',
+      if (narrowing != null) 'matches $narrowing',
+    ];
+    return 'No $noun here ${causes.join(' and ')}.';
+  }
 
   @override
   Widget build(BuildContext context) => EmptyState(
     icon: Icons.search_off_outlined,
     title: 'Nothing matches',
-    message: 'No $noun here is called "$query".',
-    action: FilledButton.tonalIcon(
-      onPressed: onAdd,
-      icon: const Icon(Icons.add),
-      label: Text('Add "$query"'),
-    ),
+    message: _reason,
+    action: query.isEmpty
+        ? null
+        : FilledButton.tonalIcon(
+            onPressed: onAdd,
+            icon: const Icon(Icons.add),
+            label: Text('Add "$query"'),
+          ),
   );
 }

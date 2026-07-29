@@ -1,31 +1,42 @@
-/// The two dialogs vocabulary editing needs — name entry and deletion — shared
-/// by the ingredient and tag screens (docs/ui-design.md#vocabulary-editing).
+/// The two dialogs vocabulary editing needs — the entry and the deletion —
+/// shared by the ingredient and tag screens
+/// (docs/ui-design.md#vocabulary-editing).
 library;
 
 import 'package:cocktails/domain/domain.dart';
 import 'package:flutter/material.dart';
 
 import '../palette.dart';
+import 'tag_choices.dart';
 
-/// Asks for a vocabulary name and answers with it, or null when the user backs
-/// out. [validate] is that vocabulary's own rule set, so this dialog holds no
-/// name rules and cannot drift from the ones the codec applies.
-Future<String?> promptForName(
+/// Asks for an ingredient's name and the tags it wears, or null when the user
+/// backs out. [validate] is the vocabulary's own rule set, so this dialog holds
+/// no name rules and cannot drift from the ones the codec applies. [vocabulary]
+/// is every ingredient tag on offer — empty leaves the field alone in the
+/// dialog — and [chosen] the ones already worn (FR-INV-3).
+Future<({String name, List<String> tags})?> promptForIngredient(
   BuildContext context, {
   required String title,
   required String hintText,
   required List<ValidationIssue> Function(String name) validate,
+  required List<Tag> vocabulary,
+  List<String> chosen = const [],
   String initial = '',
-}) async => (await _prompt(
-  context,
-  title: title,
-  hintText: hintText,
-  validate: validate,
-  initial: initial,
-  color: null,
-))?.$1;
+}) async {
+  final answer = await _prompt(
+    context,
+    title: title,
+    hintText: hintText,
+    validate: validate,
+    initial: initial,
+    color: null,
+    vocabulary: vocabulary,
+    chosen: chosen,
+  );
+  return answer == null ? null : (name: answer.name, tags: answer.tags);
+}
 
-/// [promptForName] with the palette under the field, so a tag's name and its
+/// The same dialog with the palette under the field, so a tag's name and its
 /// colour are settled in one place (FR-VOC-3). [color] is what the swatch row
 /// opens on: the colour the tag already wears, or the one a new tag is offered.
 Future<Tag?> promptForTag(
@@ -42,8 +53,13 @@ Future<Tag?> promptForTag(
   validate: validate,
   initial: initial,
   color: color,
+  vocabulary: const [],
+  chosen: const [],
 )) {
-  (final String name, final TagColor color) => Tag(name, color: color),
+  (name: final String name, color: final TagColor color, tags: _) => Tag(
+    name,
+    color: color,
+  ),
   _ => null,
 };
 
@@ -67,14 +83,18 @@ Future<bool> confirmDelete(
     ) ??
     false;
 
-Future<(String name, TagColor? color)?> _prompt(
+typedef _Entry = ({String name, TagColor? color, List<String> tags});
+
+Future<_Entry?> _prompt(
   BuildContext context, {
   required String title,
   required String hintText,
   required List<ValidationIssue> Function(String name) validate,
   required String initial,
   required TagColor? color,
-}) => showDialog<(String, TagColor?)>(
+  required List<Tag> vocabulary,
+  required List<String> chosen,
+}) => showDialog<_Entry>(
   context: context,
   builder: (context) => _EntryDialog(
     title: title,
@@ -82,6 +102,8 @@ Future<(String name, TagColor? color)?> _prompt(
     validate: validate,
     initial: initial,
     color: color,
+    vocabulary: vocabulary,
+    chosen: chosen,
   ),
 );
 
@@ -92,6 +114,8 @@ class _EntryDialog extends StatefulWidget {
     required this.validate,
     required this.initial,
     required this.color,
+    required this.vocabulary,
+    required this.chosen,
   });
 
   final String title;
@@ -102,6 +126,11 @@ class _EntryDialog extends StatefulWidget {
   /// The colour to open on, or null for a vocabulary that wears none.
   final TagColor? color;
 
+  /// The tags on offer, and the ones already worn. Empty for a vocabulary
+  /// whose entries carry none.
+  final List<Tag> vocabulary;
+  final List<String> chosen;
+
   @override
   State<_EntryDialog> createState() => _EntryDialogState();
 }
@@ -109,6 +138,7 @@ class _EntryDialog extends StatefulWidget {
 class _EntryDialogState extends State<_EntryDialog> {
   late final _name = TextEditingController(text: widget.initial);
   late TagColor? _color = widget.color;
+  late final Set<String> _tags = {...widget.chosen};
 
   @override
   void initState() {
@@ -122,6 +152,10 @@ class _EntryDialogState extends State<_EntryDialog> {
     super.dispose();
   }
 
+  void _toggle(String tag) => setState(() {
+    if (!_tags.remove(tag)) _tags.add(tag);
+  });
+
   @override
   Widget build(BuildContext context) {
     final name = _name.text;
@@ -129,13 +163,24 @@ class _EntryDialogState extends State<_EntryDialog> {
     final problem = issues.isEmpty ? null : issues.first.message;
     final save = name.isEmpty || problem != null
         ? null
-        : () => Navigator.of(context).pop((name, _color));
+        : () => Navigator.of(context).pop((
+            name: name,
+            color: _color,
+            // In vocabulary order, so one set of tags always reads the same.
+            tags: [
+              for (final tag in widget.vocabulary)
+                if (_tags.contains(tag.name)) tag.name,
+            ],
+          ));
     final color = _color;
     return AlertDialog(
       scrollable: true,
       title: Text(widget.title),
       content: Column(
         mainAxisSize: MainAxisSize.min,
+        // Every section runs the field's full width, so the swatches and the
+        // chips start where the field starts instead of floating in the middle.
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           TextField(
             controller: _name,
@@ -153,6 +198,14 @@ class _EntryDialogState extends State<_EntryDialog> {
             _Swatches(
               selected: color,
               onPick: (picked) => setState(() => _color = picked),
+            ),
+          ],
+          if (widget.vocabulary.isNotEmpty) ...[
+            const SizedBox(height: 20),
+            TagChoices(
+              vocabulary: widget.vocabulary,
+              chosen: _tags,
+              onToggle: _toggle,
             ),
           ],
         ],

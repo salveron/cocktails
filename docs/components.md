@@ -50,9 +50,10 @@ lib/
     palette.dart               # the fixed hues: stock signals and the tag palette
     screens/                   # one file per destination, plus settings and tags
     widgets/                   # empty_state, model_view, search_field, startup_issues,
-                               #   color_chip — the pill a fixed hue is drawn as
+                               #   color_chip — the pill, chip and dot a hue is drawn as
+                               #   tag_choices — the row tags are picked from
                                #   vocabulary_list — the list every vocabulary screen is
-                               #   vocabulary_dialogs — name/colour entry, blocked delete
+                               #   vocabulary_dialogs — entry (name, colour, tags), delete
 test/                          # mirrors lib/, plus test/architecture_test.dart
 ```
 

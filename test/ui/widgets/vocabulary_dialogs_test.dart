@@ -1,4 +1,6 @@
 import 'package:cocktails/domain/domain.dart';
+import 'package:cocktails/ui/widgets/color_chip.dart';
+import 'package:cocktails/ui/widgets/tag_choices.dart';
 import 'package:cocktails/ui/widgets/vocabulary_dialogs.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -49,53 +51,129 @@ List<ValidationIssue> tagRule(String name) => validateTag(
   otherTagNames: const {'classic'},
 );
 
+/// Two ingredient tags to pick from, in the order the screen sorts them.
+const ingredientTags = [
+  Tag('citrus', color: TagColor.sand),
+  Tag('syrup', color: TagColor.teal),
+];
+
 void main() {
-  Future<Answer<String?>> openName(
+  Future<Answer<({String name, List<String> tags})?>> openIngredient(
     WidgetTester tester, {
     String title = 'New ingredient',
     String initial = '',
+    List<Tag> vocabulary = const [],
+    List<String> chosen = const [],
   }) => openDialog(
     tester,
-    (context) => promptForName(
+    (context) => promptForIngredient(
       context,
       title: title,
       hintText: 'Ingredient name',
       validate: rule,
+      vocabulary: vocabulary,
+      chosen: chosen,
       initial: initial,
     ),
   );
 
-  group('name dialog', () {
+  group('ingredient dialog', () {
     testWidgets('saving hands the typed name back', (tester) async {
-      final answer = await openName(tester);
+      final answer = await openIngredient(tester);
       await type(tester, 'absinthe');
       await tap(tester, find.text('Save'));
-      expect(answer.value, 'absinthe');
+      expect(answer.value?.name, 'absinthe');
+      expect(answer.value?.tags, isEmpty);
     });
 
     testWidgets('backing out answers with nothing', (tester) async {
-      final answer = await openName(tester);
+      final answer = await openIngredient(tester);
       await type(tester, 'absinthe');
       await tap(tester, find.text('Cancel'));
       expect(answer.value, isNull);
     });
 
-    testWidgets('a rename opens on its own name, ready to save', (
-      tester,
-    ) async {
-      final answer = await openName(
+    testWidgets('an edit opens on its own name, ready to save', (tester) async {
+      final answer = await openIngredient(
         tester,
-        title: 'Rename "campari"',
+        title: 'Edit "campari"',
         initial: 'campari',
       );
-      expect(find.text('Rename "campari"'), findsOneWidget);
+      expect(find.text('Edit "campari"'), findsOneWidget);
       expect(saveEnabled(tester), isTrue);
       await tap(tester, find.text('Save'));
-      expect(answer.value, 'campari');
+      expect(answer.value?.name, 'campari');
+    });
+
+    testWidgets('every tag is offered, the worn ones ringed', (tester) async {
+      await openIngredient(
+        tester,
+        vocabulary: ingredientTags,
+        chosen: const ['syrup'],
+      );
+      expect(isPicked(tester, 'syrup'), isTrue);
+      expect(isPicked(tester, 'citrus'), isFalse);
+    });
+
+    testWidgets('name and tags come back together', (tester) async {
+      final answer = await openIngredient(tester, vocabulary: ingredientTags);
+      await type(tester, 'lime juice');
+      await chooseTag(tester, 'citrus');
+      await tap(tester, find.text('Save'));
+      expect(answer.value?.name, 'lime juice');
+      expect(answer.value?.tags, const ['citrus']);
+    });
+
+    testWidgets('tapping a tag it wears takes that one off', (tester) async {
+      final answer = await openIngredient(
+        tester,
+        initial: 'orgeat',
+        vocabulary: ingredientTags,
+        chosen: const ['citrus', 'syrup'],
+      );
+      await chooseTag(tester, 'citrus');
+      expect(isPicked(tester, 'citrus'), isFalse);
+      await tap(tester, find.text('Save'));
+      expect(answer.value?.tags, const ['syrup']);
+    });
+
+    testWidgets('tags answer in vocabulary order, not tapping order', (
+      tester,
+    ) async {
+      final answer = await openIngredient(tester, vocabulary: ingredientTags);
+      await type(tester, 'orgeat');
+      await chooseTag(tester, 'syrup');
+      await chooseTag(tester, 'citrus');
+      await tap(tester, find.text('Save'));
+      expect(answer.value?.tags, const ['citrus', 'syrup']);
+    });
+
+    testWidgets('a chip keeps its size whether or not it is picked', (
+      tester,
+    ) async {
+      await openIngredient(tester, vocabulary: ingredientTags);
+      final chip = find.widgetWithText(ColorChip, 'citrus');
+      final before = tester.getSize(chip);
+      await chooseTag(tester, 'citrus');
+      expect(isPicked(tester, 'citrus'), isTrue);
+      expect(tester.getSize(chip), before);
+    });
+
+    testWidgets('the tag row starts where the field starts', (tester) async {
+      await openIngredient(tester, vocabulary: ingredientTags);
+      expect(
+        tester.getTopLeft(find.byType(TagChoices)).dx,
+        tester.getTopLeft(dialogField).dx,
+      );
+    });
+
+    testWidgets('a vocabulary with no tags offers none', (tester) async {
+      await openIngredient(tester);
+      expect(find.byType(TagChoices), findsNothing);
     });
 
     testWidgets('refuses exactly what the vocabulary refuses', (tester) async {
-      await openName(tester);
+      await openIngredient(tester);
       const refused = {
         'gin': 'Duplicate ingredient name: "gin"',
         'sloe gin (base)': 'reserved',
@@ -116,7 +194,7 @@ void main() {
     });
 
     testWidgets('an untouched field is not a mistake yet', (tester) async {
-      await openName(tester);
+      await openIngredient(tester);
       expect(find.textContaining('Empty'), findsNothing);
       expect(saveEnabled(tester), isFalse);
     });
@@ -124,7 +202,7 @@ void main() {
     testWidgets('a vocabulary that wears no colour is offered none', (
       tester,
     ) async {
-      await openName(tester);
+      await openIngredient(tester);
       for (final color in TagColor.values) {
         expect(find.byTooltip(color.token), findsNothing, reason: color.token);
       }
@@ -148,6 +226,19 @@ void main() {
         initial: initial,
       ),
     );
+
+    testWidgets('a tag wears no tags of its own', (tester) async {
+      await openTag(tester);
+      expect(find.byType(TagChoices), findsNothing);
+    });
+
+    testWidgets('the palette starts where the field starts', (tester) async {
+      await openTag(tester);
+      expect(
+        tester.getTopLeft(find.byTooltip(TagColor.teal.token)).dx,
+        tester.getTopLeft(dialogField).dx,
+      );
+    });
 
     testWidgets('the whole palette is offered at once', (tester) async {
       await openTag(tester);

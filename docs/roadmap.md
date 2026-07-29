@@ -65,9 +65,12 @@ First usable slice; recipes reference both vocabularies, so this precedes Phase 
       dialog as the name on create and on edit alike (FR-VOC-3). Extracts the vocabulary list
       the inventory screen already was, so all three lists are one widget, and lands the
       token → swatch map in `palette.dart` beside the stock colours it now shares a shape with.
-- [ ] **M12a Ingredient tags on the inventory screen** — a small borderless colour dot per tag
-      after the ingredient's name, a pinned filter-chip row under the search that doubles as
-      the legend for those dots, and tag assignment behind the row's existing ⋮ (FR-INV-3).
+- [x] **M12a Ingredient tags on the inventory screen** — a borderless colour dot per tag after
+      the ingredient's name, and a filter-chip row under the search that doubles as the legend
+      for those dots: picking narrows to the bottles wearing every picked tag, combining with
+      the name search (FR-INV-3). Tags are settled in the entry dialog beside the name, on the
+      add and the edit alike, so `VocabularyList` gains the one filter slot the recipe list
+      (M18) will use next.
 
 ## Phase 2 — Recipes
 
