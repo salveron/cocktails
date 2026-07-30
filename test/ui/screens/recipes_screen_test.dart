@@ -1,66 +1,9 @@
 import 'package:cocktails/data/data.dart';
-import 'package:cocktails/domain/domain.dart';
 import 'package:cocktails/ui/screens/recipes_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../harness.dart';
-
-/// Three recipes off their reading order, covering every card section: tags,
-/// marks, a range, notes and made-history — and each section's absence too.
-final recipeModel = Model(
-  ingredients: [
-    Ingredient('bourbon'),
-    Ingredient('campari'),
-    Ingredient('egg white'),
-    Ingredient('gin'),
-    Ingredient('lemon juice'),
-    Ingredient('lime juice'),
-    Ingredient('sugar syrup'),
-    Ingredient('sweet vermouth'),
-    Ingredient('white rum'),
-  ],
-  recipeTags: const [
-    Tag('classic', color: TagColor.rose),
-    Tag('sour', color: TagColor.sand),
-  ],
-  recipes: [
-    Recipe(
-      'Whiskey Sour',
-      tags: const ['sour', 'classic'],
-      lines: const [
-        RecipeLine(Amount(2), Unit.part, 'bourbon', mark: LineMark.base),
-        RecipeLine(Amount(1), Unit.part, 'lemon juice'),
-        RecipeLine(Amount(0.75), Unit.part, 'sugar syrup'),
-        RecipeLine(Amount(1), Unit.piece, 'egg white', mark: LineMark.optional),
-      ],
-    ),
-    Recipe(
-      'Negroni',
-      tags: const ['classic'],
-      lines: const [
-        RecipeLine(Amount(1), Unit.part, 'gin', mark: LineMark.base),
-        RecipeLine(Amount(1), Unit.part, 'campari'),
-        RecipeLine(Amount(1), Unit.part, 'sweet vermouth'),
-      ],
-      notes: 'Stir over ice.',
-      made: MadeHistory(DateTime(2026, 7, 12), 4),
-    ),
-    Recipe(
-      'Daiquiri',
-      lines: const [
-        RecipeLine(
-          Amount.range(1.5, 2),
-          Unit.part,
-          'white rum',
-          mark: LineMark.base,
-        ),
-        RecipeLine(Amount(1), Unit.part, 'lime juice'),
-      ],
-      made: MadeHistory(DateTime(2026, 1, 3), 1),
-    ),
-  ],
-);
 
 const names = ['Daiquiri', 'Negroni', 'Whiskey Sour'];
 
@@ -92,12 +35,43 @@ void main() {
       expect(namesOn(tester), ['Daiquiri']);
     });
 
-    testWidgets('offers no add until the form lands', (tester) async {
+    testWidgets('offers add, edit and delete since the form landed', (
+      tester,
+    ) async {
       await pumpRecipes(tester);
-      expect(find.byType(FloatingActionButton), findsNothing);
+      expect(find.byType(FloatingActionButton), findsOneWidget);
+      expect(rowMenu('Negroni'), findsOneWidget);
       await search(tester, 'Mai Tai');
       expect(find.text('No recipe here is called "Mai Tai".'), findsOneWidget);
-      expect(find.text('Add "Mai Tai"'), findsNothing);
+      expect(find.text('Add "Mai Tai"'), findsOneWidget);
+    });
+
+    testWidgets('delete asks once and is never blocked', (tester) async {
+      final store = MemoryModelStore(recipeModel);
+      await pumpScreen(tester, const RecipesScreen(), store: store);
+      await chooseOnRow(tester, 'Negroni', 'Delete');
+      expect(find.text('Delete "Negroni"?'), findsOneWidget);
+      await tap(tester, find.text('Delete'));
+      expect(find.text('Negroni'), findsNothing);
+      expect(store.saved!.recipeNamed('Negroni'), isNull);
+    });
+
+    testWidgets('the menu is there on an expanded card too', (tester) async {
+      await pumpRecipes(tester);
+      await tap(tester, find.text('Negroni'));
+      expect(find.text('Stir over ice.'), findsOneWidget);
+      expect(rowMenu('Negroni'), findsOneWidget);
+    });
+
+    testWidgets('a renamed card stays open under its new name', (tester) async {
+      await pumpRecipes(tester);
+      await tap(tester, find.text('Negroni'));
+      await chooseOnRow(tester, 'Negroni', 'Edit');
+      await typeInto(tester, nameField, 'Boulevardier');
+      await tap(tester, find.text('Save'));
+      expect(find.text('Boulevardier'), findsOneWidget);
+      // The card it opened is still the card it opens: the notes are showing.
+      expect(find.text('Stir over ice.'), findsOneWidget);
     });
   });
 

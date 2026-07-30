@@ -26,9 +26,7 @@ class InventoryScreen extends ConsumerStatefulWidget {
 class _InventoryScreenState extends ConsumerState<InventoryScreen> {
   final _picked = <String>{};
 
-  void _toggle(String tag) => setState(() {
-    if (!_picked.remove(tag)) _picked.add(tag);
-  });
+  void _toggle(String tag) => setState(() => _picked.toggle(tag));
 
   @override
   Widget build(BuildContext context) => ModelView((model) {
@@ -119,9 +117,10 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
     return true;
   }
 
-  /// Name and tags come back together, so both are offered to the model and the
-  /// one that did not change derives an identical model the controller never
-  /// saves.
+  /// Name and tags come back together, so the whole entry goes to the model as
+  /// one edit — one save, one backup rotation — and the part that did not
+  /// change derives an identical model the controller never saves. Stock is the
+  /// row's, never the dialog's, so the edited bottle keeps what it had.
   Future<void> _edit(
     Model model,
     List<Tag> vocabulary,
@@ -137,10 +136,12 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
       initial: ingredient.name,
     );
     if (edited == null || !context.mounted) return;
-    final controller = ref.read(modelProvider.notifier);
-    await controller.renameIngredient(ingredient.name, edited.name);
-    if (!context.mounted) return;
-    await controller.setIngredientTags(edited.name, edited.tags);
+    await ref
+        .read(modelProvider.notifier)
+        .upsertIngredient(
+          ingredient.copyWith(name: edited.name, tags: edited.tags),
+          replacing: ingredient.name,
+        );
   }
 
   Future<void> _delete(Model model, Ingredient ingredient) async {

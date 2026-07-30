@@ -65,8 +65,7 @@ class TagChip extends StatelessWidget {
   );
 }
 
-/// A name with the tags it wears as dots after it, in vocabulary order so two
-/// entries wearing the same tags wear the same dots. The name gives way first:
+/// A name with the tags it wears as dots after it. The name gives way first:
 /// a clipped run of dots would misreport how many tags there are.
 class DottedName extends StatelessWidget {
   const DottedName(
@@ -84,9 +83,8 @@ class DottedName extends StatelessWidget {
   Widget build(BuildContext context) => Row(
     children: [
       Flexible(child: Text(name, overflow: TextOverflow.ellipsis)),
-      for (final tag in vocabulary)
-        if (worn.contains(tag.name))
-          Padding(padding: const EdgeInsets.only(left: 6), child: TagDot(tag)),
+      for (final tag in wornInOrder(vocabulary, worn))
+        Padding(padding: const EdgeInsets.only(left: 6), child: TagDot(tag)),
     ],
   );
 }

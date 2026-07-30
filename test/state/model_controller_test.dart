@@ -133,17 +133,41 @@ void main() {
       );
     });
 
-    test('renameIngredient propagates into the recipes', () async {
+    test('upsertIngredient replacing a name renames in one edit', () async {
       final container = await started();
-      await controllerOf(container).renameIngredient('gin', 'dry gin');
-      expect(
-        modelOf(container).ingredientNamed('dry gin')?.stock,
-        StockLevel.in_,
+      await controllerOf(container).upsertIngredient(
+        Ingredient('dry gin', stock: StockLevel.in_, tags: const ['juniper']),
+        replacing: 'gin',
       );
-      expect(
-        modelOf(container).recipeNamed('Negroni')?.lines.first.ingredient,
-        'dry gin',
-      );
+      final model = modelOf(container);
+      expect(model.ingredientNamed('gin'), isNull);
+      expect(model.ingredientNamed('dry gin')?.tags, ['juniper']);
+      expect(model.recipeNamed('Negroni')?.lines.first.ingredient, 'dry gin');
+      // The whole entry is one edit, so one backup rotation covers it.
+      expect(store.saveCount, 1);
+    });
+
+    test(
+      'upsertIngredient replacing the name it keeps drops nothing',
+      () async {
+        final container = await started();
+        await controllerOf(container).upsertIngredient(
+          Ingredient('gin', tags: const ['juniper']),
+          replacing: 'gin',
+        );
+        expect(modelOf(container).ingredients, hasLength(2));
+        expect(modelOf(container).ingredientNamed('gin')?.tags, ['juniper']);
+      },
+    );
+
+    test('upsertIngredient replaces the tags the entry carried', () async {
+      final container = await started();
+      final controller = controllerOf(container);
+      final gin = Ingredient('gin', stock: StockLevel.in_);
+      await controller.upsertIngredient(gin.copyWith(tags: const ['juniper']));
+      expect(modelOf(container).ingredientNamed('gin')?.tags, ['juniper']);
+      await controller.upsertIngredient(gin);
+      expect(modelOf(container).ingredientNamed('gin')?.tags, isEmpty);
     });
 
     test('removeIngredient drops the entry', () async {
@@ -204,15 +228,6 @@ void main() {
       expect(modelOf(container).hasIngredientTag('juniper'), isFalse);
     });
 
-    test('setIngredientTags replaces what the ingredient carried', () async {
-      final container = await started();
-      final controller = controllerOf(container);
-      await controller.setIngredientTags('gin', const ['juniper']);
-      expect(modelOf(container).ingredientNamed('gin')?.tags, ['juniper']);
-      await controller.setIngredientTags('gin', const []);
-      expect(modelOf(container).ingredientNamed('gin')?.tags, isEmpty);
-    });
-
     test('upsertRecipe adds and replaces by name', () async {
       final container = await started();
       await controllerOf(container).upsertRecipe(Recipe('Americano'));
@@ -221,6 +236,46 @@ void main() {
         container,
       ).upsertRecipe(Recipe('Negroni', notes: 'stir with ice'));
       expect(modelOf(container).recipes, hasLength(2));
+      expect(modelOf(container).recipeNamed('Negroni')?.notes, 'stir with ice');
+    });
+
+    test('upsertRecipe carries the ingredients it introduced', () async {
+      final container = await started();
+      await controllerOf(container).upsertRecipe(
+        Recipe(
+          'Sazerac',
+          lines: const [RecipeLine(Amount(2), Unit.part, 'rye')],
+        ),
+        addingIngredients: [Ingredient('rye'), Ingredient('absinthe')],
+      );
+      final model = modelOf(container);
+      expect(model.ingredientNamed('rye'), Ingredient('rye'));
+      expect(model.ingredientNamed('absinthe'), Ingredient('absinthe'));
+      expect(model.recipeNamed('Sazerac'), isNotNull);
+      // The whole entry is one edit, so one model reaches the disk and one
+      // backup rotation covers the action.
+      expect(store.saveCount, 1);
+    });
+
+    test('upsertRecipe replacing a name renames in one edit', () async {
+      final container = await started();
+      await controllerOf(container).upsertRecipe(
+        negroni.copyWith(name: 'Boulevardier'),
+        replacing: 'Negroni',
+      );
+      final model = modelOf(container);
+      expect(model.recipeNamed('Negroni'), isNull);
+      expect(model.recipeNamed('Boulevardier'), isNotNull);
+      expect(store.saveCount, 1);
+    });
+
+    test('upsertRecipe replacing the name it keeps drops nothing', () async {
+      final container = await started();
+      await controllerOf(container).upsertRecipe(
+        negroni.copyWith(notes: 'stir with ice'),
+        replacing: 'Negroni',
+      );
+      expect(modelOf(container).recipes, hasLength(1));
       expect(modelOf(container).recipeNamed('Negroni')?.notes, 'stir with ice');
     });
 

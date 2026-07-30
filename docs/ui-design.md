@@ -75,9 +75,9 @@ Adding is a `FloatingActionButton` the list brings with it: the destinations sha
 `Scaffold`, which has no per-screen button slot, so `VocabularyList` carries a `Scaffold` of its
 own. The "nothing matches" face carries that same add prefilled with the query, so a search that
 found nothing is one tap from creating it. A successful add clears the search — otherwise the
-new entry could land outside the query and the screen would look as if nothing had happened. A
-screen with no way to add yet — the recipes until M14 — leaves the button out, and its "nothing
-matches" face keeps the reason but not the offer.
+new entry could land outside the query and the screen would look as if nothing had happened.
+The recipes' add fills the same slot but pushes the [recipe form](#recipe-form) instead of a
+dialog: a recipe is more than one dialog holds.
 
 ## Recipes screen
 
@@ -95,10 +95,49 @@ matches" face keeps the reason but not the offer.
   so the card reads like the file and each mark carries its own words. Then the notes as
   typed, then the made-history line — "Made 4 times · last 12 Jul 2026". A section with
   nothing to say is absent: no notes, no history, no empty heading.
-- **Read-only until M14** — no add button, no per-row ⋮, and the "nothing matches" face
-  offers no add. The compact line's trailing end is reserved for M16's availability chip;
+- **The vocabulary actions are the inventory's** — add through the list's own button, edit
+  and delete behind a per-row ⋮ on compact and expanded cards alike: the row's tap is spent
+  on expansion, and the menu will pair with M16's availability chip in the trailing slot as
+  it pairs with the stock chip on the inventory. Add and edit push the
+  [recipe form](#recipe-form); delete only confirms, since nothing references a recipe. A card
+  open when its recipe is renamed stays open under the new name: the expansion belongs to the
+  entry, not to the name it used to have.
   M15 puts the "made it" action on the full card, M17's scaling sits by the lines, and
   M18's filter row slots under the search, becoming the legend the dots are read against.
+
+## Recipe form
+
+Create and edit are one pushed page — the shell's rule for forms — titled for what it is
+doing, Save an app-bar action. Top to bottom it mirrors the card and the file: the name, the
+ingredient lines, the tag picker, the notes (FR-REC-1..5).
+
+- **One field per line, the grammar as the entry** — a line is typed exactly as the file
+  writes it, marks included: "1.5 part gin (base)" (FR-REC-2/3/8). The shared parser is the
+  only reader, so the form cannot drift from the codec; `tryParseRecipeLine` runs on every
+  change and the problem sits under its own field, the entry dialog's idiom — an untouched
+  empty field is no mistake. The hint shows the shape.
+- **The lines grow by themselves** — the bottom field is always empty and typing in it
+  spawns the next; a field emptied out is dropped on save. No per-line ✕, no add button, no
+  drag handles: order is the typed order, and reordering is cut-and-paste.
+- **Save stays out of reach** until the name passes the live rule the dialogs apply — its
+  duplicate and whitespace checks — and every non-empty line parses. On save `validateRecipe`
+  judges the whole entry; a value rule syntax cannot see — a zero amount, range ends out of
+  order — lands under its field through the `lines[i]` path, the seam components.md names.
+  A refusal no field can carry is said in a snackbar instead: a Save that changes nothing and
+  explains nothing is indistinguishable from a broken one, and the fields are the only place
+  the form has to put a message.
+- **Unknown ingredients are an offer, not a wall** — when they are all that is wrong, one
+  confirmation lists them and adds them (out of stock, untagged) before the recipe saves, so
+  entering a recipe never dead-ends into the inventory screen. Declining marks the fields
+  instead. Typos are caught where the list is read, before confirming.
+- **Tags and notes ask nothing** — the picker is the dialogs' chip row over the recipe
+  vocabulary (FR-REC-4), absent while that vocabulary is empty; the notes are one multiline
+  field (FR-REC-5).
+- **Backing out of edits asks once** — an untouched form pops silently; a dirty one asks to
+  discard, because a fully typed recipe lost to a stray back-swipe is the worst thing this
+  page could do. A rename saves as remove-then-add — nothing references a recipe by name, so
+  nothing propagates — and the whole entry, the bottles it introduced included, goes to the
+  model as a single edit so one save reaches the disk (components.md#state-contracts).
 
 ## Inventory screen
 
@@ -115,7 +154,9 @@ matches" face keeps the reason but not the offer.
 - **Edit and delete sit behind a per-row ⋮ menu**, since the row's tap already belongs to
   stock: the vocabulary actions get a target of their own instead of a hidden gesture. Edit is
   the name and the tags at once, in the dialog the add button opens too — so a bottle can be
-  born tagged. A new bottle starts out of stock, which one tap on its row corrects.
+  born tagged — and the whole entry, the rename included, goes to the model as a single edit so
+  one save reaches the disk (components.md#state-contracts). A new bottle starts out of stock,
+  which one tap on its row corrects.
 - **Each tag is a dot after the name** — borderless, in the fill its chip wears below, in
   vocabulary order so two bottles wearing the same tags wear the same dots. A dot is read by
   matching it to the legend, so it has to be the legend's colour and not a second version of it.

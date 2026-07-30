@@ -240,6 +240,8 @@ void main() {
         store.saved?.recipeNamed('Negroni')?.lines.first.ingredient,
         'sloe gin',
       );
+      // One entry, one save: a rename must not spend two backup rotations.
+      expect(store.saveCount, 1);
     });
 
     testWidgets('an ingredient a recipe uses will not go', (tester) async {
@@ -319,7 +321,7 @@ void main() {
 
     testWidgets('picking a tag keeps the bottles wearing it', (tester) async {
       await pumpTagged(tester);
-      await filterBy(tester, 'syrup');
+      await pickTag(tester, 'syrup');
       expect(isPicked(tester, 'syrup'), isTrue);
       expect(namesOn(tester), ['orgeat', 'sugar syrup']);
     });
@@ -328,8 +330,8 @@ void main() {
       tester,
     ) async {
       await pumpTagged(tester);
-      await filterBy(tester, 'syrup');
-      await filterBy(tester, 'homemade');
+      await pickTag(tester, 'syrup');
+      await pickTag(tester, 'homemade');
       expect(namesOn(tester), ['orgeat']);
     });
 
@@ -337,16 +339,16 @@ void main() {
       tester,
     ) async {
       await pumpTagged(tester);
-      await filterBy(tester, 'citrus');
+      await pickTag(tester, 'citrus');
       expect(namesOn(tester), ['lemon juice']);
-      await filterBy(tester, 'citrus');
+      await pickTag(tester, 'citrus');
       expect(isPicked(tester, 'citrus'), isFalse);
       expect(namesOn(tester), ['gin', 'lemon juice', 'orgeat', 'sugar syrup']);
     });
 
     testWidgets('the tags and the search narrow together', (tester) async {
       await pumpTagged(tester);
-      await filterBy(tester, 'syrup');
+      await pickTag(tester, 'syrup');
       await search(tester, 'sugar');
       expect(namesOn(tester), ['sugar syrup']);
     });
@@ -355,8 +357,8 @@ void main() {
       tester,
     ) async {
       await pumpTagged(tester);
-      await filterBy(tester, 'citrus');
-      await filterBy(tester, 'syrup');
+      await pickTag(tester, 'citrus');
+      await pickTag(tester, 'syrup');
       expect(
         find.text('No ingredient here matches every tag you picked.'),
         findsOneWidget,
@@ -366,7 +368,7 @@ void main() {
 
     testWidgets('and blames both when both narrowed it', (tester) async {
       await pumpTagged(tester);
-      await filterBy(tester, 'citrus');
+      await pickTag(tester, 'citrus');
       await search(tester, 'gin');
       expect(
         find.text(
@@ -379,7 +381,7 @@ void main() {
 
     testWidgets('a tag renamed elsewhere stops filtering', (tester) async {
       await pumpTagged(tester);
-      await filterBy(tester, 'syrup');
+      await pickTag(tester, 'syrup');
       expect(namesOn(tester), ['orgeat', 'sugar syrup']);
 
       await ProviderScope.containerOf(
@@ -396,7 +398,7 @@ void main() {
       tester,
     ) async {
       await pumpTagged(tester);
-      await filterBy(tester, 'citrus');
+      await pickTag(tester, 'citrus');
       await tap(tester, find.byTooltip('Add ingredient'));
       await type(tester, 'absinthe');
       await tap(tester, find.text('Save'));

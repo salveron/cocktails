@@ -643,4 +643,37 @@ void main() {
       });
     });
   });
+
+  group('wornInOrder', () {
+    const vocabulary = [
+      Tag('classic', color: TagColor.rose),
+      Tag('sour', color: TagColor.sand),
+      Tag('tiki', color: TagColor.teal),
+    ];
+    List<String> namesOf(List<Tag> tags) => [for (final tag in tags) tag.name];
+
+    test('reads in vocabulary order, not the order they were worn', () {
+      expect(namesOf(wornInOrder(vocabulary, ['tiki', 'classic'])), [
+        'classic',
+        'tiki',
+      ]);
+    });
+
+    test('drops a name the vocabulary no longer holds', () {
+      expect(namesOf(wornInOrder(vocabulary, ['vintage', 'sour'])), ['sour']);
+    });
+
+    test('answers with the tags themselves, colours included', () {
+      expect(wornInOrder(vocabulary, ['sour']).single.color, TagColor.sand);
+    });
+
+    test('wearing none and a vocabulary of none both come out empty', () {
+      expect(wornInOrder(vocabulary, const []), isEmpty);
+      expect(wornInOrder(const [], const ['classic']), isEmpty);
+    });
+
+    test('a name wanted twice is answered once', () {
+      expect(namesOf(wornInOrder(vocabulary, ['sour', 'sour'])), ['sour']);
+    });
+  });
 }

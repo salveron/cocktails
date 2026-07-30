@@ -51,20 +51,23 @@ final class ModelController extends AsyncNotifier<Model> {
   Future<void> setSettings(Settings settings) =>
       _edit((model) => model.withSettings(settings));
 
-  Future<void> upsertIngredient(Ingredient ingredient) =>
-      _edit((model) => model.withIngredient(ingredient));
-
-  Future<void> renameIngredient(String from, String to) =>
-      _edit((model) => model.withIngredientRenamed(from, to));
+  /// Adds [ingredient] or replaces the one of its name, [replacing] renamed
+  /// first so every recipe line that named it follows (FR-VOC-1). One edit, as
+  /// [upsertRecipe] is for a recipe: what the entry dialog settles in one
+  /// action reaches the disk as one model (FR-DAT-4).
+  Future<void> upsertIngredient(Ingredient ingredient, {String? replacing}) =>
+      _edit((model) {
+        final renamed = replacing == null || replacing == ingredient.name
+            ? model
+            : model.withIngredientRenamed(replacing, ingredient.name);
+        return renamed.withIngredient(ingredient);
+      });
 
   Future<void> removeIngredient(String name) =>
       _edit((model) => model.withoutIngredient(name));
 
   Future<void> setStock(String ingredient, StockLevel stock) =>
       _edit((model) => model.withStock(ingredient, stock));
-
-  Future<void> setIngredientTags(String ingredient, List<String> tags) =>
-      _edit((model) => model.withIngredientTags(ingredient, tags));
 
   Future<void> upsertRecipeTag(Tag tag) =>
       _edit((model) => model.withRecipeTag(tag));
@@ -84,8 +87,26 @@ final class ModelController extends AsyncNotifier<Model> {
   Future<void> removeIngredientTag(String name) =>
       _edit((model) => model.withoutIngredientTag(name));
 
-  Future<void> upsertRecipe(Recipe recipe) =>
-      _edit((model) => model.withRecipe(recipe));
+  /// Adds [recipe] or replaces the one of its name, together with whatever the
+  /// same action introduced: [addingIngredients] the recipe referenced and did
+  /// not find, and [replacing] the name a rename leaves behind. One edit, so
+  /// one model reaches the disk and one backup rotation covers the whole
+  /// action — a recipe naming three new bottles must not spend the entire
+  /// backup history saving itself (FR-DAT-4).
+  Future<void> upsertRecipe(
+    Recipe recipe, {
+    List<Ingredient> addingIngredients = const [],
+    String? replacing,
+  }) => _edit((model) {
+    var edited = model;
+    for (final ingredient in addingIngredients) {
+      edited = edited.withIngredient(ingredient);
+    }
+    if (replacing != null && replacing != recipe.name) {
+      edited = edited.withoutRecipe(replacing);
+    }
+    return edited.withRecipe(recipe);
+  });
 
   Future<void> removeRecipe(String name) =>
       _edit((model) => model.withoutRecipe(name));

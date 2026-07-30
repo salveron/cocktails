@@ -19,7 +19,7 @@ lib/
   domain/
     domain.dart                # barrel — the only domain import other layers use
     src/
-      model.dart               # entities, Model root, name lookups
+      model.dart               # entities, Model root, name lookups, wornInOrder
       model_edits.dart         # extension ModelEdits on Model — pure derivations
       line_format.dart         # compact-line grammar
       validation.dart          # ValidationIssue + rule set
@@ -48,12 +48,14 @@ lib/
     app.dart                   # MaterialApp and the shell: destinations, app bar, gear
     theme.dart                 # the seed colour and the two schemes
     palette.dart               # the fixed hues: stock signals and the tag palette
-    screens/                   # one file per destination, plus settings and tags
+    screens/                   # one file per destination, plus settings, tags, recipe form
     widgets/                   # empty_state, model_view, search_field, startup_issues,
                                #   color_chip — the pill, chip, dot and dotted name
                                #   tag_choices — the row tags are picked from
-                               #   vocabulary_list — the searchable list all four screens are
-                               #   vocabulary_dialogs — entry (name, colour, tags), delete
+                               #   vocabulary_list — the searchable list all four screens are,
+                               #     plus byName and Set.toggle
+                               #   vocabulary_dialogs — entry (name, colour, tags), delete,
+                               #     plus fieldError, the rule the recipe form shares
 test/                          # mirrors lib/, plus test/architecture_test.dart
 ```
 
@@ -400,24 +402,33 @@ not import one.
 
 ```dart
 Future<void> setSettings(Settings settings);
-Future<void> upsertIngredient(Ingredient ingredient);   // add or replace by name
-Future<void> renameIngredient(String from, String to);
+Future<void> upsertIngredient(
+  Ingredient ingredient, {
+  String? replacing,
+});
 Future<void> removeIngredient(String name);
 Future<void> setStock(String ingredient, StockLevel stock);
-Future<void> setIngredientTags(String ingredient, List<String> tags);
 Future<void> upsertRecipeTag(Tag tag);
 Future<void> renameRecipeTag(String from, String to);
 Future<void> removeRecipeTag(String name);
 Future<void> upsertIngredientTag(Tag tag);
 Future<void> renameIngredientTag(String from, String to);
 Future<void> removeIngredientTag(String name);
-Future<void> upsertRecipe(Recipe recipe);               // add or replace by name
+Future<void> upsertRecipe(                              // add or replace by name
+  Recipe recipe, {
+  List<Ingredient> addingIngredients,                   // bottles it introduced
+  String? replacing,                                    // the name a rename leaves
+});
 Future<void> removeRecipe(String name);
 Future<void> markMade(String name);                     // stamps clockProvider's date
 ```
 
 Each mutation is one line over the matching `ModelEdits` derivation, and all of them run
 through a single private path: await the startup load, derive, publish the new state, save.
+The two `upsert…`s that take a `replacing` name compose several derivations instead, because
+everything one form or dialog settles has to reach the disk as one model: a recipe naming
+three new bottles would otherwise write four times and spend the whole backup rotation saving
+itself, and a renamed ingredient would write twice over its tags.
 Awaiting the load is what makes an edit during startup land on the loaded model instead of
 replacing it; an edit that leaves the model equal to what it was is not saved at all, since
 that write would only push a good backup out of the rotation. The UI never constructs a
@@ -448,7 +459,7 @@ Two performance facts, recorded so later milestones do not over-engineer:
 
 1. **Startup** — `main` overrides `modelStoreProvider` with file store → `ModelController.build()` loads → `Loaded` seeds state, `Empty` seeds empty model, `Corrupt` seeds recovered model and surfaces issues.
 2. **Edit** — widget calls `modelProvider.notifier.setStock(name, level)` → `ModelEdits` returns new `Model` → state updates, UI rebuilds from derived providers → save enqueued in background.
-3. **Recipe form** (M14) — `tryParseRecipeLine` on each field for live feedback → `validateRecipe` on save, issue paths map to fields → clean recipe reaches `notifier.upsertRecipe`.
+3. **Recipe form** (M14) — `tryParseRecipeLine` on each field for live feedback → `validateRecipe` on save, `lines[i]` paths map to fields and anything else is said in a snackbar → the recipe, the ingredients the user confirmed as new, and the name a rename leaves behind all reach `notifier.upsertRecipe` as one edit (ui-design.md#recipe-form).
 4. **Export** (FR-DAT-1) — `notifier.export()` (M24) returns location for share sheet; store file is the export.
 5. **Import** (FR-DAT-3/4) — `YamlCodec.decode` validates → `Rejected` shows issues ("line N: message"), `Decoded` confirms and atomically saves.
 

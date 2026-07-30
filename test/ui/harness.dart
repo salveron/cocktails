@@ -28,6 +28,64 @@ final fixtureModel = Model(
   ],
 );
 
+/// Three recipes off their reading order, covering every card section and
+/// every form field: tags, marks, a range, notes and made-history — and each
+/// section's absence too. Shared by the recipe list and the recipe form, so
+/// neither can be exercised against a shape the other never sees.
+final recipeModel = Model(
+  ingredients: [
+    Ingredient('bourbon'),
+    Ingredient('campari'),
+    Ingredient('egg white'),
+    Ingredient('gin'),
+    Ingredient('lemon juice'),
+    Ingredient('lime juice'),
+    Ingredient('sugar syrup'),
+    Ingredient('sweet vermouth'),
+    Ingredient('white rum'),
+  ],
+  recipeTags: const [
+    Tag('classic', color: TagColor.rose),
+    Tag('sour', color: TagColor.sand),
+  ],
+  recipes: [
+    Recipe(
+      'Whiskey Sour',
+      tags: const ['sour', 'classic'],
+      lines: const [
+        RecipeLine(Amount(2), Unit.part, 'bourbon', mark: LineMark.base),
+        RecipeLine(Amount(1), Unit.part, 'lemon juice'),
+        RecipeLine(Amount(0.75), Unit.part, 'sugar syrup'),
+        RecipeLine(Amount(1), Unit.piece, 'egg white', mark: LineMark.optional),
+      ],
+    ),
+    Recipe(
+      'Negroni',
+      tags: const ['classic'],
+      lines: const [
+        RecipeLine(Amount(1), Unit.part, 'gin', mark: LineMark.base),
+        RecipeLine(Amount(1), Unit.part, 'campari'),
+        RecipeLine(Amount(1), Unit.part, 'sweet vermouth'),
+      ],
+      notes: 'Stir over ice.',
+      made: MadeHistory(DateTime(2026, 7, 12), 4),
+    ),
+    Recipe(
+      'Daiquiri',
+      lines: const [
+        RecipeLine(
+          Amount.range(1.5, 2),
+          Unit.part,
+          'white rum',
+          mark: LineMark.base,
+        ),
+        RecipeLine(Amount(1), Unit.part, 'lime juice'),
+      ],
+      made: MadeHistory(DateTime(2026, 1, 3), 1),
+    ),
+  ],
+);
+
 /// A store whose file did not decode, recovered onto [fixtureModel].
 MemoryModelStore corruptStore() => MemoryModelStore()
   ..outcome = Corrupt([
@@ -115,14 +173,40 @@ final dialogField = find.descendant(
   matching: find.byType(TextField),
 );
 
+/// A form field told apart by its hint — the one thing each field keeps
+/// whatever is typed into it.
+Finder field(String hint) => find.byWidgetPredicate(
+  (widget) => widget is TextField && widget.decoration?.hintText == hint,
+);
+
+/// The recipe form's three kinds of field.
+final nameField = field('Recipe name');
+final lineFields = field('1.5 part gin (base)');
+final notesField = field('Preparation, glassware, garnish…');
+
 Future<void> tap(WidgetTester tester, Finder target) async {
   await tester.tap(target);
   await tester.pumpAndSettle();
 }
 
+/// Types [text] into [target] and lets the frame settle.
+Future<void> typeInto(WidgetTester tester, Finder target, String text) async {
+  await tester.enterText(target, text);
+  await tester.pumpAndSettle();
+}
+
 /// Types [text] into the dialog's own field — never the search behind it.
-Future<void> type(WidgetTester tester, String text) async {
-  await tester.enterText(dialogField, text);
+Future<void> type(WidgetTester tester, String text) =>
+    typeInto(tester, dialogField, text);
+
+/// Opens whatever the list's add button opens.
+Future<void> openAdd(WidgetTester tester) =>
+    tap(tester, find.byType(FloatingActionButton));
+
+/// Leaves the pushed page the way the app bar's arrow does, so a [PopScope]
+/// guarding it gets its say.
+Future<void> back(WidgetTester tester) async {
+  await tester.pageBack();
   await tester.pumpAndSettle();
 }
 
@@ -178,8 +262,9 @@ Future<void> chooseTag(WidgetTester tester, String name) => tap(
   find.descendant(of: find.byType(AlertDialog), matching: find.text(name)),
 );
 
-/// Toggles the tag [name] in a list's filter row.
-Future<void> filterBy(WidgetTester tester, String name) => tap(
+/// Toggles the tag [name] in a chip row — the inventory's filter or the
+/// recipe form's picker, which are the same row twice.
+Future<void> pickTag(WidgetTester tester, String name) => tap(
   tester,
   find.descendant(of: find.byType(TagChoices), matching: find.text(name)),
 );

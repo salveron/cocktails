@@ -416,6 +416,18 @@ final class Model {
       '${recipes.length} recipes)';
 }
 
+/// The tags [worn] names, in [vocabulary] order. Two entries wearing the same
+/// tags then read the same however they are drawn — chips, dots, or names
+/// written back — and a name the vocabulary no longer holds drops out instead
+/// of showing up unrecognised.
+List<Tag> wornInOrder(List<Tag> vocabulary, Iterable<String> worn) {
+  final names = worn.toSet();
+  return [
+    for (final tag in vocabulary)
+      if (names.contains(tag.name)) tag,
+  ];
+}
+
 void _requireUniqueNames(String kind, List<String> names) {
   final duplicates = duplicateNameIndexes(names);
   if (duplicates.isNotEmpty) {

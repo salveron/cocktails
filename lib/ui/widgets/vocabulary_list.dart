@@ -12,6 +12,14 @@ import 'search_field.dart';
 /// The one order a vocabulary is read in: A→Z, case ignored.
 int byName(String a, String b) => a.toLowerCase().compareTo(b.toLowerCase());
 
+extension ToggleMembership<T> on Set<T> {
+  /// In if it was out, out if it was in — every chip a tap picks and every
+  /// card a tap opens.
+  void toggle(T value) {
+    if (!remove(value)) add(value);
+  }
+}
+
 /// What narrows a list beyond its name: the [row] of controls under the search,
 /// the [test] an entry must pass, and [narrowing] — what those controls
 /// currently come to, worded to follow "matches", or null while none is set.
@@ -161,6 +169,9 @@ class _VocabularyListState<T> extends State<VocabularyList<T>> {
       floatingActionButton: add == null
           ? null
           : FloatingActionButton(
+              // The shell keeps every destination alive at once, so two lists'
+              // buttons coexist and the default hero tag would collide.
+              heroTag: null,
               onPressed: () => unawaited(_add(add, '')),
               tooltip: 'Add ${widget.noun}',
               child: const Icon(Icons.add),

@@ -8,6 +8,14 @@ import 'package:flutter/material.dart';
 
 import '../palette.dart';
 import 'tag_choices.dart';
+import 'vocabulary_list.dart';
+
+/// What a validated field shows under itself: the first issue's message, or
+/// nothing at all while the field is still empty — an untouched field is not a
+/// mistake yet, it only keeps Save out of reach. The recipe form applies the
+/// same rule, from here, so the two cannot drift apart.
+String? fieldError(String text, List<ValidationIssue> issues) =>
+    text.isEmpty || issues.isEmpty ? null : issues.first.message;
 
 /// Asks for an ingredient's name and the tags it wears, or null when the user
 /// backs out. [validate] is the vocabulary's own rule set, so this dialog holds
@@ -152,24 +160,19 @@ class _EntryDialogState extends State<_EntryDialog> {
     super.dispose();
   }
 
-  void _toggle(String tag) => setState(() {
-    if (!_tags.remove(tag)) _tags.add(tag);
-  });
+  void _toggle(String tag) => setState(() => _tags.toggle(tag));
 
   @override
   Widget build(BuildContext context) {
     final name = _name.text;
     final issues = widget.validate(name);
-    final problem = issues.isEmpty ? null : issues.first.message;
-    final save = name.isEmpty || problem != null
+    final save = name.isEmpty || issues.isNotEmpty
         ? null
         : () => Navigator.of(context).pop((
             name: name,
             color: _color,
-            // In vocabulary order, so one set of tags always reads the same.
             tags: [
-              for (final tag in widget.vocabulary)
-                if (_tags.contains(tag.name)) tag.name,
+              for (final tag in wornInOrder(widget.vocabulary, _tags)) tag.name,
             ],
           ));
     final color = _color;
@@ -187,9 +190,7 @@ class _EntryDialogState extends State<_EntryDialog> {
             autofocus: true,
             decoration: InputDecoration(
               hintText: widget.hintText,
-              // An untouched field is not a mistake yet, so an empty one says
-              // nothing and simply leaves Save out of reach.
-              errorText: name.isEmpty ? null : problem,
+              errorText: fieldError(name, issues),
             ),
             onSubmitted: save == null ? null : (_) => save(),
           ),
