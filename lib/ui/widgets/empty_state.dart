@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// The one shape every "nothing here yet" screen takes
-/// (docs/ui-design.md#app-shell).
+/// Empty state template (icon, title, message, optional action).
 class EmptyState extends StatelessWidget {
   const EmptyState({
     required this.icon,
@@ -15,7 +14,7 @@ class EmptyState extends StatelessWidget {
   final String title;
   final String message;
 
-  /// The one thing that would fill the emptiness, offered where it is felt.
+  /// Optional action to resolve emptiness.
   final Widget? action;
 
   @override

@@ -4,29 +4,30 @@
 
 ## Context
 
-Single-user offline Android app ([requirements](../requirements.md)); vision includes desktop (Linux/Windows) later. Solo developer with Python background, working AI-assisted. Must scale to several hundred recipes with instant response (NFR-2). Stack must be open-source and free.
+Single-user offline Android app; vision includes desktop later. Solo developer, Python background, 
+AI-assisted. Scale: hundreds of recipes, instant response (NFR-2). Open-source, free.
 
 ## Decision
 
 **Flutter (Dart), targeting Android.**
 
-- Open source, free, no paid tiers.
-- One codebase extends to desktop with new build target; no rewrite needed.
-- Largest cross-platform ecosystem and AI training corpus for AI-assisted non-mobile developer.
-- Dart syntax near Python; garbage-collected, single-paradigm, batteries included.
-- First-class offline; no server required.
+- Open source, free.
+- One codebase → desktop (new build target, no rewrite).
+- Largest cross-platform ecosystem, AI training corpus.
+- Dart ≈ Python; GC, single-paradigm, batteries included.
+- First-class offline.
 - Declarative UI suits forms-lists-filters.
 
 ## Alternatives considered
 
-- **Kotlin + Jetpack Compose** — Android-only; desktop needs Kotlin Multiplatform rewrite.
-- **Kotlin Multiplatform** — covers desktop, but more complex for solo non-JVM developer.
-- **React Native** — heavier toolchain, faster churn, weaker desktop story.
-- **Python UI (Flet, Kivy)** — language match, but Android packaging immature, poor tooling/AI support.
-- **PWA** — browser storage is evictable (unacceptable for only database copy); file sharing is second-class.
+- Kotlin + Jetpack Compose: Android-only; desktop needs rewrite.
+- Kotlin Multiplatform: desktop covered but complex for non-JVM solo developer.
+- React Native: heavier, faster churn, weaker desktop.
+- Python UI (Flet, Kivy): language match but Android immature, poor tooling.
+- PWA: evictable storage (unacceptable for only DB copy); file sharing second-class.
 
 ## Consequences
 
-- Dart is new; mitigated by AI assistance and small codebase.
-- Environment: Flutter SDK + Android toolchain on Linux; physical phone over USB for testing.
-- Desktop addition is new target + layout adaptation, not new codebase.
+- Dart is new (mitigated by AI assistance, small codebase).
+- Environment: Flutter SDK + Android toolchain on Linux; physical phone over USB.
+- Desktop: new target + layout, not new codebase.

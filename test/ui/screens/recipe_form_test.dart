@@ -6,11 +6,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 import '../harness.dart';
 
-Future<MemoryModelStore> pumpList(WidgetTester tester, [Model? model]) async {
-  final store = MemoryModelStore(model ?? recipeModel);
-  await pumpScreen(tester, const RecipesScreen(), store: store);
-  return store;
-}
+Future<MemoryModelStore> pumpList(WidgetTester tester, [Model? model]) =>
+    pumpOver(tester, const RecipesScreen(), model ?? recipeModel);
 
 /// The error under the line field at [index], or null while it carries none.
 String? lineError(WidgetTester tester, int index) =>

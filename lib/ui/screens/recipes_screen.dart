@@ -24,15 +24,14 @@ class RecipesScreen extends ConsumerStatefulWidget {
 }
 
 class _RecipesScreenState extends ConsumerState<RecipesScreen> {
-  /// Held here rather than in the cards: the list disposes what scrolls away.
+  /// Expansion state here, not per-card (list disposes what scrolls).
   final _expanded = <String>{};
 
   void _toggle(String name) => setState(() => _expanded.toggle(name));
 
   @override
   Widget build(BuildContext context) => ModelView((model) {
-    final vocabulary = [...model.recipeTags]
-      ..sort((a, b) => byName(a.name, b.name));
+    final vocabulary = sortedByName(model.recipeTags);
     return VocabularyList<Recipe>(
       entries: model.recipes,
       nameOf: (recipe) => recipe.name,
@@ -50,10 +49,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
     );
   });
 
-  /// Compact, or full when tapped open: the full card replaces the dots and
-  /// the ingredient summary with the real thing, so neither line repeats what
-  /// sits right below it. The tap is spent on expansion, so the vocabulary
-  /// actions take the ⋮, as they do on the inventory.
+  /// Compact or full when tapped; full hides summary since details appear below.
   VocabularyRow _row(Model model, List<Tag> vocabulary, Recipe recipe) {
     final expanded = _expanded.contains(recipe.name);
     final summary = [
@@ -75,8 +71,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
     );
   }
 
-  /// The name the form saved, or null when it saved nothing — what tells an
-  /// add to clear the search and an edit whether the name moved.
+  /// Opens form and returns saved name (null if cancelled or unchanged).
   Future<String?> _openForm({Recipe? original, String initialName = ''}) =>
       Navigator.of(context).push<String>(
         MaterialPageRoute(
@@ -85,8 +80,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
         ),
       );
 
-  /// A renamed recipe keeps its card open: the expansion belongs to the entry,
-  /// not to the name it used to have.
+  /// On rename, move expansion state from old name to new name.
   Future<void> _edit(Recipe recipe) async {
     final saved = await _openForm(original: recipe);
     if (saved == null || saved == recipe.name || !mounted) return;
@@ -95,7 +89,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
     });
   }
 
-  /// Never blocked — nothing references a recipe — so the dialog only asks.
+  /// Delete: never blocked since nothing references recipes.
   Future<void> _delete(Recipe recipe) async {
     final confirmed = await confirmDelete(
       context,
@@ -109,9 +103,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
   }
 }
 
-/// The full card, top to bottom: the tags as their chips, the lines exactly as
-/// the file writes them, the notes as typed, the made-history. A section with
-/// nothing to say is absent.
+/// Full recipe card: tags, lines, notes, made-history; empty sections omitted.
 class _Details extends StatelessWidget {
   const _Details({required this.vocabulary, required this.recipe});
 

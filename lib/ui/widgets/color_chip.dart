@@ -1,5 +1,4 @@
-/// The marks a fixed hue is drawn as — the pill, a tag's own chip and dot, and
-/// the name-with-dots row (docs/ui-design.md#tag-and-stock-colours).
+/// Colored widgets: chip (label + fill), tag chip, dot, dotted name.
 library;
 
 import 'package:cocktails/domain/domain.dart';
@@ -7,15 +6,14 @@ import 'package:flutter/material.dart';
 
 import '../palette.dart';
 
-/// A word on its own ground — the colour never carries the meaning alone, so
-/// the row does not ask the reader to decode a hue.
+/// Label on colored ground (no meaning from color alone).
 class ColorChip extends StatelessWidget {
   const ColorChip(this.label, {required this.swatch, this.chosen, super.key});
 
   final String label;
   final Swatch swatch;
 
-  /// Whether the ring shows, or null where the chip is no kind of choice.
+  /// If true/false, show ring; if null, no ring (not a choice).
   final bool? chosen;
 
   @override
@@ -41,8 +39,7 @@ class ColorChip extends StatelessWidget {
       padding: const EdgeInsets.all(2),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(11),
-        // Transparent rather than absent: a picked chip differs from an
-        // unpicked one in colour alone, so nothing moves under the finger.
+        // Transparent border keeps layout stable on state change.
         border: Border.all(color: chosen ? swatch.ink : Colors.transparent),
       ),
       child: chip,
@@ -50,7 +47,7 @@ class ColorChip extends StatelessWidget {
   }
 }
 
-/// A tag wherever it appears in full: its name lettered on its own colour.
+/// Tag with its own color (full version of TagDot).
 class TagChip extends StatelessWidget {
   const TagChip(this.tag, {this.chosen, super.key});
 
@@ -65,8 +62,7 @@ class TagChip extends StatelessWidget {
   );
 }
 
-/// A name with the tags it wears as dots after it. The name gives way first:
-/// a clipped run of dots would misreport how many tags there are.
+/// Name with tag dots (name clips first to avoid misreporting count).
 class DottedName extends StatelessWidget {
   const DottedName(
     this.name, {
@@ -89,9 +85,7 @@ class DottedName extends StatelessWidget {
   );
 }
 
-/// A tag on a row with no width to spare: the fill its chip wears, because a
-/// dot is read by matching it to a chip in the legend above — a second version
-/// of the colour would be one more thing to match. The name is in the tooltip.
+/// Tag as dot (matches chip in legend above); name in tooltip.
 class TagDot extends StatelessWidget {
   const TagDot(this.tag, {super.key});
 

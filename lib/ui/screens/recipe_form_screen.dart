@@ -34,8 +34,7 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
   );
   late final _notes = TextEditingController(text: widget.original?.notes ?? '');
 
-  /// One controller per line field, the bottom one always empty so the list
-  /// grows under the typing; a field emptied out is dropped on save.
+  /// Bottom line always empty to grow the list; emptied lines dropped on save.
   late final _lines = [
     for (final line in widget.original?.lines ?? const <RecipeLine>[])
       _lineController(formatRecipeLine(line)),
@@ -44,8 +43,7 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
 
   late final _tags = {...?widget.original?.tags};
 
-  /// What only the save could see — a zero amount, an unknown ingredient after
-  /// a declined offer — by field index; editing a field clears its own.
+  /// Save-time validation issues by field; cleared when field is edited.
   final _saveProblems = <int, String>{};
 
   @override
@@ -78,8 +76,7 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
     }
   });
 
-  /// Whether anything differs from what the form opened on — what decides if
-  /// backing out needs to ask.
+  /// Whether anything changed since opening; asks on back if dirty.
   bool get _dirty {
     final original = widget.original;
     return _name.text != (original?.name ?? widget.initialName) ||
@@ -97,15 +94,11 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
         );
   }
 
-  /// Every name a rename must not collide with — the recipe being edited left
-  /// out, so keeping its own name is not a duplicate.
-  Set<String> _otherNames(Model model) => {
-    for (final recipe in model.recipes)
-      if (recipe.name != widget.original?.name) recipe.name,
-  };
+  /// Names to avoid on rename (excluding current name).
+  Set<String> _otherNames(Model model) =>
+      otherNames(model.recipeNames, widget.original?.name);
 
-  /// The name judged alone, on the rules the save will apply — the reference
-  /// sets are empty because a name can misuse neither.
+  /// Name alone; reference sets empty since names don't use them.
   List<ValidationIssue> _nameIssues(Model model) => validateRecipe(
     Recipe(_name.text),
     knownIngredients: const {},
@@ -113,9 +106,7 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
     otherRecipeNames: _otherNames(model),
   );
 
-  /// What syntax makes of each field, in field order — null where a field is
-  /// empty or parses. Computed once per build and read by both the fields and
-  /// the Save button, so a keystroke parses the lines one time.
+  /// Parse result per line (null if empty/valid); computed once per build.
   List<String?> get _syntaxProblems => [
     for (final line in _lines)
       if (line.text.trim().isEmpty)
@@ -124,9 +115,7 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
         tryParseRecipeLine(line.text).problem,
   ];
 
-  /// What the fields come to, plus which field each recipe line came from —
-  /// the map that lands a `lines[i]` issue under the right field when empty
-  /// fields sit in between.
+  /// Parsed recipe and fieldOf map for aligning issues with fields.
   ({Recipe recipe, List<int> fieldOf}) _entered(List<Tag> vocabulary) {
     final lines = <RecipeLine>[];
     final fieldOf = <int>[];
@@ -152,10 +141,8 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
     final entered = _entered(vocabulary);
     final issues = validateRecipe(
       entered.recipe,
-      knownIngredients: {
-        for (final ingredient in model.ingredients) ingredient.name,
-      },
-      knownTags: {for (final tag in model.recipeTags) tag.name},
+      knownIngredients: model.ingredientNames,
+      knownTags: model.tagNames(TagKind.recipe),
       otherRecipeNames: _otherNames(model),
     );
     final blocked = issues.any(
@@ -174,21 +161,18 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
     ]);
   }
 
-  /// The unknown names in line order, each once however many lines want it.
+  /// Unknown ingredient names in line order (deduplicated).
   List<String> _missing(Recipe recipe, List<ValidationIssue> issues) => {
     for (final issue in issues)
       if (issue.path case ['lines', final int line])
         recipe.lines[line].ingredient,
   }.toList();
 
-  /// A line issue goes under its own field; anything no field can carry is
-  /// said out loud instead, because a refused save that shows nothing is a
-  /// Save button that looks broken.
+  /// Line issues under their field; unplaceable issues in snackbar.
   void _reportProblems(List<ValidationIssue> issues, List<int> fieldOf) {
     setState(() {
       _saveProblems.clear();
-      // Reversed so a line collecting several issues keeps the first — the
-      // order the validation reports them in.
+      // Reversed: keep first issue per field (validation order).
       for (final issue in issues.reversed) {
         if (issue.path case ['lines', final int line]) {
           _saveProblems[fieldOf[line]] = issue.message;
@@ -208,39 +192,17 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
     _ => false,
   };
 
-  Future<bool> _offerToAdd(List<String> names) async =>
-      await showDialog<bool>(
-        context: context,
-        builder: (context) => AlertDialog(
-          scrollable: true,
-          title: const Text('Add missing ingredients?'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('These are not in your ingredients yet:'),
-              const SizedBox(height: 8),
-              for (final name in names) Text('• $name'),
-              const SizedBox(height: 8),
-              const Text('Saving adds them, out of stock.'),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Add and save'),
-            ),
-          ],
-        ),
-      ) ??
-      false;
+  Future<bool> _offerToAdd(List<String> names) => confirmDialog(
+    context,
+    title: 'Add missing ingredients?',
+    message: 'These are not in your ingredients yet:',
+    bullets: names,
+    footer: 'Saving adds them, out of stock.',
+    cancel: 'Cancel',
+    confirm: 'Add and save',
+  );
 
-  /// One edit for the whole entry — the bottles it introduced, the name a
-  /// rename leaves behind, the recipe itself.
+  /// Atomic edit: new bottles + recipe + handling old name.
   Future<void> _commit(Recipe recipe, List<Ingredient> adding) async {
     await ref
         .read(modelProvider.notifier)
@@ -253,30 +215,19 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
   }
 
   Future<void> _confirmDiscard() async {
-    final discard = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Discard this recipe?'),
-        content: const Text('Your edits will be lost.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Keep editing'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Discard'),
-          ),
-        ],
-      ),
+    final discard = await confirmDialog(
+      context,
+      title: 'Discard this recipe?',
+      message: 'Your edits will be lost.',
+      cancel: 'Keep editing',
+      confirm: 'Discard',
     );
-    if ((discard ?? false) && mounted) Navigator.of(context).pop();
+    if (discard && mounted) Navigator.of(context).pop();
   }
 
   @override
   Widget build(BuildContext context) => ModelView((model) {
-    final vocabulary = [...model.recipeTags]
-      ..sort((a, b) => byName(a.name, b.name));
+    final vocabulary = sortedByName(model.recipeTags);
     final original = widget.original;
     final nameIssues = _nameIssues(model);
     final syntax = _syntaxProblems;

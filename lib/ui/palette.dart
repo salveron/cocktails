@@ -4,12 +4,10 @@ library;
 import 'package:cocktails/domain/domain.dart';
 import 'package:flutter/material.dart';
 
-/// What a token wears in one theme: [fill] grounds a chip, [ink] letters it —
-/// and [ink] alone draws a dot, being the half that carries against the page.
+/// Color pair: fill for background, ink for text.
 typedef Swatch = ({Color fill, Color ink});
 
-/// Fixed hues, not scheme roles: the amber seed makes `primaryContainer` brown
-/// and `tertiaryContainer` green, so in-stock and low wore each other's signal.
+/// Fixed hues (not scheme roles to avoid signal confusion).
 Swatch stockColors(StockLevel stock, Brightness brightness) => _forTheme(
   switch (stock) {
     StockLevel.in_ => const (pale: Color(0xFFC8E6C9), deep: Color(0xFF1B5E20)),
@@ -19,8 +17,7 @@ Swatch stockColors(StockLevel stock, Brightness brightness) => _forTheme(
   brightness,
 );
 
-/// The palette a tag is painted from (docs/adr/07-tag-colour.md). A new
-/// [TagColor] member will not compile until it is given a pair here.
+/// Tag color palette (new colors must be added here to compile).
 Swatch tagColors(TagColor color, Brightness brightness) => _forTheme(
   switch (color) {
     TagColor.teal => const (pale: Color(0xFFA5DED6), deep: Color(0xFF00635A)),
@@ -33,7 +30,7 @@ Swatch tagColors(TagColor color, Brightness brightness) => _forTheme(
   brightness,
 );
 
-/// Pale grounds a chip in light and letters it in dark; deep does the reverse.
+/// Map tones to theme: pale fill/deep ink in light, reverse in dark.
 Swatch _forTheme(({Color pale, Color deep}) tones, Brightness brightness) =>
     brightness == Brightness.light
     ? (fill: tones.pale, ink: tones.deep)

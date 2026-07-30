@@ -4,42 +4,34 @@
 
 ## Context
 
-Base-ness was a flag on `Ingredient` (FR-VOC-2), making a bottle a base globally. It is not:
-bourbon is the base of a Whiskey Sour and a modifier elsewhere. The grouping FR-DIS-4 needs is
-per recipe. A base is also never optional — a recipe without its base is another recipe — so
-the two line marks are mutually exclusive. Decided before M11 and M14, which would otherwise
-build screens for the old shape.
+Base-ness was a flag on `Ingredient` (FR-VOC-2), making bottles globally base. Wrong: bourbon is 
+base in Whiskey Sour, modifier elsewhere. Grouping (FR-DIS-4) is per-recipe. Base never optional 
+(recipe without base is different recipe), so marks mutually exclusive. Decided before M11, M14 
+build screens.
 
 ## Decision
 
 **Base is a mark on the recipe line, exclusive with optional by construction.**
 
-- `RecipeLine.mark` is `LineMark?` — `enum LineMark { base('base'), optional('optional') }`
-  with declared wire tokens. One field, so both marks cannot be set. `isBase`/`isOptional`
-  stay as getters; `marked(LineMark?)` sets and clears.
-- Line grammar: suffix ` (base)` joins ` (optional)`; at most one, both reserved against
-  ingredient names.
-- `Ingredient` loses `isBase` and the ingredient entry loses its `base` key, with no
-  replacement — the existing unknown-key rule reports leftovers.
-- `format` stays `1`: the schema is unreleased, so no file needing migration exists.
+- `RecipeLine.mark` is `LineMark?` (`enum LineMark { base('base'), optional('optional') }` with 
+  tokens). One field prevents both marks. `isBase`/`isOptional` are getters; `marked(LineMark?)` 
+  sets/clears.
+- Line grammar: ` (base)` suffix joins ` (optional)`; at most one, both reserved from ingredient names.
+- `Ingredient` loses `isBase`, entry loses `base` key; unknown-key rule reports leftovers.
+- `format` stays `1` (schema unreleased).
 
 ## Alternatives considered
 
-- **Two booleans plus a validation rule** — the illegal state exists and must be caught in the
-  codec, the recipe form, and `validateRecipe`; one field prevents it for free.
-- **A `base:` key on the recipe naming an ingredient** — a second reference to keep in sync on
-  rename, and cannot carry the two bases FR-DIS-4 allows.
-- **Keep the ingredient flag, derive per recipe** — the wrong domain: an ingredient is not a
-  base for anything by itself.
+- Two booleans + validation rule: illegal state exists, must catch in codec/form/validate. 
+  One field prevents it free.
+- `base:` key on recipe naming ingredient: second reference to sync on rename, can't carry 
+  multiple bases (FR-DIS-4).
+- Keep ingredient flag, derive per recipe: wrong domain; ingredient not base by itself.
 
 ## Consequences
 
-- Requirements move: FR-VOC-2 becomes FR-REC-8; FR-DAT-1 drops "base-spirit flags"; FR-DIS-4
-  keys on marked lines.
-- M11 loses the base-spirit flag, M14's line editor gains the mark, M19 groups by it.
-- `groupByBaseSpirit` reads recipe lines instead of the vocabulary; its
-  [signature](../components.md#computations) is unchanged.
-- Store files carrying `base: true` on an ingredient are rejected as unknown-key errors and
-  hand-edited; the mark is re-added per recipe.
-- Everything about an ingredient in a recipe stays on its one line — the shape FR-DAT-2's
-  hand and AI editing works with.
+- Requirements: FR-VOC-2→FR-REC-8; FR-DAT-1 drops base-spirit flags; FR-DIS-4 keys on marked lines.
+- M11 loses base-spirit flag, M14 gains line mark, M19 groups by it.
+- `groupByBaseSpirit` reads recipe lines; [signature](../components.md#computations) unchanged.
+- Store files with `base: true` on ingredient rejected as unknown-key; hand-edit and re-add per recipe.
+- Everything about an ingredient in recipe stays on one line (shape FR-DAT-2 and AI editing work with).

@@ -30,12 +30,9 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
 
   @override
   Widget build(BuildContext context) => ModelView((model) {
-    final vocabulary = [...model.ingredientTags]
-      ..sort((a, b) => byName(a.name, b.name));
-    // A tag renamed or deleted from Settings must not filter on unseen.
-    final picked = _picked.intersection({
-      for (final tag in vocabulary) tag.name,
-    });
+    final vocabulary = sortedByName(model.ingredientTags);
+    // Ignore deleted/renamed tags; keep intersection with current vocabulary.
+    final picked = _picked.intersection(model.tagNames(TagKind.ingredient));
     return VocabularyList<Ingredient>(
       entries: model.ingredients,
       nameOf: (ingredient) => ingredient.name,
@@ -68,9 +65,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
     );
   });
 
-  /// The row's own tap belongs to stock — the life of a bottle is in → low →
-  /// out → in, so every real transition costs one tap (FR-INV-2). The
-  /// vocabulary actions take the ⋮ instead of a hidden gesture.
+  /// Row tap toggles stock (in → low → out → in); vocab actions use ⋮.
   VocabularyRow _row(
     Model model,
     List<Tag> vocabulary,
@@ -98,8 +93,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
     ),
   );
 
-  /// True once an ingredient was added, which clears the picked tags as it
-  /// clears the search — the new bottle must not land outside either.
+  /// Returns true after adding; clears picked tags along with search.
   Future<bool> _add(Model model, List<Tag> vocabulary, String query) async {
     final added = await promptForIngredient(
       context,
@@ -117,10 +111,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
     return true;
   }
 
-  /// Name and tags come back together, so the whole entry goes to the model as
-  /// one edit — one save, one backup rotation — and the part that did not
-  /// change derives an identical model the controller never saves. Stock is the
-  /// row's, never the dialog's, so the edited bottle keeps what it had.
+  /// Atomic upsert: name + tags edited together; stock stays unchanged.
   Future<void> _edit(
     Model model,
     List<Tag> vocabulary,
@@ -156,24 +147,18 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
   }
 }
 
-/// The vocabulary's rules bound to the model, with [except] left out so a
-/// rename never collides with the name being renamed. Only the name is judged
-/// — the tags come from the vocabulary itself and cannot be unknown.
+/// Name rules (excluding [except] to prevent collision on rename).
 List<ValidationIssue> Function(String) _nameRule(
   Model model, {
   String? except,
 }) =>
     (name) => validateIngredient(
       Ingredient(name),
-      knownIngredientTags: {for (final tag in model.ingredientTags) tag.name},
-      otherIngredientNames: {
-        for (final ingredient in model.ingredients)
-          if (ingredient.name != except) ingredient.name,
-      },
+      knownIngredientTags: model.tagNames(TagKind.ingredient),
+      otherIngredientNames: otherNames(model.ingredientNames, except),
     );
 
-/// The stock level in words as well as colour, so the row never asks the reader
-/// to decode a hue.
+/// Stock level as text and color (no color-only decoding required).
 class _StockChip extends StatelessWidget {
   const _StockChip(this.stock);
 

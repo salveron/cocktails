@@ -2,9 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'tags_screen.dart';
 
-/// Pushed from the app bar's gear — what is arranged once rather than browsed
-/// (docs/ui-design.md#app-shell). The ratio and the display toggle (M23) and
-/// data exchange (M24/M25) join the tags here.
+/// Settings pushed from app bar gear (ratio, display, export, tags).
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
 

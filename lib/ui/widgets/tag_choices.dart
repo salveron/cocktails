@@ -6,9 +6,7 @@ import 'package:flutter/material.dart';
 
 import 'color_chip.dart';
 
-/// [vocabulary] as chips, the [chosen] ones ticked. Tagging an ingredient and
-/// filtering the inventory by tags are the same choice made twice, so they are
-/// made on the same row.
+/// Tag chips with [chosen] ticked (same row for ingredient tagging & filtering).
 class TagChoices extends StatelessWidget {
   const TagChoices({
     required this.vocabulary,
@@ -22,14 +20,12 @@ class TagChoices extends StatelessWidget {
   final Set<String> chosen;
   final void Function(String name) onToggle;
 
-  /// Whether the row scrolls sideways instead of wrapping: pinned over a list
-  /// it must stay one line deep however long the vocabulary grows.
+  /// If true, scroll horizontally; if false, wrap (single line when pinned).
   final bool scrolling;
 
   @override
   Widget build(BuildContext context) {
-    // Unbounded width leaves a wrap nothing to wrap at, so one row serves
-    // both: a single line inside the scroller, as many as it needs outside.
+    // Unbounded width prevents wrapping; works both inside/outside scroller.
     final row = Wrap(
       spacing: 8,
       runSpacing: 8,

@@ -6,52 +6,41 @@ the resulting design at system level, [components.md](components.md) at module l
 
 ## Technology stack
 
-- **Flutter (Dart)**, targeting Android in the pilot; desktop later is an added build target
-  ([ADR 01](adr/01-technology-stack.md)).
+- **Flutter (Dart)** targeting Android; desktop later ([ADR 01](adr/01-technology-stack.md)).
 - **Riverpod** for state management ([ADR 03](adr/03-app-structure-and-state.md)).
-- Development on Linux with a physical Android phone over USB; no emulator required.
-- Third-party dependencies are held to a deliberate minimum: `flutter_riverpod`, `yaml`,
-  `path_provider`, `share_plus`, `file_picker`; anything beyond these is a considered
-  addition, not a reflex. Riverpod is held at 2.x — 3.x pulls the analyzer, shelf, and test
-  packages into the app's own dependency graph, and the pilot uses nothing it adds.
+- Development: Linux + physical Android phone over USB.
+- Minimal dependencies: `flutter_riverpod`, `yaml`, `path_provider`, `share_plus`, `file_picker`. 
+  Riverpod at 2.x (3.x adds unused packages).
 
 ## System overview
 
-A single offline app. The entire database — vocabularies, stock levels, recipes with
-made-history, settings — is held in memory and persisted as one YAML file that is
-byte-identical to the export format ([ADR 02](adr/02-persistence-and-export-format.md)).
+Offline app: entire database in memory, persisted as one YAML file byte-identical to export 
+([ADR 02](adr/02-persistence-and-export-format.md)).
 
-- Export shares a copy of the store file; import validates a candidate file, auto-exports
-  the current state (FR-DAT-3), then atomically replaces the store.
-- Names are identity throughout: recipes reference ingredients and recipe tags by name and
-  ingredients reference ingredient tags the same way, so a vocabulary rename (FR-VOC-1) is one
-  model mutation that rewrites every reference before the single save.
-- Writes are atomic (temp file, then rename) and rotate a small set of backups.
-- Single-writer by design; future guest access is read-only publishing, never a second writer.
+- Export: file copy. Import: validate, auto-export current state, atomically replace.
+- Names are identity: recipes reference ingredients/tags by name. Rename is one mutation 
+  rewriting all references.
+- Writes atomic (temp → rename); rolling backups.
+- Single-writer by design (future guest access is read-only publishing).
 
 ## Layers
 
 Three layers ([ADR 03](adr/03-app-structure-and-state.md)):
 
-- **Domain** — pure Dart, no Flutter imports: entities, availability computation,
-  search/filter/grouping, the shopping optimizer, validation rules. Unit-testable on the dev
-  machine without a device.
-- **Data** — the storage interface and its YAML file adapter (codec, atomic writes, backups).
-- **Presentation** — Flutter screens and widgets. All reads go through Riverpod providers;
-  derived state (availability, filtered views, optimizer output) lives in computed providers
-  that recompute automatically when their inputs change. All mutations go through model-update
-  methods that also trigger persistence.
+- **Domain** — pure Dart: entities, availability, search/filter/grouping, optimizer, validation. 
+  Unit-testable without device.
+- **Data** — storage interface + YAML adapter (codec, atomic writes, backups).
+- **Presentation** — Flutter screens/widgets. Reads through Riverpod providers; derived state 
+  (availability, filtered views, optimizer output) in computed providers. Mutations through 
+  model-update methods that trigger persistence.
 
-Each layer's public surface is its barrel file, over internals kept in `src/`; dependencies
-point inward only. The rules, the interfaces between the layers, and the data flows across
-them are in [components.md](components.md) ([ADR 04](adr/04-module-boundaries.md)).
+Each layer's public surface is its barrel file; internals in `src/`. Dependencies point inward only. 
+Rules, interfaces, data flows in [components.md](components.md) ([ADR 04](adr/04-module-boundaries.md)).
 
 ## Storage isolation
 
-All persistence sits behind a storage interface with load/save semantics. Domain and UI code
-depend only on the interface — never on YAML, file paths, or the platform — so the store can
-be swapped (e.g. to SQLite, should guests ever write data) by replacing one adapter, using
-the export file as the data migration vehicle.
+Persistence behind storage interface. Domain and UI depend only on the interface — never on 
+YAML, file paths, or platform — so store can be swapped (e.g. SQLite) by replacing one adapter.
 
 ## Data format
 
@@ -148,24 +137,22 @@ Rules:
 
 ## Platform facts
 
-- Store and backups: app-private documents directory, shared via Android share sheet (FR-DAT-1/3).
-  `cocktails.yaml` is the store; each save copies the file it replaces into `cocktails.backup-1.yaml`,
-  shifting the previous backups down and dropping `cocktails.backup-3.yaml`; `cocktails-export.yaml`
-  is the shareable copy `exportSnapshot` writes. Writes land through a `.tmp` sibling and a rename.
-- Android Auto Backup enabled; device loss/reset does not mean data loss.
-- Application ID: `dev.salveron.cocktails` (permanent once installed).
-- Minimum Android version: Flutter default (minSdk 21+); no special device features needed.
-- UI language: English only; no i18n framework in pilot.
+- Store/backups: app-private directory via Android share sheet. `cocktails.yaml` (store), 
+  `cocktails.backup-1/2/3.yaml`, `cocktails-export.yaml` (shareable copy). Writes via `.tmp` + rename.
+- Android Auto Backup enabled.
+- Application ID: `dev.salveron.cocktails`.
+- Minimum Android: Flutter default (minSdk 21+).
+- UI: English only.
 
 ## Build & distribution
 
-- Release APK built locally and sideloaded; no store presence in pilot.
-- Keystore stored outside repo (outside CI); losing it requires reinstall.
-- Play Store track possible later without rework.
+- APK built locally, sideloaded; no Play Store in pilot.
+- Keystore outside repo. Play Store later without rework.
 
 ## Testing
 
-- **Unit tests** (pure Dart, no device) cover domain layer: availability, filtering/grouping, optimizer, import validation, YAML codec round-trip (FR-DAT-5).
-- **Integration tests** on storage adapter: atomic write, backup rotation, corrupt-file recovery.
-- **Widget tests** on critical flows: recipe form, stock toggle, import confirmation.
-- CI runs format check, `flutter analyze`, and test suite on every push (local APK builds).
+- **Unit tests** (pure Dart, no device): availability, filtering/grouping, optimizer, validation, 
+  YAML round-trip (FR-DAT-5).
+- **Integration tests**: atomic write, backup rotation, corrupt-file recovery.
+- **Widget tests**: recipe form, stock toggle, import confirmation.
+- CI: format check, `flutter analyze`, test suite, local APK build on every push.

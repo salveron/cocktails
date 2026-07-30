@@ -1,4 +1,5 @@
 import 'package:cocktails/data/data.dart';
+import 'package:cocktails/domain/domain.dart';
 import 'package:cocktails/ui/screens/recipes_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -7,11 +8,8 @@ import '../harness.dart';
 
 const names = ['Daiquiri', 'Negroni', 'Whiskey Sour'];
 
-Future<void> pumpRecipes(WidgetTester tester) => pumpScreen(
-  tester,
-  const RecipesScreen(),
-  store: MemoryModelStore(recipeModel),
-);
+Future<MemoryModelStore> pumpRecipes(WidgetTester tester, [Model? model]) =>
+    pumpOver(tester, const RecipesScreen(), model ?? recipeModel);
 
 /// The recipe names on screen, in list order.
 Iterable<String?> namesOn(WidgetTester tester) =>
@@ -47,8 +45,7 @@ void main() {
     });
 
     testWidgets('delete asks once and is never blocked', (tester) async {
-      final store = MemoryModelStore(recipeModel);
-      await pumpScreen(tester, const RecipesScreen(), store: store);
+      final store = await pumpRecipes(tester);
       await chooseOnRow(tester, 'Negroni', 'Delete');
       expect(find.text('Delete "Negroni"?'), findsOneWidget);
       await tap(tester, find.text('Delete'));

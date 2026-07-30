@@ -135,6 +135,11 @@ final class Ingredient {
       '${tags.isEmpty ? '' : ', tags: $tags'})';
 }
 
+/// Which of the two vocabularies a tag belongs to. They are peers of one shape
+/// (docs/adr/07-tag-colour.md), so every tag operation takes one of these
+/// rather than existing twice under two names.
+enum TagKind { recipe, ingredient }
+
 /// One label in either vocabulary — they differ in what they name, not in what
 /// they are (docs/adr/07-tag-colour.md). The colour is required: an unpainted
 /// tag is not a thing the app can hold.
@@ -371,9 +376,12 @@ final class Model {
 
   Recipe? recipeNamed(String name) => _recipesByName[name];
 
-  bool hasRecipeTag(String name) => _recipeTagNames.contains(name);
+  List<Tag> tagsOf(TagKind kind) => switch (kind) {
+    TagKind.recipe => recipeTags,
+    TagKind.ingredient => ingredientTags,
+  };
 
-  bool hasIngredientTag(String name) => _ingredientTagNames.contains(name);
+  bool hasTag(TagKind kind, String name) => tagNames(kind).contains(name);
 
   /// Built on first lookup and kept, which is what makes repeated reference
   /// questions O(1) at NFR-2 scale. Safe behind an immutable face: the lists
@@ -384,11 +392,23 @@ final class Model {
   late final Map<String, Recipe> _recipesByName = {
     for (final recipe in recipes) recipe.name: recipe,
   };
-  late final Set<String> _recipeTagNames = {
-    for (final tag in recipeTags) tag.name,
-  };
-  late final Set<String> _ingredientTagNames = {
-    for (final tag in ingredientTags) tag.name,
+
+  /// The names a list holds, as the set validation asks for — memoised on the
+  /// same terms, so a form judging a name on every keystroke pays once, and
+  /// unmodifiable so handing one out cannot reach back into the model.
+  late final Set<String> ingredientNames = Set.unmodifiable({
+    for (final ingredient in ingredients) ingredient.name,
+  });
+  late final Set<String> recipeNames = Set.unmodifiable({
+    for (final recipe in recipes) recipe.name,
+  });
+
+  Set<String> tagNames(TagKind kind) => _tagNames[kind]!;
+
+  /// Keyed by every [TagKind] there is, so the lookup above always finds one.
+  late final Map<TagKind, Set<String>> _tagNames = {
+    for (final kind in TagKind.values)
+      kind: Set.unmodifiable({for (final tag in tagsOf(kind)) tag.name}),
   };
 
   @override

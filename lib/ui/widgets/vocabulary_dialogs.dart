@@ -10,18 +10,19 @@ import '../palette.dart';
 import 'tag_choices.dart';
 import 'vocabulary_list.dart';
 
-/// What a validated field shows under itself: the first issue's message, or
-/// nothing at all while the field is still empty — an untouched field is not a
-/// mistake yet, it only keeps Save out of reach. The recipe form applies the
-/// same rule, from here, so the two cannot drift apart.
+/// Show first issue or nothing if empty (untouched field not an error).
 String? fieldError(String text, List<ValidationIssue> issues) =>
     text.isEmpty || issues.isEmpty ? null : issues.first.message;
 
-/// Asks for an ingredient's name and the tags it wears, or null when the user
-/// backs out. [validate] is the vocabulary's own rule set, so this dialog holds
-/// no name rules and cannot drift from the ones the codec applies. [vocabulary]
-/// is every ingredient tag on offer — empty leaves the field alone in the
-/// dialog — and [chosen] the ones already worn (FR-INV-3).
+/// [names] without [except], which is what every `validate…` call wants: the
+/// names an entry must not collide with, its own left out so a rename never
+/// collides with the name it is leaving.
+Set<String> otherNames(Set<String> names, String? except) => {
+  for (final name in names)
+    if (name != except) name,
+};
+
+/// Get ingredient name and tags, or null if cancelled.
 Future<({String name, List<String> tags})?> promptForIngredient(
   BuildContext context, {
   required String title,
@@ -44,9 +45,7 @@ Future<({String name, List<String> tags})?> promptForIngredient(
   return answer == null ? null : (name: answer.name, tags: answer.tags);
 }
 
-/// The same dialog with the palette under the field, so a tag's name and its
-/// colour are settled in one place (FR-VOC-3). [color] is what the swatch row
-/// opens on: the colour the tag already wears, or the one a new tag is offered.
+/// Get tag name and color from single dialog, or null if cancelled.
 Future<Tag?> promptForTag(
   BuildContext context, {
   required String title,
@@ -71,25 +70,70 @@ Future<Tag?> promptForTag(
   _ => null,
 };
 
-/// Asks whether to delete [what]; true only when a free entry was confirmed.
-/// [blockedBy] names the entries referencing it, [blockedByNoun] what they are
-/// — a non-empty list turns the question into a refusal naming them, which is
-/// where FR-VOC-1's blocking rule meets the user.
+/// The one dialog that asks a yes-or-no: the question, whatever it has to list
+/// under it, and two buttons. Dismissed without answering counts as no. Leave
+/// [confirm] out for a refusal — there is nothing to agree to.
+Future<bool> confirmDialog(
+  BuildContext context, {
+  required String title,
+  required String message,
+  required String cancel,
+  List<String> bullets = const [],
+  String? footer,
+  String? confirm,
+}) async =>
+    await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        scrollable: true,
+        title: Text(title),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(message),
+            if (bullets.isNotEmpty) const SizedBox(height: 8),
+            for (final entry in bullets) Text('• $entry'),
+            if (footer != null) ...[const SizedBox(height: 8), Text(footer)],
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(cancel),
+          ),
+          if (confirm != null)
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: Text(confirm),
+            ),
+        ],
+      ),
+    ) ??
+    false;
+
+/// Ask to delete; true only if free and confirmed. A blocked entry names what
+/// stands in the way and offers nothing to confirm, so it answers false.
 Future<bool> confirmDelete(
   BuildContext context, {
   required String what,
   required List<String> blockedBy,
   required String blockedByNoun,
-}) async =>
-    await showDialog<bool>(
-      context: context,
-      builder: (context) => _DeleteDialog(
-        what: what,
-        blockedBy: blockedBy,
-        blockedByNoun: blockedByNoun,
-      ),
-    ) ??
-    false;
+}) => blockedBy.isEmpty
+    ? confirmDialog(
+        context,
+        title: 'Delete "$what"?',
+        message: 'Nothing references it. This cannot be undone.',
+        cancel: 'Cancel',
+        confirm: 'Delete',
+      )
+    : confirmDialog(
+        context,
+        title: 'Cannot delete "$what"',
+        message: 'Remove it from these $blockedByNoun first:',
+        bullets: blockedBy,
+        cancel: 'Close',
+      );
 
 typedef _Entry = ({String name, TagColor? color, List<String> tags});
 
@@ -131,11 +175,10 @@ class _EntryDialog extends StatefulWidget {
   final List<ValidationIssue> Function(String name) validate;
   final String initial;
 
-  /// The colour to open on, or null for a vocabulary that wears none.
+  /// Opening color (null if no color for this vocabulary).
   final TagColor? color;
 
-  /// The tags on offer, and the ones already worn. Empty for a vocabulary
-  /// whose entries carry none.
+  /// Tags on offer and already worn (empty if vocabulary carries none).
   final List<Tag> vocabulary;
   final List<String> chosen;
 
@@ -181,8 +224,7 @@ class _EntryDialogState extends State<_EntryDialog> {
       title: Text(widget.title),
       content: Column(
         mainAxisSize: MainAxisSize.min,
-        // Every section runs the field's full width, so the swatches and the
-        // chips start where the field starts instead of floating in the middle.
+        // Full width so swatches/chips left-align with field.
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           TextField(
@@ -222,9 +264,7 @@ class _EntryDialogState extends State<_EntryDialog> {
   }
 }
 
-/// The whole palette at once — six is few enough that a grid or a submenu would
-/// only put a step between the tag and its colour. The check is drawn in the
-/// swatch's own ink, so the picker shows the contrast it is choosing.
+/// All colors at once (six fit on screen); checkmark uses swatch's own ink.
 class _Swatches extends StatelessWidget {
   const _Swatches({required this.selected, required this.onPick});
 
@@ -268,47 +308,4 @@ class _Dot extends StatelessWidget {
     decoration: BoxDecoration(color: swatch.fill, shape: BoxShape.circle),
     child: chosen ? Icon(Icons.check, size: 20, color: swatch.ink) : null,
   );
-}
-
-class _DeleteDialog extends StatelessWidget {
-  const _DeleteDialog({
-    required this.what,
-    required this.blockedBy,
-    required this.blockedByNoun,
-  });
-
-  final String what;
-  final List<String> blockedBy;
-  final String blockedByNoun;
-
-  @override
-  Widget build(BuildContext context) {
-    final blocked = blockedBy.isNotEmpty;
-    return AlertDialog(
-      scrollable: true,
-      title: Text(blocked ? 'Cannot delete "$what"' : 'Delete "$what"?'),
-      content: blocked
-          ? Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Remove it from these $blockedByNoun first:'),
-                const SizedBox(height: 8),
-                for (final entry in blockedBy) Text('• $entry'),
-              ],
-            )
-          : const Text('Nothing references it. This cannot be undone.'),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(false),
-          child: Text(blocked ? 'Close' : 'Cancel'),
-        ),
-        if (!blocked)
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Delete'),
-          ),
-      ],
-    );
-  }
 }

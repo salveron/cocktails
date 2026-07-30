@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 
-/// What every name search means, in one place: case-insensitive, anywhere in
-/// the name (docs/ui-design.md#searchable-lists).
+/// Case-insensitive substring match.
 bool matchesQuery(String text, String query) =>
     text.toLowerCase().contains(query.trim().toLowerCase());
 
-/// The field pinned above a searchable list. The caller owns [controller] and
-/// rebuilds on its changes, so the list and the clear button stay in step.
+/// Search field with clear button (caller owns controller/rebuild).
 class SearchField extends StatelessWidget {
   const SearchField({
     required this.controller,

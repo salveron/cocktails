@@ -52,9 +52,7 @@ final class ModelController extends AsyncNotifier<Model> {
       _edit((model) => model.withSettings(settings));
 
   /// Adds [ingredient] or replaces the one of its name, [replacing] renamed
-  /// first so every recipe line that named it follows (FR-VOC-1). One edit, as
-  /// [upsertRecipe] is for a recipe: what the entry dialog settles in one
-  /// action reaches the disk as one model (FR-DAT-4).
+  /// first so every recipe line that named it follows (FR-VOC-1).
   Future<void> upsertIngredient(Ingredient ingredient, {String? replacing}) =>
       _edit((model) {
         final renamed = replacing == null || replacing == ingredient.name
@@ -69,30 +67,22 @@ final class ModelController extends AsyncNotifier<Model> {
   Future<void> setStock(String ingredient, StockLevel stock) =>
       _edit((model) => model.withStock(ingredient, stock));
 
-  Future<void> upsertRecipeTag(Tag tag) =>
-      _edit((model) => model.withRecipeTag(tag));
+  /// [upsertIngredient] for a tag, in [kind]'s vocabulary: [replacing] renamed
+  /// first, so everything wearing it follows.
+  Future<void> upsertTag(TagKind kind, Tag tag, {String? replacing}) =>
+      _edit((model) {
+        final renamed = replacing == null || replacing == tag.name
+            ? model
+            : model.withTagRenamed(kind, replacing, tag.name);
+        return renamed.withTag(kind, tag);
+      });
 
-  Future<void> renameRecipeTag(String from, String to) =>
-      _edit((model) => model.withRecipeTagRenamed(from, to));
+  Future<void> removeTag(TagKind kind, String name) =>
+      _edit((model) => model.withoutTag(kind, name));
 
-  Future<void> removeRecipeTag(String name) =>
-      _edit((model) => model.withoutRecipeTag(name));
-
-  Future<void> upsertIngredientTag(Tag tag) =>
-      _edit((model) => model.withIngredientTag(tag));
-
-  Future<void> renameIngredientTag(String from, String to) =>
-      _edit((model) => model.withIngredientTagRenamed(from, to));
-
-  Future<void> removeIngredientTag(String name) =>
-      _edit((model) => model.withoutIngredientTag(name));
-
-  /// Adds [recipe] or replaces the one of its name, together with whatever the
-  /// same action introduced: [addingIngredients] the recipe referenced and did
-  /// not find, and [replacing] the name a rename leaves behind. One edit, so
-  /// one model reaches the disk and one backup rotation covers the whole
-  /// action — a recipe naming three new bottles must not spend the entire
-  /// backup history saving itself (FR-DAT-4).
+  /// Adds [recipe] or replaces the one of its name, with whatever the same
+  /// action introduced: the [addingIngredients] it named and did not find, and
+  /// the [replacing] name a rename leaves behind.
   Future<void> upsertRecipe(
     Recipe recipe, {
     List<Ingredient> addingIngredients = const [],
@@ -118,7 +108,10 @@ final class ModelController extends AsyncNotifier<Model> {
   /// waits for the startup load, so an edit made while the app is still
   /// starting lands on the loaded model instead of replacing it. An edit that
   /// changes nothing is not saved — that write would only push a good backup
-  /// out of the rotation.
+  /// out of the rotation. Whatever one form or dialog settles arrives here as
+  /// one edit, so it spends one save and one backup rotation, never several: a
+  /// recipe naming three new bottles must not save itself over its own
+  /// history (FR-DAT-4).
   Future<void> _edit(Model Function(Model) edit) async {
     final model = await future;
     final edited = edit(model);

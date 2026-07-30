@@ -609,30 +609,30 @@ void main() {
           Ingredient('bourbon', tags: const ['oaked']),
         );
         expect(model.recipeNamed('Whiskey Sour')?.tags, ['sour']);
-        expect(model.hasRecipeTag('sour'), isTrue);
-        expect(model.hasIngredientTag('oaked'), isTrue);
+        expect(model.hasTag(TagKind.recipe, 'sour'), isTrue);
+        expect(model.hasTag(TagKind.ingredient, 'oaked'), isTrue);
       });
 
       test('answer for an unknown name without throwing', () {
         final model = build();
         expect(model.ingredientNamed('gin'), isNull);
         expect(model.recipeNamed('Negroni'), isNull);
-        expect(model.hasRecipeTag('classic'), isFalse);
-        expect(model.hasIngredientTag('peaty'), isFalse);
+        expect(model.hasTag(TagKind.recipe, 'classic'), isFalse);
+        expect(model.hasTag(TagKind.ingredient, 'peaty'), isFalse);
       });
 
       test('one vocabulary never answers for the other', () {
         final model = build();
-        expect(model.hasRecipeTag('oaked'), isFalse);
-        expect(model.hasIngredientTag('sour'), isFalse);
+        expect(model.hasTag(TagKind.recipe, 'oaked'), isFalse);
+        expect(model.hasTag(TagKind.ingredient, 'sour'), isFalse);
       });
 
       test('an empty model answers nothing', () {
         final model = Model();
         expect(model.ingredientNamed('bourbon'), isNull);
         expect(model.recipeNamed('Whiskey Sour'), isNull);
-        expect(model.hasRecipeTag('sour'), isFalse);
-        expect(model.hasIngredientTag('oaked'), isFalse);
+        expect(model.hasTag(TagKind.recipe, 'sour'), isFalse);
+        expect(model.hasTag(TagKind.ingredient, 'oaked'), isFalse);
       });
 
       test('repeated lookups keep answering, index and all', () {
@@ -640,6 +640,26 @@ void main() {
         expect(model.ingredientNamed('bourbon')?.name, 'bourbon');
         expect(model.ingredientNamed('bourbon')?.name, 'bourbon');
         expect(model.ingredientNamed('gin'), isNull);
+      });
+
+      test('a vocabulary answers to its kind', () {
+        final model = build();
+        expect(model.tagsOf(TagKind.recipe), model.recipeTags);
+        expect(model.tagsOf(TagKind.ingredient), model.ingredientTags);
+      });
+
+      test('the name sets are the lists, ready for validation', () {
+        final model = build();
+        expect(model.ingredientNames, {'bourbon'});
+        expect(model.recipeNames, {'Whiskey Sour'});
+        expect(model.tagNames(TagKind.recipe), {'sour'});
+        expect(model.tagNames(TagKind.ingredient), {'oaked'});
+        expect(Model().ingredientNames, isEmpty);
+        expect(() => model.ingredientNames.add('rye'), throwsUnsupportedError);
+        expect(
+          () => model.tagNames(TagKind.recipe).add('tiki'),
+          throwsUnsupportedError,
+        );
       });
     });
   });

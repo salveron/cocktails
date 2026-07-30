@@ -5,7 +5,8 @@ criteria live in [requirements.md](requirements.md), the design in
 [architecture.md](architecture.md); milestones reference both instead of restating them.
 Development-machine setup is out of scope — every milestone is repo content only.
 
-**Conventions:** One milestone = one commit with tests. `flutter analyze` and test suite green at every step. Domain as pure Dart + unit tests; widget tests per [strategy](architecture.md#testing).
+**Conventions:** One milestone = one commit with tests. Green on `flutter analyze`, test suite.
+Domain: pure Dart + unit tests. Widget tests per [strategy](architecture.md#testing).
 
 ## Phase 0 — Foundation
 
@@ -108,11 +109,3 @@ First usable slice; recipes reference both vocabularies, so this precedes Phase 
 
 - [ ] **M26 Release packaging** — signing configuration (keystore outside the repo),
       Android Auto Backup enabled, launcher icon and label, version 1.0.0.
-
-## Ordering facts
-
-- **Phase 0:** strictly sequential. Later phases: ordered by value.
-- **Hard dependencies:** M16 before M18/M20/M21 (consume availability); M21 before M22.
-- **Shape milestones:** M5a blocks M6; M7a blocks M8 and editing screens (M10–12, M14–15);
-  M10a blocked M11, M14 and M19; M11a/M11b blocked M12, M12a and every later tag surface.
-- **Data exchange:** M24–25 depend only on Phase 0; can move ahead if loading migrated data early.

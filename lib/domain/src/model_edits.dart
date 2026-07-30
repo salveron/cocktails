@@ -22,14 +22,6 @@ extension ModelEdits on Model {
     return entry == null ? this : withIngredient(entry.copyWith(stock: stock));
   }
 
-  /// Sets which ingredient-tag names [ingredient] carries, replacing whatever
-  /// it carried before (FR-VOC-4) — the vocabulary itself is edited through
-  /// [withIngredientTag].
-  Model withIngredientTags(String ingredient, List<String> tags) {
-    final entry = ingredientNamed(ingredient);
-    return entry == null ? this : withIngredient(entry.copyWith(tags: tags));
-  }
-
   /// Renames the entry and rewrites every recipe line that referenced it —
   /// a name is the only reference there is (FR-VOC-1).
   Model withIngredientRenamed(String from, String to) {
@@ -45,47 +37,45 @@ extension ModelEdits on Model {
     );
   }
 
-  Model withRecipeTag(Tag tag) =>
-      copyWith(recipeTags: _upserted(recipeTags, tag, _tagName));
+  /// Adds [tag] to [kind]'s vocabulary, or replaces the entry of its name.
+  Model withTag(TagKind kind, Tag tag) =>
+      _withTags(kind, _upserted(tagsOf(kind), tag, _tagName));
 
-  Model withoutRecipeTag(String name) =>
-      copyWith(recipeTags: _without(recipeTags, name, _tagName));
+  Model withoutTag(TagKind kind, String name) =>
+      _withTags(kind, _without(tagsOf(kind), name, _tagName));
 
-  /// Renames the entry and rewrites every recipe that carried the tag.
-  Model withRecipeTagRenamed(String from, String to) {
-    if (!hasRecipeTag(from)) return this;
-    return copyWith(
-      recipeTags: _renamedTag(recipeTags, from, to),
-      recipes: [
-        for (final recipe in recipes)
-          switch (_tagsRenamed(recipe.tags, from, to)) {
-            null => recipe,
-            final tags => recipe.copyWith(tags: tags),
-          },
-      ],
-    );
+  /// Renames the entry and rewrites every entry that wore the tag — the
+  /// recipes for a recipe tag, the ingredients for an ingredient tag. A
+  /// vocabulary is only ever worn on its own side (FR-VOC-4).
+  Model withTagRenamed(TagKind kind, String from, String to) {
+    if (!hasTag(kind, from)) return this;
+    final renamed = _withTags(kind, _renamedTag(tagsOf(kind), from, to));
+    return switch (kind) {
+      TagKind.recipe => renamed.copyWith(
+        recipes: [
+          for (final recipe in recipes)
+            switch (_tagsRenamed(recipe.tags, from, to)) {
+              null => recipe,
+              final tags => recipe.copyWith(tags: tags),
+            },
+        ],
+      ),
+      TagKind.ingredient => renamed.copyWith(
+        ingredients: [
+          for (final ingredient in ingredients)
+            switch (_tagsRenamed(ingredient.tags, from, to)) {
+              null => ingredient,
+              final tags => ingredient.copyWith(tags: tags),
+            },
+        ],
+      ),
+    };
   }
 
-  Model withIngredientTag(Tag tag) =>
-      copyWith(ingredientTags: _upserted(ingredientTags, tag, _tagName));
-
-  Model withoutIngredientTag(String name) =>
-      copyWith(ingredientTags: _without(ingredientTags, name, _tagName));
-
-  /// Renames the entry and rewrites every ingredient that carried the tag.
-  Model withIngredientTagRenamed(String from, String to) {
-    if (!hasIngredientTag(from)) return this;
-    return copyWith(
-      ingredientTags: _renamedTag(ingredientTags, from, to),
-      ingredients: [
-        for (final ingredient in ingredients)
-          switch (_tagsRenamed(ingredient.tags, from, to)) {
-            null => ingredient,
-            final tags => ingredient.copyWith(tags: tags),
-          },
-      ],
-    );
-  }
+  Model _withTags(TagKind kind, List<Tag> tags) => switch (kind) {
+    TagKind.recipe => copyWith(recipeTags: tags),
+    TagKind.ingredient => copyWith(ingredientTags: tags),
+  };
 
   /// Adds [recipe], or replaces the one of its name where it stands.
   Model withRecipe(Recipe recipe) =>
@@ -115,18 +105,19 @@ extension ModelEdits on Model {
       if (recipe.lines.any((line) => line.ingredient == name)) recipe.name,
   ];
 
-  /// [recipesUsingIngredient] for recipe tags.
-  List<String> recipesUsingTag(String name) => [
-    for (final recipe in recipes)
-      if (recipe.tags.contains(name)) recipe.name,
-  ];
-
-  /// [recipesUsingIngredient] for ingredient tags. A tag is blocked by
-  /// references from its own vocabulary's side only.
-  List<String> ingredientsUsingTag(String name) => [
-    for (final ingredient in ingredients)
-      if (ingredient.tags.contains(name)) ingredient.name,
-  ];
+  /// [recipesUsingIngredient] for a tag: the recipes wearing a recipe tag, the
+  /// ingredients wearing an ingredient tag. A tag is blocked by references
+  /// from its own vocabulary's side only.
+  List<String> usersOfTag(TagKind kind, String name) => switch (kind) {
+    TagKind.recipe => [
+      for (final recipe in recipes)
+        if (recipe.tags.contains(name)) recipe.name,
+    ],
+    TagKind.ingredient => [
+      for (final ingredient in ingredients)
+        if (ingredient.tags.contains(name)) ingredient.name,
+    ],
+  };
 }
 
 String _tagName(Tag tag) => tag.name;

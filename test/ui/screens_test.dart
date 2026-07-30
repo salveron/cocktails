@@ -1,4 +1,3 @@
-import 'package:cocktails/data/data.dart';
 import 'package:cocktails/ui/screens/settings_screen.dart';
 import 'package:cocktails/ui/screens/shopping_screen.dart';
 import 'package:flutter/material.dart';
@@ -18,11 +17,7 @@ void main() {
 
   group('shopping screen', () {
     testWidgets('says what would put suggestions there', (tester) async {
-      await pumpScreen(
-        tester,
-        const ShoppingScreen(),
-        store: MemoryModelStore(fixtureModel),
-      );
+      await pumpOver(tester, const ShoppingScreen(), fixtureModel);
       expect(find.text('Nothing to shop for'), findsOneWidget);
     });
   });

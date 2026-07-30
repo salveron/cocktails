@@ -32,11 +32,8 @@ final tagged = Model(
 );
 
 /// The screen over its store, opened on the Recipe tab.
-Future<MemoryModelStore> pumpTags(WidgetTester tester, {Model? model}) async {
-  final store = MemoryModelStore(model ?? tagged);
-  await pumpScreen(tester, const TagsScreen(), store: store);
-  return store;
-}
+Future<MemoryModelStore> pumpTags(WidgetTester tester, {Model? model}) =>
+    pumpOver(tester, const TagsScreen(), model ?? tagged);
 
 Future<void> openTab(WidgetTester tester, String tab) =>
     tap(tester, find.text(tab));
@@ -120,6 +117,25 @@ void main() {
 
       expect(rowTexts(tester), ['sour', 'vintage']);
       expect(store.saved?.recipeNamed('Negroni')?.tags, ['vintage']);
+      // One entry, one save: a rename must not spend two backup rotations.
+      expect(store.saveCount, 1);
+    });
+
+    testWidgets('a name and a colour changed together are one write', (
+      tester,
+    ) async {
+      final store = await pumpTags(tester);
+      await chooseOnRow(tester, 'classic', 'Edit');
+      await type(tester, 'vintage');
+      await pick(tester, TagColor.plum);
+      await tap(tester, find.text('Save'));
+
+      expect(store.saved?.recipeTags, const [
+        Tag('vintage', color: TagColor.plum),
+        Tag('sour', color: TagColor.teal),
+      ]);
+      expect(store.saved?.recipeNamed('Negroni')?.tags, ['vintage']);
+      expect(store.saveCount, 1);
     });
 
     testWidgets('a rename on one side leaves the other vocabulary alone', (

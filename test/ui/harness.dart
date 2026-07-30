@@ -129,6 +129,18 @@ Future<void> pumpScreen(
   await tester.pumpAndSettle();
 }
 
+/// [screen] over a store seeded with [model], handing that store back so the
+/// test can read what reached it. The one way a screen test starts.
+Future<MemoryModelStore> pumpOver(
+  WidgetTester tester,
+  Widget screen,
+  Model model,
+) async {
+  final store = MemoryModelStore(model);
+  await pumpScreen(tester, screen, store: store);
+  return store;
+}
+
 /// Every visible row's text in list order — each name and whatever its row
 /// carries beside it. The one reading of a vocabulary list, whichever screen
 /// is showing one.

@@ -97,24 +97,6 @@ void main() {
     test('withStock on an unknown ingredient changes nothing', () {
       expect(model.withStock('rye', StockLevel.in_), same(model));
     });
-
-    test('withIngredientTags replaces the list and keeps the rest', () {
-      final edited = model.withIngredientTags('bourbon', const ['citrus']);
-      expect(
-        edited.ingredientNamed('bourbon'),
-        Ingredient('bourbon', stock: StockLevel.in_, tags: const ['citrus']),
-      );
-      expect(namesOf(edited.ingredients), namesOf(model.ingredients));
-    });
-
-    test('withIngredientTags can empty the list', () {
-      final edited = model.withIngredientTags('bourbon', const []);
-      expect(edited.ingredientNamed('bourbon')?.tags, isEmpty);
-    });
-
-    test('withIngredientTags on an unknown ingredient changes nothing', () {
-      expect(model.withIngredientTags('rye', const ['oaked']), same(model));
-    });
   });
 
   group('ingredient rename', () {
@@ -164,169 +146,116 @@ void main() {
   });
 
   const stirred = Tag('stirred', color: TagColor.plum);
-  const sour = Tag('sour', color: TagColor.rose);
-  const classic = Tag('classic', color: TagColor.teal);
-  const citrus = Tag('citrus', color: TagColor.sand);
-  const oaked = Tag('oaked', color: TagColor.slate);
 
-  group('recipe tags', () {
-    test('withRecipeTag adds an entry the vocabulary lacked', () {
-      final edited = model.withRecipeTag(stirred);
-      expect(edited.recipeTags, const [sour, classic, stirred]);
+  /// Both vocabularies answer to one API, so one body tests both — told apart
+  /// only by what each holds, who wears its tags, and what the other side is.
+  /// A rule proven on one side is proven on the other by construction.
+  void vocabulary(
+    TagKind kind, {
+    required String renamedTo,
+    required List<String> wearers,
+    required Object Function(Model model) sameSide,
+    required Object Function(Model model) otherSide,
+    required Object? Function(Model model) bystander,
+  }) {
+    final other = kind == TagKind.recipe ? TagKind.ingredient : TagKind.recipe;
+    final held = model.tagsOf(kind);
+    final first = held.first;
+    final last = held.last;
+
+    group('${kind.name} tags', () {
+      test('withTag adds an entry the vocabulary lacked', () {
+        expect(model.withTag(kind, stirred).tagsOf(kind), [...held, stirred]);
+      });
+
+      test('withTag of an existing name leaves one entry', () {
+        expect(model.withTag(kind, first).tagsOf(kind), held);
+      });
+
+      test('withTag repaints the entry where it stands', () {
+        final repainted = first.copyWith(color: TagColor.indigo);
+        expect(model.withTag(kind, repainted).tagsOf(kind), [repainted, last]);
+      });
+
+      test('withoutTag removes only that entry', () {
+        expect(model.withoutTag(kind, first.name).tagsOf(kind), [last]);
+      });
+
+      test('withoutTag leaves the entries that wore it', () {
+        expect(sameSide(model.withoutTag(kind, first.name)), sameSide(model));
+      });
+
+      test('withoutTag of an unknown name changes nothing', () {
+        expect(model.withoutTag(kind, 'stirred'), model);
+      });
+
+      test('neither edit reaches the other vocabulary', () {
+        expect(model.withTag(kind, stirred).tagsOf(other), model.tagsOf(other));
+        expect(
+          model.withoutTag(kind, first.name).tagsOf(other),
+          model.tagsOf(other),
+        );
+      });
     });
 
-    test('withRecipeTag of an existing name leaves one entry', () {
-      expect(model.withRecipeTag(sour).recipeTags, model.recipeTags);
-    });
+    group('${kind.name} tag rename', () {
+      final renamed = model.withTagRenamed(kind, first.name, renamedTo);
 
-    test('withRecipeTag repaints the entry where it stands', () {
-      final edited = model.withRecipeTag(
-        const Tag('sour', color: TagColor.indigo),
-      );
-      expect(edited.recipeTags, const [
-        Tag('sour', color: TagColor.indigo),
-        classic,
-      ]);
-    });
+      test('renames the entry where it stands, colour and all', () {
+        expect(renamed.tagsOf(kind), [first.copyWith(name: renamedTo), last]);
+        expect(renamed.hasTag(kind, first.name), isFalse);
+      });
 
-    test('withoutRecipeTag removes only that entry', () {
-      expect(model.withoutRecipeTag('sour').recipeTags, const [classic]);
-    });
+      test('rewrites every entry wearing the tag, in place', () {
+        expect(model.usersOfTag(kind, first.name), wearers);
+        expect(renamed.usersOfTag(kind, renamedTo), wearers);
+      });
 
-    test('withoutRecipeTag leaves the recipes that carried it', () {
-      expect(model.withoutRecipeTag('sour').recipes, model.recipes);
-    });
+      test('leaves an entry that never wore it untouched', () {
+        expect(bystander(renamed), same(bystander(model)));
+      });
 
-    test('withoutRecipeTag of an unknown name changes nothing', () {
-      expect(model.withoutRecipeTag('stirred'), model);
-    });
+      test('an unknown name changes nothing', () {
+        expect(model.withTagRenamed(kind, 'stirred', renamedTo), same(model));
+      });
 
-    test('neither edit reaches the other vocabulary', () {
-      expect(model.withRecipeTag(citrus).ingredientTags, model.ingredientTags);
-      expect(
-        model.withoutRecipeTag('citrus').ingredientTags,
-        model.ingredientTags,
-      );
-    });
-  });
+      test('the other side is none of its business', () {
+        expect(otherSide(renamed), otherSide(model));
+      });
 
-  group('recipe tag rename', () {
-    test('renames the entry where it stands, colour and all', () {
-      final edited = model.withRecipeTagRenamed('sour', 'sours');
-      expect(edited.recipeTags, const [
-        Tag('sours', color: TagColor.rose),
-        classic,
-      ]);
-      expect(edited.hasRecipeTag('sour'), isFalse);
-    });
+      test('a same-named tag in the other vocabulary stays where it is', () {
+        final shared = model.withTag(other, first);
+        final edited = shared.withTagRenamed(kind, first.name, renamedTo);
+        expect(edited.hasTag(other, first.name), isTrue);
+        expect(edited.hasTag(kind, first.name), isFalse);
+      });
 
-    test('rewrites every recipe carrying the tag, in place', () {
-      final edited = model.withRecipeTagRenamed('sour', 'sours');
-      expect(edited.recipeNamed('Whiskey Sour')?.tags, ['sours', 'classic']);
+      test('renaming onto an existing name is rejected', () {
+        expect(
+          () => model.withTagRenamed(kind, first.name, last.name),
+          throwsArgumentError,
+        );
+      });
     });
+  }
 
-    test('leaves a recipe that never carried it untouched', () {
-      expect(
-        model.withRecipeTagRenamed('sour', 'sours').recipeNamed('Negroni'),
-        same(negroni),
-      );
-    });
+  vocabulary(
+    TagKind.recipe,
+    renamedTo: 'sours',
+    wearers: ['Whiskey Sour'],
+    sameSide: (model) => model.recipes,
+    otherSide: (model) => model.ingredients,
+    bystander: (model) => model.recipeNamed('Negroni'),
+  );
 
-    test('an unknown name changes nothing', () {
-      expect(model.withRecipeTagRenamed('stirred', 'sour'), same(model));
-    });
-
-    test('a same-named ingredient tag is left where it stands', () {
-      final shared = model.withIngredientTag(sour);
-      final edited = shared.withRecipeTagRenamed('sour', 'sours');
-      expect(edited.hasIngredientTag('sour'), isTrue);
-      expect(edited.hasRecipeTag('sour'), isFalse);
-    });
-
-    test('renaming onto an existing name is rejected', () {
-      expect(
-        () => model.withRecipeTagRenamed('sour', 'classic'),
-        throwsArgumentError,
-      );
-    });
-  });
-
-  group('ingredient tags', () {
-    test('withIngredientTag adds an entry the vocabulary lacked', () {
-      final edited = model.withIngredientTag(stirred);
-      expect(edited.ingredientTags, const [citrus, oaked, stirred]);
-    });
-
-    test('withIngredientTag repaints the entry where it stands', () {
-      final edited = model.withIngredientTag(
-        const Tag('citrus', color: TagColor.indigo),
-      );
-      expect(edited.ingredientTags, const [
-        Tag('citrus', color: TagColor.indigo),
-        oaked,
-      ]);
-    });
-
-    test('withoutIngredientTag removes only that entry', () {
-      expect(model.withoutIngredientTag('citrus').ingredientTags, const [
-        oaked,
-      ]);
-    });
-
-    test('withoutIngredientTag leaves the ingredients that carried it', () {
-      expect(
-        model.withoutIngredientTag('citrus').ingredients,
-        model.ingredients,
-      );
-    });
-
-    test('withoutIngredientTag of an unknown name changes nothing', () {
-      expect(model.withoutIngredientTag('stirred'), model);
-    });
-
-    test('neither edit reaches the other vocabulary', () {
-      expect(model.withIngredientTag(sour).recipeTags, model.recipeTags);
-      expect(model.withoutIngredientTag('sour').recipeTags, model.recipeTags);
-    });
-  });
-
-  group('ingredient tag rename', () {
-    test('renames the entry where it stands, colour and all', () {
-      final edited = model.withIngredientTagRenamed('citrus', 'citrusy');
-      expect(edited.ingredientTags, const [
-        Tag('citrusy', color: TagColor.sand),
-        oaked,
-      ]);
-      expect(edited.hasIngredientTag('citrus'), isFalse);
-    });
-
-    test('rewrites every ingredient carrying the tag, in place', () {
-      final edited = model.withIngredientTagRenamed('citrus', 'citrusy');
-      expect(edited.ingredientNamed('lemon juice')?.tags, ['citrusy']);
-    });
-
-    test('leaves an ingredient that never carried it untouched', () {
-      final edited = model.withIngredientTagRenamed('citrus', 'citrusy');
-      expect(edited.ingredientNamed('gin'), model.ingredientNamed('gin'));
-      expect(edited.ingredientNamed('bourbon')?.tags, ['oaked']);
-    });
-
-    test('an unknown name changes nothing', () {
-      expect(model.withIngredientTagRenamed('stirred', 'citrus'), same(model));
-    });
-
-    test('the recipes are none of its business', () {
-      final edited = model.withIngredientTagRenamed('citrus', 'citrusy');
-      expect(edited.recipes, model.recipes);
-    });
-
-    test('renaming onto an existing name is rejected', () {
-      expect(
-        () => model.withIngredientTagRenamed('citrus', 'oaked'),
-        throwsArgumentError,
-      );
-    });
-  });
+  vocabulary(
+    TagKind.ingredient,
+    renamedTo: 'citrusy',
+    wearers: ['lemon juice'],
+    sameSide: (model) => model.ingredients,
+    otherSide: (model) => model.recipes,
+    bystander: (model) => model.ingredientNamed('gin'),
+  );
 
   group('recipes', () {
     test('withRecipe adds a recipe the model lacked', () {
@@ -415,32 +344,35 @@ void main() {
       );
     });
 
-    test('recipesUsingTag names them in model order', () {
-      expect(model.recipesUsingTag('classic'), ['Whiskey Sour', 'Negroni']);
-      expect(model.recipesUsingTag('sour'), ['Whiskey Sour']);
-    });
-
-    test('recipesUsingTag is empty when nothing carries it', () {
-      expect(model.withRecipeTag(stirred).recipesUsingTag('stirred'), isEmpty);
-    });
-
-    test('ingredientsUsingTag names them in model order', () {
-      final shared = model.withIngredientTags('gin', const ['oaked']);
-      expect(shared.ingredientsUsingTag('oaked'), ['bourbon', 'gin']);
-      expect(shared.ingredientsUsingTag('citrus'), ['lemon juice']);
-    });
-
-    test('ingredientsUsingTag is empty when nothing carries it', () {
-      expect(
-        model.withIngredientTag(stirred).ingredientsUsingTag('stirred'),
-        isEmpty,
+    test('usersOfTag names them in model order', () {
+      expect(model.usersOfTag(TagKind.recipe, 'classic'), [
+        'Whiskey Sour',
+        'Negroni',
+      ]);
+      final shared = model.withIngredient(
+        Ingredient('gin', tags: const ['oaked']),
       );
+      expect(shared.usersOfTag(TagKind.ingredient, 'oaked'), [
+        'bourbon',
+        'gin',
+      ]);
+    });
+
+    test('usersOfTag is empty when nothing wears it', () {
+      for (final kind in TagKind.values) {
+        expect(
+          model.withTag(kind, stirred).usersOfTag(kind, 'stirred'),
+          isEmpty,
+        );
+      }
     });
 
     test('each query looks only at its own side', () {
-      final shared = model.withIngredientTag(sour).withRecipeTag(citrus);
-      expect(shared.ingredientsUsingTag('sour'), isEmpty);
-      expect(shared.recipesUsingTag('citrus'), isEmpty);
+      final shared = model
+          .withTag(TagKind.ingredient, const Tag('sour', color: TagColor.rose))
+          .withTag(TagKind.recipe, const Tag('citrus', color: TagColor.sand));
+      expect(shared.usersOfTag(TagKind.ingredient, 'sour'), isEmpty);
+      expect(shared.usersOfTag(TagKind.recipe, 'citrus'), isEmpty);
     });
   });
 }
