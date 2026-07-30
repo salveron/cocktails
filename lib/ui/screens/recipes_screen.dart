@@ -27,7 +27,15 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
   /// Expansion state here, not per-card (list disposes what scrolls).
   final _expanded = <String>{};
 
-  void _toggle(String name) => setState(() => _expanded.toggle(name));
+  /// What a recipe's history read before its last stamp, offered as Undo for
+  /// as long as the card that stamped it stays open. A null value is an
+  /// answer — never made — so membership is the test, never the value.
+  final _undo = <String, MadeHistory?>{};
+
+  void _toggle(String name) => setState(() {
+    _expanded.toggle(name);
+    if (!_expanded.contains(name)) _undo.remove(name);
+  });
 
   @override
   Widget build(BuildContext context) => ModelView((model) {
@@ -62,7 +70,17 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
       subtitle: expanded || summary.isEmpty
           ? null
           : Text(summary, maxLines: 1, overflow: TextOverflow.ellipsis),
-      body: expanded ? _Details(vocabulary: vocabulary, recipe: recipe) : null,
+      body: expanded
+          ? _Details(
+              vocabulary: vocabulary,
+              recipe: recipe,
+              onMade: () => unawaited(_made(recipe)),
+              onReset: () => unawaited(_reset(recipe)),
+              onUndo: _undo.containsKey(recipe.name)
+                  ? () => unawaited(_undoMade(recipe))
+                  : null,
+            )
+          : null,
       trailing: RowMenu({
         'Edit': () => unawaited(_edit(recipe)),
         'Delete': () => unawaited(_delete(recipe)),
@@ -86,6 +104,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
     if (saved == null || saved == recipe.name || !mounted) return;
     setState(() {
       if (_expanded.remove(recipe.name)) _expanded.add(saved);
+      _undo.remove(recipe.name);
     });
   }
 
@@ -99,20 +118,64 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
     );
     if (!confirmed || !mounted) return;
     await ref.read(modelProvider.notifier).removeRecipe(recipe.name);
-    if (mounted) setState(() => _expanded.remove(recipe.name));
+    if (mounted) {
+      setState(() {
+        _expanded.remove(recipe.name);
+        _undo.remove(recipe.name);
+      });
+    }
+  }
+
+  /// Stamps today onto the recipe, keeping what stood there so Undo can put it
+  /// back — nothing else lowers a count that only climbs (FR-REC-6).
+  Future<void> _made(Recipe recipe) async {
+    setState(() => _undo[recipe.name] = recipe.made);
+    await ref.read(modelProvider.notifier).markMade(recipe.name);
+  }
+
+  /// Puts that history back, date included: a stamp taken back leaves no trace.
+  Future<void> _undoMade(Recipe recipe) async {
+    final previous = _undo[recipe.name];
+    setState(() => _undo.remove(recipe.name));
+    await ref.read(modelProvider.notifier).setMade(recipe.name, previous);
+  }
+
+  /// The long press on the button, asked about first — a count is not rebuilt
+  /// by tapping, and there is nothing left to undo with once it is gone.
+  Future<void> _reset(Recipe recipe) async {
+    final confirmed = await confirmDialog(
+      context,
+      title: 'Reset "${recipe.name}"\' history?',
+      message: 'It will appear as never made. Nothing else about it changes.',
+      cancel: 'Cancel',
+      confirm: 'Reset',
+    );
+    if (!confirmed || !mounted) return;
+    setState(() => _undo.remove(recipe.name));
+    await ref.read(modelProvider.notifier).setMade(recipe.name, null);
   }
 }
 
-/// Full recipe card: tags, lines, notes, made-history; empty sections omitted.
+/// Full recipe card: tags, lines, notes, made row; empty sections omitted.
 class _Details extends StatelessWidget {
-  const _Details({required this.vocabulary, required this.recipe});
+  const _Details({
+    required this.vocabulary,
+    required this.recipe,
+    required this.onMade,
+    required this.onReset,
+    this.onUndo,
+  });
 
   final List<Tag> vocabulary;
   final Recipe recipe;
+  final VoidCallback onMade;
+  final VoidCallback onReset;
+
+  /// Null until a stamp leaves something to take back.
+  final VoidCallback? onUndo;
 
   @override
   Widget build(BuildContext context) {
-    final made = recipe.made;
     final worn = wornInOrder(vocabulary, recipe.tags);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -134,15 +197,61 @@ class _Details extends StatelessWidget {
           const SizedBox(height: 8),
           Text(recipe.notes),
         ],
-        if (made != null) ...[
-          const SizedBox(height: 12),
-          Text(
-            _madeLine(made),
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-          ),
-        ],
+        const SizedBox(height: 4),
+        _MadeRow(
+          made: recipe.made,
+          onMade: onMade,
+          onReset: onReset,
+          onUndo: onUndo,
+        ),
+      ],
+    );
+  }
+}
+
+/// The card's last line: what the history reads, the Undo the last stamp left
+/// behind, and the button that stamps (FR-REC-6). A recipe never made says
+/// nothing on its left — the button stands there alone. The text gives way
+/// first, since a clipped date beats a wrapped row.
+class _MadeRow extends StatelessWidget {
+  const _MadeRow({
+    required this.made,
+    required this.onMade,
+    required this.onReset,
+    this.onUndo,
+  });
+
+  final MadeHistory? made;
+  final VoidCallback onMade;
+  final VoidCallback onReset;
+  final VoidCallback? onUndo;
+
+  @override
+  Widget build(BuildContext context) {
+    final made = this.made;
+    final theme = Theme.of(context);
+    return Row(
+      children: [
+        Expanded(
+          child: made == null
+              ? const SizedBox.shrink()
+              : Text(
+                  _madeLine(made),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+        ),
+        if (onUndo != null)
+          TextButton(onPressed: onUndo, child: const Text('Undo')),
+        FilledButton.tonalIcon(
+          onPressed: onMade,
+          onLongPress: made == null ? null : onReset,
+          icon: const Icon(Icons.check),
+          label: const Text('Made it'),
+        ),
       ],
     );
   }

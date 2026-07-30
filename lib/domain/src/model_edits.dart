@@ -87,14 +87,19 @@ extension ModelEdits on Model {
   /// Stamps the recipe as made on [today] and counts it (FR-REC-6). The clock
   /// is a parameter — the domain reads no ambient time.
   Model withRecipeMade(String name, DateTime today) {
-    final recipe = recipeNamed(name);
-    if (recipe == null) return this;
-    final made = recipe.made;
-    return withRecipe(
-      recipe.copyWith(
-        made: MadeHistory(today, made == null ? 1 : made.times + 1),
-      ),
+    final made = recipeNamed(name)?.made;
+    return withRecipeHistory(
+      name,
+      MadeHistory(today, made == null ? 1 : made.times + 1),
     );
+  }
+
+  /// The one writer of a made-history: [made] as given, null for never made.
+  /// Taking a stamp back is putting the history that preceded it back, so
+  /// undo and reset are this one derivation twice (FR-REC-6).
+  Model withRecipeHistory(String name, MadeHistory? made) {
+    final recipe = recipeNamed(name);
+    return recipe == null ? this : withRecipe(recipe.stamped(made));
   }
 
   /// Names of the recipes standing in the way of deleting the ingredient, in

@@ -308,6 +308,17 @@ void main() {
       );
     });
 
+    test('setMade puts a history back, and a null clears it', () async {
+      final container = await started();
+      final controller = controllerOf(container);
+      final before = MadeHistory(DateTime(2026, 1, 3), 4);
+
+      await controller.setMade('Negroni', before);
+      expect(modelOf(container).recipeNamed('Negroni')?.made, before);
+      await controller.setMade('Negroni', null);
+      expect(modelOf(container).recipeNamed('Negroni')?.made, isNull);
+    });
+
     test('the clock is the real one unless a test replaces it', () async {
       final container = containerFor(store);
       expect(container.read(clockProvider), DateTime.now);
@@ -345,6 +356,7 @@ void main() {
         replacing: 'classic',
       );
       await controller.markMade('Sazerac');
+      await controller.setMade('Negroni', null);
       expect(store.saveCount, 0);
       expect(modelOf(container), same(stored));
     });

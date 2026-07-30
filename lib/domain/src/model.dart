@@ -284,8 +284,7 @@ final class Recipe {
   }) : tags = List.unmodifiable(tags),
        lines = List.unmodifiable(lines);
 
-  /// [made] only ever grows: the pilot stamps a recipe as made (FR-REC-6) and
-  /// never unmakes it, so a null argument keeps the current history.
+  /// A null [made] keeps the current history; [stamped] is what rewrites it.
   Recipe copyWith({
     String? name,
     List<String>? tags,
@@ -299,6 +298,12 @@ final class Recipe {
     notes: notes ?? this.notes,
     made: made ?? this.made,
   );
+
+  /// The only way to rewrite the history, and the only one that can clear it
+  /// back to never made — `copyWith` cannot, since null is its "keep what you
+  /// have" ([RecipeLine.marked] is the same hatch for the same reason).
+  Recipe stamped(MadeHistory? made) =>
+      Recipe(name, tags: tags, lines: lines, notes: notes, made: made);
 
   @override
   bool operator ==(Object other) =>

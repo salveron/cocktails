@@ -99,14 +99,17 @@ MemoryModelStore corruptStore() => MemoryModelStore()
     ),
   ], recoveredFromBackup: fixtureModel);
 
-/// [widget] under the provider override the composition root makes, so a
-/// widget test reaches the real state layer over an in-memory store.
-Widget scoped(Widget widget, {ModelStore? store}) => ProviderScope(
-  overrides: [
-    modelStoreProvider.overrideWithValue(store ?? MemoryModelStore()),
-  ],
-  child: widget,
-);
+/// [widget] under the provider overrides the composition root makes, so a
+/// widget test reaches the real state layer over an in-memory store — and
+/// over a clock stopped on [today], where the screen stamps a date.
+Widget scoped(Widget widget, {ModelStore? store, DateTime? today}) =>
+    ProviderScope(
+      overrides: [
+        modelStoreProvider.overrideWithValue(store ?? MemoryModelStore()),
+        if (today != null) clockProvider.overrideWithValue(() => today),
+      ],
+      child: widget,
+    );
 
 /// The whole app, pumped past its startup load.
 Future<void> pumpApp(WidgetTester tester, {ModelStore? store}) async {
@@ -119,11 +122,13 @@ Future<void> pumpScreen(
   WidgetTester tester,
   Widget screen, {
   ModelStore? store,
+  DateTime? today,
 }) async {
   await tester.pumpWidget(
     scoped(
       MaterialApp(home: Scaffold(body: screen)),
       store: store,
+      today: today,
     ),
   );
   await tester.pumpAndSettle();
@@ -134,10 +139,11 @@ Future<void> pumpScreen(
 Future<MemoryModelStore> pumpOver(
   WidgetTester tester,
   Widget screen,
-  Model model,
-) async {
+  Model model, {
+  DateTime? today,
+}) async {
   final store = MemoryModelStore(model);
-  await pumpScreen(tester, screen, store: store);
+  await pumpScreen(tester, screen, store: store, today: today);
   return store;
 }
 
@@ -198,6 +204,11 @@ final notesField = field('Preparation, glassware, garnish…');
 
 Future<void> tap(WidgetTester tester, Finder target) async {
   await tester.tap(target);
+  await tester.pumpAndSettle();
+}
+
+Future<void> longPress(WidgetTester tester, Finder target) async {
+  await tester.longPress(target);
   await tester.pumpAndSettle();
 }
 

@@ -69,12 +69,19 @@ instead of dialog.
   order, name in tooltip; plus ingredient names recipe order, dot-separated, ellipsized; what-goes-in 
   glance, amounts one tap deeper). Optional ingredients unlabelled.
 - **Full card**: tags as chips, ingredient lines exactly as `formatRecipeLine` writes ("1.5 part gin 
-  (base)"; card reads like file, marks carry own words). Notes, made-history ("Made 4 times · last 12 
-  Jul 2026"). Empty sections absent.
+  (base)"; card reads like file, marks carry own words). Then notes, then the made row. Empty sections 
+  absent — the made row never is, since it carries the button.
 - **Vocab actions from inventory**: add via list button, edit/delete behind per-row ⋮ (tap spent on 
   expansion; menu pairs with M16 availability chip). Add/edit push [recipe form](#recipe-form); delete 
   confirms (nothing references recipe). Card open on rename stays open under new name (expansion = entry, 
-  not name). M15: "made it" on card. M17: scaling by lines. M18: filter row under search (tag legend).
+  not name). M17: scaling by lines. M18: filter row under search (tag legend).
+- **Made row closes the full card**: history text left (absent until the first stamp), Undo, "Made it" 
+  right (FR-REC-6). Text ellipsizes, buttons don't (clipped date beats wrapped row). Undo appears on 
+  stamp, restores the exact history it replaced (date included, one stamp deep), and dies with the 
+  card — its lifetime is the card's, not a timer's. Long press on the button resets to never-made 
+  behind the shared confirm dialog: the count only climbs, so a mis-tap has Undo and an old count has 
+  reset. Both are one write. Undo state sits in the screen keyed by name, beside expansion and for the 
+  same reason (the list disposes what scrolls).
 
 ## Recipe form
 

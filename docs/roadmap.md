@@ -81,7 +81,9 @@ First usable slice; recipes reference both vocabularies, so this precedes Phase 
       notes, made-history. No pushed view: the view is the expanded card.
 - [x] **M14 Recipe form** — create, edit, delete via the shared line parser and tag picker,
       per-line base and optional marks (FR-REC-1..5/8); recipe-form widget test.
-- [ ] **M15 Made it** — the action and its stamped display (FR-REC-6).
+- [x] **M15 Made it** — the action closing the expanded card: the history it stamps, the Undo that
+      stamp leaves behind, and the long-press reset (FR-REC-6, amended for both ways back). One
+      domain writer, `withRecipeHistory`, serves the stamp, the undo and the reset alike.
 - [ ] **M16 Availability** — domain computation, derived provider, list badges, per-line
       low/out marks (FR-DIS-1).
 - [ ] **M17 Scaling & unit display** — ×2/3/4 scaling and part↔ml display conversion in

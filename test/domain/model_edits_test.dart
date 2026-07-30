@@ -314,6 +314,23 @@ void main() {
     test('an unknown recipe changes nothing', () {
       expect(model.withRecipeMade('Sazerac', today), same(model));
     });
+
+    test('a history is written as handed over', () {
+      final edited = model.withRecipeHistory('Negroni', MadeHistory(today, 9));
+      expect(edited.recipeNamed('Negroni')?.made, MadeHistory(today, 9));
+    });
+
+    test('a null clears the history and leaves the recipe standing', () {
+      final cleared = model
+          .withRecipeMade('Negroni', today)
+          .withRecipeHistory('Negroni', null);
+      expect(cleared.recipeNamed('Negroni')?.made, isNull);
+      expect(cleared.recipeNamed('Negroni'), negroni);
+    });
+
+    test('an unknown recipe has no history to write', () {
+      expect(model.withRecipeHistory('Sazerac', null), same(model));
+    });
   });
 
   group('reference queries', () {

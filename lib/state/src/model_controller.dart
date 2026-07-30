@@ -104,6 +104,10 @@ final class ModelController extends AsyncNotifier<Model> {
   Future<void> markMade(String name) =>
       _edit((model) => model.withRecipeMade(name, ref.read(clockProvider)()));
 
+  /// Puts a history back where [markMade] found it; a null clears it.
+  Future<void> setMade(String name, MadeHistory? made) =>
+      _edit((model) => model.withRecipeHistory(name, made));
+
   /// The one route from an edit to the disk: derive, publish, persist. It
   /// waits for the startup load, so an edit made while the app is still
   /// starting lands on the loaded model instead of replacing it. An edit that

@@ -28,7 +28,8 @@ Names unique within kind. Two tag vocabularies separate, so one name may exist i
 - **FR-REC-5** A recipe carries one free-text notes field — in the pilot the home for
   preparation steps, techniques, glassware, and garnish, all unformalized.
 - **FR-REC-6** A "made it" action stamps the current date and increments a times-made
-  counter; the recipe shows both.
+  counter; the recipe shows both. The last stamp can be taken back, and the history can be
+  reset to never-made — miscounts are correctable, since nothing else can lower the count.
 - **FR-REC-7** The recipe view can scale ingredient amounts ×2/×3/×4 (display only; range
   ends scale together).
 - **FR-REC-8** An ingredient line may be marked as a base spirit of the recipe; the mark can

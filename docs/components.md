@@ -168,6 +168,7 @@ Model withoutTag(TagKind kind, String name);
 Model withRecipe(Recipe recipe);                      // add or replace by name
 Model withoutRecipe(String name);
 Model withRecipeMade(String name, DateTime today);    // the clock is a parameter (FR-REC-6)
+Model withRecipeHistory(String name, MadeHistory? made);      // the one writer; null = never made
 
 List<String> recipesUsingIngredient(String name);     // FR-VOC-1 delete blocking
 List<String> usersOfTag(TagKind kind, String name);
@@ -181,10 +182,13 @@ Three rules: edit for missing entry returns unchanged (stale name can't crash). 
 existing name throws `ArgumentError` (programmer contract). Removal never cascades (caller asks 
 `recipesUsing…` first for blocking message).
 
+`withRecipeMade` is `withRecipeHistory` with the next count worked out; taking a stamp back is
+putting the history that preceded it back, so undo and reset are that same derivation (FR-REC-6).
+
 `copyWith` on multi-field values (`Settings`, `Ingredient`, `Tag`, `RecipeLine`, `Recipe`, `Model`); 
-rename/stock/made built from it. `Amount`, `MadeHistory` rebuilt whole. Two unreachable fields have 
-own methods: `RecipeLine.marked` clears mark; `Recipe.copyWith` can't clear `made` (never unmade, 
-FR-REC-6).
+rename/stock/made built from it. `Amount`, `MadeHistory` rebuilt whole. Two nullable fields need 
+their own hatch, since null is `copyWith`'s "keep what you have": `RecipeLine.marked` clears the 
+mark, `Recipe.stamped` clears the history.
 
 Rebuilding `Model` on every edit is deliberate (pilot scale: few thousand pointer writes; keeps all 
 immutable, derived provider invalidation trivial).
