@@ -83,6 +83,24 @@ void main() {
       }
     });
 
+    test('a verdict wears the hue of the stock it stands for', () {
+      // Exhaustive, so a fourth verdict cannot slip past this pairing.
+      StockLevel signalOf(Availability availability) => switch (availability) {
+        Availability.makeable => StockLevel.in_,
+        Availability.makeableLow => StockLevel.low,
+        Availability.missing => StockLevel.out,
+      };
+      for (final availability in Availability.values) {
+        for (final brightness in Brightness.values) {
+          expect(
+            availabilityColors(availability, brightness),
+            stockColors(signalOf(availability), brightness),
+            reason: '${availability.name} in $brightness',
+          );
+        }
+      }
+    });
+
     test('no tag colour reads as a stock signal', () {
       for (final tag in palette.entries) {
         for (final signal in signals.entries) {

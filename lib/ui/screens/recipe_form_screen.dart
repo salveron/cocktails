@@ -98,13 +98,17 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
   Set<String> _otherNames(Model model) =>
       otherNames(model.recipeNames, widget.original?.name);
 
-  /// Name alone; reference sets empty since names don't use them.
-  List<ValidationIssue> _nameIssues(Model model) => validateRecipe(
-    Recipe(_name.text),
-    knownIngredients: const {},
-    knownTags: const {},
-    otherRecipeNames: _otherNames(model),
-  );
+  /// Name alone — kept apart by the empty path a name issue carries, so what
+  /// the half-typed rest of the form is still missing waits for Save.
+  List<ValidationIssue> _nameIssues(Model model) => [
+    for (final issue in validateRecipe(
+      Recipe(_name.text),
+      knownIngredients: const {},
+      knownTags: const {},
+      otherRecipeNames: _otherNames(model),
+    ))
+      if (issue.path.isEmpty) issue,
+  ];
 
   /// Parse result per line (null if empty/valid); computed once per build.
   List<String?> get _syntaxProblems => [

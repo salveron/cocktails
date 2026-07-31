@@ -1,6 +1,10 @@
 import 'package:cocktails/domain/domain.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+/// The required line every recipe now needs (FR-REC-2), so a fixture about
+/// some other rule does not trip that one. Its bottle is declared alongside.
+const _gin = RecipeLine(Amount(1), Unit.part, 'gin');
+
 void main() {
   const kind = ValidationIssueKind.emptyName;
 
@@ -125,10 +129,12 @@ void main() {
 
     test('flags malformed names in every vocabulary', () {
       final issues = validateModel(
-        ingredients: [Ingredient('')],
+        ingredients: [Ingredient(''), Ingredient('gin')],
         ingredientTags: [const Tag(' citrus', color: TagColor.sand)],
         recipeTags: [const Tag(' sour', color: TagColor.rose)],
-        recipes: [Recipe('Old\nFashioned')],
+        recipes: [
+          Recipe('Old\nFashioned', lines: const [_gin]),
+        ],
       );
       expect(issues, hasLength(4));
       expect(issues[0].path, ['ingredients', 0]);
@@ -155,8 +161,11 @@ void main() {
 
     test('the reserved suffix rule is ingredient-only', () {
       final issues = validateModel(
+        ingredients: [Ingredient('gin')],
         recipeTags: [const Tag('odd (optional)', color: TagColor.rose)],
-        recipes: [Recipe('Strange (optional)')],
+        recipes: [
+          Recipe('Strange (optional)', lines: const [_gin]),
+        ],
       );
       expect(issues, isEmpty);
     });
@@ -172,7 +181,10 @@ void main() {
           const Tag('sour', color: TagColor.rose),
           const Tag('sour', color: TagColor.rose),
         ],
-        recipes: [Recipe('Negroni'), Recipe('Negroni')],
+        recipes: [
+          Recipe('Negroni', lines: const [_gin]),
+          Recipe('Negroni', lines: const [_gin]),
+        ],
       );
       expect(issues, hasLength(4));
       expect(issues[0].path, ['ingredients', 1]);
@@ -213,14 +225,48 @@ void main() {
 
     test('flags a tag repeated on one recipe', () {
       final issues = validateModel(
+        ingredients: [Ingredient('gin')],
         recipeTags: [const Tag('sour', color: TagColor.rose)],
         recipes: [
-          Recipe('Daiquiri', tags: ['sour', 'sour']),
+          Recipe('Daiquiri', tags: ['sour', 'sour'], lines: const [_gin]),
         ],
       );
       expect(issues, hasLength(1));
       expect(issues.single.path, ['recipes', 0, 'tags', 1]);
       expect(issues.single.message, contains('"sour"'));
+    });
+
+    test('flags a recipe with nothing required, at its lines', () {
+      for (final lines in [
+        const <RecipeLine>[],
+        const [
+          RecipeLine(Amount(1), Unit.part, 'gin', mark: LineMark.optional),
+        ],
+      ]) {
+        final issues = validateModel(
+          ingredients: [Ingredient('gin')],
+          recipes: [Recipe('Negroni', lines: lines)],
+        );
+        expect(issues.single.path, ['recipes', 0, 'lines'], reason: '$lines');
+        expect(issues.single.kind, ValidationIssueKind.noRequiredLine);
+      }
+    });
+
+    test('a base line is a required line', () {
+      expect(
+        validateModel(
+          ingredients: [Ingredient('gin')],
+          recipes: [
+            Recipe(
+              'Negroni',
+              lines: const [
+                RecipeLine(Amount(1), Unit.part, 'gin', mark: LineMark.base),
+              ],
+            ),
+          ],
+        ),
+        isEmpty,
+      );
     });
 
     test('flags non-positive and out-of-order amounts', () {
@@ -245,8 +291,13 @@ void main() {
 
     test('flags a times-made count below 1', () {
       final issues = validateModel(
+        ingredients: [Ingredient('gin')],
         recipes: [
-          Recipe('Negroni', made: MadeHistory(DateTime(2026, 7, 18), 0)),
+          Recipe(
+            'Negroni',
+            lines: const [_gin],
+            made: MadeHistory(DateTime(2026, 7, 18), 0),
+          ),
         ],
       );
       expect(issues, hasLength(1));
@@ -269,8 +320,11 @@ void main() {
 
     test('ordering: ingredient issue before recipe issue', () {
       final issues = validateModel(
-        ingredients: [Ingredient('silly (optional)')],
-        recipes: [Recipe('Negroni'), Recipe('Negroni')],
+        ingredients: [Ingredient('silly (optional)'), Ingredient('gin')],
+        recipes: [
+          Recipe('Negroni', lines: const [_gin]),
+          Recipe('Negroni', lines: const [_gin]),
+        ],
       );
       expect(issues, hasLength(2));
       expect(issues[0].path, ['ingredients', 0]);
@@ -283,7 +337,7 @@ void main() {
         'vocabularies, recipes', () {
       final issues = validateModel(
         settings: const Settings(partMl: 0),
-        ingredients: [Ingredient('silly (optional)')],
+        ingredients: [Ingredient('silly (optional)'), Ingredient('gin')],
         ingredientTags: [
           const Tag('citrus', color: TagColor.sand),
           const Tag('citrus', color: TagColor.sand),
@@ -292,7 +346,10 @@ void main() {
           const Tag('sour', color: TagColor.rose),
           const Tag('sour', color: TagColor.rose),
         ],
-        recipes: [Recipe('Negroni'), Recipe('Negroni')],
+        recipes: [
+          Recipe('Negroni', lines: const [_gin]),
+          Recipe('Negroni', lines: const [_gin]),
+        ],
       );
       expect(issues.map((i) => i.path).toList(), [
         ['settings', 'part_ml'],
@@ -352,7 +409,7 @@ void main() {
             tags: const ['unknown'],
             lines: const [RecipeLine(Amount(0), Unit.part, 'gin')],
           ),
-          Recipe(''),
+          Recipe('', lines: const [_gin]),
         ],
       );
       expect(issues.map((i) => i.path), [
@@ -402,8 +459,12 @@ void main() {
 
     test('flags a tag repeated on the recipe, in tag order', () {
       final issues = validateRecipe(
-        Recipe('Negroni', tags: const ['sour', 'classic', 'sour']),
-        knownIngredients: const {},
+        Recipe(
+          'Negroni',
+          tags: const ['sour', 'classic', 'sour'],
+          lines: const [_gin],
+        ),
+        knownIngredients: {'gin'},
         knownTags: {'sour', 'classic'},
       );
       expect(issues, hasLength(1));
@@ -413,8 +474,8 @@ void main() {
 
     test('checks the recipe name, at an entry-relative empty path', () {
       final issues = validateRecipe(
-        Recipe(''),
-        knownIngredients: const {},
+        Recipe('', lines: const [_gin]),
+        knownIngredients: {'gin'},
         knownTags: const {},
       );
       expect(issues.single.path, isEmpty);
@@ -424,8 +485,8 @@ void main() {
     test('a name collides with another recipe, never with itself', () {
       expect(
         validateRecipe(
-          Recipe('Negroni'),
-          knownIngredients: const {},
+          Recipe('Negroni', lines: const [_gin]),
+          knownIngredients: {'gin'},
           knownTags: const {},
           otherRecipeNames: {'Martini'},
         ),
@@ -433,8 +494,8 @@ void main() {
       );
       expect(
         validateRecipe(
-          Recipe('Negroni'),
-          knownIngredients: const {},
+          Recipe('Negroni', lines: const [_gin]),
+          knownIngredients: {'gin'},
           knownTags: const {},
           otherRecipeNames: {'Negroni'},
         ).single.kind,

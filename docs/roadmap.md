@@ -84,8 +84,11 @@ First usable slice; recipes reference both vocabularies, so this precedes Phase 
 - [x] **M15 Made it** — the action closing the expanded card: the history it stamps, the Undo that
       stamp leaves behind, and the long-press reset (FR-REC-6, amended for both ways back). One
       domain writer, `withRecipeHistory`, serves the stamp, the undo and the reset alike.
-- [ ] **M16 Availability** — domain computation, derived provider, list badges, per-line
-      low/out marks (FR-DIS-1).
+- [x] **M16 Availability** — `availabilityOf` over required lines only and the `availabilityProvider`
+      derived from it, the Ready/Low/Missing chip beside each row's ⋮, and a stock dot on every open
+      line that is low or out (FR-DIS-1). FR-REC-2 gains the rule the verdict rests on — a recipe
+      carries at least one line that is not optional — enforced by `validateRecipe`, so the form and
+      an imported file refuse it alike.
 - [ ] **M17 Scaling & unit display** — ×2/3/4 scaling and part↔ml display conversion in
       the recipe view (FR-REC-7; display half of FR-SET-1).
 

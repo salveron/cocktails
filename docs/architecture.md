@@ -125,7 +125,8 @@ Rules:
 
 - **Availability** (per recipe, over required lines only): all ingredients `in` → makeable;
   none `out` but some `low` → makeable-low; any `out` → missing. Computed in a Riverpod
-  derived provider; nothing is ever stored.
+  derived provider; nothing is ever stored. A recipe always has a required line to judge
+  (FR-REC-2), and a line naming a bottle the vocabulary lost reads as `out`.
 - **Shopping optimizer** (FR-DIS-6): for each missing recipe, collect its set of `out`
   required ingredients; keep sets of size ≤ N. Candidate purchases are unions of these sets
   up to size N; each candidate is scored by how many recipes become can-make. Zero-yield

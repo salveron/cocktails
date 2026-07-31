@@ -1,6 +1,7 @@
 import 'package:cocktails/data/data.dart';
 import 'package:cocktails/domain/domain.dart';
 import 'package:cocktails/ui/screens/recipes_screen.dart';
+import 'package:cocktails/ui/widgets/color_chip.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -17,6 +18,74 @@ Future<MemoryModelStore> pumpRecipes(WidgetTester tester, [Model? model]) =>
 /// The recipe names on screen, in list order.
 Iterable<String?> namesOn(WidgetTester tester) =>
     rowTexts(tester).where(names.contains);
+
+/// The three verdicts at once (FR-DIS-1), and an optional line the verdict
+/// passes over though the card still marks it.
+final stockedModel = Model(
+  ingredients: [
+    Ingredient('gin', stock: StockLevel.in_),
+    Ingredient('campari', stock: StockLevel.low),
+    Ingredient('sweet vermouth'),
+  ],
+  recipes: [
+    Recipe(
+      'Gin Shot',
+      lines: const [
+        RecipeLine(Amount(1), Unit.part, 'gin'),
+        RecipeLine(
+          Amount(1),
+          Unit.dash,
+          'sweet vermouth',
+          mark: LineMark.optional,
+        ),
+      ],
+    ),
+    Recipe(
+      'Campari Shot',
+      lines: const [RecipeLine(Amount(1), Unit.part, 'campari')],
+    ),
+    Recipe(
+      'Negroni',
+      lines: const [
+        RecipeLine(Amount(1), Unit.part, 'gin'),
+        RecipeLine(Amount(1), Unit.part, 'campari'),
+        RecipeLine(Amount(1), Unit.part, 'sweet vermouth'),
+      ],
+    ),
+  ],
+);
+
+/// What the verdict chip on the row named [name] reads.
+String verdictOn(WidgetTester tester, String name) => tester
+    .widget<Text>(
+      find.descendant(
+        of: find.descendant(
+          of: find.ancestor(
+            of: find.text(name),
+            matching: find.byType(ListTile),
+          ),
+          matching: find.byType(AvailabilityChip),
+        ),
+        matching: find.byType(Text),
+      ),
+    )
+    .data!;
+
+/// What the dot beside the line reading [line] reports, or null when that line
+/// carries none — which is how an in-stock bottle reads.
+StockLevel? dotOnLine(WidgetTester tester, String line) {
+  final dots = tester
+      .widgetList<StockDot>(
+        find.descendant(
+          of: find
+              .ancestor(of: find.text(line), matching: find.byType(Row))
+              .first,
+          matching: find.byType(StockDot),
+        ),
+      )
+      .toList();
+  return dots.isEmpty ? null : dots.single.stock;
+}
 
 final madeButton = find.widgetWithText(FilledButton, 'Made it');
 final undoButton = find.widgetWithText(TextButton, 'Undo');
@@ -109,6 +178,21 @@ void main() {
       expect(dotsOn(tester, 'Whiskey Sour'), ['classic', 'sour']);
       expect(dotsOn(tester, 'Daiquiri'), isEmpty);
     });
+
+    testWidgets('wears the verdict of its own bottles (FR-DIS-1)', (
+      tester,
+    ) async {
+      await pumpRecipes(tester, stockedModel);
+      expect(verdictOn(tester, 'Gin Shot'), 'Ready');
+      expect(verdictOn(tester, 'Campari Shot'), 'Low');
+      expect(verdictOn(tester, 'Negroni'), 'Missing');
+    });
+
+    testWidgets('the verdict stays put while the card is open', (tester) async {
+      await pumpRecipes(tester, stockedModel);
+      await tap(tester, find.text('Negroni'));
+      expect(verdictOn(tester, 'Negroni'), 'Missing');
+    });
   });
 
   group('full card', () {
@@ -137,6 +221,28 @@ void main() {
       expect(find.text('gin · campari · sweet vermouth'), findsNothing);
       expect(dotsOn(tester, 'Negroni'), isEmpty);
       expect(find.text('classic'), findsOneWidget);
+    });
+
+    testWidgets('only the lines with something to report are dotted', (
+      tester,
+    ) async {
+      await pumpRecipes(tester, stockedModel);
+      await tap(tester, find.text('Negroni'));
+      expect(dotOnLine(tester, '1 part gin'), isNull);
+      expect(dotOnLine(tester, '1 part campari'), StockLevel.low);
+      expect(dotOnLine(tester, '1 part sweet vermouth'), StockLevel.out);
+    });
+
+    testWidgets('an optional line is marked though it does not count', (
+      tester,
+    ) async {
+      await pumpRecipes(tester, stockedModel);
+      await tap(tester, find.text('Gin Shot'));
+      expect(verdictOn(tester, 'Gin Shot'), 'Ready');
+      expect(
+        dotOnLine(tester, '1 dash sweet vermouth (optional)'),
+        StockLevel.out,
+      );
     });
 
     testWidgets('the chips wear the tags\' own colours', (tester) async {
@@ -291,7 +397,7 @@ void main() {
       final store = await pumpRecipes(tester);
       await tap(tester, find.text('Negroni'));
       await longPress(tester, madeButton);
-      expect(find.text('Reset "Negroni"?'), findsOneWidget);
+      expect(find.text('Reset "Negroni"\'s history?'), findsOneWidget);
 
       await tap(tester, find.text('Cancel'));
       expect(find.text('Made 4 times · last 12 Jul 2026'), findsOneWidget);
@@ -319,7 +425,7 @@ void main() {
       await tap(tester, find.text('Whiskey Sour'));
       await longPress(tester, madeButton);
 
-      expect(find.text('Reset "Whiskey Sour"?'), findsNothing);
+      expect(find.text('Reset "Whiskey Sour"\'s history?'), findsNothing);
       // No reset to reach: the press lands as the tap it also is.
       expect(
         store.saved?.recipeNamed('Whiskey Sour')?.made,

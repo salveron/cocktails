@@ -5,7 +5,6 @@ import 'package:cocktails/state/state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../palette.dart';
 import '../widgets/color_chip.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/model_view.dart';
@@ -79,7 +78,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
     trailing: Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        _StockChip(ingredient.stock),
+        StockChip(ingredient.stock),
         RowMenu({
           'Edit': () => unawaited(_edit(model, vocabulary, ingredient)),
           'Delete': () => unawaited(_delete(model, ingredient)),
@@ -157,17 +156,3 @@ List<ValidationIssue> Function(String) _nameRule(
       knownIngredientTags: model.tagNames(TagKind.ingredient),
       otherIngredientNames: otherNames(model.ingredientNames, except),
     );
-
-/// Stock level as text and color (no color-only decoding required).
-class _StockChip extends StatelessWidget {
-  const _StockChip(this.stock);
-
-  final StockLevel stock;
-
-  @override
-  Widget build(BuildContext context) => ColorChip(switch (stock) {
-    StockLevel.in_ => 'In stock',
-    StockLevel.low => 'Low',
-    StockLevel.out => 'Out',
-  }, swatch: stockColors(stock, Theme.of(context).brightness));
-}

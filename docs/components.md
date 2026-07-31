@@ -20,7 +20,7 @@ lib/
       model_edits.dart         # extension ModelEdits on Model — pure derivations
       line_format.dart         # compact-line grammar
       validation.dart          # ValidationIssue + rule set
-      availability.dart        # M16
+      availability.dart        # Availability, availabilityOf, stockOf
       scaling.dart             # M17 — ×N scaling, part↔ml display
       discovery.dart           # M13/M18/M19/M20 — search, filter, group, random
       optimizer.dart           # M21
@@ -39,7 +39,7 @@ lib/
     state.dart                 # barrel — every provider
     src/
       model_controller.dart    # the one writable provider
-      derived.dart             # availability, visible recipes, grouping, optimizer
+      derived.dart             # availabilityProvider; visible recipes, grouping, optimizer
       filters.dart             # filter and search UI state
   ui/                          # no barrel — leaves, imported directly; design in ui-design.md
     app.dart                   # MaterialApp and the shell: destinations, app bar, gear
@@ -217,7 +217,7 @@ Contract and rationale: [ADR 05](adr/05-validation-contract.md).
 enum ValidationIssueKind {
   emptyName, whitespaceInName, lineBreakInName, duplicateName, reservedSuffix,
   partMlNotPositive, unknownIngredient, unknownTag, duplicateTag,
-  amountNotPositive, rangeOutOfOrder, timesBelowOne,
+  amountNotPositive, rangeOutOfOrder, noRequiredLine, timesBelowOne,
   unsupportedFormat, malformedLine, malformedValue,    // raised by the codec (M6)
 }
 
@@ -306,6 +306,11 @@ loaded model, not replace. Edit that leaves model unchanged is not saved (no bac
 constructs `Model` or touches `ModelStore` ([ADR 03](adr/03-app-structure-and-state.md)).
 
 Everything else is derived, read-only:
+
+`availabilityProvider` — `Map<String, Availability>` by recipe name, `availabilityOf` over every 
+recipe on each model change; empty until the load lands. One pass serves the list's chips and, later, 
+the availability filter, the random pick and the optimizer. Per-line marks read `stockOf` directly 
+(the map answers per recipe, the card asks per bottle).
 
 Filter state is presentation, never persisted; own provider so filter change invalidates only visible 
 list, not model-derived.

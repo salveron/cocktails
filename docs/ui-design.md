@@ -72,9 +72,19 @@ instead of dialog.
   (base)"; card reads like file, marks carry own words). Then notes, then the made row. Empty sections 
   absent — the made row never is, since it carries the button.
 - **Vocab actions from inventory**: add via list button, edit/delete behind per-row ⋮ (tap spent on 
-  expansion; menu pairs with M16 availability chip). Add/edit push [recipe form](#recipe-form); delete 
+  expansion; menu pairs with availability chip). Add/edit push [recipe form](#recipe-form); delete 
   confirms (nothing references recipe). Card open on rename stays open under new name (expansion = entry, 
   not name). M17: scaling by lines. M18: filter row under search (tag legend).
+- **Availability chip left of the ⋮** (FR-DIS-1): "Ready", "Low", "Missing" in the inventory's own 
+  traffic light — one idiom on both list screens, colour never decoded alone. No count on "Missing": 
+  fixed widths keep the column calm and every name cut at the same place; the count is one tap away, 
+  where the lines are marked anyway. Trailing slot sits outside the body that opens, so the verdict 
+  stays put while the card is open.
+- **Line marks as dots, only where there is something to say** (FR-DIS-1): a [stock dot](#tag-and-stock-colours) 
+  after a line whose bottle is low or out, level in its tooltip; an in-stock line carries none, so no 
+  dot *is* "in stock". Words would not fit beside a line that already ends in "(base)". Optional lines 
+  are dotted too — the dot reports the bottle, and the line's own "(optional)" says it does not count, 
+  right beside it, so a red dot on a "Ready" card explains itself.
 - **Made row closes the full card**: history text left (absent until the first stamp), Undo, "Made it" 
   right (FR-REC-6). Text ellipsizes, buttons don't (clipped date beats wrapped row). Undo appears on 
   stamp, restores the exact history it replaced (date included, one stamp deep), and dies with the 
@@ -94,9 +104,11 @@ Top to bottom mirrors card and file (name, lines, tags, notes, FR-REC-1..5).
 - **Lines self-grow**: bottom field always empty; typing spawns next. Empty field dropped on save. No 
   per-line ✕, add button, drag: order is typed order (reorder = cut-paste).
 - **Save unreachable** until name passes live rules (dialogs' duplicate/whitespace) and all non-empty 
-  lines parse. On save, `validateRecipe` checks whole; value rule syntax can't see lands under field 
-  via `lines[i]` path (components.md seam). Refusal no field can carry → snackbar (Save unchanged 
-  indistinguishable from broken; fields only place for message).
+  lines parse. Live name check reads only issues at the empty path, so what the half-typed rest is 
+  still missing waits for Save. On save, `validateRecipe` checks whole; value rule syntax can't see 
+  lands under field via `lines[i]` path (components.md seam). Refusal no field can carry → snackbar 
+  (Save unchanged indistinguishable from broken; fields only place for message) — the recipe with 
+  nothing required (FR-REC-2) refuses there, its path naming the lines list, not one line.
 - **Unknown ingredients: offer not wall**: if only issue, confirmation lists and adds them (out, 
   untagged) before save (never dead-ends to inventory). Declining marks fields. Typos caught where 
   list read, before confirming.
@@ -146,6 +158,7 @@ Behind Settings, not bottom bar (vocab arranged once, used from referencing scre
 ## Tag and stock colours
 
 Each token maps to a pair (fill + ink staying legible); one pair per theme. `palette.dart` is single 
-home. Fill is the colour a token *is* (chip fill, dot, eye-matched across screen). Ink is for things 
+home. One traffic light serves both signals — a bottle's stock and the verdict on the recipe holding 
+it up read in the same three hues, since they are the same news at two scales. Fill is the colour a token *is* (chip fill, dot, eye-matched across screen). Ink is for things 
 holding against fill or page (chip lettering, picked ring, swatch tick). `switch` over `TagColor` 
 exhaustive (new member [ADR 07](adr/07-tag-colour.md) doesn't compile until swatch added).

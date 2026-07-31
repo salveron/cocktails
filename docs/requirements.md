@@ -21,7 +21,8 @@ Names unique within kind. Two tag vocabularies separate, so one name may exist i
 
 - **FR-REC-1** Create, edit, and delete recipes through structured forms.
 - **FR-REC-2** An ingredient line is amount + unit + ingredient. Units: **part** (default),
-  ml, oz, dash, barspoon, drop, piece. An amount may be a range ("1.5–2").
+  ml, oz, dash, barspoon, drop, piece. An amount may be a range ("1.5–2"). Every recipe
+  carries at least one line that is not optional, so availability always judges something.
 - **FR-REC-3** An ingredient line may be marked optional: it displays with the recipe but
   is excluded from the availability computation (and thus from the shopping optimizer).
 - **FR-REC-4** A recipe carries any number of tags, chosen from the tag vocabulary.

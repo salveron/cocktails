@@ -309,5 +309,32 @@ void main() {
       expect(find.text('times must be at least 1: 0'), findsOneWidget);
       expect(store.saved, isNull);
     });
+
+    testWidgets('a recipe with nothing to make it from (FR-REC-2)', (
+      tester,
+    ) async {
+      const refusal =
+          'Recipe needs at least one ingredient line that is not '
+          'optional';
+      final store = await pumpList(tester);
+      await openAdd(tester);
+      await typeInto(tester, nameField, 'Martini');
+      // The name alone passes its own rules, so Save is reachable and the
+      // refusal is what it answers with.
+      expect(saveEnabled(tester), isTrue);
+      await tap(tester, find.text('Save'));
+      expect(find.text(refusal), findsOneWidget);
+      expect(store.saved, isNull);
+
+      await typeInto(tester, lineFields.first, '1 part gin (optional)');
+      await tap(tester, find.text('Save'));
+      expect(find.text(refusal), findsWidgets);
+      expect(store.saved, isNull);
+
+      await typeInto(tester, lineFields.first, '1 part gin');
+      await tap(tester, find.text('Save'));
+      expect(find.text('New recipe'), findsNothing);
+      expect(store.saved!.recipeNamed('Martini'), isNotNull);
+    });
   });
 }

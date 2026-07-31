@@ -1,4 +1,5 @@
-/// Colored widgets: chip (label + fill), tag chip, dot, dotted name.
+/// Colored widgets: chip (label + fill), tag and signal chips, dot, dotted
+/// name. Every one carries words or a tooltip — no meaning from hue alone.
 library;
 
 import 'package:cocktails/domain/domain.dart';
@@ -62,6 +63,40 @@ class TagChip extends StatelessWidget {
   );
 }
 
+/// The stock level in words — one home, so chip and dot cannot drift.
+String stockLabel(StockLevel stock) => switch (stock) {
+  StockLevel.in_ => 'In stock',
+  StockLevel.low => 'Low',
+  StockLevel.out => 'Out',
+};
+
+/// What is left of a bottle, on its inventory row.
+class StockChip extends StatelessWidget {
+  const StockChip(this.stock, {super.key});
+
+  final StockLevel stock;
+
+  @override
+  Widget build(BuildContext context) => ColorChip(
+    stockLabel(stock),
+    swatch: stockColors(stock, Theme.of(context).brightness),
+  );
+}
+
+/// What the bottles make of a recipe, on its list row (FR-DIS-1).
+class AvailabilityChip extends StatelessWidget {
+  const AvailabilityChip(this.availability, {super.key});
+
+  final Availability availability;
+
+  @override
+  Widget build(BuildContext context) => ColorChip(switch (availability) {
+    Availability.makeable => 'Ready',
+    Availability.makeableLow => 'Low',
+    Availability.missing => 'Missing',
+  }, swatch: availabilityColors(availability, Theme.of(context).brightness));
+}
+
 /// Name with tag dots (name clips first to avoid misreporting count).
 class DottedName extends StatelessWidget {
   const DottedName(
@@ -92,15 +127,39 @@ class TagDot extends StatelessWidget {
   final Tag tag;
 
   @override
+  Widget build(BuildContext context) => _Dot(
+    tagColors(tag.color, Theme.of(context).brightness).fill,
+    tooltip: tag.name,
+  );
+}
+
+/// A bottle beside a recipe line, where the chip's words would not fit; drawn
+/// only where there is something to report, so no dot reads as in stock.
+class StockDot extends StatelessWidget {
+  const StockDot(this.stock, {super.key});
+
+  final StockLevel stock;
+
+  @override
+  Widget build(BuildContext context) => _Dot(
+    stockColors(stock, Theme.of(context).brightness).fill,
+    tooltip: stockLabel(stock),
+  );
+}
+
+class _Dot extends StatelessWidget {
+  const _Dot(this.color, {required this.tooltip});
+
+  final Color color;
+  final String tooltip;
+
+  @override
   Widget build(BuildContext context) => Tooltip(
-    message: tag.name,
+    message: tooltip,
     child: SizedBox.square(
       dimension: 8,
       child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: tagColors(tag.color, Theme.of(context).brightness).fill,
-          shape: BoxShape.circle,
-        ),
+        decoration: BoxDecoration(color: color, shape: BoxShape.circle),
       ),
     ),
   );

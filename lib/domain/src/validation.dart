@@ -25,6 +25,7 @@ enum ValidationIssueKind {
   duplicateTag,
   amountNotPositive,
   rangeOutOfOrder,
+  noRequiredLine,
   timesBelowOne,
   unsupportedFormat,
   malformedLine,
@@ -328,6 +329,17 @@ List<ValidationIssue> _checkRecipe(
     known: knownTags,
     entity: 'recipe',
   );
+  // Availability judges required lines, so a recipe with none would be
+  // makeable out of nothing (FR-REC-2).
+  if (recipe.lines.every((line) => line.isOptional)) {
+    issues.add(
+      ValidationIssue(
+        [...basePath, 'lines'],
+        ValidationIssueKind.noRequiredLine,
+        'Recipe needs at least one ingredient line that is not optional',
+      ),
+    );
+  }
   for (var l = 0; l < recipe.lines.length; l++) {
     final line = recipe.lines[l];
     final amount = formatAmount(line.amount);

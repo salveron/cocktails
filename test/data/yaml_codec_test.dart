@@ -739,15 +739,18 @@ recipes: []
     test('a times below one', () {
       final issues = rejected(
         'format: 1\n'
+        'ingredients:\n'
+        '  - {name: gin}\n'
         'recipes:\n'
         '  - name: A\n'
+        '    lines: [1 part gin]\n'
         '    made: {last: 2026-07-18, times: 0}\n',
       );
       expectIssue(
         issues.single,
         ValidationIssueKind.timesBelowOne,
         'recipes[0].made.times',
-        4,
+        7,
       );
     });
 
@@ -831,7 +834,10 @@ recipes: []
             notes: 'stir.\nstrain — serve "up"',
             made: MadeHistory(DateTime(2025, 1, 3), 4),
           ),
-          Recipe('Plain'),
+          Recipe(
+            'Plain',
+            lines: const [RecipeLine(Amount(1), Unit.part, 'bourbon')],
+          ),
         ],
       );
       final text = codec.encode(model);

@@ -38,27 +38,38 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
   });
 
   @override
-  Widget build(BuildContext context) => ModelView((model) {
-    final vocabulary = sortedByName(model.recipeTags);
-    return VocabularyList<Recipe>(
-      entries: model.recipes,
-      nameOf: (recipe) => recipe.name,
-      rowOf: (recipe) => _row(model, vocabulary, recipe),
-      onAdd: (query) async => await _openForm(initialName: query) != null,
-      noun: 'recipe',
-      plural: 'recipes',
-      empty: const EmptyState(
-        icon: Icons.local_bar_outlined,
-        title: 'No recipes yet',
-        message:
-            'Recipes you add appear here, marked with what you can make '
-            'from the bottles you have.',
-      ),
-    );
-  });
+  Widget build(BuildContext context) {
+    final availability = ref.watch(availabilityProvider);
+    return ModelView((model) {
+      final vocabulary = sortedByName(model.recipeTags);
+      return VocabularyList<Recipe>(
+        entries: model.recipes,
+        nameOf: (recipe) => recipe.name,
+        rowOf: (recipe) =>
+            _row(model, vocabulary, recipe, availability[recipe.name]),
+        onAdd: (query) async => await _openForm(initialName: query) != null,
+        noun: 'recipe',
+        plural: 'recipes',
+        empty: const EmptyState(
+          icon: Icons.local_bar_outlined,
+          title: 'No recipes yet',
+          message:
+              'Recipes you add appear here, marked with what you can make '
+              'from the bottles you have.',
+        ),
+      );
+    });
+  }
 
   /// Compact or full when tapped; full hides summary since details appear below.
-  VocabularyRow _row(Model model, List<Tag> vocabulary, Recipe recipe) {
+  /// [availability] is derived from the model this row is built from, so it is
+  /// there; an absent one draws no chip rather than standing on an assertion.
+  VocabularyRow _row(
+    Model model,
+    List<Tag> vocabulary,
+    Recipe recipe,
+    Availability? availability,
+  ) {
     final expanded = _expanded.contains(recipe.name);
     final summary = [
       for (final line in recipe.lines) line.ingredient,
@@ -72,6 +83,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
           : Text(summary, maxLines: 1, overflow: TextOverflow.ellipsis),
       body: expanded
           ? _Details(
+              model: model,
               vocabulary: vocabulary,
               recipe: recipe,
               onMade: () => unawaited(_made(recipe)),
@@ -81,10 +93,16 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
                   : null,
             )
           : null,
-      trailing: RowMenu({
-        'Edit': () => unawaited(_edit(recipe)),
-        'Delete': () => unawaited(_delete(recipe)),
-      }),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (availability != null) AvailabilityChip(availability),
+          RowMenu({
+            'Edit': () => unawaited(_edit(recipe)),
+            'Delete': () => unawaited(_delete(recipe)),
+          }),
+        ],
+      ),
       onTap: () => _toggle(recipe.name),
     );
   }
@@ -145,7 +163,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
   Future<void> _reset(Recipe recipe) async {
     final confirmed = await confirmDialog(
       context,
-      title: 'Reset "${recipe.name}"\' history?',
+      title: 'Reset "${recipe.name}"\'s history?',
       message: 'It will appear as never made. Nothing else about it changes.',
       cancel: 'Cancel',
       confirm: 'Reset',
@@ -159,12 +177,16 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
 /// Full recipe card: tags, lines, notes, made row; empty sections omitted.
 class _Details extends StatelessWidget {
   const _Details({
+    required this.model,
     required this.vocabulary,
     required this.recipe,
     required this.onMade,
     required this.onReset,
     this.onUndo,
   });
+
+  /// Read for the stock behind each line (FR-DIS-1).
+  final Model model;
 
   final List<Tag> vocabulary;
   final Recipe recipe;
@@ -191,7 +213,10 @@ class _Details extends StatelessWidget {
         for (final line in recipe.lines)
           Padding(
             padding: const EdgeInsets.only(bottom: 4),
-            child: Text(formatRecipeLine(line)),
+            child: _Line(
+              formatRecipeLine(line),
+              stockOf(model, line.ingredient),
+            ),
           ),
         if (recipe.notes.isNotEmpty) ...[
           const SizedBox(height: 8),
@@ -207,6 +232,28 @@ class _Details extends StatelessWidget {
       ],
     );
   }
+}
+
+/// One line as the file writes it, followed by a dot when its bottle is low or
+/// out (FR-DIS-1). An optional line is marked too — the dot reports the bottle,
+/// and the line's own "(optional)" says it does not count against the verdict.
+class _Line extends StatelessWidget {
+  const _Line(this.text, this.stock);
+
+  final String text;
+  final StockLevel stock;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    children: [
+      Flexible(child: Text(text)),
+      if (stock != StockLevel.in_)
+        Padding(
+          padding: const EdgeInsets.only(left: 6),
+          child: StockDot(stock),
+        ),
+    ],
+  );
 }
 
 /// The card's last line: what the history reads, the Undo the last stamp left

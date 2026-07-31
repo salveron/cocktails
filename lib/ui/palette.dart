@@ -7,15 +7,25 @@ import 'package:flutter/material.dart';
 /// Color pair: fill for background, ink for text.
 typedef Swatch = ({Color fill, Color ink});
 
+/// The one traffic light, worn by a bottle and by the recipe it holds up.
 /// Fixed hues (not scheme roles to avoid signal confusion).
-Swatch stockColors(StockLevel stock, Brightness brightness) => _forTheme(
-  switch (stock) {
-    StockLevel.in_ => const (pale: Color(0xFFC8E6C9), deep: Color(0xFF1B5E20)),
-    StockLevel.low => const (pale: Color(0xFFFFECB3), deep: Color(0xFF6B4E00)),
-    StockLevel.out => const (pale: Color(0xFFFFCDD2), deep: Color(0xFFB71C1C)),
-  },
-  brightness,
-);
+const _green = (pale: Color(0xFFC8E6C9), deep: Color(0xFF1B5E20));
+const _amber = (pale: Color(0xFFFFECB3), deep: Color(0xFF6B4E00));
+const _red = (pale: Color(0xFFFFCDD2), deep: Color(0xFFB71C1C));
+
+Swatch stockColors(StockLevel stock, Brightness brightness) =>
+    _forTheme(switch (stock) {
+      StockLevel.in_ => _green,
+      StockLevel.low => _amber,
+      StockLevel.out => _red,
+    }, brightness);
+
+Swatch availabilityColors(Availability availability, Brightness brightness) =>
+    _forTheme(switch (availability) {
+      Availability.makeable => _green,
+      Availability.makeableLow => _amber,
+      Availability.missing => _red,
+    }, brightness);
 
 /// Tag color palette (new colors must be added here to compile).
 Swatch tagColors(TagColor color, Brightness brightness) => _forTheme(
