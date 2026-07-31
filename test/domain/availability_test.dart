@@ -76,5 +76,9 @@ void main() {
     test('a name it does not hold reads as out', () {
       expect(stockOf(bar, 'rye'), StockLevel.out);
     });
+
+    test('a name written in another case is that bottle (ADR 08)', () {
+      expect(stockOf(bar, 'CAMPARI'), StockLevel.low);
+    });
   });
 }

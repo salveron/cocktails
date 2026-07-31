@@ -13,7 +13,9 @@ requirements in [requirements.md](requirements.md).
 - **Destinations in `IndexedStack`** (keeps scroll/search on switch). Below-destination content 
   (forms, settings) pushed `Navigator` over shell. Recipe view inside list ([Recipes](#recipes-screen)). 
   Routing: `Navigator` 1.0 (no deep links/nested routers; `go_router` unneeded).
-- **Theme**: one seed colour generates light/dark schemes; platform picks. No per-component theming.
+- **Theme**: one seed colour generates light/dark schemes; platform picks. One component theme only: 
+  the hint style, dimmed to 60% so an empty field never reads as a filled one — every hint in the app, 
+  one home.
 - **`ModelView`**: only reader of `modelProvider`'s `AsyncValue` (spinner on load, failure, or model). 
   Screens never see loading/failure states.
 - **`EmptyState`**: one shape (icon, title, what would fill it).
@@ -100,9 +102,14 @@ Top to bottom mirrors card and file (name, lines, tags, notes, FR-REC-1..5).
 
 - **One field per line, grammar as entry**: "1.5 part gin (base)" (FR-REC-2/3/8). Shared parser is 
   only reader (form can't drift from codec). `tryParseRecipeLine` on every change; problem under field 
-  (entry dialog idiom; untouched empty not mistake). Hint shows shape.
-- **Lines self-grow**: bottom field always empty; typing spawns next. Empty field dropped on save. No 
-  per-line ✕, add button, drag: order is typed order (reorder = cut-paste).
+  (entry dialog idiom; untouched empty not mistake). Hint shows shape. Typing is forgiving where the 
+  file is: the unit may be left out ("1 gin") or plural ("2 dashes"), and a bottle typed in any case 
+  is the bottle it names ([ADR 08](adr/08-names-ignore-case.md)) — the line saved carries the 
+  vocabulary's own spelling and the full unit, so the card reads canonically whatever was typed.
+- **Lines self-grow**: bottom field always empty; typing spawns next, and erasing that line takes the 
+  spare back — one field stands empty, never two, and never the one the cursor is in (a field emptied 
+  mid-list stays until save, since removing it under the cursor is worse). Empty fields dropped on 
+  save. No per-line ✕, add button, drag: order is typed order (reorder = cut-paste).
 - **Save unreachable** until name passes live rules (dialogs' duplicate/whitespace) and all non-empty 
   lines parse. Live name check reads only issues at the empty path, so what the half-typed rest is 
   still missing waits for Save. On save, `validateRecipe` checks whole; value rule syntax can't see 
@@ -113,7 +120,8 @@ Top to bottom mirrors card and file (name, lines, tags, notes, FR-REC-1..5).
   untagged) before save (never dead-ends to inventory). Declining marks fields. Typos caught where 
   list read, before confirming.
 - **Tags/notes ask nothing**: picker is dialogs' chip row over recipe vocab (FR-REC-4), absent if 
-  empty. Notes: one multiline field (FR-REC-5).
+  empty. Notes: one multiline field opening one line tall and growing with what is typed (FR-REC-5) — 
+  most recipes carry a sentence, and an empty box three lines deep pushes the rest off screen.
 - **Back asks once**: untouched form pops silently; dirty asks to discard (fully typed recipe lost to 
   back-swipe = worst). Rename saves as remove-then-add (nothing refs recipe by name). Whole entry 
   (new bottles) → model as one edit (one save to disk, components.md#state-contracts).

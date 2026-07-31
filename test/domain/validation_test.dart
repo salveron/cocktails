@@ -196,6 +196,14 @@ void main() {
       expect(issues[3].path, ['recipes', 1]);
     });
 
+    test('two spellings of one name are a duplicate (ADR 08)', () {
+      final issues = validateModel(
+        ingredients: [Ingredient('Gin'), Ingredient('gin')],
+      );
+      expect(issues.single.path, ['ingredients', 1]);
+      expect(issues.single.kind, ValidationIssueKind.duplicateName);
+    });
+
     test('a name in both vocabularies at once is no duplicate', () {
       expect(
         validateModel(
@@ -434,6 +442,20 @@ void main() {
       expect(issues, isEmpty);
     });
 
+    test('a line and a tag resolve however they are written (ADR 08)', () {
+      final issues = validateRecipe(
+        Recipe(
+          'whiskey sour',
+          tags: const ['SOUR'],
+          lines: const [RecipeLine(Amount(1.5), Unit.part, 'Bourbon')],
+        ),
+        knownIngredients: {'bourbon'},
+        knownTags: {'sour'},
+        otherRecipeNames: {'Whiskey Sour'},
+      );
+      expect(issues.single.kind, ValidationIssueKind.duplicateName);
+    });
+
     test('paths have no recipes[index] prefix', () {
       final issues = validateRecipe(
         Recipe(
@@ -557,6 +579,23 @@ void main() {
         check(Ingredient('gin'), others: {'gin'}).single.kind,
         ValidationIssueKind.duplicateName,
       );
+    });
+
+    test('a name differing only in case is that name (ADR 08)', () {
+      expect(
+        check(Ingredient('Gin'), others: {'gin'}).single.kind,
+        ValidationIssueKind.duplicateName,
+      );
+      expect(check(Ingredient('Gin'), known: {'Citrus'}), isEmpty);
+      expect(
+        check(Ingredient('gin', tags: const ['CITRUS']), known: {'citrus'}),
+        isEmpty,
+      );
+    });
+
+    test('otherNames leaves out the entry being renamed, case and all', () {
+      expect(otherNames({'gin', 'rum'}, 'GIN'), {'rum'});
+      expect(otherNames({'gin', 'rum'}, null), {'gin', 'rum'});
     });
 
     test('tag references resolve against the vocabulary it is given', () {

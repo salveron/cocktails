@@ -88,14 +88,8 @@ void main() {
       );
     });
 
-    test('rejects lines that do not have three parts', () {
-      const lines = [
-        '',
-        '   ',
-        'bourbon',
-        '1.5 bourbon',
-        '0.5 part (optional)',
-      ];
+    test('rejects lines with no amount, or with nothing left to name', () {
+      const lines = ['', '   ', 'bourbon', '2 dash', '0.5 part (optional)'];
       for (final line in lines) {
         expect(
           () => parseRecipeLine(line),
@@ -122,17 +116,44 @@ void main() {
       }
     });
 
-    test('rejects unknown units, naming the value', () {
+    test('a line with no unit is measured in parts', () {
       expect(
-        () => parseRecipeLine('1.5 cup sugar'),
-        throwsA(
-          isA<FormatException>().having(
-            (e) => e.message,
-            'message',
-            contains('"cup"'),
-          ),
+        parseRecipeLine('1 gin'),
+        const RecipeLine(Amount(1), Unit.part, 'gin'),
+      );
+      expect(
+        parseRecipeLine('0.75 lemon juice'),
+        const RecipeLine(Amount(0.75), Unit.part, 'lemon juice'),
+      );
+      expect(
+        parseRecipeLine('1.5-2 bourbon (base)'),
+        const RecipeLine(
+          Amount.range(1.5, 2),
+          Unit.part,
+          'bourbon',
+          mark: LineMark.base,
         ),
       );
+    });
+
+    test('a word that is no unit belongs to the ingredient name', () {
+      expect(
+        parseRecipeLine('1.5 cup sugar'),
+        const RecipeLine(Amount(1.5), Unit.part, 'cup sugar'),
+      );
+    });
+
+    test('a unit may be written in the plural', () {
+      for (final unit in Unit.values) {
+        expect(parseRecipeLine('2 ${unit.token}s gin').unit, unit);
+      }
+      expect(parseRecipeLine('2 dashes bitters').unit, Unit.dash);
+      expect(parseRecipeLine('2 pieces lime').unit, Unit.piece);
+    });
+
+    test('what it accepts loosely it writes in full', () {
+      expect(formatRecipeLine(parseRecipeLine('2 dashes gin')), '2 dash gin');
+      expect(formatRecipeLine(parseRecipeLine('1 gin')), '1 part gin');
     });
   });
 
@@ -185,10 +206,10 @@ void main() {
       expect(parsed.problem, 'Invalid amount: "x"');
     });
 
-    test('returns a problem and no line on an unknown unit', () {
-      final parsed = tryParseRecipeLine('1.5 cup sugar');
+    test('returns a problem and no line where a unit is all there is', () {
+      final parsed = tryParseRecipeLine('1.5 barspoon');
       expect(parsed.line, isNull);
-      expect(parsed.problem, 'Unknown unit: "cup"');
+      expect(parsed.problem, contains('Expected'));
     });
   });
 
@@ -205,7 +226,7 @@ void main() {
     });
 
     test('throws the same message tryParseRecipeLine reports as a problem', () {
-      const lines = ['bourbon', 'x part gin', '1.5 cup sugar', ''];
+      const lines = ['bourbon', 'x part gin', '2 dash', ''];
       for (final line in lines) {
         final problem = tryParseRecipeLine(line).problem!;
         expect(

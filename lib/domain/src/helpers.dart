@@ -3,12 +3,23 @@
 /// docs/adr/04-module-boundaries.md.
 library;
 
+/// One name however it is capitalised (docs/adr/08-names-ignore-case.md).
+String nameKey(String name) => name.toLowerCase();
+
+Set<String> nameKeys(Iterable<String> names) => {
+  for (final name in names) nameKey(name),
+};
+
+extension NameComparison on String {
+  bool sameName(String other) => nameKey(this) == nameKey(other);
+}
+
 /// Indexes in [names] whose value already appeared at a lower index.
 List<int> duplicateNameIndexes(List<String> names) {
   final seen = <String>{};
   final duplicates = <int>[];
   for (var i = 0; i < names.length; i++) {
-    if (!seen.add(names[i])) {
+    if (!seen.add(nameKey(names[i]))) {
       duplicates.add(i);
     }
   }

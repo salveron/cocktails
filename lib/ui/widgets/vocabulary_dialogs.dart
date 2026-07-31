@@ -14,14 +14,6 @@ import 'vocabulary_list.dart';
 String? fieldError(String text, List<ValidationIssue> issues) =>
     text.isEmpty || issues.isEmpty ? null : issues.first.message;
 
-/// [names] without [except], which is what every `validate…` call wants: the
-/// names an entry must not collide with, its own left out so a rename never
-/// collides with the name it is leaving.
-Set<String> otherNames(Set<String> names, String? except) => {
-  for (final name in names)
-    if (name != except) name,
-};
-
 /// Get ingredient name and tags, or null if cancelled.
 Future<({String name, List<String> tags})?> promptForIngredient(
   BuildContext context, {

@@ -520,6 +520,26 @@ void main() {
       );
     });
 
+    test('rejects names that differ only in case (ADR 08)', () {
+      expect(
+        () => Model(ingredients: [Ingredient('Gin'), Ingredient('gin')]),
+        throwsA(isA<ArgumentError>()),
+      );
+      expect(
+        () => Model(recipes: [Recipe('Negroni'), Recipe('negroni')]),
+        throwsA(isA<ArgumentError>()),
+      );
+      expect(
+        () => Model(
+          ingredientTags: const [
+            Tag('Citrus', color: TagColor.sand),
+            Tag('citrus', color: TagColor.teal),
+          ],
+        ),
+        throwsA(isA<ArgumentError>()),
+      );
+    });
+
     test('allows the same name across kinds, both vocabularies included', () {
       final model = Model(
         ingredients: [Ingredient('sour')],
@@ -642,6 +662,14 @@ void main() {
         expect(model.ingredientNamed('gin'), isNull);
       });
 
+      test('answer however the name is capitalised (ADR 08)', () {
+        final model = build();
+        expect(model.ingredientNamed('BOURBON')?.name, 'bourbon');
+        expect(model.recipeNamed('whiskey sour')?.name, 'Whiskey Sour');
+        expect(model.hasTag(TagKind.recipe, 'Sour'), isTrue);
+        expect(model.hasTag(TagKind.ingredient, 'Oaked'), isTrue);
+      });
+
       test('a vocabulary answers to its kind', () {
         final model = build();
         expect(model.tagsOf(TagKind.recipe), model.recipeTags);
@@ -694,6 +722,10 @@ void main() {
 
     test('a name wanted twice is answered once', () {
       expect(namesOf(wornInOrder(vocabulary, ['sour', 'sour'])), ['sour']);
+    });
+
+    test('a name worn in another case is the same tag (ADR 08)', () {
+      expect(namesOf(wornInOrder(vocabulary, ['SOUR'])), ['sour']);
     });
   });
 }

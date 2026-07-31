@@ -377,25 +377,29 @@ final class Model {
     recipes: recipes ?? this.recipes,
   );
 
-  Ingredient? ingredientNamed(String name) => _ingredientsByName[name];
+  /// The entry [name] names, whatever case it is written in, and so the one
+  /// place a typed or stored reference becomes the entry it means (ADR 08).
+  Ingredient? ingredientNamed(String name) => _ingredientsByName[nameKey(name)];
 
-  Recipe? recipeNamed(String name) => _recipesByName[name];
+  Recipe? recipeNamed(String name) => _recipesByName[nameKey(name)];
 
   List<Tag> tagsOf(TagKind kind) => switch (kind) {
     TagKind.recipe => recipeTags,
     TagKind.ingredient => ingredientTags,
   };
 
-  bool hasTag(TagKind kind, String name) => tagNames(kind).contains(name);
+  bool hasTag(TagKind kind, String name) =>
+      tagsOf(kind).any((tag) => tag.name.sameName(name));
 
   /// Built on first lookup and kept, which is what makes repeated reference
   /// questions O(1) at NFR-2 scale. Safe behind an immutable face: the lists
-  /// they index can never change.
+  /// they index can never change. Keyed by the fold, since the name is the
+  /// same name however it is written.
   late final Map<String, Ingredient> _ingredientsByName = {
-    for (final ingredient in ingredients) ingredient.name: ingredient,
+    for (final ingredient in ingredients) nameKey(ingredient.name): ingredient,
   };
   late final Map<String, Recipe> _recipesByName = {
-    for (final recipe in recipes) recipe.name: recipe,
+    for (final recipe in recipes) nameKey(recipe.name): recipe,
   };
 
   /// The names a list holds, as the set validation asks for — memoised on the
@@ -446,10 +450,10 @@ final class Model {
 /// written back — and a name the vocabulary no longer holds drops out instead
 /// of showing up unrecognised.
 List<Tag> wornInOrder(List<Tag> vocabulary, Iterable<String> worn) {
-  final names = worn.toSet();
+  final names = nameKeys(worn);
   return [
     for (final tag in vocabulary)
-      if (names.contains(tag.name)) tag,
+      if (names.contains(nameKey(tag.name))) tag,
   ];
 }
 

@@ -13,15 +13,16 @@ Single-user mobile app (Android); no accounts, sharing. Direction: [vision.md](v
 | Recipe | Name + lines + tags + notes + made-history (last date, count). |
 | Availability | Per recipe, required lines only: **makeable** (all in), **makeable-low** (none out, ≥1 low), **missing** (≥1 out). First two = **can-make**. |
 
-Names unique within kind. Two tag vocabularies separate, so one name may exist in both (different meanings).
+Names unique within kind, ignoring case — "Gin" and "gin" are one name ([ADR 08](adr/08-names-ignore-case.md)).
+Two tag vocabularies separate, so one name may exist in both (different meanings).
 
 ## Functional requirements
 
 ### Recipes
 
 - **FR-REC-1** Create, edit, and delete recipes through structured forms.
-- **FR-REC-2** An ingredient line is amount + unit + ingredient. Units: **part** (default),
-  ml, oz, dash, barspoon, drop, piece. An amount may be a range ("1.5–2"). Every recipe
+- **FR-REC-2** An ingredient line is amount + unit + ingredient. Units: **part** (the default,
+  so a line may leave it out), ml, oz, dash, barspoon, drop, piece. An amount may be a range ("1.5–2"). Every recipe
   carries at least one line that is not optional, so availability always judges something.
 - **FR-REC-3** An ingredient line may be marked optional: it displays with the recipe but
   is excluded from the availability computation (and thus from the shopping optimizer).

@@ -142,6 +142,26 @@ void main() {
         () => model.withIngredientRenamed('bourbon', 'gin'),
         throwsArgumentError,
       );
+      expect(
+        () => model.withIngredientRenamed('bourbon', 'GIN'),
+        throwsArgumentError,
+      );
+    });
+
+    test('recapitalising is a rename of that entry, not a collision', () {
+      final edited = model.withIngredientRenamed('bourbon', 'Bourbon');
+      expect(namesOf(edited.ingredients).first, 'Bourbon');
+      expect(
+        edited.recipeNamed('Whiskey Sour')?.lines.first.ingredient,
+        'Bourbon',
+      );
+    });
+
+    test('the name to rename is read however it is written (ADR 08)', () {
+      expect(
+        model.withIngredientRenamed('BOURBON', 'rye').ingredients.first,
+        Ingredient('rye', stock: StockLevel.in_, tags: const ['oaked']),
+      );
     });
   });
 
@@ -382,6 +402,14 @@ void main() {
           isEmpty,
         );
       }
+    });
+
+    test('a reference in another case still counts (ADR 08)', () {
+      expect(model.recipesUsingIngredient('BOURBON'), ['Whiskey Sour']);
+      expect(model.usersOfTag(TagKind.recipe, 'Classic'), [
+        'Whiskey Sour',
+        'Negroni',
+      ]);
     });
 
     test('each query looks only at its own side', () {

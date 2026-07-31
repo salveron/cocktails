@@ -30,6 +30,16 @@ void main() {
       expect(find.widgetWithText(TextField, 'Mai Tai'), findsOneWidget);
     });
 
+    testWidgets('the notes field opens one line tall, free to grow', (
+      tester,
+    ) async {
+      await pumpList(tester);
+      await openAdd(tester);
+      final notes = tester.widget<TextField>(notesField);
+      expect(notes.minLines, isNull);
+      expect(notes.maxLines, isNull);
+    });
+
     testWidgets('a vocabulary with no tags offers no picker', (tester) async {
       await pumpList(tester, Model(ingredients: [Ingredient('gin')]));
       await openAdd(tester);
@@ -70,6 +80,44 @@ void main() {
       expect(lineFields, findsNWidgets(3));
     });
 
+    testWidgets('erasing the line just typed takes the spare back', (
+      tester,
+    ) async {
+      await pumpList(tester);
+      await openAdd(tester);
+      await typeInto(tester, lineFields.first, '1 part gin');
+      expect(lineFields, findsNWidgets(2));
+      await typeInto(tester, lineFields.first, '');
+      expect(lineFields, findsOneWidget);
+    });
+
+    testWidgets('a bottle typed in another case is that bottle', (
+      tester,
+    ) async {
+      final store = await pumpList(tester);
+      await openAdd(tester);
+      await typeInto(tester, nameField, 'Martini');
+      await typeInto(tester, lineFields.first, '2 part GIN');
+      await tap(tester, find.text('Save'));
+      expect(find.text('Add missing ingredients?'), findsNothing);
+      expect(
+        store.saved!.recipeNamed('Martini')!.lines.single,
+        const RecipeLine(Amount(2), Unit.part, 'gin'),
+      );
+    });
+
+    testWidgets('a line with no unit is that many parts', (tester) async {
+      final store = await pumpList(tester);
+      await openAdd(tester);
+      await typeInto(tester, nameField, 'Martini');
+      await typeInto(tester, lineFields.first, '2 gin');
+      await tap(tester, find.text('Save'));
+      expect(
+        store.saved!.recipeNamed('Martini')!.lines.single,
+        const RecipeLine(Amount(2), Unit.part, 'gin'),
+      );
+    });
+
     testWidgets('save waits for a name and clean lines', (tester) async {
       await pumpList(tester);
       await openAdd(tester);
@@ -78,7 +126,7 @@ void main() {
       await typeInto(tester, lineFields.first, 'gibberish');
       expect(saveEnabled(tester), isFalse);
       expect(
-        find.text('Expected "<amount> <unit> <ingredient>": "gibberish"'),
+        find.text('Expected "<amount> [unit] <ingredient>": "gibberish"'),
         findsOneWidget,
       );
       await typeInto(tester, lineFields.first, '1 part gin');
@@ -222,6 +270,16 @@ void main() {
         MadeHistory(DateTime(2026, 7, 12), 4),
       );
       expect(store.saveCount, 1);
+    });
+
+    testWidgets('emptying the last line leaves one empty field, not two', (
+      tester,
+    ) async {
+      await pumpList(tester);
+      await chooseOnRow(tester, 'Negroni', 'Edit');
+      expect(lineFields, findsNWidgets(4));
+      await typeInto(tester, lineFields.at(2), '');
+      expect(lineFields, findsNWidgets(3));
     });
 
     testWidgets('a line emptied out is dropped on save', (tester) async {

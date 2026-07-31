@@ -524,7 +524,7 @@ recipes: []
         'recipes:\n'
         '  - name: Martini\n'
         '    lines:\n'
-        '      - 2 cups gin\n'
+        '      - gin\n'
         '      - 5\n',
       );
       expect(issues, hasLength(2));
@@ -533,7 +533,7 @@ recipes: []
         ValidationIssueKind.malformedLine,
         'recipes[0].lines[0]',
         5,
-        messagePart: 'Unknown unit: "cups"',
+        messagePart: 'Expected "<amount> [unit] <ingredient>": "gin"',
       );
       expectIssue(
         issues[1],
@@ -858,10 +858,13 @@ recipes: []
         'ingredients:\n'
         '  - name: gin\n'
         '    stock: in\n'
+        '  - name: bitters\n'
         'recipes:\n'
         '  - name: Gin Shot\n'
         '    lines:\n'
-        '      - 2.0-2.0 oz gin\n',
+        '      - 2.0-2.0 oz gin\n'
+        '      - 2 dashes bitters\n'
+        '      - 1 GIN\n',
       );
       expect(codec.encode(model), '''
 format: 1
@@ -872,6 +875,7 @@ settings:
 
 ingredients:
   - {name: gin, stock: in}
+  - {name: bitters}
 
 ingredient_tags: []
 
@@ -881,6 +885,8 @@ recipes:
   - name: Gin Shot
     lines:
       - 2 oz gin
+      - 2 dash bitters
+      - 1 part GIN
 ''');
     });
   });

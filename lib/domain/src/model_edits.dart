@@ -5,6 +5,7 @@
 /// throws [ArgumentError] from the [Model] constructor.
 library;
 
+import 'helpers.dart';
 import 'model.dart';
 
 extension ModelEdits on Model {
@@ -29,7 +30,9 @@ extension ModelEdits on Model {
     return copyWith(
       ingredients: [
         for (final ingredient in ingredients)
-          ingredient.name == from ? ingredient.copyWith(name: to) : ingredient,
+          ingredient.name.sameName(from)
+              ? ingredient.copyWith(name: to)
+              : ingredient,
       ],
       recipes: [
         for (final recipe in recipes) _withLinesRenamed(recipe, from, to),
@@ -107,7 +110,8 @@ extension ModelEdits on Model {
   /// — they reference the vocabulary just as required ones do.
   List<String> recipesUsingIngredient(String name) => [
     for (final recipe in recipes)
-      if (recipe.lines.any((line) => line.ingredient == name)) recipe.name,
+      if (recipe.lines.any((line) => line.ingredient.sameName(name)))
+        recipe.name,
   ];
 
   /// [recipesUsingIngredient] for a tag: the recipes wearing a recipe tag, the
@@ -116,11 +120,11 @@ extension ModelEdits on Model {
   List<String> usersOfTag(TagKind kind, String name) => switch (kind) {
     TagKind.recipe => [
       for (final recipe in recipes)
-        if (recipe.tags.contains(name)) recipe.name,
+        if (recipe.tags.any((tag) => tag.sameName(name))) recipe.name,
     ],
     TagKind.ingredient => [
       for (final ingredient in ingredients)
-        if (ingredient.tags.contains(name)) ingredient.name,
+        if (ingredient.tags.any((tag) => tag.sameName(name))) ingredient.name,
     ],
   };
 }
@@ -131,29 +135,32 @@ String _tagName(Tag tag) => tag.name;
 /// [Tag.copyWith], so the colour comes along; building a fresh [Tag] here
 /// would drop it.
 List<Tag> _renamedTag(List<Tag> tags, String from, String to) => [
-  for (final tag in tags) tag.name == from ? tag.copyWith(name: to) : tag,
+  for (final tag in tags)
+    tag.name.sameName(from) ? tag.copyWith(name: to) : tag,
 ];
 
 /// [item] in place of the entry sharing its name, appended when there is none.
 List<T> _upserted<T>(List<T> items, T item, String Function(T) nameOf) {
   final name = nameOf(item);
-  final index = items.indexWhere((entry) => nameOf(entry) == name);
+  final index = items.indexWhere((entry) => nameOf(entry).sameName(name));
   return index < 0 ? [...items, item] : ([...items]..[index] = item);
 }
 
 List<T> _without<T>(List<T> items, String name, String Function(T) nameOf) => [
   for (final item in items)
-    if (nameOf(item) != name) item,
+    if (!nameOf(item).sameName(name)) item,
 ];
 
 /// The recipe with its references rewritten, or the very same recipe when it
 /// held none — an untouched recipe is not worth rebuilding.
 Recipe _withLinesRenamed(Recipe recipe, String from, String to) =>
-    recipe.lines.any((line) => line.ingredient == from)
+    recipe.lines.any((line) => line.ingredient.sameName(from))
     ? recipe.copyWith(
         lines: [
           for (final line in recipe.lines)
-            line.ingredient == from ? line.copyWith(ingredient: to) : line,
+            line.ingredient.sameName(from)
+                ? line.copyWith(ingredient: to)
+                : line,
         ],
       )
     : recipe;
@@ -162,6 +169,6 @@ Recipe _withLinesRenamed(Recipe recipe, String from, String to) =>
 /// caller then keeps the entry it has rather than rebuilding it. One home for
 /// rewriting tag references, whichever vocabulary is being renamed.
 List<String>? _tagsRenamed(List<String> tags, String from, String to) =>
-    tags.contains(from)
-    ? [for (final tag in tags) tag == from ? to : tag]
+    tags.any((tag) => tag.sameName(from))
+    ? [for (final tag in tags) tag.sameName(from) ? to : tag]
     : null;

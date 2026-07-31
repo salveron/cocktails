@@ -41,6 +41,11 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
     _lineController(''),
   ];
 
+  /// Controllers of fields the list has taken back. Their `TextField` outlives
+  /// them by a build, so disposing one where it is dropped would be a
+  /// use-after-dispose; the form disposes them all when it closes.
+  final _dropped = <TextEditingController>[];
+
   late final _tags = {...?widget.original?.tags};
 
   /// Save-time validation issues by field; cleared when field is edited.
@@ -57,7 +62,7 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
   void dispose() {
     _name.dispose();
     _notes.dispose();
-    for (final line in _lines) {
+    for (final line in [..._lines, ..._dropped]) {
       line.dispose();
     }
     super.dispose();
@@ -69,10 +74,15 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
     return controller;
   }
 
+  /// Grows a field below the last one typed into, and takes the spare back
+  /// when that line is erased again — one field stands empty, never two, and
+  /// never the one the cursor is in (docs/ui-design.md#recipe-form).
   void _lineEdited(TextEditingController controller) => setState(() {
     _saveProblems.remove(_lines.indexOf(controller));
-    if (_lines.last.text.trim().isNotEmpty) {
+    if (!_blank(_lines.last)) {
       _lines.add(_lineController(''));
+    } else if (_lines.length > 1 && _blank(_lines[_lines.length - 2])) {
+      _dropped.add(_lines.removeLast());
     }
   });
 
@@ -85,7 +95,7 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
         !listEquals(
           [
             for (final line in _lines)
-              if (line.text.trim().isNotEmpty) line.text,
+              if (!_blank(line)) line.text,
           ],
           [
             for (final line in original?.lines ?? const <RecipeLine>[])
@@ -113,20 +123,23 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
   /// Parse result per line (null if empty/valid); computed once per build.
   List<String?> get _syntaxProblems => [
     for (final line in _lines)
-      if (line.text.trim().isEmpty)
-        null
-      else
-        tryParseRecipeLine(line.text).problem,
+      if (_blank(line)) null else tryParseRecipeLine(line.text).problem,
   ];
 
-  /// Parsed recipe and fieldOf map for aligning issues with fields.
-  ({Recipe recipe, List<int> fieldOf}) _entered(List<Tag> vocabulary) {
+  /// Parsed recipe and fieldOf map for aligning issues with fields. A line
+  /// takes the vocabulary's own spelling of the bottle it names (ADR 08), so
+  /// "gin" typed against "Gin" saves as that bottle rather than a second one.
+  ({Recipe recipe, List<int> fieldOf}) _entered(
+    Model model,
+    List<Tag> vocabulary,
+  ) {
     final lines = <RecipeLine>[];
     final fieldOf = <int>[];
     for (var field = 0; field < _lines.length; field++) {
-      final text = _lines[field].text;
-      if (text.trim().isEmpty) continue;
-      lines.add(parseRecipeLine(text));
+      if (_blank(_lines[field])) continue;
+      final line = parseRecipeLine(_lines[field].text);
+      final known = model.ingredientNamed(line.ingredient);
+      lines.add(known == null ? line : line.copyWith(ingredient: known.name));
       fieldOf.add(field);
     }
     return (
@@ -142,7 +155,7 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
   }
 
   Future<void> _save(Model model, List<Tag> vocabulary) async {
-    final entered = _entered(vocabulary);
+    final entered = _entered(model, vocabulary);
     final issues = validateRecipe(
       entered.recipe,
       knownIngredients: model.ingredientNames,
@@ -290,7 +303,6 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
             const _SectionLabel('Notes'),
             TextField(
               controller: _notes,
-              minLines: 3,
               maxLines: null,
               decoration: const InputDecoration(
                 hintText: 'Preparation, glassware, garnish…',
@@ -302,6 +314,8 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
     );
   });
 }
+
+bool _blank(TextEditingController field) => field.text.trim().isEmpty;
 
 class _SectionLabel extends StatelessWidget {
   const _SectionLabel(this.text);

@@ -89,6 +89,13 @@ First usable slice; recipes reference both vocabularies, so this precedes Phase 
       line that is low or out (FR-DIS-1). FR-REC-2 gains the rule the verdict rests on — a recipe
       carries at least one line that is not optional — enforced by `validateRecipe`, so the form and
       an imported file refuse it alike.
+- [x] **M16a Names ignore case, entry made forgiving** — quality of life across the recipe form and
+      the domain under it: names compare through one fold, so "gin" typed against "Gin" is that
+      bottle and no vocabulary can hold both ([ADR 08](adr/08-names-ignore-case.md)); the line
+      grammar takes an omitted unit as `part` and a plural one as itself (FR-REC-2), while the
+      writer still emits the full singular form; the form keeps one empty line rather than two,
+      opens notes one line tall, and the theme dims every hint so a placeholder never reads as
+      content.
 - [ ] **M17 Scaling & unit display** — ×2/3/4 scaling and part↔ml display conversion in
       the recipe view (FR-REC-7; display half of FR-SET-1).
 

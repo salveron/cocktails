@@ -18,8 +18,8 @@ Offline app: entire database in memory, persisted as one YAML file byte-identica
 ([ADR 02](adr/02-persistence-and-export-format.md)).
 
 - Export: file copy. Import: validate, auto-export current state, atomically replace.
-- Names are identity: recipes reference ingredients/tags by name. Rename is one mutation 
-  rewriting all references.
+- Names are identity: recipes reference ingredients/tags by name, compared ignoring case
+  ([ADR 08](adr/08-names-ignore-case.md)). Rename is one mutation rewriting all references.
 - Writes atomic (temp → rename); rolling backups.
 - Single-writer by design (future guest access is read-only publishing).
 
@@ -92,15 +92,21 @@ Rules:
   stand in both.
 - A `tags` list — on a recipe or on an ingredient — holds names only, resolved against that
   side's vocabulary. The colour lives with the tag, once.
-- An ingredient line is `<amount> <unit> <ingredient name>`, optionally suffixed with one
+- An ingredient line is `<amount> [unit] <ingredient name>`, optionally suffixed with one
   mark — ` (base)` or ` (optional)`, never both ([ADR 06](adr/06-base-spirit-on-the-line.md)).
   Amount is a decimal number or a range `a-b`; unit is one of
-  `part ml oz dash barspoon drop piece` and is stored as entered. Both mark suffixes are
-  reserved — ingredient names cannot end with one.
+  `part ml oz dash barspoon drop piece`, may be written in the plural, and may be left out
+  altogether — an omitted unit is `part` (FR-REC-2). What follows the unit is the whole
+  ingredient name, so a word that is no unit belongs to the name: `1.5 cup sugar` is 1.5 part
+  of "cup sugar", caught where the name fails to resolve rather than as an unknown unit. The
+  writer always emits the singular unit, so a stored line never leans on either liberty. Both
+  mark suffixes are reserved — ingredient names cannot end with one.
 - `made` holds the made-history: `last` is an ISO date (`YYYY-MM-DD`, nothing looser),
   `times` a count. Absent = never made.
 - Every recipe line and tag reference must resolve to the matching vocabulary; names are unique
-  within their kind (FR-DAT-4 validation).
+  within their kind (FR-DAT-4 validation). Names compare ignoring case, so "Gin" and "gin" are
+  one name — as a duplicate where both are entries, and as a match where one references the
+  other ([ADR 08](adr/08-names-ignore-case.md)). Spelling is kept as written.
 - Value rules (FR-DAT-4): names are non-empty, single-line, without surrounding
   whitespace; amounts are positive with range ends in order; `part_ml` is positive;
   `times` is at least 1; a `tags` list has no repeats.
@@ -113,8 +119,9 @@ Rules:
   from Dart identifier spellings, so renaming a member cannot change the format.
 - The pilot reads and writes format `1` only; a future format bump migrates old files on
   import inside the codec.
-- The round-trip guarantee (FR-DAT-5) is over canonical files: a hand-written `1.50` or
-  `2.0` normalises to `1.5` and `2` on the first rewrite. Content is preserved, byte-identity
+- The round-trip guarantee (FR-DAT-5) is over canonical files: a hand-written `1.50`, `2.0`,
+  `2 dashes` or `1 gin` normalises to `1.5`, `2`, `2 dash` and `1 part gin` on the first
+  rewrite. Content is preserved, byte-identity
   only from the app's own output onward.
 - Dart's `yaml` package is parse-only, so the canonical writer is a small custom emitter —
   spec'd by this section and pinned by the round-trip tests.

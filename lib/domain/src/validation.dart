@@ -96,7 +96,7 @@ List<ValidationIssue> validateModel({
   final ingredientNames = ingredients.map((i) => i.name).toList();
   final ingredientTagNames = ingredientTags.map((t) => t.name).toList();
   final recipeTagNames = recipeTags.map((t) => t.name).toList();
-  final knownIngredientTags = ingredientTagNames.toSet();
+  final knownIngredientTags = nameKeys(ingredientTagNames);
   _checkNames(
     issues,
     'ingredients',
@@ -112,8 +112,8 @@ List<ValidationIssue> validateModel({
   );
   _checkNames(issues, 'ingredient_tags', 'ingredient tag', ingredientTagNames);
   _checkNames(issues, 'recipe_tags', 'recipe tag', recipeTagNames);
-  final knownIngredients = ingredientNames.toSet();
-  final knownRecipeTags = recipeTagNames.toSet();
+  final knownIngredients = nameKeys(ingredientNames);
+  final knownRecipeTags = nameKeys(recipeTagNames);
   _checkNames(
     issues,
     'recipes',
@@ -126,6 +126,15 @@ List<ValidationIssue> validateModel({
   );
   return issues;
 }
+
+/// [names] without [except], which is what every `validate…` call wants: the
+/// names an entry must not collide with, its own left out so a rename never
+/// collides with the name it is leaving — a change of case included, that
+/// being the same name (ADR 08).
+Set<String> otherNames(Set<String> names, String? except) => {
+  for (final name in names)
+    if (except == null || !name.sameName(except)) name,
+};
 
 /// Checks one ingredient — its name and its tag references — before it enters
 /// the vocabulary (M11); an empty result means valid. [otherIngredientNames]
@@ -142,13 +151,13 @@ List<ValidationIssue> validateIngredient(
   ..._checkName(
     'ingredient',
     ingredient.name,
-    isDuplicate: otherIngredientNames.contains(ingredient.name),
+    isDuplicate: _holdsName(otherIngredientNames, ingredient.name),
     extraRule: _reservedSuffixProblem,
   ),
   ..._checkTagReferences(
     ingredient.tags,
     const [],
-    known: knownIngredientTags,
+    known: nameKeys(knownIngredientTags),
     entity: 'ingredient',
   ),
 ];
@@ -160,8 +169,11 @@ List<ValidationIssue> validateIngredient(
 List<ValidationIssue> validateTag(
   Tag tag, {
   Set<String> otherTagNames = const {},
-}) =>
-    _checkName('tag', tag.name, isDuplicate: otherTagNames.contains(tag.name));
+}) => _checkName(
+  'tag',
+  tag.name,
+  isDuplicate: _holdsName(otherTagNames, tag.name),
+);
 
 /// Checks one recipe — its name and its contents — against the current
 /// vocabularies; an empty result means valid. The entry point the recipe form
@@ -180,10 +192,21 @@ List<ValidationIssue> validateRecipe(
   ..._checkName(
     'recipe',
     recipe.name,
-    isDuplicate: otherRecipeNames.contains(recipe.name),
+    isDuplicate: _holdsName(otherRecipeNames, recipe.name),
   ),
-  ..._checkRecipe(recipe, knownIngredients, const [], knownTags: knownTags),
+  ..._checkRecipe(
+    recipe,
+    nameKeys(knownIngredients),
+    const [],
+    knownTags: nameKeys(knownTags),
+  ),
 ];
+
+/// Whether [names] already holds [name], the two compared as one name is
+/// (ADR 08). The `known…` sets below are folded once on the way in instead,
+/// being asked the same question line after line.
+bool _holdsName(Set<String> names, String name) =>
+    names.any((other) => other.sameName(name));
 
 /// Every rule for one list of named entries, applied entry by entry so issues
 /// come out in index order. [extraRule] adds a rule only one vocabulary has;
@@ -284,7 +307,8 @@ _Problem? _nameProblem(String entity, String name) {
 
 /// Every rule on one entry's tag references — the name resolves, and no name
 /// twice — applied wherever a list of tag names hangs off an entry. [known]
-/// is the vocabulary that list draws from; [entity] only words the message.
+/// holds the folded names of the vocabulary that list draws from; [entity]
+/// only words the message.
 List<ValidationIssue> _checkTagReferences(
   List<String> tags,
   List<Object> basePath, {
@@ -299,7 +323,7 @@ List<ValidationIssue> _checkTagReferences(
       issues,
       [...basePath, 'tags', t],
       [
-        known.contains(tag)
+        known.contains(nameKey(tag))
             ? null
             : (
                 kind: ValidationIssueKind.unknownTag,
@@ -347,7 +371,7 @@ List<ValidationIssue> _checkRecipe(
       issues,
       [...basePath, 'lines', l],
       [
-        knownIngredients.contains(line.ingredient)
+        knownIngredients.contains(nameKey(line.ingredient))
             ? null
             : (
                 kind: ValidationIssueKind.unknownIngredient,

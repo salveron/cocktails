@@ -19,12 +19,13 @@ lib/
       model.dart               # entities, Model root, name lookups, wornInOrder
       model_edits.dart         # extension ModelEdits on Model — pure derivations
       line_format.dart         # compact-line grammar
-      validation.dart          # ValidationIssue + rule set
+      validation.dart          # ValidationIssue + rule set, otherNames
       availability.dart        # Availability, availabilityOf, stockOf
       scaling.dart             # M17 — ×N scaling, part↔ml display
       discovery.dart           # M13/M18/M19/M20 — search, filter, group, random
       optimizer.dart           # M21
-      helpers.dart             # not exported: duplicateNameIndexes, listEquals
+      helpers.dart             # not exported: nameKey, sameName, duplicateNameIndexes,
+                               #   listEquals
   data/
     data.dart                  # barrel — the store, the codec, and their result types
     src/
@@ -43,7 +44,7 @@ lib/
       filters.dart             # filter and search UI state
   ui/                          # no barrel — leaves, imported directly; design in ui-design.md
     app.dart                   # MaterialApp and the shell: destinations, app bar, gear
-    theme.dart                 # the seed colour and the two schemes
+    theme.dart                 # the seed colour, the two schemes, the dimmed hint style
     palette.dart               # the fixed hues: stock signals and the tag palette
     screens/                   # one file per destination, plus settings, tags, recipe form
     widgets/                   # empty_state, model_view, search_field, startup_issues,
@@ -56,7 +57,7 @@ lib/
 test/                          # mirrors lib/, plus test/architecture_test.dart
 ```
 
-`domain/src/helpers.dart` holds logic shared between domain files (layer-private, not exported). Contains `duplicateNameIndexes` and `listEquals`.
+`domain/src/helpers.dart` holds logic shared between domain files (layer-private, not exported). Contains `nameKey`/`sameName` — the one fold behind every name comparison ([ADR 08](adr/08-names-ignore-case.md)) — plus `duplicateNameIndexes` and `listEquals`.
 
 ## Boundary rules
 
@@ -98,6 +99,9 @@ Two identity conventions:
 - **Vocabulary entries are entities; references are names.** `Model.ingredients` holds 
   `Ingredient` values; `RecipeLine.ingredient`, `Recipe.tags`, `Ingredient.tags` hold `String` names. 
   No surrogate IDs — rename is a mutation rewriting references ([architecture.md](architecture.md#system-overview)).
+- **One name however it is capitalised** ([ADR 08](adr/08-names-ignore-case.md)). Every comparison — 
+  uniqueness, lookup, reference resolution, delete blocking, rename — goes through `nameKey`; the 
+  spelling stored is the spelling shown. Lookup maps are keyed by the fold, so resolution stays O(1).
 - **Two tag vocabularies are peers.** `Model.recipeTags` and `Model.ingredientTags` are separate 
   `Tag` lists, unique within each ([ADR 07](adr/07-tag-colour.md)). A `Tag` carries no scope: 
   `TagKind` names the side, and every tag operation takes one rather than existing twice under two 
@@ -207,7 +211,7 @@ String formatAmount(Amount amount);
 String formatNumber(double value);            // canonical number text — amounts, part_ml
 ```
 
-Grammar in [architecture.md](architecture.md#data-format). This file enforces syntax; value rules in validation.
+Grammar in [architecture.md](architecture.md#data-format). This file enforces syntax; value rules in validation. The unit is optional and may be plural on the way in; `formatRecipeLine` writes the fullest form, so the codec and the cards read one shape whatever was typed.
 
 ### Validation
 
@@ -235,6 +239,7 @@ List<ValidationIssue> validateRecipe(Recipe recipe,
 List<ValidationIssue> validateIngredient(Ingredient ingredient,
     {required Set<String> knownIngredientTags, Set<String> otherIngredientNames});
 List<ValidationIssue> validateTag(Tag tag, {Set<String> otherTagNames});
+Set<String> otherNames(Set<String> names, String? except);   // the other…Names argument, folded
 ```
 
 Empty result = valid. Issues collected in one pass (no fail-fast), top-to-bottom like file 
