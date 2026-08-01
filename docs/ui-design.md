@@ -189,6 +189,30 @@ Behind Settings, not bottom bar (vocab arranged once, used from referencing scre
   screen supplies only the words each is introduced with. A third vocabulary is a new kind and one 
   more arm of the wording switch, not a second screen.
 
+## Units
+
+Behind Settings beside the tags, and the one vocabulary that is **not** a `VocabularyList`: it is a
+form. Seven-odd entries of two words each are read at a glance, so there is nothing to search or
+sort, and a rename here is worth doing to two units at once (FR-VOC-5).
+
+- **A row is its fields.** Name beside plural, edited in place, with the plural's hint showing the
+  name it would read as while it stands empty — the way an entry says "ml" pluralises to "ml".
+- **One Save for the screen**, and the discard prompt of the [recipe form](#recipe-form) behind it.
+  Every row reaches the model as one edit, so two units can trade names without either colliding
+  with the other on the way, and the renames land in the recipe lines with them.
+- **The bottom row is empty and grows another** as it is typed into, giving the spare back when it
+  is erased — the recipe form's lines, twice as wide. Adding needs no button.
+- **`part` and `ml` wear a lock** where the others wear a bin: their names are fixed, since the
+  ratio and the display toggle are anchored to them ([ADR 09](adr/09-units-are-a-vocabulary.md)),
+  while their plurals stay editable like any other.
+- **Deleting is refused while a line measures in it**, naming the recipes in the way — the same
+  refusal a bottle gets ([above](#vocabulary-editing)). An unused row simply goes; leaving without
+  saving puts it back, which is why it needs no confirmation of its own.
+- **The file's own rules judge the rows**, `validateModel` over the vocabulary as typed, so what
+  this screen refuses is exactly what an import would refuse, error under the offending field and
+  Save held back until it is gone. A repeated spelling reports on the later row, as a repeated name
+  does anywhere else.
+
 ## Tag and stock colours
 
 Each token maps to a pair (fill + ink staying legible); one pair per theme. `palette.dart` is single 

@@ -12,6 +12,11 @@ settings:
   part_ml: 30
   display: part
 
+units:
+  - {name: part, plural: parts}
+  - {name: ml}
+  - {name: dash, plural: dashes}
+
 ingredients:
   - {name: bourbon, stock: in}
   - {name: lemon juice, stock: low, tags: [citrus]}
@@ -31,10 +36,10 @@ recipes:
   - name: Whiskey Sour
     tags: [sour, classic]
     lines:
-      - 1.5-2 part bourbon (base)
-      - 0.75 part lemon juice
-      - 0.5 part rich demerara syrup
-      - 0.5 part egg white (optional)
+      - 1.5-2 parts bourbon (base)
+      - 0.75 parts lemon juice
+      - 0.5 parts rich demerara syrup
+      - 0.5 parts egg white (optional)
     notes: dry shake, then shake with ice
     made: {last: 2026-07-18, times: 12}
 ''';
@@ -46,6 +51,11 @@ format: 1
 settings:
   part_ml: 30          # how many ml one part is (FR-SET-1)
   display: part        # part | ml
+
+units:                                 # yours to manage (ADR 09)
+  - {name: part, plural: parts}
+  - {name: ml}                         # plural omitted = reads like the name
+  - {name: dash, plural: dashes}
 
 ingredients:
   - {name: bourbon, stock: in}
@@ -66,15 +76,20 @@ recipes:
   - name: Whiskey Sour
     tags: [sour, classic]
     lines:
-      - 1.5-2 part bourbon (base)
-      - 0.75 part lemon juice
-      - 0.5 part rich demerara syrup
-      - 0.5 part egg white (optional)
+      - 1.5-2 parts bourbon (base)
+      - 0.75 parts lemon juice
+      - 0.5 parts rich demerara syrup
+      - 0.5 parts egg white (optional)
     notes: dry shake, then shake with ice
     made: {last: 2026-07-18, times: 12}
 ''';
 
 Model docModel() => Model(
+  units: const [
+    Unit(partUnit, plural: 'parts'),
+    Unit(mlUnit),
+    Unit('dash', plural: 'dashes'),
+  ],
   ingredients: [
     Ingredient('bourbon', stock: StockLevel.in_),
     Ingredient('lemon juice', stock: StockLevel.low, tags: const ['citrus']),
@@ -97,18 +112,13 @@ Model docModel() => Model(
       lines: const [
         RecipeLine(
           Amount.range(1.5, 2),
-          Unit.part,
+          'part',
           'bourbon',
           mark: LineMark.base,
         ),
-        RecipeLine(Amount(0.75), Unit.part, 'lemon juice'),
-        RecipeLine(Amount(0.5), Unit.part, 'rich demerara syrup'),
-        RecipeLine(
-          Amount(0.5),
-          Unit.part,
-          'egg white',
-          mark: LineMark.optional,
-        ),
+        RecipeLine(Amount(0.75), 'part', 'lemon juice'),
+        RecipeLine(Amount(0.5), 'part', 'rich demerara syrup'),
+        RecipeLine(Amount(0.5), 'part', 'egg white', mark: LineMark.optional),
       ],
       notes: 'dry shake, then shake with ice',
       made: MadeHistory(DateTime(2026, 7, 18), 12),
@@ -158,6 +168,15 @@ format: 1
 settings:
   part_ml: 30
   display: part
+
+units:
+  - {name: part, plural: parts}
+  - {name: ml}
+  - {name: oz}
+  - {name: dash, plural: dashes}
+  - {name: barspoon, plural: barspoons}
+  - {name: drop, plural: drops}
+  - {name: piece, plural: pieces}
 
 ingredients: []
 
@@ -228,7 +247,7 @@ recipes: []
         recipes: [
           Recipe(
             'gin: a study',
-            lines: const [RecipeLine(Amount(1), Unit.oz, 'rum # dark')],
+            lines: const [RecipeLine(Amount(1), 'oz', 'rum # dark')],
             notes: 'stir.\nstrain — serve "up"',
           ),
         ],
@@ -238,6 +257,120 @@ recipes: []
       expect(text, contains('- name: "gin: a study"'));
       expect(text, contains('- "1 oz rum # dark"'));
       expect(text, contains(r'notes: "stir.\nstrain — serve \"up\""'));
+    });
+  });
+
+  group('units (ADR 09)', () {
+    test('a file naming none is read with the ones the app shipped', () {
+      expect(decoded('format: 1\n').units, defaultUnits);
+    });
+
+    test('a section given replaces them, so a line may lose its unit', () {
+      final model = decoded(
+        'format: 1\n'
+        'units:\n'
+        '  - {name: part, plural: parts}\n'
+        '  - {name: ml}\n'
+        'ingredients:\n'
+        '  - {name: gin}\n'
+        'recipes:\n'
+        '  - name: Gin Shot\n'
+        '    lines: [2 part gin]\n',
+      );
+      expect(model.units, const [Unit('part', plural: 'parts'), Unit('ml')]);
+      final issues = rejected(
+        'format: 1\n'
+        'units:\n'
+        '  - {name: part}\n'
+        '  - {name: ml}\n'
+        'ingredients:\n'
+        '  - {name: bitters}\n'
+        'recipes:\n'
+        '  - name: Dashes\n'
+        '    lines: [2 dash bitters]\n',
+      );
+      // The word no longer measures anything, so it joins the name — and the
+      // bottle "dash bitters" is the one the file has no entry for.
+      expectIssue(
+        issues.single,
+        ValidationIssueKind.unknownIngredient,
+        'recipes[0].lines[0]',
+        9,
+        messagePart: '"dash bitters"',
+      );
+    });
+
+    test('an empty section is a vocabulary of none', () {
+      final issues = rejected('format: 1\nunits: []\n');
+      expect(
+        issues.map((i) => i.issue.kind),
+        everyElement(ValidationIssueKind.missingUnit),
+      );
+      expect(issues, hasLength(2));
+    });
+
+    test('an unknown key on a unit entry', () {
+      final issues = rejected(
+        'format: 1\nunits:\n  - {name: dash, plurals: dashes}\n',
+      );
+      expectIssue(
+        issues.single,
+        ValidationIssueKind.malformedValue,
+        'units[0].plurals',
+        3,
+        messagePart: 'Unknown key: "plurals"',
+      );
+    });
+
+    test('a plural that is not a string', () {
+      final issues = rejected(
+        'format: 1\nunits:\n  - {name: part, plural: 2}\n',
+      );
+      expectIssue(
+        issues.first,
+        ValidationIssueKind.malformedValue,
+        'units[0].plural',
+        3,
+        messagePart: 'plural must be a string',
+      );
+    });
+
+    test('a unit entry that is not a mapping', () {
+      final issues = rejected('format: 1\nunits: [dash]\n');
+      expectIssue(
+        issues.first,
+        ValidationIssueKind.malformedValue,
+        'units[0]',
+        2,
+        messagePart: 'Unit entry must be a mapping',
+      );
+    });
+
+    test('a vocabulary of one\'s own survives a round trip', () {
+      const text =
+          'format: 1\n'
+          '\n'
+          'settings:\n'
+          '  part_ml: 30\n'
+          '  display: part\n'
+          '\n'
+          'units:\n'
+          '  - {name: part, plural: parts}\n'
+          '  - {name: ml}\n'
+          '  - {name: leaf, plural: leaves}\n'
+          '\n'
+          'ingredients:\n'
+          '  - {name: mint}\n'
+          '\n'
+          'ingredient_tags: []\n'
+          '\n'
+          'recipe_tags: []\n'
+          '\n'
+          'recipes:\n'
+          '  - name: Julep\n'
+          '    lines:\n'
+          '      - 8 leaves mint\n';
+      expect(codec.encode(decoded(text)), text);
     });
   });
 
@@ -822,21 +955,21 @@ recipes: []
             'gin: a study',
             tags: const ['no', '1976'],
             lines: const [
-              RecipeLine(Amount(1), Unit.oz, 'rum # dark'),
+              RecipeLine(Amount(1), 'oz', 'rum # dark'),
               RecipeLine(
                 Amount.range(1, 2.5),
-                Unit.drop,
+                'drop',
                 'lime, fresh',
                 mark: LineMark.optional,
               ),
-              RecipeLine(Amount(0.5), Unit.barspoon, 'crème de violette'),
+              RecipeLine(Amount(0.5), 'barspoon', 'crème de violette'),
             ],
             notes: 'stir.\nstrain — serve "up"',
             made: MadeHistory(DateTime(2025, 1, 3), 4),
           ),
           Recipe(
             'Plain',
-            lines: const [RecipeLine(Amount(1), Unit.part, 'bourbon')],
+            lines: const [RecipeLine(Amount(1), 'part', 'bourbon')],
           ),
         ],
       );
@@ -873,6 +1006,15 @@ settings:
   part_ml: 30
   display: part
 
+units:
+  - {name: part, plural: parts}
+  - {name: ml}
+  - {name: oz}
+  - {name: dash, plural: dashes}
+  - {name: barspoon, plural: barspoons}
+  - {name: drop, plural: drops}
+  - {name: piece, plural: pieces}
+
 ingredients:
   - {name: gin, stock: in}
   - {name: bitters}
@@ -885,7 +1027,7 @@ recipes:
   - name: Gin Shot
     lines:
       - 2 oz gin
-      - 2 dash bitters
+      - 2 dashes bitters
       - 1 part GIN
 ''');
     });

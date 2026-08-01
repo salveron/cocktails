@@ -3,7 +3,10 @@ import 'package:flutter_test/flutter_test.dart';
 
 /// The required line every recipe now needs (FR-REC-2), so a fixture about
 /// some other rule does not trip that one. Its bottle is declared alongside.
-const _gin = RecipeLine(Amount(1), Unit.part, 'gin');
+const _gin = RecipeLine(Amount(1), 'part', 'gin');
+
+/// The spellings a line may measure in, as a recipe check asks for them.
+final shippedUnits = defaultUnits.spellings.toSet();
 
 void main() {
   const kind = ValidationIssueKind.emptyName;
@@ -75,6 +78,82 @@ void main() {
     });
   });
 
+  group('units', () {
+    test('the shipped vocabulary is valid', () {
+      expect(validateModel(units: defaultUnits), isEmpty);
+    });
+
+    test('a line measured in nothing the vocabulary holds is reported', () {
+      final issues = validateModel(
+        units: const [Unit(partUnit), Unit(mlUnit)],
+        ingredients: [Ingredient('bitters')],
+        recipes: [
+          Recipe(
+            'Dashes',
+            lines: const [RecipeLine(Amount(2), 'dash', 'bitters')],
+          ),
+        ],
+      );
+      expect(issues.single.kind, ValidationIssueKind.unknownUnit);
+      expect(issues.single.path, ['recipes', 0, 'lines', 0]);
+      expect(issues.single.message, contains('"dash"'));
+    });
+
+    test('the two units the app leans on must be there', () {
+      final issues = validateModel(units: const [Unit('dash')]);
+      expect(issues.map((i) => i.message), [
+        'units must include "part"',
+        'units must include "ml"',
+      ]);
+      expect(issues.first.kind, ValidationIssueKind.missingUnit);
+      expect(issues.first.path, ['units']);
+    });
+
+    test('a spelling another unit answers to is a duplicate', () {
+      final issues = validateModel(
+        units: const [
+          Unit(partUnit, plural: 'parts'),
+          Unit(mlUnit),
+          Unit('dash', plural: 'parts'),
+        ],
+      );
+      expect(issues.single.kind, ValidationIssueKind.duplicateName);
+      expect(issues.single.path, ['units', 2, 'plural']);
+      expect(issues.single.message, contains('"parts"'));
+    });
+
+    test('a plural written out as its own name is no duplicate', () {
+      expect(
+        validateModel(
+          units: const [
+            Unit(partUnit),
+            Unit(mlUnit, plural: 'ml'),
+          ],
+        ),
+        isEmpty,
+      );
+    });
+
+    test('both spellings answer to the name rules', () {
+      final issues = validateModel(
+        units: const [
+          Unit(partUnit),
+          Unit(mlUnit),
+          Unit(' oz'),
+          Unit('dash', plural: 'dashes '),
+        ],
+      );
+      expect(issues.map((i) => i.path), [
+        ['units', 2],
+        ['units', 3, 'plural'],
+      ]);
+      expect(
+        issues.every((i) => i.kind == ValidationIssueKind.whitespaceInName),
+        isTrue,
+      );
+    });
+  });
+
   group('validateModel', () {
     test('empty parts are valid', () {
       expect(validateModel(), isEmpty);
@@ -99,15 +178,15 @@ void main() {
             lines: const [
               RecipeLine(
                 Amount.range(1.5, 2),
-                Unit.part,
+                'part',
                 'bourbon',
                 mark: LineMark.base,
               ),
-              RecipeLine(Amount(0.75), Unit.part, 'lemon juice'),
-              RecipeLine(Amount(0.5), Unit.part, 'rich demerara syrup'),
+              RecipeLine(Amount(0.75), 'part', 'lemon juice'),
+              RecipeLine(Amount(0.5), 'part', 'rich demerara syrup'),
               RecipeLine(
                 Amount(0.5),
-                Unit.part,
+                'part',
                 'egg white',
                 mark: LineMark.optional,
               ),
@@ -220,7 +299,7 @@ void main() {
           Recipe(
             'Negroni',
             tags: ['classic'],
-            lines: const [RecipeLine(Amount(1), Unit.part, 'gin')],
+            lines: const [RecipeLine(Amount(1), 'part', 'gin')],
           ),
         ],
       );
@@ -247,9 +326,7 @@ void main() {
     test('flags a recipe with nothing required, at its lines', () {
       for (final lines in [
         const <RecipeLine>[],
-        const [
-          RecipeLine(Amount(1), Unit.part, 'gin', mark: LineMark.optional),
-        ],
+        const [RecipeLine(Amount(1), 'part', 'gin', mark: LineMark.optional)],
       ]) {
         final issues = validateModel(
           ingredients: [Ingredient('gin')],
@@ -268,7 +345,7 @@ void main() {
             Recipe(
               'Negroni',
               lines: const [
-                RecipeLine(Amount(1), Unit.part, 'gin', mark: LineMark.base),
+                RecipeLine(Amount(1), 'part', 'gin', mark: LineMark.base),
               ],
             ),
           ],
@@ -284,8 +361,8 @@ void main() {
           Recipe(
             'Martini',
             lines: const [
-              RecipeLine(Amount(0), Unit.part, 'gin'),
-              RecipeLine(Amount.range(2, 1.5), Unit.part, 'gin'),
+              RecipeLine(Amount(0), 'part', 'gin'),
+              RecipeLine(Amount.range(2, 1.5), 'part', 'gin'),
             ],
           ),
         ],
@@ -319,7 +396,7 @@ void main() {
         recipes: [
           Recipe(
             'Negroni',
-            lines: const [RecipeLine(Amount(1), Unit.part, 'vermouth')],
+            lines: const [RecipeLine(Amount(1), 'part', 'vermouth')],
           ),
         ],
       );
@@ -415,7 +492,7 @@ void main() {
           Recipe(
             'Martini',
             tags: const ['unknown'],
-            lines: const [RecipeLine(Amount(0), Unit.part, 'gin')],
+            lines: const [RecipeLine(Amount(0), 'part', 'gin')],
           ),
           Recipe('', lines: const [_gin]),
         ],
@@ -434,10 +511,11 @@ void main() {
         Recipe(
           'Whiskey Sour',
           tags: const ['sour'],
-          lines: const [RecipeLine(Amount(1.5), Unit.part, 'bourbon')],
+          lines: const [RecipeLine(Amount(1.5), 'part', 'bourbon')],
         ),
         knownIngredients: {'bourbon'},
         knownTags: {'sour'},
+        knownUnits: shippedUnits,
       );
       expect(issues, isEmpty);
     });
@@ -447,10 +525,11 @@ void main() {
         Recipe(
           'whiskey sour',
           tags: const ['SOUR'],
-          lines: const [RecipeLine(Amount(1.5), Unit.part, 'Bourbon')],
+          lines: const [RecipeLine(Amount(1.5), 'part', 'Bourbon')],
         ),
         knownIngredients: {'bourbon'},
         knownTags: {'sour'},
+        knownUnits: shippedUnits,
         otherRecipeNames: {'Whiskey Sour'},
       );
       expect(issues.single.kind, ValidationIssueKind.duplicateName);
@@ -462,14 +541,15 @@ void main() {
           'Martini',
           tags: const ['unknown'],
           lines: const [
-            RecipeLine(Amount(1), Unit.part, 'gin'),
-            RecipeLine(Amount(1), Unit.part, 'vermouth'),
-            RecipeLine(Amount(0), Unit.part, 'missing'),
+            RecipeLine(Amount(1), 'part', 'gin'),
+            RecipeLine(Amount(1), 'part', 'vermouth'),
+            RecipeLine(Amount(0), 'part', 'missing'),
           ],
           made: MadeHistory(DateTime(2026, 7, 18), 0),
         ),
         knownIngredients: {'gin', 'vermouth'},
         knownTags: const {},
+        knownUnits: shippedUnits,
       );
       expect(issues.map((i) => i.path), [
         ['tags', 0],
@@ -488,6 +568,7 @@ void main() {
         ),
         knownIngredients: {'gin'},
         knownTags: {'sour', 'classic'},
+        knownUnits: shippedUnits,
       );
       expect(issues, hasLength(1));
       expect(issues.single.path, ['tags', 2]);
@@ -499,6 +580,7 @@ void main() {
         Recipe('', lines: const [_gin]),
         knownIngredients: {'gin'},
         knownTags: const {},
+        knownUnits: shippedUnits,
       );
       expect(issues.single.path, isEmpty);
       expect(issues.single.kind, ValidationIssueKind.emptyName);
@@ -510,6 +592,7 @@ void main() {
           Recipe('Negroni', lines: const [_gin]),
           knownIngredients: {'gin'},
           knownTags: const {},
+          knownUnits: shippedUnits,
           otherRecipeNames: {'Martini'},
         ),
         isEmpty,
@@ -519,6 +602,7 @@ void main() {
           Recipe('Negroni', lines: const [_gin]),
           knownIngredients: {'gin'},
           knownTags: const {},
+          knownUnits: shippedUnits,
           otherRecipeNames: {'Negroni'},
         ).single.kind,
         ValidationIssueKind.duplicateName,
@@ -529,13 +613,14 @@ void main() {
       final recipe = Recipe(
         'Martini',
         tags: const ['unknown'],
-        lines: const [RecipeLine(Amount(0), Unit.part, 'missing')],
+        lines: const [RecipeLine(Amount(0), 'part', 'missing')],
       );
       final modelIssues = validateModel(recipes: [recipe]);
       final recipeIssues = validateRecipe(
         recipe,
         knownIngredients: const {},
         knownTags: const {},
+        knownUnits: shippedUnits,
       );
       expect(modelIssues.map((i) => i.path), [
         ['recipes', 0, 'tags', 0],
@@ -683,13 +768,14 @@ void main() {
           'Martini',
           tags: const ['unknown', 'unknown'],
           lines: const [
-            RecipeLine(Amount(0), Unit.part, 'missing'),
-            RecipeLine(Amount.range(2, 1), Unit.part, 'gin'),
+            RecipeLine(Amount(0), 'part', 'missing'),
+            RecipeLine(Amount.range(2, 1), 'part', 'gin'),
           ],
           made: MadeHistory(DateTime(2026, 7, 18), 0),
         ),
         knownIngredients: {'gin'},
         knownTags: const {},
+        knownUnits: shippedUnits,
       );
       expect(issues.map((i) => i.kind), [
         ValidationIssueKind.unknownTag,

@@ -64,7 +64,7 @@ void main() {
         Recipe(
           'Martini',
           tags: const ['classic'],
-          lines: const [RecipeLine(Amount(2), Unit.part, 'gin')],
+          lines: const [RecipeLine(Amount(2), 'part', 'gin')],
           notes: 'Stir.',
         ),
       );
@@ -102,7 +102,7 @@ void main() {
       expect(find.text('Add missing ingredients?'), findsNothing);
       expect(
         store.saved!.recipeNamed('Martini')!.lines.single,
-        const RecipeLine(Amount(2), Unit.part, 'gin'),
+        const RecipeLine(Amount(2), 'part', 'gin'),
       );
     });
 
@@ -114,7 +114,7 @@ void main() {
       await tap(tester, find.text('Save'));
       expect(
         store.saved!.recipeNamed('Martini')!.lines.single,
-        const RecipeLine(Amount(2), Unit.part, 'gin'),
+        const RecipeLine(Amount(2), 'part', 'gin'),
       );
     });
 
@@ -175,7 +175,7 @@ void main() {
       expect(saved.ingredientNamed('rye'), Ingredient('rye'));
       expect(
         saved.recipeNamed('Sazerac')!.lines.first,
-        const RecipeLine(Amount(2), Unit.part, 'rye', mark: LineMark.base),
+        const RecipeLine(Amount(2), 'part', 'rye', mark: LineMark.base),
       );
     });
 
@@ -354,7 +354,7 @@ void main() {
           recipes: [
             Recipe(
               'Negroni',
-              lines: const [RecipeLine(Amount(1), Unit.part, 'gin')],
+              lines: const [RecipeLine(Amount(1), 'part', 'gin')],
               made: MadeHistory(DateTime(2026, 7, 12), 0),
             ),
           ],

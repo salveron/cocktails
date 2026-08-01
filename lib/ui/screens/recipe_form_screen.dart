@@ -16,7 +16,16 @@ import '../widgets/vocabulary_list.dart';
 /// the notes. Pops the saved name once saved. Designed in
 /// docs/ui-design.md#recipe-form.
 class RecipeFormScreen extends ConsumerStatefulWidget {
-  const RecipeFormScreen({this.original, this.initialName = '', super.key});
+  const RecipeFormScreen({
+    required this.units,
+    this.original,
+    this.initialName = '',
+    super.key,
+  });
+
+  /// What a line may be measured in (ADR 09) — handed over rather than read,
+  /// since the fields are filled before the first build.
+  final List<Unit> units;
 
   /// The recipe being edited, or null when creating one.
   final Recipe? original;
@@ -35,9 +44,11 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
   late final _notes = TextEditingController(text: widget.original?.notes ?? '');
 
   /// Bottom line always empty to grow the list; emptied lines dropped on save.
+  /// The vocabulary a line is written against comes from the model, so the
+  /// fields open in the spelling the file holds (ADR 09).
   late final _lines = [
     for (final line in widget.original?.lines ?? const <RecipeLine>[])
-      _lineController(formatRecipeLine(line)),
+      _lineController(formatRecipeLine(line, widget.units)),
     _lineController(''),
   ];
 
@@ -99,7 +110,7 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
           ],
           [
             for (final line in original?.lines ?? const <RecipeLine>[])
-              formatRecipeLine(line),
+              formatRecipeLine(line, widget.units),
           ],
         );
   }
@@ -115,6 +126,7 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
       Recipe(_name.text),
       knownIngredients: const {},
       knownTags: const {},
+      knownUnits: const {},
       otherRecipeNames: _otherNames(model),
     ))
       if (issue.path.isEmpty) issue,
@@ -123,7 +135,10 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
   /// Parse result per line (null if empty/valid); computed once per build.
   List<String?> get _syntaxProblems => [
     for (final line in _lines)
-      if (_blank(line)) null else tryParseRecipeLine(line.text).problem,
+      if (_blank(line))
+        null
+      else
+        tryParseRecipeLine(line.text, widget.units).problem,
   ];
 
   /// Parsed recipe and fieldOf map for aligning issues with fields. A line
@@ -137,7 +152,7 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
     final fieldOf = <int>[];
     for (var field = 0; field < _lines.length; field++) {
       if (_blank(_lines[field])) continue;
-      final line = parseRecipeLine(_lines[field].text);
+      final line = parseRecipeLine(_lines[field].text, widget.units);
       final known = model.ingredientNamed(line.ingredient);
       lines.add(known == null ? line : line.copyWith(ingredient: known.name));
       fieldOf.add(field);
@@ -160,6 +175,7 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
       entered.recipe,
       knownIngredients: model.ingredientNames,
       knownTags: model.tagNames(TagKind.recipe),
+      knownUnits: model.unitSpellings,
       otherRecipeNames: _otherNames(model),
     );
     final blocked = issues.any(
@@ -287,7 +303,7 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
                 child: TextField(
                   controller: _lines[field],
                   decoration: InputDecoration(
-                    hintText: '1.5 part gin (base)',
+                    hintText: '1.5 parts gin (base)',
                     errorText: syntax[field] ?? _saveProblems[field],
                   ),
                 ),

@@ -35,10 +35,10 @@ final stockedModel = Model(
     Recipe(
       'Gin Shot',
       lines: const [
-        RecipeLine(Amount(1), Unit.part, 'gin'),
+        RecipeLine(Amount(1), 'part', 'gin'),
         RecipeLine(
           Amount(1),
-          Unit.dash,
+          'dash',
           'sweet vermouth',
           mark: LineMark.optional,
         ),
@@ -46,14 +46,14 @@ final stockedModel = Model(
     ),
     Recipe(
       'Campari Shot',
-      lines: const [RecipeLine(Amount(1), Unit.part, 'campari')],
+      lines: const [RecipeLine(Amount(1), 'part', 'campari')],
     ),
     Recipe(
       'Negroni',
       lines: const [
-        RecipeLine(Amount(1), Unit.part, 'gin'),
-        RecipeLine(Amount(1), Unit.part, 'campari'),
-        RecipeLine(Amount(1), Unit.part, 'sweet vermouth'),
+        RecipeLine(Amount(1), 'part', 'gin'),
+        RecipeLine(Amount(1), 'part', 'campari'),
+        RecipeLine(Amount(1), 'part', 'sweet vermouth'),
       ],
     ),
   ],
@@ -263,10 +263,10 @@ void main() {
     testWidgets('marks and ranges keep their own words', (tester) async {
       await pumpRecipes(tester);
       await tap(tester, find.text('Whiskey Sour'));
-      expect(find.text('2 part bourbon (base)'), findsOneWidget);
+      expect(find.text('2 parts bourbon (base)'), findsOneWidget);
       expect(find.text('1 piece egg white (optional)'), findsOneWidget);
       await tap(tester, find.text('Daiquiri'));
-      expect(find.text('1.5-2 part white rum (base)'), findsOneWidget);
+      expect(find.text('1.5-2 parts white rum (base)'), findsOneWidget);
     });
 
     testWidgets('the summaries give way to the real thing', (tester) async {
@@ -371,16 +371,16 @@ void main() {
       await tap(tester, find.text('Negroni'));
       await scale(tester, 'Negroni', factor: 2);
 
-      expect(find.text('2 part gin (base)'), findsOneWidget);
-      expect(find.text('2 part campari'), findsOneWidget);
-      expect(find.text('2 part sweet vermouth'), findsOneWidget);
+      expect(find.text('2 parts gin (base)'), findsOneWidget);
+      expect(find.text('2 parts campari'), findsOneWidget);
+      expect(find.text('2 parts sweet vermouth'), findsOneWidget);
     });
 
     testWidgets('a range scales at both ends', (tester) async {
       await pumpRecipes(tester);
       await tap(tester, find.text('Daiquiri'));
       await scale(tester, 'Daiquiri', factor: 3);
-      expect(find.text('4.5-6 part white rum (base)'), findsOneWidget);
+      expect(find.text('4.5-6 parts white rum (base)'), findsOneWidget);
     });
 
     testWidgets('ml converts parts and leaves the rest as entered', (
@@ -413,7 +413,7 @@ void main() {
       expect(italicOn(tester, '1 part gin (base)'), isEmpty);
 
       await scale(tester, 'Negroni', factor: 2);
-      expect(italicOn(tester, '2 part gin (base)'), '2 part');
+      expect(italicOn(tester, '2 parts gin (base)'), '2 parts');
     });
 
     testWidgets('a low bottle is still marked on a scaled line', (
@@ -422,7 +422,7 @@ void main() {
       await pumpRecipes(tester, stockedModel);
       await tap(tester, find.text('Negroni'));
       await scale(tester, 'Negroni', factor: 2);
-      expect(dotOnLine(tester, '2 part campari'), StockLevel.low);
+      expect(dotOnLine(tester, '2 parts campari'), StockLevel.low);
     });
 
     testWidgets('cancelled, the card stands as it was', (tester) async {
@@ -464,8 +464,8 @@ void main() {
       await tap(tester, find.text('Daiquiri'));
       await scale(tester, 'Negroni', factor: 2);
 
-      expect(find.text('2 part campari'), findsOneWidget);
-      expect(find.text('1.5-2 part white rum (base)'), findsOneWidget);
+      expect(find.text('2 parts campari'), findsOneWidget);
+      expect(find.text('1.5-2 parts white rum (base)'), findsOneWidget);
     });
 
     testWidgets('closing the card forgets how it was read', (tester) async {

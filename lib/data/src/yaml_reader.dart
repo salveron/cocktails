@@ -9,6 +9,7 @@ import 'package:yaml/yaml.dart';
 
 final class ModelParts {
   final Settings settings;
+  final List<Unit> units;
   final List<Ingredient> ingredients;
   final List<Tag> ingredientTags;
   final List<Tag> recipeTags;
@@ -17,6 +18,7 @@ final class ModelParts {
 
   ModelParts({
     required this.settings,
+    required this.units,
     required this.ingredients,
     required this.ingredientTags,
     required this.recipeTags,
@@ -33,18 +35,31 @@ ModelParts readModelParts(YamlMap root) {
   const sections = {
     'format',
     'settings',
+    'units',
     'ingredients',
     'ingredient_tags',
     'recipe_tags',
     'recipes',
   };
   _checkKeys(root, sections, const [], issues);
+  // A file naming no units is read with the ones the app shipped, so nothing
+  // written before they were data reads differently now (ADR 09). The lines
+  // are parsed against them, hence read first.
+  final units = root.nodes['units'] == null
+      ? defaultUnits
+      : _readEntries(root, 'units', issues, _readUnit);
   return ModelParts(
     settings: _readSettings(root.nodes['settings'], issues),
+    units: units,
     ingredients: _readEntries(root, 'ingredients', issues, _readIngredient),
     ingredientTags: _readEntries(root, 'ingredient_tags', issues, _readTag),
     recipeTags: _readEntries(root, 'recipe_tags', issues, _readTag),
-    recipes: _readEntries(root, 'recipes', issues, _readRecipe),
+    recipes: _readEntries(
+      root,
+      'recipes',
+      issues,
+      (node, path, issues) => _readRecipe(node, path, issues, units),
+    ),
     issues: issues,
   );
 }
@@ -178,6 +193,25 @@ List<T> _readEntries<T>(
   return entries;
 }
 
+/// An omitted `plural` is how an entry says its plural reads like its name.
+Unit? _readUnit(
+  YamlNode node,
+  List<Object> path,
+  List<ValidationIssue> issues,
+) {
+  if (node is! YamlMap) {
+    _report(issues, path, 'Unit entry must be a mapping', node);
+    return null;
+  }
+  _checkKeys(node, const {'name', 'plural'}, path, issues);
+  final name = _readName(node, path, issues);
+  final pluralNode = node.nodes['plural'];
+  final plural = pluralNode == null
+      ? ''
+      : _stringValue(pluralNode, [...path, 'plural'], issues, 'plural') ?? '';
+  return name == null ? null : Unit(name, plural: plural);
+}
+
 Ingredient? _readIngredient(
   YamlNode node,
   List<Object> path,
@@ -271,6 +305,7 @@ Recipe? _readRecipe(
   YamlNode node,
   List<Object> path,
   List<ValidationIssue> issues,
+  List<Unit> units,
 ) {
   if (node is! YamlMap) {
     _report(issues, path, 'Recipe entry must be a mapping', node);
@@ -284,7 +319,7 @@ Recipe? _readRecipe(
   _forEachEntry(node, 'lines', path, issues, (entryNode, entryPath) {
     final text = _stringValue(entryNode, entryPath, issues, 'Recipe line');
     if (text == null) return;
-    final parsed = tryParseRecipeLine(text);
+    final parsed = tryParseRecipeLine(text, units);
     final line = parsed.line;
     if (line == null) {
       issues.add(

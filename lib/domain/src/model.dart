@@ -24,22 +24,6 @@ enum StockLevel {
       _fromToken(values, text, (v) => v.token);
 }
 
-enum Unit {
-  part('part'),
-  ml('ml'),
-  oz('oz'),
-  dash('dash'),
-  barspoon('barspoon'),
-  drop('drop'),
-  piece('piece');
-
-  final String token;
-  const Unit(this.token);
-
-  static Unit? fromToken(String text) =>
-      _fromToken(values, text, (v) => v.token);
-}
-
 enum DisplayUnit {
   part('part'),
   ml('ml');
@@ -185,9 +169,95 @@ final class Amount {
   String toString() => isRange ? 'Amount($min-$max)' : 'Amount($min)';
 }
 
+/// One measure a line can be written in (docs/adr/09-units-are-a-vocabulary.md).
+/// [plural] is empty where the plural reads the same as the name — "ml", "oz".
+final class Unit {
+  final String name;
+  final String plural;
+
+  const Unit(this.name, {this.plural = ''});
+
+  /// The plural as it reads: the name itself where none was written.
+  String get pluralName => plural.isEmpty ? name : plural;
+
+  /// How [amount] of it is spelled — the singular for exactly one, so "1 part"
+  /// stands beside "0.75 parts" and "1.5-2 parts".
+  String spelling(Amount amount) =>
+      amount == const Amount(1) ? name : pluralName;
+
+  /// Whether [token] is one of its spellings, however written (ADR 08).
+  bool answersTo(String token) =>
+      name.sameName(token) || pluralName.sameName(token);
+
+  Unit copyWith({String? name, String? plural}) =>
+      Unit(name ?? this.name, plural: plural ?? this.plural);
+
+  @override
+  bool operator ==(Object other) =>
+      other is Unit && other.name == name && other.plural == plural;
+
+  @override
+  int get hashCode => Object.hash(name, plural);
+
+  @override
+  String toString() =>
+      'Unit($name${plural.isEmpty ? '' : ', plural: $plural'})';
+}
+
+/// The units the app shipped with, and what a file naming none is read with.
+const defaultUnits = [
+  Unit(partUnit, plural: 'parts'),
+  Unit(mlUnit),
+  Unit('oz'),
+  Unit('dash', plural: 'dashes'),
+  Unit('barspoon', plural: 'barspoons'),
+  Unit('drop', plural: 'drops'),
+  Unit('piece', plural: 'pieces'),
+];
+
+/// The two the app itself leans on: an omitted unit is a part (FR-REC-2) and
+/// the ratio converts between these two (FR-SET-1), so neither can be renamed
+/// or deleted — only their plurals are the user's.
+const partUnit = 'part';
+const mlUnit = 'ml';
+const reservedUnits = [partUnit, mlUnit];
+
+bool isReservedUnit(String name) =>
+    reservedUnits.any((reserved) => reserved.sameName(name));
+
+extension UnitLookup on List<Unit> {
+  /// The unit [token] names — a spelling of its own, or a plural it never
+  /// wrote ("2 cups" where the plural was left empty). Exact spellings answer
+  /// first, so a stripped guess can never shadow a unit named outright.
+  Unit? unitNamed(String token) {
+    for (final spelling in [
+      token,
+      if (token.endsWith('s')) token.substring(0, token.length - 1),
+      if (token.endsWith('es')) token.substring(0, token.length - 2),
+    ]) {
+      for (final unit in this) {
+        if (unit.answersTo(spelling)) return unit;
+      }
+    }
+    return null;
+  }
+
+  /// Every spelling the vocabulary answers to, in its own order — a plural
+  /// repeating its own name counts once, one repeating another unit's is the
+  /// collision uniqueness refuses.
+  List<String> get spellings => [
+    for (final unit in this) ...[
+      unit.name,
+      if (!unit.pluralName.sameName(unit.name)) unit.pluralName,
+    ],
+  ];
+}
+
+/// A line names its unit as it names its ingredient: by name, resolved against
+/// the vocabulary (ADR 09).
 final class RecipeLine {
   final Amount amount;
-  final Unit unit;
+  final String unit;
   final String ingredient;
   final LineMark? mark;
 
@@ -197,7 +267,7 @@ final class RecipeLine {
 
   bool get isOptional => mark == LineMark.optional;
 
-  RecipeLine copyWith({Amount? amount, Unit? unit, String? ingredient}) =>
+  RecipeLine copyWith({Amount? amount, String? unit, String? ingredient}) =>
       RecipeLine(
         amount ?? this.amount,
         unit ?? this.unit,
@@ -224,7 +294,7 @@ final class RecipeLine {
   @override
   String toString() {
     final mark = this.mark;
-    return 'RecipeLine($amount ${unit.token} $ingredient'
+    return 'RecipeLine($amount $unit $ingredient'
         '${mark == null ? '' : ', ${mark.token}'})';
   }
 }
@@ -329,6 +399,10 @@ final class Recipe {
 
 final class Model {
   final Settings settings;
+
+  /// What a line may be measured in (ADR 09) — the vocabulary a file naming
+  /// none is read with, so nothing written before they were data changes.
+  final List<Unit> units;
   final List<Ingredient> ingredients;
 
   /// The two tag vocabularies (docs/adr/07-tag-colour.md). Peers of one shape,
@@ -340,14 +414,17 @@ final class Model {
 
   Model({
     this.settings = const Settings(),
+    List<Unit> units = defaultUnits,
     List<Ingredient> ingredients = const [],
     List<Tag> recipeTags = const [],
     List<Tag> ingredientTags = const [],
     List<Recipe> recipes = const [],
-  }) : ingredients = List.unmodifiable(ingredients),
+  }) : units = List.unmodifiable(units),
+       ingredients = List.unmodifiable(ingredients),
        recipeTags = List.unmodifiable(recipeTags),
        ingredientTags = List.unmodifiable(ingredientTags),
        recipes = List.unmodifiable(recipes) {
+    _requireUniqueNames('unit', this.units.spellings);
     _requireUniqueNames(
       'ingredient',
       this.ingredients.map((i) => i.name).toList(),
@@ -365,12 +442,14 @@ final class Model {
 
   Model copyWith({
     Settings? settings,
+    List<Unit>? units,
     List<Ingredient>? ingredients,
     List<Tag>? recipeTags,
     List<Tag>? ingredientTags,
     List<Recipe>? recipes,
   }) => Model(
     settings: settings ?? this.settings,
+    units: units ?? this.units,
     ingredients: ingredients ?? this.ingredients,
     recipeTags: recipeTags ?? this.recipeTags,
     ingredientTags: ingredientTags ?? this.ingredientTags,
@@ -412,6 +491,9 @@ final class Model {
     for (final recipe in recipes) recipe.name,
   });
 
+  /// The spellings a line may measure in, as the reference rules ask for them.
+  late final Set<String> unitSpellings = Set.unmodifiable(units.spellings);
+
   Set<String> tagNames(TagKind kind) => _tagNames[kind]!;
 
   /// Keyed by every [TagKind] there is, so the lookup above always finds one.
@@ -424,6 +506,7 @@ final class Model {
   bool operator ==(Object other) =>
       other is Model &&
       other.settings == settings &&
+      listEquals(other.units, units) &&
       listEquals(other.ingredients, ingredients) &&
       listEquals(other.recipeTags, recipeTags) &&
       listEquals(other.ingredientTags, ingredientTags) &&
@@ -432,6 +515,7 @@ final class Model {
   @override
   int get hashCode => Object.hash(
     settings,
+    Object.hashAll(units),
     Object.hashAll(ingredients),
     Object.hashAll(recipeTags),
     Object.hashAll(ingredientTags),

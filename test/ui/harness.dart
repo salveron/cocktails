@@ -21,8 +21,8 @@ final fixtureModel = Model(
       'Negroni',
       tags: const ['classic'],
       lines: const [
-        RecipeLine(Amount(1), Unit.part, 'gin'),
-        RecipeLine(Amount(1), Unit.part, 'campari'),
+        RecipeLine(Amount(1), 'part', 'gin'),
+        RecipeLine(Amount(1), 'part', 'campari'),
       ],
     ),
   ],
@@ -53,19 +53,19 @@ final recipeModel = Model(
       'Whiskey Sour',
       tags: const ['sour', 'classic'],
       lines: const [
-        RecipeLine(Amount(2), Unit.part, 'bourbon', mark: LineMark.base),
-        RecipeLine(Amount(1), Unit.part, 'lemon juice'),
-        RecipeLine(Amount(0.75), Unit.part, 'sugar syrup'),
-        RecipeLine(Amount(1), Unit.piece, 'egg white', mark: LineMark.optional),
+        RecipeLine(Amount(2), 'part', 'bourbon', mark: LineMark.base),
+        RecipeLine(Amount(1), 'part', 'lemon juice'),
+        RecipeLine(Amount(0.75), 'part', 'sugar syrup'),
+        RecipeLine(Amount(1), 'piece', 'egg white', mark: LineMark.optional),
       ],
     ),
     Recipe(
       'Negroni',
       tags: const ['classic'],
       lines: const [
-        RecipeLine(Amount(1), Unit.part, 'gin', mark: LineMark.base),
-        RecipeLine(Amount(1), Unit.part, 'campari'),
-        RecipeLine(Amount(1), Unit.part, 'sweet vermouth'),
+        RecipeLine(Amount(1), 'part', 'gin', mark: LineMark.base),
+        RecipeLine(Amount(1), 'part', 'campari'),
+        RecipeLine(Amount(1), 'part', 'sweet vermouth'),
       ],
       notes: 'Stir over ice.',
       made: MadeHistory(DateTime(2026, 7, 12), 4),
@@ -75,11 +75,11 @@ final recipeModel = Model(
       lines: const [
         RecipeLine(
           Amount.range(1.5, 2),
-          Unit.part,
+          'part',
           'white rum',
           mark: LineMark.base,
         ),
-        RecipeLine(Amount(1), Unit.part, 'lime juice'),
+        RecipeLine(Amount(1), 'part', 'lime juice'),
       ],
       made: MadeHistory(DateTime(2026, 1, 3), 1),
     ),
@@ -199,7 +199,7 @@ Finder field(String hint) => find.byWidgetPredicate(
 
 /// The recipe form's three kinds of field.
 final nameField = field('Recipe name');
-final lineFields = field('1.5 part gin (base)');
+final lineFields = field('1.5 parts gin (base)');
 final notesField = field('Preparation, glassware, garnish…');
 
 Future<void> tap(WidgetTester tester, Finder target) async {

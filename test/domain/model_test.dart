@@ -28,25 +28,70 @@ void main() {
     });
   });
 
-  group('Unit tokens', () {
-    test('tokens match the data format', () {
-      expect(Unit.part.token, 'part');
-      expect(Unit.ml.token, 'ml');
-      expect(Unit.oz.token, 'oz');
-      expect(Unit.dash.token, 'dash');
-      expect(Unit.barspoon.token, 'barspoon');
-      expect(Unit.drop.token, 'drop');
-      expect(Unit.piece.token, 'piece');
+  group('Unit', () {
+    test('the shipped vocabulary matches the data format', () {
+      expect(
+        [for (final unit in defaultUnits) unit.name],
+        ['part', 'ml', 'oz', 'dash', 'barspoon', 'drop', 'piece'],
+      );
+      expect(reservedUnits.every(defaultUnits.spellings.contains), isTrue);
     });
 
-    test('fromToken round-trips every member', () {
-      for (final unit in Unit.values) {
-        expect(Unit.fromToken(unit.token), unit);
-      }
+    test('an unwritten plural reads like the name', () {
+      expect(const Unit('ml').pluralName, 'ml');
+      expect(const Unit('dash', plural: 'dashes').pluralName, 'dashes');
     });
 
-    test('fromToken returns null for an unknown token', () {
-      expect(Unit.fromToken('cup'), isNull);
+    test('only exactly one is spelled in the singular', () {
+      const leaf = Unit('leaf', plural: 'leaves');
+      expect(leaf.spelling(const Amount(1)), 'leaf');
+      expect(leaf.spelling(const Amount.range(1, 1)), 'leaf');
+      expect(leaf.spelling(const Amount(0.75)), 'leaves');
+      expect(leaf.spelling(const Amount.range(1, 2)), 'leaves');
+    });
+
+    test('it answers to either spelling, in any case (ADR 08)', () {
+      const dash = Unit('dash', plural: 'dashes');
+      expect(dash.answersTo('DASH'), isTrue);
+      expect(dash.answersTo('Dashes'), isTrue);
+      expect(dash.answersTo('dashs'), isFalse);
+    });
+
+    test('equality and hashCode isolate each field', () {
+      expect(const Unit('dash'), const Unit('dash'));
+      expect(const Unit('dash').hashCode, const Unit('dash').hashCode);
+      expect(const Unit('dash'), isNot(const Unit('drop')));
+      expect(const Unit('dash'), isNot(const Unit('dash', plural: 'dashes')));
+    });
+
+    test('copyWith replaces one field and carries the rest', () {
+      const dash = Unit('dash', plural: 'dashes');
+      expect(dash.copyWith(name: 'splash').plural, 'dashes');
+      expect(dash.copyWith(plural: 'dashez').name, 'dash');
+    });
+  });
+
+  group('UnitLookup', () {
+    test('finds a unit by either spelling, or by a plural never written', () {
+      expect(defaultUnits.unitNamed('dash')?.name, 'dash');
+      expect(defaultUnits.unitNamed('dashes')?.name, 'dash');
+      expect(defaultUnits.unitNamed('Dashes')?.name, 'dash');
+      expect(defaultUnits.unitNamed('ozs')?.name, 'oz');
+      expect(defaultUnits.unitNamed('cup'), isNull);
+    });
+
+    test('a unit named outright beats another unit\'s stripped guess', () {
+      const written = [Unit('dashe'), Unit('dash', plural: 'dashes')];
+      expect(written.unitNamed('dashes')?.name, 'dash');
+    });
+
+    test('spellings count a plural reading like its name once', () {
+      expect(const [Unit('ml')].spellings, ['ml']);
+      expect(const [Unit('ml', plural: 'ml')].spellings, ['ml']);
+      expect(const [Unit('dash', plural: 'dashes')].spellings, [
+        'dash',
+        'dashes',
+      ]);
     });
   });
 
@@ -216,13 +261,13 @@ void main() {
   group('RecipeLine', () {
     RecipeLine build({
       Amount amount = const Amount(0.5),
-      Unit unit = Unit.part,
+      String unit = 'part',
       String ingredient = 'egg white',
       LineMark? mark,
     }) => RecipeLine(amount, unit, ingredient, mark: mark);
 
     test('defaults to unmarked: neither base nor optional', () {
-      const line = RecipeLine(Amount(1.5), Unit.part, 'bourbon');
+      const line = RecipeLine(Amount(1.5), 'part', 'bourbon');
       expect(line.mark, isNull);
       expect(line.isBase, isFalse);
       expect(line.isOptional, isFalse);
@@ -231,7 +276,7 @@ void main() {
     test('one mark answers both questions', () {
       const base = RecipeLine(
         Amount(1.5),
-        Unit.part,
+        'part',
         'bourbon',
         mark: LineMark.base,
       );
@@ -239,7 +284,7 @@ void main() {
       expect(base.isOptional, isFalse);
       const optional = RecipeLine(
         Amount(0.5),
-        Unit.part,
+        'part',
         'egg white',
         mark: LineMark.optional,
       );
@@ -251,7 +296,7 @@ void main() {
       expect(build(), build());
       expect(build().hashCode, build().hashCode);
       expect(build(), isNot(build(amount: const Amount(1))));
-      expect(build(), isNot(build(unit: Unit.ml)));
+      expect(build(), isNot(build(unit: 'ml')));
       expect(build(), isNot(build(ingredient: 'gin')));
       expect(build(), isNot(build(mark: LineMark.optional)));
       expect(build(mark: LineMark.base), isNot(build(mark: LineMark.optional)));
@@ -260,7 +305,7 @@ void main() {
     test('copyWith replaces one field and carries the rest', () {
       const line = RecipeLine(
         Amount(0.5),
-        Unit.part,
+        'part',
         'egg white',
         mark: LineMark.optional,
       );
@@ -269,41 +314,31 @@ void main() {
         line.copyWith(amount: const Amount(1)),
         const RecipeLine(
           Amount(1),
-          Unit.part,
+          'part',
           'egg white',
           mark: LineMark.optional,
         ),
       );
       expect(
-        line.copyWith(unit: Unit.ml),
+        line.copyWith(unit: 'ml'),
         const RecipeLine(
           Amount(0.5),
-          Unit.ml,
+          'ml',
           'egg white',
           mark: LineMark.optional,
         ),
       );
       expect(
         line.copyWith(ingredient: 'gin'),
-        const RecipeLine(
-          Amount(0.5),
-          Unit.part,
-          'gin',
-          mark: LineMark.optional,
-        ),
+        const RecipeLine(Amount(0.5), 'part', 'gin', mark: LineMark.optional),
       );
     });
 
     test('marked sets, replaces and clears the mark', () {
-      const line = RecipeLine(Amount(1.5), Unit.part, 'bourbon');
+      const line = RecipeLine(Amount(1.5), 'part', 'bourbon');
       expect(
         line.marked(LineMark.base),
-        const RecipeLine(
-          Amount(1.5),
-          Unit.part,
-          'bourbon',
-          mark: LineMark.base,
-        ),
+        const RecipeLine(Amount(1.5), 'part', 'bourbon', mark: LineMark.base),
       );
       expect(
         line.marked(LineMark.base).marked(LineMark.optional).mark,
@@ -363,7 +398,7 @@ void main() {
       String name = 'Whiskey Sour',
       List<String> tags = const ['sour'],
       List<RecipeLine> lines = const [
-        RecipeLine(Amount.range(1.5, 2), Unit.part, 'bourbon'),
+        RecipeLine(Amount.range(1.5, 2), 'part', 'bourbon'),
       ],
       String notes = 'dry shake, then shake with ice',
       int? madeTimes = 12,
@@ -389,7 +424,7 @@ void main() {
       final recipe = Recipe('Whiskey Sour', tags: ['sour']);
       expect(() => recipe.tags.add('classic'), throwsUnsupportedError);
       expect(
-        () => recipe.lines.add(const RecipeLine(Amount(1), Unit.part, 'gin')),
+        () => recipe.lines.add(const RecipeLine(Amount(1), 'part', 'gin')),
         throwsUnsupportedError,
       );
     });
@@ -408,9 +443,7 @@ void main() {
       expect(build(), isNot(build(tags: const ['sour', 'classic'])));
       expect(
         build(),
-        isNot(
-          build(lines: const [RecipeLine(Amount(2), Unit.part, 'bourbon')]),
-        ),
+        isNot(build(lines: const [RecipeLine(Amount(2), 'part', 'bourbon')])),
       );
       expect(build(), isNot(build(notes: 'stirred')));
       expect(build(), isNot(build(madeTimes: 13)));
@@ -426,8 +459,8 @@ void main() {
         build(tags: const ['classic']),
       );
       expect(
-        recipe.copyWith(lines: [const RecipeLine(Amount(2), Unit.ml, 'rye')]),
-        build(lines: const [RecipeLine(Amount(2), Unit.ml, 'rye')]),
+        recipe.copyWith(lines: [const RecipeLine(Amount(2), 'ml', 'rye')]),
+        build(lines: const [RecipeLine(Amount(2), 'ml', 'rye')]),
       );
       expect(recipe.copyWith(notes: 'stirred'), build(notes: 'stirred'));
       expect(
@@ -464,8 +497,10 @@ void main() {
           ],
     );
 
-    test('starts empty with default settings', () {
+    test('starts empty with default settings and the shipped units', () {
       final model = Model();
+      expect(model.units, defaultUnits);
+      expect(model.unitSpellings, contains('dashes'));
       expect(model.ingredients, isEmpty);
       expect(model.ingredientTags, isEmpty);
       expect(model.recipeTags, isEmpty);
@@ -517,6 +552,35 @@ void main() {
       expect(
         () => Model(recipes: [Recipe('Negroni'), Recipe('Negroni')]),
         throwsArgumentError,
+      );
+    });
+
+    test('rejects a unit spelling another unit already answers to', () {
+      expect(
+        () => Model(units: const [Unit('dash'), Unit('dash')]),
+        throwsA(
+          isA<ArgumentError>().having(
+            (e) => e.message,
+            'message',
+            allOf(contains('unit'), contains('dash')),
+          ),
+        ),
+      );
+      expect(
+        () => Model(
+          units: const [
+            Unit('dash', plural: 'drop'),
+            Unit('drop'),
+          ],
+        ),
+        throwsArgumentError,
+      );
+    });
+
+    test('a plural written out as its own name is no collision', () {
+      expect(
+        Model(units: const [Unit('ml', plural: 'ml')]).units,
+        hasLength(1),
       );
     });
 

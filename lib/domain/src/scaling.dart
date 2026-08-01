@@ -2,6 +2,7 @@
 /// the ×N of FR-REC-7 and the part→ml of FR-SET-1, neither ever stored.
 library;
 
+import 'helpers.dart';
 import 'line_format.dart';
 import 'model.dart';
 
@@ -11,18 +12,22 @@ const scaleFactors = [1, 2, 3, 4];
 typedef DisplayedLine = ({String measure, String body});
 
 /// [line] at [scale] under [settings] — at ×1 in parts, exactly what
-/// [formatRecipeLine] writes, split where the transform stops.
+/// [formatRecipeLine] writes, split where the transform stops. The conversion
+/// is anchored to the two units no vocabulary can lose (ADR 09).
 DisplayedLine displayRecipeLine(
   RecipeLine line,
-  Settings settings, {
+  Settings settings,
+  List<Unit> units, {
   int scale = 1,
 }) {
-  final inMl = line.unit == Unit.part && settings.display == DisplayUnit.ml;
+  final inMl =
+      line.unit.sameName(partUnit) && settings.display == DisplayUnit.ml;
   final factor = inMl ? scale * settings.partMl : scale.toDouble();
   return (
     measure: formatMeasure(
       _scaled(line.amount, factor),
-      inMl ? Unit.ml : line.unit,
+      inMl ? mlUnit : line.unit,
+      units,
     ),
     body: formatLineBody(line),
   );

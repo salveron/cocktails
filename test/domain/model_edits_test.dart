@@ -6,21 +6,16 @@ void main() {
     'Whiskey Sour',
     tags: ['sour', 'classic'],
     lines: const [
-      RecipeLine(
-        Amount.range(1.5, 2),
-        Unit.part,
-        'bourbon',
-        mark: LineMark.base,
-      ),
-      RecipeLine(Amount(0.75), Unit.part, 'lemon juice'),
-      RecipeLine(Amount(0.5), Unit.part, 'egg white', mark: LineMark.optional),
+      RecipeLine(Amount.range(1.5, 2), 'part', 'bourbon', mark: LineMark.base),
+      RecipeLine(Amount(0.75), 'part', 'lemon juice'),
+      RecipeLine(Amount(0.5), 'part', 'egg white', mark: LineMark.optional),
     ],
     notes: 'dry shake, then shake with ice',
   );
   final negroni = Recipe(
     'Negroni',
     tags: ['classic'],
-    lines: const [RecipeLine(Amount(1), Unit.part, 'gin')],
+    lines: const [RecipeLine(Amount(1), 'part', 'gin')],
   );
   final model = Model(
     settings: const Settings(partMl: 25),
@@ -43,6 +38,101 @@ void main() {
 
   List<String> namesOf(List<Ingredient> ingredients) =>
       ingredients.map((ingredient) => ingredient.name).toList();
+
+  group('units', () {
+    /// The vocabulary as the units screen hands it back: every row as it now
+    /// reads, each carrying the name it came from.
+    List<UnitEdit> rows(List<Unit> units) => [
+      for (final unit in units) (unit: unit, was: unit.name),
+    ];
+
+    List<String> unitsOf(Model model) => [
+      for (final unit in model.units) unit.name,
+    ];
+
+    List<String> linesOf(Model model, String recipe) => [
+      for (final line in model.recipeNamed(recipe)!.lines)
+        formatRecipeLine(line, model.units),
+    ];
+
+    test('withUnits replaces the vocabulary', () {
+      final edited = model.withUnits([
+        ...rows(defaultUnits),
+        (unit: const Unit('tsp'), was: null),
+      ]);
+      expect(unitsOf(edited), [...unitsOf(model), 'tsp']);
+      expect(edited.recipes, model.recipes);
+    });
+
+    test('a plural is edited without touching a line', () {
+      final edited = model.withUnits([
+        for (final unit in defaultUnits)
+          (
+            unit: unit.name == 'part'
+                ? const Unit('part', plural: 'partes')
+                : unit,
+            was: unit.name,
+          ),
+      ]);
+      expect(edited.recipeNamed('Negroni')!.lines, negroni.lines);
+      expect(linesOf(edited, 'Negroni'), ['1 part gin']);
+      expect(
+        linesOf(edited, 'Whiskey Sour').first,
+        '1.5-2 partes bourbon (base)',
+      );
+    });
+
+    test('a rename rewrites every line measured in it', () {
+      final edited = model.withUnits([
+        for (final unit in defaultUnits)
+          (
+            unit: unit.name == 'part' ? const Unit('share') : unit,
+            was: unit.name,
+          ),
+      ]);
+      expect(unitsOf(edited).first, 'share');
+      expect(linesOf(edited, 'Negroni'), ['1 share gin']);
+      expect(edited.recipeNamed('Whiskey Sour')!.lines.first.unit, 'share');
+    });
+
+    test('two units trade names in one edit', () {
+      final swapped = model.withUnits([
+        (unit: const Unit('dash'), was: 'part'),
+        (unit: const Unit('part'), was: 'dash'),
+        (unit: const Unit(mlUnit), was: mlUnit),
+      ]);
+      expect(unitsOf(swapped), ['dash', 'part', 'ml']);
+      expect(linesOf(swapped, 'Negroni'), ['1 dash gin']);
+    });
+
+    test('a recapitalisation is a rename of the same unit', () {
+      final edited = model.withUnits([
+        for (final unit in defaultUnits)
+          (
+            unit: unit.name == 'part' ? const Unit('Part') : unit,
+            was: unit.name,
+          ),
+      ]);
+      expect(edited.recipeNamed('Negroni')!.lines.single.unit, 'Part');
+    });
+
+    test('a unit dropped from the list is gone, lines untouched', () {
+      final edited = model.withUnits(
+        rows([
+          for (final unit in defaultUnits)
+            if (unit.name != 'oz') unit,
+        ]),
+      );
+      expect(unitsOf(edited), isNot(contains('oz')));
+      expect(edited.recipes, model.recipes);
+    });
+
+    test('recipesUsingUnit names what stands in the way of deleting it', () {
+      expect(model.recipesUsingUnit('part'), ['Whiskey Sour', 'Negroni']);
+      expect(model.recipesUsingUnit('PART'), ['Whiskey Sour', 'Negroni']);
+      expect(model.recipesUsingUnit('oz'), isEmpty);
+    });
+  });
 
   group('settings', () {
     test('withSettings replaces the settings and nothing else', () {
@@ -358,7 +448,7 @@ void main() {
       final shared = model.withRecipe(
         Recipe(
           'Old Fashioned',
-          lines: const [RecipeLine(Amount(2), Unit.part, 'bourbon')],
+          lines: const [RecipeLine(Amount(2), 'part', 'bourbon')],
         ),
       );
       expect(shared.recipesUsingIngredient('bourbon'), [

@@ -1,8 +1,8 @@
 /// Parser and canonical formatter for the compact recipe-line grammar in
 /// docs/architecture.md: `<amount> [unit] <ingredient name>`, optionally
-/// suffixed with one mark. Enforces syntax only — value rules (positive
-/// amounts, ordered range ends) live in validation.dart. The formatter writes
-/// the fullest form, so what the app stores never leans on what it accepts.
+/// suffixed with one mark. Enforces syntax only — value rules live in
+/// validation.dart. Both halves take the unit vocabulary (ADR 09), which is
+/// what says where a unit ends and a name begins, and how an amount is spelled.
 library;
 
 import 'model.dart';
@@ -23,7 +23,7 @@ final _space = RegExp(r'\s');
 typedef ParsedLine = ({RecipeLine? line, String? problem});
 
 /// The single grammar implementation; [parseRecipeLine] is built on it.
-ParsedLine tryParseRecipeLine(String text) {
+ParsedLine tryParseRecipeLine(String text, List<Unit> units) {
   final trimmed = text.trim();
   final mark = _markOf(trimmed);
   final body = mark == null
@@ -37,7 +37,7 @@ ParsedLine tryParseRecipeLine(String text) {
   if (amount == null) {
     return (line: null, problem: 'Invalid amount: "${match[1]}"');
   }
-  final measured = _measure(match[2]!);
+  final measured = _measure(match[2]!, units);
   if (measured == null) {
     return (line: null, problem: _shapeProblem(trimmed));
   }
@@ -50,33 +50,21 @@ ParsedLine tryParseRecipeLine(String text) {
 String _shapeProblem(String text) =>
     'Expected "<amount> [unit] <ingredient>": "$text"';
 
-/// What [rest] measures and of what. An omitted unit reads as [Unit.part]
-/// (FR-REC-2), so "1 gin" is one part of gin — which is also why a word that
-/// is no unit joins the name, and a mistyped one surfaces as an unknown
-/// ingredient. Null when a unit is all that was written.
-({Unit unit, String ingredient})? _measure(String rest) {
+/// What [rest] measures and of what, under the vocabulary's own spelling. An
+/// omitted unit is a part (FR-REC-2), which is also why a word that is no unit
+/// joins the name and a mistyped one surfaces as an unknown ingredient. Null
+/// when a unit is all that was written.
+({String unit, String ingredient})? _measure(String rest, List<Unit> units) {
   final space = rest.indexOf(_space);
   if (space < 0) {
-    return _unitOf(rest) == null ? (unit: Unit.part, ingredient: rest) : null;
+    return units.unitNamed(rest) == null
+        ? (unit: partUnit, ingredient: rest)
+        : null;
   }
-  final unit = _unitOf(rest.substring(0, space));
+  final unit = units.unitNamed(rest.substring(0, space));
   return unit == null
-      ? (unit: Unit.part, ingredient: rest)
-      : (unit: unit, ingredient: rest.substring(space).trimLeft());
-}
-
-/// The unit [token] names, plural accepted — "2 dashes" is 2 dash. Only the
-/// singular is a wire token; the formatter writes nothing else.
-Unit? _unitOf(String token) {
-  for (final singular in [
-    token,
-    if (token.endsWith('s')) token.substring(0, token.length - 1),
-    if (token.endsWith('es')) token.substring(0, token.length - 2),
-  ]) {
-    final unit = Unit.fromToken(singular);
-    if (unit != null) return unit;
-  }
-  return null;
+      ? (unit: partUnit, ingredient: rest)
+      : (unit: unit.name, ingredient: rest.substring(space).trimLeft());
 }
 
 /// The mark [trimmed] ends with, if any. Only the last suffix counts: a second
@@ -90,8 +78,8 @@ LineMark? _markOf(String trimmed) {
 
 /// Throws a [FormatException] naming the offending part when [line] does
 /// not match the grammar.
-RecipeLine parseRecipeLine(String line) {
-  final parsed = tryParseRecipeLine(line);
+RecipeLine parseRecipeLine(String line, List<Unit> units) {
+  final parsed = tryParseRecipeLine(line, units);
   final result = parsed.line;
   if (result == null) {
     throw FormatException(parsed.problem!);
@@ -100,13 +88,14 @@ RecipeLine parseRecipeLine(String line) {
 }
 
 /// Canonical form: single spaces, the [formatAmount] amount text.
-String formatRecipeLine(RecipeLine line) =>
-    '${formatMeasure(line.amount, line.unit)} ${formatLineBody(line)}';
+String formatRecipeLine(RecipeLine line, List<Unit> units) =>
+    '${formatMeasure(line.amount, line.unit, units)} ${formatLineBody(line)}';
 
 /// The halves a line reads in, split where a display transform stops
-/// (scaling.dart): how much of it, and of what.
-String formatMeasure(Amount amount, Unit unit) =>
-    '${formatAmount(amount)} ${unit.token}';
+/// (scaling.dart). The measure takes the spelling that amount calls for, or the
+/// name as written where the vocabulary has lost the unit.
+String formatMeasure(Amount amount, String unit, List<Unit> units) =>
+    '${formatAmount(amount)} ${units.unitNamed(unit)?.spelling(amount) ?? unit}';
 
 String formatLineBody(RecipeLine line) {
   final mark = line.mark;

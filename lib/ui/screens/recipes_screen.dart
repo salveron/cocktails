@@ -73,7 +73,8 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
         nameOf: (recipe) => recipe.name,
         rowOf: (recipe) =>
             _row(model, vocabulary, recipe, availability[recipe.name]),
-        onAdd: (query) async => await _openForm(initialName: query) != null,
+        onAdd: (query) async =>
+            await _openForm(units: model.units, initialName: query) != null,
         noun: 'recipe',
         plural: 'recipes',
         orders: {
@@ -153,7 +154,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
             // Only where there are amounts to transform: the choice is the
             // open card's, and dies with it.
             if (expanded) 'Scale & convert': () => unawaited(_scale(recipe)),
-            'Edit': () => unawaited(_edit(recipe)),
+            'Edit': () => unawaited(_edit(model.units, recipe)),
             'Delete': () => unawaited(_delete(recipe)),
           }),
         ],
@@ -163,17 +164,23 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
   }
 
   /// Opens form and returns saved name (null if cancelled or unchanged).
-  Future<String?> _openForm({Recipe? original, String initialName = ''}) =>
-      Navigator.of(context).push<String>(
-        MaterialPageRoute(
-          builder: (_) =>
-              RecipeFormScreen(original: original, initialName: initialName),
-        ),
-      );
+  Future<String?> _openForm({
+    required List<Unit> units,
+    Recipe? original,
+    String initialName = '',
+  }) => Navigator.of(context).push<String>(
+    MaterialPageRoute(
+      builder: (_) => RecipeFormScreen(
+        units: units,
+        original: original,
+        initialName: initialName,
+      ),
+    ),
+  );
 
   /// On rename, move expansion state from old name to new name.
-  Future<void> _edit(Recipe recipe) async {
-    final saved = await _openForm(original: recipe);
+  Future<void> _edit(List<Unit> units, Recipe recipe) async {
+    final saved = await _openForm(units: units, original: recipe);
     if (saved == null || saved == recipe.name || !mounted) return;
     setState(() {
       if (_expanded.remove(recipe.name)) _expanded.add(saved);
@@ -298,7 +305,7 @@ class _Details extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.only(bottom: 4),
             child: _Line(
-              displayRecipeLine(line, settings, scale: view.scale),
+              displayRecipeLine(line, settings, model.units, scale: view.scale),
               stockOf(model, line.ingredient),
               transformed: transformed,
             ),

@@ -8,8 +8,33 @@ library;
 import 'helpers.dart';
 import 'model.dart';
 
+/// One row of the units screen on its way back: the entry as it now reads and
+/// the name it had, null where it is new (docs/ui-design.md#units).
+typedef UnitEdit = ({Unit unit, String? was});
+
 extension ModelEdits on Model {
   Model withSettings(Settings settings) => copyWith(settings: settings);
+
+  /// The whole unit vocabulary at once — every rename rewriting the lines
+  /// measured in it, so two units can trade names in one edit and neither
+  /// collides with the other on the way (ADR 09).
+  Model withUnits(List<UnitEdit> edits) {
+    final renamed = <String, String>{};
+    for (final (:unit, :was) in edits) {
+      // Compared exactly: a recapitalisation is the same unit under a new
+      // spelling, and the lines take it too (ADR 08).
+      if (was != null && was != unit.name) renamed[nameKey(was)] = unit.name;
+    }
+    final units = [for (final edit in edits) edit.unit];
+    return renamed.isEmpty
+        ? copyWith(units: units)
+        : copyWith(
+            units: units,
+            recipes: [
+              for (final recipe in recipes) _withUnitsRenamed(recipe, renamed),
+            ],
+          );
+  }
 
   /// Adds [ingredient], or replaces the entry of its name where it stands.
   Model withIngredient(Ingredient ingredient) =>
@@ -114,6 +139,13 @@ extension ModelEdits on Model {
         recipe.name,
   ];
 
+  /// [recipesUsingIngredient] for a unit: what stands in the way of deleting
+  /// it, since a line measured in a unit references it as it does a bottle.
+  List<String> recipesUsingUnit(String name) => [
+    for (final recipe in recipes)
+      if (recipe.lines.any((line) => line.unit.sameName(name))) recipe.name,
+  ];
+
   /// [recipesUsingIngredient] for a tag: the recipes wearing a recipe tag, the
   /// ingredients wearing an ingredient tag. A tag is blocked by references
   /// from its own vocabulary's side only.
@@ -130,6 +162,18 @@ extension ModelEdits on Model {
 }
 
 String _tagName(Tag tag) => tag.name;
+
+/// The recipe with its measures rewritten under [renamed], or the very same
+/// recipe where none of them moved — [_withLinesRenamed] for units.
+Recipe _withUnitsRenamed(Recipe recipe, Map<String, String> renamed) =>
+    recipe.lines.any((line) => renamed.containsKey(nameKey(line.unit)))
+    ? recipe.copyWith(
+        lines: [
+          for (final line in recipe.lines)
+            line.copyWith(unit: renamed[nameKey(line.unit)] ?? line.unit),
+        ],
+      )
+    : recipe;
 
 /// The vocabulary with the entry named [from] renamed to [to] — through
 /// [Tag.copyWith], so the colour comes along; building a fresh [Tag] here

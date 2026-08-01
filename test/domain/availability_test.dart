@@ -10,9 +10,9 @@ void main() {
     ],
   );
 
-  const gin = RecipeLine(Amount(1), Unit.part, 'gin');
-  const campari = RecipeLine(Amount(1), Unit.part, 'campari');
-  const vermouth = RecipeLine(Amount(1), Unit.part, 'sweet vermouth');
+  const gin = RecipeLine(Amount(1), 'part', 'gin');
+  const campari = RecipeLine(Amount(1), 'part', 'campari');
+  const vermouth = RecipeLine(Amount(1), 'part', 'sweet vermouth');
 
   Availability of(List<RecipeLine> lines) =>
       availabilityOf(bar, Recipe('Negroni', lines: lines));
@@ -33,12 +33,7 @@ void main() {
     test('a base line counts like any other required one', () {
       expect(
         of(const [
-          RecipeLine(
-            Amount(1),
-            Unit.part,
-            'sweet vermouth',
-            mark: LineMark.base,
-          ),
+          RecipeLine(Amount(1), 'part', 'sweet vermouth', mark: LineMark.base),
         ]),
         Availability.missing,
       );
@@ -50,11 +45,11 @@ void main() {
           gin,
           RecipeLine(
             Amount(1),
-            Unit.part,
+            'part',
             'sweet vermouth',
             mark: LineMark.optional,
           ),
-          RecipeLine(Amount(1), Unit.part, 'campari', mark: LineMark.optional),
+          RecipeLine(Amount(1), 'part', 'campari', mark: LineMark.optional),
         ]),
         Availability.makeable,
       );
@@ -62,7 +57,7 @@ void main() {
 
     test('a bottle the vocabulary does not hold reads as out', () {
       expect(
-        of(const [RecipeLine(Amount(1), Unit.part, 'rye')]),
+        of(const [RecipeLine(Amount(1), 'part', 'rye')]),
         Availability.missing,
       );
     });

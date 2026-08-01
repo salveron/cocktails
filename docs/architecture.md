@@ -54,6 +54,11 @@ settings:
   part_ml: 30          # how many ml one part is (FR-SET-1)
   display: part        # part | ml
 
+units:                                 # yours to manage (ADR 09)
+  - {name: part, plural: parts}
+  - {name: ml}                         # plural omitted = reads like the name
+  - {name: dash, plural: dashes}
+
 ingredients:
   - {name: bourbon, stock: in}
   - {name: lemon juice, stock: low, tags: [citrus]}
@@ -73,10 +78,10 @@ recipes:
   - name: Whiskey Sour
     tags: [sour, classic]
     lines:
-      - 1.5-2 part bourbon (base)
-      - 0.75 part lemon juice
-      - 0.5 part rich demerara syrup
-      - 0.5 part egg white (optional)
+      - 1.5-2 parts bourbon (base)
+      - 0.75 parts lemon juice
+      - 0.5 parts rich demerara syrup
+      - 0.5 parts egg white (optional)
     notes: dry shake, then shake with ice
     made: {last: 2026-07-18, times: 12}
 ```
@@ -84,6 +89,13 @@ recipes:
 Rules:
 
 - `format` is the schema version; imports of unsupported versions are rejected (FR-DAT-4).
+- `units` is the measurement vocabulary ([ADR 09](adr/09-units-are-a-vocabulary.md)): `name`
+  required, `plural` written only where it differs from the name. An **absent** section reads as
+  the seven the app ships with — `part ml oz dash barspoon drop piece` — so a file written before
+  units were data loads unchanged; a section that is present is the whole vocabulary, empty
+  included. Every spelling in it, plurals counted, is unique under the fold, and `part` and `ml`
+  must be among the names: an omitted unit is a part (FR-REC-2) and the ratio converts between the
+  two (FR-SET-1). A file dropping one is reported, not repaired.
 - Ingredient entries: `name` required; `stock` is `in` | `low` | `out` (default `out`); `tags`
   is a list of `ingredient_tags` names, absent when there are none.
 - Tag entries: `name` and `color` both required — `color` is one of `teal` | `indigo` | `plum` |
@@ -94,13 +106,15 @@ Rules:
   side's vocabulary. The colour lives with the tag, once.
 - An ingredient line is `<amount> [unit] <ingredient name>`, optionally suffixed with one
   mark — ` (base)` or ` (optional)`, never both ([ADR 06](adr/06-base-spirit-on-the-line.md)).
-  Amount is a decimal number or a range `a-b`; unit is one of
-  `part ml oz dash barspoon drop piece`, may be written in the plural, and may be left out
-  altogether — an omitted unit is `part` (FR-REC-2). What follows the unit is the whole
-  ingredient name, so a word that is no unit belongs to the name: `1.5 cup sugar` is 1.5 part
-  of "cup sugar", caught where the name fails to resolve rather than as an unknown unit. The
-  writer always emits the singular unit, so a stored line never leans on either liberty. Both
-  mark suffixes are reserved — ingredient names cannot end with one.
+  Amount is a decimal number or a range `a-b`; the unit is a reference into the `units` section,
+  written in either spelling, and may be left out altogether — an omitted unit is `part`
+  (FR-REC-2). A word is a unit only where the vocabulary answers to it, so anything else belongs
+  to the ingredient name: `1.5 cup sugar` is 1.5 part of "cup sugar", caught where the name fails
+  to resolve rather than as an unknown unit. The writer emits the spelling the amount calls for —
+  the singular for exactly 1, the plural otherwise — so a stored line reads as English does. A
+  plural a unit never wrote is still accepted on the way in (`2 cups`), and a line whose unit the
+  vocabulary has lost prints as written and is reported as unknown. Both mark suffixes are
+  reserved — ingredient names cannot end with one.
 - `made` holds the made-history: `last` is an ISO date (`YYYY-MM-DD`, nothing looser),
   `times` a count. Absent = never made.
 - Every recipe line and tag reference must resolve to the matching vocabulary; names are unique
@@ -115,12 +129,13 @@ Rules:
 - The app writes a canonical form: fixed key order, fixed indentation, no comments. Comments
   are legal in imported files but are not preserved once the app rewrites the store —
   the round-trip guarantee (FR-DAT-5) covers content, not comments.
-- Unit, stock, mark and tag-colour tokens are declared as fields on their enums, never derived
-  from Dart identifier spellings, so renaming a member cannot change the format.
+- Stock, display-unit, mark and tag-colour tokens are declared as fields on their enums, never
+  derived from Dart identifier spellings, so renaming a member cannot change the format. Unit
+  tokens are not among them: a unit's spelling is the user's, held in the file (ADR 09).
 - The pilot reads and writes format `1` only; a future format bump migrates old files on
   import inside the codec.
 - The round-trip guarantee (FR-DAT-5) is over canonical files: a hand-written `1.50`, `2.0`,
-  `2 dashes` or `1 gin` normalises to `1.5`, `2`, `2 dash` and `1 part gin` on the first
+  `2 dash` or `1 gin` normalises to `1.5`, `2`, `2 dashes` and `1 part gin` on the first
   rewrite. Content is preserved, byte-identity
   only from the app's own output onward.
 - Dart's `yaml` package is parse-only, so the canonical writer is a small custom emitter —
@@ -141,7 +156,9 @@ Rules:
   at N = 3.
 - **Line parsing**: the compact-line grammar above has a single shared parser/formatter pair
   in the domain layer, used identically by the recipe form and the YAML codec, and covered
-  by round-trip unit tests.
+  by round-trip unit tests. Both halves take the unit vocabulary — it decides where a unit ends
+  and a name begins, and how an amount is spelled — so the codec reads `units` before the
+  recipes and every other caller hands its own model's list over.
 - **Display transforms** (FR-REC-7, FR-SET-1): a factor multiplies every amount, both ends of
   a range together; a part-based amount converts at `part_ml` where the reading asks for ml,
   and anything already measured shows as entered. The result is text alone — a display value

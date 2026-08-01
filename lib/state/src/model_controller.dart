@@ -51,6 +51,11 @@ final class ModelController extends AsyncNotifier<Model> {
   Future<void> setSettings(Settings settings) =>
       _edit((model) => model.withSettings(settings));
 
+  /// The unit vocabulary as the units screen settles it, whole (FR-VOC-5) —
+  /// every rename in it reaching the lines measured in it, in the same edit.
+  Future<void> setUnits(List<UnitEdit> units) =>
+      _edit((model) => model.withUnits(units));
+
   /// Adds [ingredient] or replaces the one of its name, [replacing] renamed
   /// first so every recipe line that named it follows (FR-VOC-1).
   Future<void> upsertIngredient(Ingredient ingredient, {String? replacing}) =>

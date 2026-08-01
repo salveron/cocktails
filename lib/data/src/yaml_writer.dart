@@ -19,10 +19,14 @@ String encodeModel(Model model) {
     'settings:\n'
         '  part_ml: ${formatNumber(settings.partMl)}\n'
         '  display: ${settings.display.token}',
+    _section('units', model.units.map(_unitEntry)),
     _section('ingredients', model.ingredients.map(_ingredientEntry)),
     _section('ingredient_tags', model.ingredientTags.map(_tagEntry)),
     _section('recipe_tags', model.recipeTags.map(_tagEntry)),
-    _section('recipes', model.recipes.map(_recipeEntry)),
+    _section(
+      'recipes',
+      model.recipes.map((recipe) => _recipeEntry(recipe, model.units)),
+    ),
   ];
   return '${sections.join('\n\n')}\n';
 }
@@ -47,6 +51,11 @@ List<String> _vocabularyEntry(String name, List<String> fields) => [
   '{${['name: ${_scalar(name, inFlow: true)}', ...fields].join(', ')}}',
 ];
 
+/// A plural reading like the name is left out, as every default is.
+List<String> _unitEntry(Unit unit) => _vocabularyEntry(unit.name, [
+  if (unit.plural.isNotEmpty) 'plural: ${_scalar(unit.plural, inFlow: true)}',
+]);
+
 List<String> _ingredientEntry(Ingredient ingredient) =>
     _vocabularyEntry(ingredient.name, [
       if (ingredient.stock != StockLevel.out)
@@ -58,13 +67,14 @@ List<String> _ingredientEntry(Ingredient ingredient) =>
 List<String> _tagEntry(Tag tag) =>
     _vocabularyEntry(tag.name, ['color: ${tag.color.token}']);
 
-List<String> _recipeEntry(Recipe recipe) {
+List<String> _recipeEntry(Recipe recipe, List<Unit> units) {
   final made = recipe.made;
   return [
     'name: ${_scalar(recipe.name)}',
     if (recipe.tags.isNotEmpty) 'tags: ${_flowList(recipe.tags)}',
     if (recipe.lines.isNotEmpty) 'lines:',
-    for (final line in recipe.lines) '  - ${_scalar(formatRecipeLine(line))}',
+    for (final line in recipe.lines)
+      '  - ${_scalar(formatRecipeLine(line, units))}',
     if (recipe.notes.isNotEmpty) 'notes: ${_scalar(recipe.notes)}',
     if (made != null)
       'made: {last: ${_isoDate(made.last)}, times: ${made.times}}',

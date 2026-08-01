@@ -16,7 +16,8 @@ lib/
   domain/
     domain.dart                # barrel — the only domain import other layers use
     src/
-      model.dart               # entities, Model root, name lookups, wornInOrder
+      model.dart               # entities, Model root, name lookups, wornInOrder,
+                               #   the unit vocabulary and its lookup (ADR 09)
       model_edits.dart         # extension ModelEdits on Model — pure derivations
       line_format.dart         # compact-line grammar
       validation.dart          # ValidationIssue + rule set, otherNames
@@ -46,7 +47,8 @@ lib/
     app.dart                   # MaterialApp and the shell: destinations, app bar, gear
     theme.dart                 # the seed colour, the two schemes, the dimmed hint style
     palette.dart               # the fixed hues: stock signals and the tag palette
-    screens/                   # one file per destination, plus settings, tags, recipe form
+    screens/                   # one file per destination, plus settings, tags, units,
+                               #   recipe form
     widgets/                   # empty_state, model_view, search_field, startup_issues,
                                #   color_chip — the pill, chip, dot and dotted name
                                #   tag_choices — the row tags are picked from
@@ -106,16 +108,30 @@ Two identity conventions:
   `Tag` lists, unique within each ([ADR 07](adr/07-tag-colour.md)). A `Tag` carries no scope: 
   `TagKind` names the side, and every tag operation takes one rather than existing twice under two 
   names — which is also what keeps the UI from re-deriving the distinction to abstract over it.
+- **A unit is an entry, not an enum** ([ADR 09](adr/09-units-are-a-vocabulary.md)). `Model.units`
+  is the vocabulary, `RecipeLine.unit` a name into it, and the two the app leans on are constants:
+
+```dart
+final class Unit {
+  final String name;
+  final String plural;        // empty where the plural reads like the name
+  String get pluralName;      // the plural as it reads
+  String spelling(Amount amount);   // singular for exactly one, plural otherwise
+  bool answersTo(String token);     // either spelling, folded (ADR 08)
+}
+const defaultUnits = [Unit(partUnit, plural: 'parts'), Unit(mlUnit), …];
+const partUnit = 'part', mlUnit = 'ml';          // FR-REC-2, FR-SET-1 anchor here
+const reservedUnits = [partUnit, mlUnit];        // neither renameable nor deletable
+
+extension UnitLookup on List<Unit> {
+  Unit? unitNamed(String token);   // either spelling, or an unwritten plural ("2 cups")
+  List<String> get spellings;      // what uniqueness and reference rules ask for
+}
+```
+
 - **Wire tokens are declared, not inferred.** Enum on-disk spelling is a field, never Dart identifier:
 
 ```dart
-enum Unit {
-  part('part'), ml('ml'), oz('oz'), dash('dash'),
-  barspoon('barspoon'), drop('drop'), piece('piece');
-  final String token;
-  const Unit(this.token);
-  static Unit? fromToken(String text);
-}
 enum StockLevel { in_('in'), low('low'), out('out'); … }   // token differs from the identifier
 enum DisplayUnit { part('part'), ml('ml'); … }
 enum LineMark { base('base'), optional('optional'); … }    // ADR 06
@@ -136,6 +152,7 @@ bool hasTag(TagKind kind, String name);
 
 Set<String> get ingredientNames;      // the sets every validate… call asks for
 Set<String> get recipeNames;
+Set<String> get unitSpellings;
 Set<String> tagNames(TagKind kind);
 ```
 
@@ -162,6 +179,8 @@ so `model.dart` holds shape and invariants:
 
 ```dart
 Model withSettings(Settings settings);
+typedef UnitEdit = ({Unit unit, String? was});        // the row and the name it came from
+Model withUnits(List<UnitEdit> edits);                // the whole vocabulary, renames propagated
 Model withIngredient(Ingredient ingredient);          // add, or replace the entry of that name
 Model withIngredientRenamed(String from, String to);  // rewrites every referencing recipe line
 Model withoutIngredient(String name);
@@ -175,8 +194,14 @@ Model withRecipeMade(String name, DateTime today);    // the clock is a paramete
 Model withRecipeHistory(String name, MadeHistory? made);      // the one writer; null = never made
 
 List<String> recipesUsingIngredient(String name);     // FR-VOC-1 delete blocking
+List<String> recipesUsingUnit(String name);
 List<String> usersOfTag(TagKind kind, String name);
 ```
+
+`withUnits` takes the vocabulary whole because the units screen edits it whole: a row carries the
+name it came from, so a rename rewrites every line measured in it and two units can trade names in
+one edit. Compared exactly, not folded — a recapitalisation is the same unit under a new spelling,
+and the lines take it too (ADR 08).
 
 A tag edit touches only its own side: renaming a recipe tag never reads an ingredient, and
 `usersOfTag` blocks deletion from its own side only. One name may stand in both vocabularies and
@@ -204,14 +229,14 @@ One implementation, two entry points (form gets non-throwing feedback; codec use
 ```dart
 typedef ParsedLine = ({RecipeLine? line, String? problem});
 
-ParsedLine tryParseRecipeLine(String text);   // never throws — recipe form (M14), codec (M6)
-RecipeLine parseRecipeLine(String text);      // throws FormatException — built on tryParse
-String formatRecipeLine(RecipeLine line);     // canonical form
+ParsedLine tryParseRecipeLine(String text, List<Unit> units);   // never throws — form, codec
+RecipeLine parseRecipeLine(String text, List<Unit> units);      // throws — built on tryParse
+String formatRecipeLine(RecipeLine line, List<Unit> units);     // canonical form
 String formatAmount(Amount amount);
 String formatNumber(double value);            // canonical number text — amounts, part_ml
 ```
 
-Grammar in [architecture.md](architecture.md#data-format). This file enforces syntax; value rules in validation. The unit is optional and may be plural on the way in; `formatRecipeLine` writes the fullest form, so the codec and the cards read one shape whatever was typed. It composes two halves — `formatMeasure`, `formatLineBody` — layer-visible and out of the barrel, so the display transforms build a line from the same pieces rather than a second spelling of it.
+Grammar in [architecture.md](architecture.md#data-format). This file enforces syntax; value rules in validation. Both halves take the vocabulary (ADR 09): it decides what counts as a unit and how an amount is spelled, and the line stores the unit's own name whichever spelling was typed. The unit is optional and may be plural on the way in; `formatRecipeLine` writes the canonical form, so the codec and the cards read one shape whatever was typed. It composes two halves — `formatMeasure`, `formatLineBody` — layer-visible and out of the barrel, so the display transforms build a line from the same pieces rather than a second spelling of it.
 
 ### Validation
 
@@ -220,8 +245,8 @@ Contract and rationale: [ADR 05](adr/05-validation-contract.md).
 ```dart
 enum ValidationIssueKind {
   emptyName, whitespaceInName, lineBreakInName, duplicateName, reservedSuffix,
-  partMlNotPositive, unknownIngredient, unknownTag, duplicateTag,
-  amountNotPositive, rangeOutOfOrder, noRequiredLine, timesBelowOne,
+  partMlNotPositive, missingUnit, unknownUnit, unknownIngredient, unknownTag,
+  duplicateTag, amountNotPositive, rangeOutOfOrder, noRequiredLine, timesBelowOne,
   unsupportedFormat, malformedLine, malformedValue,    // raised by the codec (M6)
 }
 
@@ -232,10 +257,11 @@ final class ValidationIssue {
   String get location;             // 'recipes[0].lines[2]'
 }
 
-List<ValidationIssue> validateModel({settings, ingredients, ingredientTags, recipeTags, recipes});
+List<ValidationIssue> validateModel({settings, units, ingredients, ingredientTags,
+    recipeTags, recipes});
 List<ValidationIssue> validateRecipe(Recipe recipe,
     {required Set<String> knownIngredients, required Set<String> knownTags,
-     Set<String> otherRecipeNames});
+     required Set<String> knownUnits, Set<String> otherRecipeNames});
 List<ValidationIssue> validateIngredient(Ingredient ingredient,
     {required Set<String> knownIngredientTags, Set<String> otherIngredientNames});
 List<ValidationIssue> validateTag(Tag tag, {Set<String> otherTagNames});
@@ -263,7 +289,8 @@ keys ungrouped tail with `null`. `randomCanMake` takes `Random` for testability.
 ```dart
 const scaleFactors = [1, 2, 3, 4];                    // what a recipe view offers (FR-REC-7)
 typedef DisplayedLine = ({String measure, String body});
-DisplayedLine displayRecipeLine(RecipeLine line, Settings settings, {int scale = 1});
+DisplayedLine displayRecipeLine(RecipeLine line, Settings settings, List<Unit> units,
+    {int scale = 1});
 ```
 
 `displayRecipeLine` is how a card reads a line (FR-REC-7, FR-SET-1), split where the transform 
@@ -290,7 +317,8 @@ cross-layer coupling [ADR 02](adr/02-persistence-and-export-format.md) avoids.
 1. Parse YAML, retain node spans.
 2. Gate on `format`; unsupported version rejected.
 3. Read tree to model parts; shape errors reported against offending node; compact lines through 
-   `tryParseRecipeLine` (problem → issue at line path).
+   `tryParseRecipeLine` (problem → issue at line path). `units` is read first — the lines are 
+   parsed against it, and an absent section is the shipped vocabulary (ADR 09).
 4. Run `validateModel` on parts (referential, value rules) only if step 3 clean (broken shape 
    never cascades to spurious reference errors).
 5. Resolve `ValidationIssue.path` against parse tree for line numbers.
@@ -314,6 +342,10 @@ pure).
 `ModelController.build()` performs startup load, only writable provider. `Corrupt` load starts on 
 recovered backup (empty if nothing decoded); issues reach UI via `startupIssuesProvider` as 
 `"line N: message"` strings (FR-DAT-4; SourcedIssue is data-layer).
+
+`setUnits` is the one mutation taking a whole vocabulary rather than an entry: the units screen
+edits every row at once, and a rename among them must reach the recipe lines in the same edit
+([ui-design.md](ui-design.md#units)).
 
 Each mutation is one line over `ModelEdits` derivation. All run through single private path: await 
 startup load, derive, publish, save. The three `upsert…`s with `replacing` compose several derivations 

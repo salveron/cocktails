@@ -104,6 +104,8 @@ First usable slice; recipes reference both vocabularies, so this precedes Phase 
       the recipe, the file and the global setting stand untouched. `formatRecipeLine` splits
       into the two halves both paths now compose, so ×1 in parts is the canonical line again.
 
+## Phase 3 — Discovery
+
 - [x] **M17a Sorting** — every list reads in more than one order (FR-DIS-8): the recipes by
       availability, the inventory by stock, both tag vocabularies by colour, each against the
       A→Z that is also every order's tie-break. `VocabularyList` takes them as a label → rank
@@ -112,9 +114,24 @@ First usable slice; recipes reference both vocabularies, so this precedes Phase 
       opens the chips and shuts them again; the order it settled stands either way. A list is
       re-placed only where the rows on show change or another order is picked, so a bottle never
       moves under the tap emptying it. Screen state, like the filters — nothing reaches the file.
-
-## Phase 3 — Discovery
-
+- [x] **M17b Unit vocabulary** — units move out of the code and into the file
+      ([ADR 09](adr/09-units-are-a-vocabulary.md)): a `units:` section seeded with the seven the app
+      shipped, `Unit` an entry carrying a plural, `RecipeLine.unit` a name resolved against it as an
+      ingredient name is, and `part`/`ml` fixed members the ratio and the display toggle stay
+      anchored to (FR-VOC-5). The grammar takes the vocabulary — it decides what counts as a unit —
+      and writes the plural for any amount but exactly 1, so `2 dash` normalises to `2 dashes` where
+      it once went the other way. `withUnits` takes the vocabulary whole, propagating renames into
+      every line. Shape only — the screen is M17c's.
+- [x] **M17c Units screen** — Settings → Units: the rows edited in place, one Save for the screen and
+      a discard prompt behind it, an empty bottom row that grows, deletion refused while a line uses
+      the unit, `part` and `ml` locked (FR-VOC-5, [ui-design.md](ui-design.md#units)). The rows are
+      judged by `validateModel` itself, so the screen refuses exactly what an import would, and
+      `setUnits` carries the lot — renames included — to the disk in one write.
+- [ ] **M17d Ingredient aliases** — a bottle answers to more than one name
+      ([ADR 10](adr/10-ingredient-aliases.md)): `Ingredient.aliases` behind one
+      comma-separated field in the entry dialog, resolved wherever a name resolves — the recipe
+      form, the inventory search, a hand-edited file — and always stored under the bottle's own
+      name.
 - [ ] **M18 Filters** — by tags, ingredients, availability; combinable (FR-DIS-3).
 - [ ] **M19 Base-spirit grouping** — grouped browsing with ungrouped tail section
       (FR-DIS-4).

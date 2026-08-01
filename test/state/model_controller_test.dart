@@ -9,8 +9,8 @@ void main() {
     'Negroni',
     tags: ['classic'],
     lines: const [
-      RecipeLine(Amount(1), Unit.part, 'gin'),
-      RecipeLine(Amount(1), Unit.part, 'campari'),
+      RecipeLine(Amount(1), 'part', 'gin'),
+      RecipeLine(Amount(1), 'part', 'campari'),
     ],
   );
   final stored = Model(
@@ -251,10 +251,7 @@ void main() {
     test('upsertRecipe carries the ingredients it introduced', () async {
       final container = await started();
       await controllerOf(container).upsertRecipe(
-        Recipe(
-          'Sazerac',
-          lines: const [RecipeLine(Amount(2), Unit.part, 'rye')],
-        ),
+        Recipe('Sazerac', lines: const [RecipeLine(Amount(2), 'part', 'rye')]),
         addingIngredients: [Ingredient('rye'), Ingredient('absinthe')],
       );
       final model = modelOf(container);

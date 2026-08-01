@@ -10,6 +10,7 @@ Single-user mobile app (Android); no accounts, sharing. Direction: [vision.md](v
 | Base spirit | Spirit recipe is built on — marked on recipe line, not ingredient (bottle is base *in recipe* only, never by itself). Recipe may mark multiple. |
 | Stock level | Per ingredient: **in stock**, **running low**, **out** (default). |
 | Tag | Coloured label from user vocabulary (interest/style/category; replaces Telegram emojis). Two vocabularies: recipe tags, ingredient tags ([ADR 07](adr/07-tag-colour.md)); optional both sides. |
+| Unit | What a line measures in ("part", "dash"), from a user-managed vocabulary carrying a plural each ([ADR 09](adr/09-units-are-a-vocabulary.md)); part and ml are fixed members. |
 | Recipe | Name + lines + tags + notes + made-history (last date, count). |
 | Availability | Per recipe, required lines only: **makeable** (all in), **makeable-low** (none out, ≥1 low), **missing** (≥1 out). First two = **can-make**. |
 
@@ -21,9 +22,11 @@ Two tag vocabularies separate, so one name may exist in both (different meanings
 ### Recipes
 
 - **FR-REC-1** Create, edit, and delete recipes through structured forms.
-- **FR-REC-2** An ingredient line is amount + unit + ingredient. Units: **part** (the default,
-  so a line may leave it out), ml, oz, dash, barspoon, drop, piece. An amount may be a range ("1.5–2"). Every recipe
-  carries at least one line that is not optional, so availability always judges something.
+- **FR-REC-2** An ingredient line is amount + unit + ingredient, the unit drawn from the managed
+  vocabulary of FR-VOC-5 — **part** is the default, so a line may leave it out. An amount may be a
+  range ("1.5–2") and may be written in either spelling; an amount other than exactly 1 reads in
+  the plural. Every recipe carries at least one line that is not optional, so availability always
+  judges something.
 - **FR-REC-3** An ingredient line may be marked optional: it displays with the recipe but
   is excluded from the availability computation (and thus from the shopping optimizer).
 - **FR-REC-4** A recipe carries any number of tags, chosen from the tag vocabulary.
@@ -46,6 +49,11 @@ Two tag vocabularies separate, so one name may exist in both (different meanings
   everywhere). Palette holds no green/amber/red (signal stock/availability, [ADR 07](adr/07-tag-colour.md)).
 - **FR-VOC-4** Ingredients tagged from own vocabulary (separate from recipe tags). Tag for ingredients 
   never offered on recipe, vice versa. Both managed on one screen, tab each.
+- **FR-VOC-5** Measurement units are a vocabulary of their own ([ADR 09](adr/09-units-are-a-vocabulary.md)),
+  managed from Settings: add, rename (propagates to every line), delete (blocked while a line uses
+  it), and a plural per unit — left empty where it reads like the name ("ml", "oz"). Seeded with
+  part, ml, oz, dash, barspoon, drop, piece. **part** and **ml** cannot be renamed or deleted: the
+  ratio and the display toggle are anchored to them (FR-SET-1); their plurals are editable.
 
 FR-VOC-2 left for FR-REC-8 in [ADR 06](adr/06-base-spirit-on-the-line.md); its number stays
 empty so no reference to it can mean two things.
@@ -78,7 +86,8 @@ empty so no reference to it can mean two things.
 
 - **FR-SET-1** Global ratio (ml per part). Toggle switches part-based amounts between parts/ml; 
   other units display as entered. One open recipe may be read in the other unit (FR-REC-7); the 
-  toggle is where that choice is made for all of them.
+  toggle is where that choice is made for all of them. The two units it names are the fixed ones
+  of FR-VOC-5, so the ratio can never lose what it converts between.
 
 ### Data exchange
 

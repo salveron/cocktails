@@ -20,6 +20,8 @@ enum ValidationIssueKind {
   duplicateName,
   reservedSuffix,
   partMlNotPositive,
+  missingUnit,
+  unknownUnit,
   unknownIngredient,
   unknownTag,
   duplicateTag,
@@ -78,6 +80,7 @@ typedef _Problem = ({ValidationIssueKind kind, String message});
 /// Checks the parts of a would-be [Model]; an empty result means valid.
 List<ValidationIssue> validateModel({
   Settings settings = const Settings(),
+  List<Unit> units = defaultUnits,
   List<Ingredient> ingredients = const [],
   List<Tag> ingredientTags = const [],
   List<Tag> recipeTags = const [],
@@ -93,6 +96,7 @@ List<ValidationIssue> validateModel({
       ),
     );
   }
+  _checkUnits(issues, units);
   final ingredientNames = ingredients.map((i) => i.name).toList();
   final ingredientTagNames = ingredientTags.map((t) => t.name).toList();
   final recipeTagNames = recipeTags.map((t) => t.name).toList();
@@ -119,12 +123,58 @@ List<ValidationIssue> validateModel({
     'recipes',
     'recipe',
     recipes.map((r) => r.name).toList(),
-    entryIssues: (i) => _checkRecipe(recipes[i], knownIngredients, [
-      'recipes',
-      i,
-    ], knownTags: knownRecipeTags),
+    entryIssues: (i) => _checkRecipe(
+      recipes[i],
+      knownIngredients,
+      ['recipes', i],
+      knownTags: knownRecipeTags,
+      knownUnits: nameKeys(units.spellings),
+    ),
   );
   return issues;
+}
+
+/// Every rule on the unit vocabulary (ADR 09): both spellings of an entry are
+/// names — bar an empty plural, which is how an entry says its plural reads
+/// like its name — no spelling repeats another entry's, and the two units the
+/// app leans on are present.
+void _checkUnits(List<ValidationIssue> issues, List<Unit> units) {
+  final seen = <String>{};
+  for (var i = 0; i < units.length; i++) {
+    final unit = units[i];
+    _addProblems(
+      issues,
+      ['units', i],
+      [
+        _nameProblem('unit', unit.name),
+        seen.add(nameKey(unit.name))
+            ? null
+            : _duplicateProblem('unit', unit.name),
+      ],
+    );
+    if (unit.plural.isEmpty) continue;
+    _addProblems(
+      issues,
+      ['units', i, 'plural'],
+      [
+        _nameProblem('unit plural', unit.plural),
+        unit.plural.sameName(unit.name) || seen.add(nameKey(unit.plural))
+            ? null
+            : _duplicateProblem('unit', unit.plural),
+      ],
+    );
+  }
+  for (final reserved in reservedUnits) {
+    if (!units.any((unit) => unit.name.sameName(reserved))) {
+      issues.add(
+        ValidationIssue(
+          const ['units'],
+          ValidationIssueKind.missingUnit,
+          'units must include "$reserved"',
+        ),
+      );
+    }
+  }
 }
 
 /// [names] without [except], which is what every `validate…` call wants: the
@@ -187,6 +237,7 @@ List<ValidationIssue> validateRecipe(
   Recipe recipe, {
   required Set<String> knownIngredients,
   required Set<String> knownTags,
+  required Set<String> knownUnits,
   Set<String> otherRecipeNames = const {},
 }) => [
   ..._checkName(
@@ -199,6 +250,7 @@ List<ValidationIssue> validateRecipe(
     nameKeys(knownIngredients),
     const [],
     knownTags: nameKeys(knownTags),
+    knownUnits: nameKeys(knownUnits),
   ),
 ];
 
@@ -249,16 +301,16 @@ List<ValidationIssue> _checkName(
   final issues = <ValidationIssue>[];
   _addProblems(issues, basePath, [
     _nameProblem(entity, name),
-    isDuplicate
-        ? (
-            kind: ValidationIssueKind.duplicateName,
-            message: 'Duplicate $entity name: "$name"',
-          )
-        : null,
+    isDuplicate ? _duplicateProblem(entity, name) : null,
     extraRule?.call(name),
   ]);
   return issues;
 }
+
+_Problem _duplicateProblem(String entity, String name) => (
+  kind: ValidationIssueKind.duplicateName,
+  message: 'Duplicate $entity name: "$name"',
+);
 
 /// Every non-null problem in [problems], as issues sharing one [path].
 void _addProblems(
@@ -346,6 +398,7 @@ List<ValidationIssue> _checkRecipe(
   Set<String> knownIngredients,
   List<Object> basePath, {
   required Set<String> knownTags,
+  required Set<String> knownUnits,
 }) {
   final issues = _checkTagReferences(
     recipe.tags,
@@ -376,6 +429,12 @@ List<ValidationIssue> _checkRecipe(
             : (
                 kind: ValidationIssueKind.unknownIngredient,
                 message: 'Unknown ingredient: "${line.ingredient}"',
+              ),
+        knownUnits.contains(nameKey(line.unit))
+            ? null
+            : (
+                kind: ValidationIssueKind.unknownUnit,
+                message: 'Unknown unit: "${line.unit}"',
               ),
         line.amount.min <= 0
             ? (
