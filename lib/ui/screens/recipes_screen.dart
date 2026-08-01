@@ -76,6 +76,13 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
         onAdd: (query) async => await _openForm(initialName: query) != null,
         noun: 'recipe',
         plural: 'recipes',
+        orders: {
+          // A recipe the pass has yet to judge ranks with the missing ones,
+          // where a card drawing no chip belongs.
+          'Availability': (recipe) =>
+              (availability[recipe.name] ?? Availability.missing).index,
+          ...alphabetical,
+        },
         empty: const EmptyState(
           icon: Icons.local_bar_outlined,
           title: 'No recipes yet',

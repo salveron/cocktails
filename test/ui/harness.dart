@@ -233,15 +233,39 @@ Future<void> back(WidgetTester tester) async {
   await tester.pumpAndSettle();
 }
 
-/// Types [query] into the list's pinned search field.
-Future<void> search(WidgetTester tester, String query) async {
-  await tester.enterText(
-    find.descendant(
-      of: find.byType(SearchField),
-      matching: find.byType(TextField),
-    ),
-    query,
+/// Opens the orders the list can be read in, or shuts them again.
+Future<void> openSort(WidgetTester tester) =>
+    tap(tester, find.byTooltip('Sort'));
+
+/// Reads the list by [order] — picking the one already in force turns it round.
+/// The row has to be open, so this opens it and leaves it that way.
+Future<void> sortBy(WidgetTester tester, String order) async {
+  if (!tester.any(find.byType(FilterChip))) await openSort(tester);
+  await tap(tester, find.widgetWithText(FilterChip, order));
+}
+
+/// Which order the chips say is in force, and whether it is read backwards.
+/// The bangs hold because a chosen chip always wears a label and an arrow —
+/// a null here is the defect, and it reports as one.
+(String, bool) sortedBy(WidgetTester tester) {
+  final chosen = tester
+      .widgetList<FilterChip>(find.byType(FilterChip))
+      .firstWhere((chip) => chip.selected);
+  return (
+    (chosen.label as Text).data!,
+    (chosen.avatar! as Icon).icon == Icons.arrow_upward,
   );
+}
+
+/// The list's own pinned field, told apart from any field a dialog opens.
+final searchBox = find.descendant(
+  of: find.byType(SearchField),
+  matching: find.byType(TextField),
+);
+
+/// Types [query] into it.
+Future<void> search(WidgetTester tester, String query) async {
+  await tester.enterText(searchBox, query);
   await tester.pumpAndSettle();
 }
 

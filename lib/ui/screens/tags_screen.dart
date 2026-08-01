@@ -97,6 +97,7 @@ class _TagTab extends ConsumerWidget {
     onAdd: (query) => _add(context, ref, query),
     noun: vocabulary.noun,
     plural: vocabulary.plural,
+    orders: {...alphabetical, 'Colour': (tag) => tag.color.index},
     empty: EmptyState(
       icon: Icons.label_outline,
       title: 'No ${vocabulary.plural} yet',

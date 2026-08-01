@@ -28,6 +28,10 @@ final taggedModel = Model(
   ],
 );
 
+/// Three bottles over two levels, so an order and its reverse read differently
+/// and the tie between the two empty ones shows the A→Z under both.
+final orderedModel = fixtureModel.withIngredient(Ingredient('absinthe'));
+
 Future<MemoryModelStore> pumpInventory(WidgetTester tester, [Model? model]) =>
     pumpOver(tester, const InventoryScreen(), model ?? taggedModel);
 
@@ -45,11 +49,11 @@ void main() {
       expect(find.byTooltip('Add ingredient'), findsOneWidget);
     });
 
-    testWidgets('lists every ingredient alphabetically with its stock', (
+    testWidgets('opens on what is in stock, each bottle with its level', (
       tester,
     ) async {
       await pumpInventory(tester, fixtureModel);
-      expect(rowTexts(tester), ['campari', 'Out', 'gin', 'In stock']);
+      expect(rowTexts(tester), ['gin', 'In stock', 'campari', 'Out']);
     });
 
     testWidgets('each chip wears the traffic light its level means', (
@@ -83,7 +87,7 @@ void main() {
       for (final expected in ['Low', 'Out', 'In stock']) {
         await tester.tap(find.text('gin'));
         await tester.pumpAndSettle();
-        expect(rowTexts(tester), ['campari', 'Out', 'gin', expected]);
+        expect(rowTexts(tester), ['gin', expected, 'campari', 'Out']);
       }
       expect(store.saved?.ingredientNamed('gin')?.stock, StockLevel.in_);
       expect(store.saveCount, 3);
@@ -119,7 +123,7 @@ void main() {
       await search(tester, 'camp');
       await tester.tap(find.byTooltip('Clear'));
       await tester.pumpAndSettle();
-      expect(rowTexts(tester), ['campari', 'Out', 'gin', 'In stock']);
+      expect(rowTexts(tester), ['gin', 'In stock', 'campari', 'Out']);
     });
 
     testWidgets('names the query when nothing matches, keeping the field', (
@@ -140,12 +144,12 @@ void main() {
       await tap(tester, find.text('Save'));
 
       expect(rowTexts(tester), [
+        'gin',
+        'In stock',
         'absinthe',
         'Out',
         'campari',
         'Out',
-        'gin',
-        'In stock',
       ]);
       expect(store.saved?.ingredientNamed('absinthe')?.stock, StockLevel.out);
     });
@@ -160,12 +164,12 @@ void main() {
       await tap(tester, find.text('Save'));
 
       expect(rowTexts(tester), [
+        'gin',
+        'In stock',
         'absinthe',
         'Out',
         'campari',
         'Out',
-        'gin',
-        'In stock',
       ]);
     });
 
@@ -189,7 +193,7 @@ void main() {
       await type(tester, 'sloe gin');
       await tap(tester, find.text('Save'));
 
-      expect(rowTexts(tester), ['campari', 'Out', 'sloe gin', 'In stock']);
+      expect(rowTexts(tester), ['sloe gin', 'In stock', 'campari', 'Out']);
       expect(
         store.saved?.recipeNamed('Negroni')?.lines.first.ingredient,
         'sloe gin',
@@ -205,7 +209,7 @@ void main() {
       expect(find.text('Cannot delete "gin"'), findsOneWidget);
       expect(find.text('• Negroni'), findsOneWidget);
       await tap(tester, find.text('Close'));
-      expect(rowTexts(tester), ['campari', 'Out', 'gin', 'In stock']);
+      expect(rowTexts(tester), ['gin', 'In stock', 'campari', 'Out']);
       expect(store.saveCount, 0);
     });
 
@@ -220,8 +224,100 @@ void main() {
 
       expect(find.text('Delete "absinthe"?'), findsOneWidget);
       await tap(tester, find.text('Delete'));
-      expect(rowTexts(tester), ['campari', 'Out', 'gin', 'In stock']);
+      expect(rowTexts(tester), ['gin', 'In stock', 'campari', 'Out']);
       expect(store.saved?.ingredientNamed('absinthe'), isNull);
+    });
+  });
+
+  group('inventory order', () {
+    testWidgets('the orders keep out of sight until they are asked for', (
+      tester,
+    ) async {
+      await pumpInventory(tester, fixtureModel);
+      expect(find.byType(FilterChip), findsNothing);
+
+      await openSort(tester);
+      expect(find.widgetWithText(FilterChip, 'Stock'), findsOneWidget);
+      expect(find.widgetWithText(FilterChip, 'Name'), findsOneWidget);
+
+      // Put away, the order they settled still stands.
+      await openSort(tester);
+      expect(find.byType(FilterChip), findsNothing);
+      expect(namesOn(tester), ['gin', 'campari']);
+    });
+
+    testWidgets('it opens on stock, the full bottles first', (tester) async {
+      await pumpInventory(tester, orderedModel);
+      await openSort(tester);
+      expect(sortedBy(tester), ('Stock', false));
+      expect(namesOn(tester), ['gin', 'absinthe', 'campari']);
+    });
+
+    testWidgets('name reads them A→Z whatever is left in them', (tester) async {
+      await pumpInventory(tester, orderedModel);
+      await sortBy(tester, 'Name');
+      expect(namesOn(tester), ['absinthe', 'campari', 'gin']);
+    });
+
+    testWidgets('picking the order in force turns the whole list round', (
+      tester,
+    ) async {
+      await pumpInventory(tester, orderedModel);
+      await sortBy(tester, 'Stock');
+      expect(sortedBy(tester), ('Stock', true));
+      // The A→Z between the two empty ones turns round with everything else.
+      expect(namesOn(tester), ['campari', 'absinthe', 'gin']);
+    });
+
+    testWidgets('another order starts the way round it is written', (
+      tester,
+    ) async {
+      await pumpInventory(tester, orderedModel);
+      await sortBy(tester, 'Stock');
+      await sortBy(tester, 'Name');
+      expect(sortedBy(tester), ('Name', false));
+      expect(namesOn(tester), ['absinthe', 'campari', 'gin']);
+    });
+
+    testWidgets('a bottle stays put while the taps empty it', (tester) async {
+      await pumpInventory(tester, orderedModel);
+      // gin leads on stock; emptying it would send it past both were the list
+      // to re-place itself under the finger doing it (FR-INV-2).
+      await tap(tester, find.text('gin'));
+      await tap(tester, find.text('gin'));
+      expect(namesOn(tester), ['gin', 'absinthe', 'campari']);
+    });
+
+    testWidgets('the rows fall back into order once the list changes', (
+      tester,
+    ) async {
+      await pumpInventory(tester, orderedModel);
+      await tap(tester, find.text('gin'));
+      await tap(tester, find.text('gin'));
+
+      // Narrowing changes the rows on show, so the search re-places them —
+      // and clearing it places gin where it now belongs, among the empties.
+      await search(tester, 'a');
+      expect(namesOn(tester), ['absinthe', 'campari']);
+      await search(tester, '');
+      expect(namesOn(tester), ['absinthe', 'campari', 'gin']);
+    });
+
+    testWidgets('the orders open under the search, above the legend', (
+      tester,
+    ) async {
+      await pumpInventory(tester);
+      await openSort(tester);
+      final orders = tester.getTopLeft(find.byType(FilterChip).first).dy;
+      expect(orders, greaterThan(tester.getBottomLeft(searchBox).dy));
+      expect(orders, lessThan(tester.getTopLeft(find.byType(TagChoices)).dy));
+    });
+
+    testWidgets('reading a list another way writes nothing', (tester) async {
+      final store = await pumpInventory(tester, orderedModel);
+      await sortBy(tester, 'Name');
+      await sortBy(tester, 'Name');
+      expect(store.saveCount, 0);
     });
   });
 
@@ -358,8 +454,8 @@ void main() {
       await type(tester, 'absinthe');
       await tap(tester, find.text('Save'));
       expect(namesOn(tester), [
-        'absinthe',
         'gin',
+        'absinthe',
         'lemon juice',
         'orgeat',
         'sugar syrup',

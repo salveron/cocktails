@@ -30,12 +30,26 @@ and the recipe list (FR-DIS-2) cannot drift apart. The query is the field's own
 `TextEditingController`, owned by the screen; the combinable filters of FR-DIS-3 are a
 separate concern and get their own provider.
 
+The orders a list can be read in sit behind one icon beside that field: it opens a row of chips
+under the search — the orders offered, the one in force wearing which way it is read — and shuts
+it again without disturbing what it settled (FR-DIS-8). Picking the one in force turns the whole
+list round, tie-break included, so Z→A and "missing first" cost no chips of their own. Every
+order breaks ties on the name, which is what makes A→Z the order where every entry ranks alike;
+ranks come off the domain's own enums, whose declaration order is already the traffic light and
+the palette. A list is re-placed only where the rows on show change — added, deleted, renamed,
+searched, filtered — or another order is picked: an edit never moves a row under the finger
+making it. The cost is a list left standing out of its order after a change made elsewhere — the
+recipes after a restock — until something touches it. The choice is the screen's, like the
+filters beside it, and is not carried between runs.
+
 ## Vocabulary editing
 
 The inventory, the two tag tabs and the recipe list are one widget, `VocabularyList`: the
-pinned search, the A→Z sort, the three faces, the add button, and the query the "nothing
-matches" face hands to it. A screen supplies only what a row shows and what its tap does — the stock chip and one tap
-per bottle on the inventory, the tag itself and its edit dialog on a tag tab. Three lists that
+pinned search, the orders it reads in ([above](#searchable-lists)), the three faces, the add
+button, and the query the "nothing matches" face hands to it. A screen supplies only what a row
+shows, what its tap does, and what its rows rank by — the stock chip, one tap
+per bottle and the stock order on the inventory, the tag itself, its edit dialog and the palette
+order on a tag tab. Three lists that
 behave alike because they are the same list. A screen with something else to narrow by hands
 over a filter as one piece — the row drawn under the search, the test an entry must pass, and
 what it is narrowing by — so the list can name it in the face it shows when nothing is left.
@@ -90,7 +104,8 @@ instead of dialog.
   traffic light — one idiom on both list screens, colour never decoded alone. No count on "Missing": 
   fixed widths keep the column calm and every name cut at the same place; the count is one tap away, 
   where the lines are marked anyway. Trailing slot sits outside the body that opens, so the verdict 
-  stays put while the card is open.
+  stays put while the card is open. The list opens in that verdict's own order, ready first 
+  (FR-DIS-8) — the chip is the sort key on show, which is why no other legend is needed.
 - **Line marks as dots, only where there is something to say** (FR-DIS-1): a [stock dot](#tag-and-stock-colours) 
   after a line whose bottle is low or out, level in its tooltip; an in-stock line carries none, so no 
   dot *is* "in stock". Words would not fit beside a line that already ends in "(base)". Optional lines 
@@ -137,8 +152,9 @@ Top to bottom mirrors card and file (name, lines, tags, notes, FR-REC-1..5).
 
 ## Inventory screen
 
-- **Flat A→Z**: one row per ingredient on filled card (tinted, rounded; mass separation not ruled). 
-  Nothing re-sorts on tap (row stable mid-restock).
+- **Opens on stock, fullest first** (FR-DIS-8; A→Z the other order offered): one row per ingredient 
+  on filled card (tinted, rounded; mass separation not ruled). Nothing re-sorts on tap whichever 
+  order is in force (row stable mid-restock, [above](#searchable-lists)).
 - **Stock chip traffic light** (green in, amber low, red out; words too; no hue decode). Fixed 
   hues not scheme roles (amber seed: `primaryContainer` brown, `tertiaryContainer` green; collided).
 - **Row tap advances stock one step** (`in → low → out → in`; real transition = one tap, FR-INV-2; 
@@ -163,7 +179,8 @@ Behind Settings, not bottom bar (vocab arranged once, used from referencing scre
 - **Tab per vocab** (Recipe, Ingredient) in screen app bar. Peers (nothing to say each other, 
   FR-VOC-4); tabs keep both one tap away (vs. stacking one scroll where boundary explained).
 - **Tag drawn as own chip** (name on colour at full strength). Colour judging = seeing it; this screen 
-  is where chosen.
+  is where chosen. Opens A→Z — a vocabulary is read as a legend — with the palette's own order the 
+  other offered (FR-DIS-8), which puts the tags sharing a hue side by side while one is picked.
 - **Row tap opens edit dialog** (no other action for tag row, unlike inventory row's stock tap). ⋮ 
   carries Edit beside Delete (menu never only way in). Name and colour settle together and reach the 
   model as one edit — the rename that carries the tag into everything wearing it included — so one 

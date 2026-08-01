@@ -15,12 +15,16 @@ final today = DateTime(2026, 7, 30);
 Future<MemoryModelStore> pumpRecipes(WidgetTester tester, [Model? model]) =>
     pumpOver(tester, const RecipesScreen(), model ?? recipeModel, today: today);
 
-/// The recipe names on screen, in list order.
-Iterable<String?> namesOn(WidgetTester tester) =>
-    rowTexts(tester).where(names.contains);
+/// The recipe names on screen, in list order — [roster] naming which model's,
+/// so a summary line is never mistaken for a row.
+Iterable<String?> namesOn(WidgetTester tester, [List<String> roster = names]) =>
+    rowTexts(tester).where(roster.contains);
 
 /// The three verdicts at once (FR-DIS-1), and an optional line the verdict
-/// passes over though the card still marks it.
+/// passes over though the card still marks it. Its A→Z runs against its
+/// availability, so the two orders can never be read for each other.
+const stocked = ['Campari Shot', 'Gin Shot', 'Negroni'];
+
 final stockedModel = Model(
   ingredients: [
     Ingredient('gin', stock: StockLevel.in_),
@@ -131,7 +135,9 @@ void main() {
       expect(find.text('No recipes yet'), findsOneWidget);
     });
 
-    testWidgets('reads A to Z whatever order the file keeps', (tester) async {
+    testWidgets('reads A to Z where nothing tells them apart', (tester) async {
+      // Every bottle is out, so every verdict is the same and the tie-break
+      // is the whole order, whatever order the file keeps.
       await pumpRecipes(tester);
       expect(namesOn(tester), names);
     });
@@ -178,6 +184,29 @@ void main() {
       expect(find.text('Boulevardier'), findsOneWidget);
       // The card it opened is still the card it opens: the notes are showing.
       expect(find.text('Stir over ice.'), findsOneWidget);
+    });
+  });
+
+  group('recipe order', () {
+    testWidgets('it opens on availability, what is ready first', (
+      tester,
+    ) async {
+      await pumpRecipes(tester, stockedModel);
+      await openSort(tester);
+      expect(sortedBy(tester), ('Availability', false));
+      expect(namesOn(tester, stocked), ['Gin Shot', 'Campari Shot', 'Negroni']);
+    });
+
+    testWidgets('name puts them back A→Z', (tester) async {
+      await pumpRecipes(tester, stockedModel);
+      await sortBy(tester, 'Name');
+      expect(namesOn(tester, stocked), stocked);
+    });
+
+    testWidgets('turned round, what is missing leads', (tester) async {
+      await pumpRecipes(tester, stockedModel);
+      await sortBy(tester, 'Availability');
+      expect(namesOn(tester, stocked), ['Negroni', 'Campari Shot', 'Gin Shot']);
     });
   });
 

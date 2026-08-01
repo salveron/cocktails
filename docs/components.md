@@ -51,7 +51,7 @@ lib/
                                #   color_chip — the pill, chip, dot and dotted name
                                #   tag_choices — the row tags are picked from
                                #   vocabulary_list — the searchable list all four screens are,
-                               #     plus byName and Set.toggle
+                               #     plus the orders it reads in, byName and Set.toggle
                                #   vocabulary_dialogs — entry (name, colour, tags), delete,
                                #     plus fieldError, the rule the recipe form shares
 test/                          # mirrors lib/, plus test/architecture_test.dart

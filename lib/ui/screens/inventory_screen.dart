@@ -39,6 +39,10 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
       onAdd: (query) => _add(model, vocabulary, query),
       noun: 'ingredient',
       plural: 'ingredients',
+      orders: {
+        'Stock': (ingredient) => ingredient.stock.index,
+        ...alphabetical,
+      },
       filter: vocabulary.isEmpty
           ? null
           : (

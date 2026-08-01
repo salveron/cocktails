@@ -67,6 +67,12 @@ empty so no reference to it can mean two things.
 - **FR-DIS-6** Shopping optimizer: budget **N** (select 1–3); evaluates combos of ≤N out-of-stock 
   ingredients; reports recipes becoming can-make per combo (ranked by count). Zero-yield hidden.
 - **FR-DIS-7** Optimizer lists running-low ingredients as restock reminders.
+- **FR-DIS-8** Every list — recipes, inventory, both tag vocabularies — can be read in more than
+  one order: by name, and by the signal its rows carry (availability, stock level, tag colour).
+  Picking the order in force reads the list backwards, so "missing first" and Z→A need no entries
+  of their own. Recipes open on availability and the inventory on stock, both tag vocabularies on
+  name; the choice is not kept between runs. Rows keep their places while one of them is edited,
+  so a bottle never moves under the tap that changed it (FR-INV-2).
 
 ### Settings
 

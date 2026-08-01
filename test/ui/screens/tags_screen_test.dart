@@ -53,6 +53,19 @@ void main() {
       expect(rowTexts(tester), ['citrus', 'homemade']);
     });
 
+    testWidgets('a vocabulary opens A→Z and can be read by colour', (
+      tester,
+    ) async {
+      await pumpTags(tester);
+      await openSort(tester);
+      expect(sortedBy(tester), ('Name', false));
+      expect(rowTexts(tester), ['classic', 'sour']);
+
+      // The palette's own order, which teal leads and rose does not.
+      await sortBy(tester, 'Colour');
+      expect(rowTexts(tester), ['sour', 'classic']);
+    });
+
     testWidgets('every tag is lettered on the colour it carries', (
       tester,
     ) async {

@@ -104,6 +104,15 @@ First usable slice; recipes reference both vocabularies, so this precedes Phase 
       the recipe, the file and the global setting stand untouched. `formatRecipeLine` splits
       into the two halves both paths now compose, so ×1 in parts is the canonical line again.
 
+- [x] **M17a Sorting** — every list reads in more than one order (FR-DIS-8): the recipes by
+      availability, the inventory by stock, both tag vocabularies by colour, each against the
+      A→Z that is also every order's tie-break. `VocabularyList` takes them as a label → rank
+      map, first the one the list opens in, and picking the one in force turns the whole list
+      round — so "missing first" and Z→A need no chips of their own. One icon beside the search
+      opens the chips and shuts them again; the order it settled stands either way. A list is
+      re-placed only where the rows on show change or another order is picked, so a bottle never
+      moves under the tap emptying it. Screen state, like the filters — nothing reaches the file.
+
 ## Phase 3 — Discovery
 
 - [ ] **M18 Filters** — by tags, ingredients, availability; combinable (FR-DIS-3).
