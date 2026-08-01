@@ -71,12 +71,21 @@ instead of dialog.
   order, name in tooltip; plus ingredient names recipe order, dot-separated, ellipsized; what-goes-in 
   glance, amounts one tap deeper). Optional ingredients unlabelled.
 - **Full card**: tags as chips, ingredient lines exactly as `formatRecipeLine` writes ("1.5 part gin 
-  (base)"; card reads like file, marks carry own words). Then notes, then the made row. Empty sections 
-  absent — the made row never is, since it carries the button.
+  (base)"; card reads like file, marks carry own words) until asked to read them otherwise (scaling 
+  below). Then notes, then the made row. Empty sections absent — the made row never is, since it 
+  carries the button.
 - **Vocab actions from inventory**: add via list button, edit/delete behind per-row ⋮ (tap spent on 
   expansion; menu pairs with availability chip). Add/edit push [recipe form](#recipe-form); delete 
   confirms (nothing references recipe). Card open on rename stays open under new name (expansion = entry, 
-  not name). M17: scaling by lines. M18: filter row under search (tag legend).
+  not name). M18: filter row under search (tag legend).
+- **Scale & convert behind the ⋮, on an open card only** (FR-REC-7): one dialog settles the factor 
+  (×1–×4) and the unit part-based lines read in (FR-SET-1 for this card alone, opening on the global 
+  default), Cancel/Apply like every other dialog — ×1 in parts is the way back, so it needs no reset 
+  of its own. A closed card is not offered it: there are no amounts on show to transform.
+- **The card carries no control, only the news**: the name row gains "(×2, ml)" beside the name, dot 
+  idiom, and each line's measure turns italic — the one part of a line that is then not what the 
+  recipe says. Reading is not editing: nothing reaches the model, the file, or the global toggle, and 
+  the reading dies with the card like the Undo beside it (both let go in one place).
 - **Availability chip left of the ⋮** (FR-DIS-1): "Ready", "Low", "Missing" in the inventory's own 
   traffic light — one idiom on both list screens, colour never decoded alone. No count on "Missing": 
   fixed widths keep the column calm and every name cut at the same place; the count is one tap away, 

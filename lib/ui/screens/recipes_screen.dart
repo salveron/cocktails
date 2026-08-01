@@ -12,6 +12,22 @@ import '../widgets/vocabulary_dialogs.dart';
 import '../widgets/vocabulary_list.dart';
 import 'recipe_form_screen.dart';
 
+/// A card's reading of its own amounts: the factor it multiplies them by
+/// (FR-REC-7) and the unit part-based ones show in (FR-SET-1, this card only).
+/// Display alone — nothing here reaches the model or the file.
+typedef _AmountView = ({int scale, DisplayUnit unit});
+
+const _asWritten = (scale: 1, unit: DisplayUnit.part);
+
+/// What the name row adds while a card is reading its amounts otherwise.
+String? _viewNote(_AmountView view) {
+  final notes = [
+    if (view.scale != 1) '×${view.scale}',
+    if (view.unit != _asWritten.unit) view.unit.token,
+  ];
+  return notes.isEmpty ? null : '(${notes.join(', ')})';
+}
+
 /// Every recipe as a card that expands in place — the compact two lines, or
 /// the full view: tags, lines, notes, made-history (FR-DIS-2) — and the
 /// recipes themselves: add and edit through the pushed form, delete behind
@@ -32,10 +48,20 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
   /// answer — never made — so membership is the test, never the value.
   final _undo = <String, MadeHistory?>{};
 
+  /// How an open card is reading its amounts (FR-REC-7), absent while it reads
+  /// them as written. Kept beside the undo and let go with it: both are a way
+  /// of looking at one card, and neither outlives it.
+  final _views = <String, _AmountView>{};
+
   void _toggle(String name) => setState(() {
     _expanded.toggle(name);
-    if (!_expanded.contains(name)) _undo.remove(name);
+    if (!_expanded.contains(name)) _forget(name);
   });
+
+  void _forget(String name) {
+    _undo.remove(name);
+    _views.remove(name);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -71,12 +97,30 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
     Availability? availability,
   ) {
     final expanded = _expanded.contains(recipe.name);
+    final view = _views[recipe.name] ?? _asWritten;
+    final note = _viewNote(view);
     final summary = [
       for (final line in recipe.lines) line.ingredient,
     ].join(' · ');
     return VocabularyRow(
       title: expanded
-          ? Text(recipe.name)
+          ? Row(
+              children: [
+                Flexible(
+                  child: Text(recipe.name, overflow: TextOverflow.ellipsis),
+                ),
+                if (note != null)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 6),
+                    child: Text(
+                      note,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+              ],
+            )
           : DottedName(recipe.name, vocabulary: vocabulary, worn: recipe.tags),
       subtitle: expanded || summary.isEmpty
           ? null
@@ -86,6 +130,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
               model: model,
               vocabulary: vocabulary,
               recipe: recipe,
+              view: view,
               onMade: () => unawaited(_made(recipe)),
               onReset: () => unawaited(_reset(recipe)),
               onUndo: _undo.containsKey(recipe.name)
@@ -98,6 +143,9 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
         children: [
           if (availability != null) AvailabilityChip(availability),
           RowMenu({
+            // Only where there are amounts to transform: the choice is the
+            // open card's, and dies with it.
+            if (expanded) 'Scale & convert': () => unawaited(_scale(recipe)),
             'Edit': () => unawaited(_edit(recipe)),
             'Delete': () => unawaited(_delete(recipe)),
           }),
@@ -122,7 +170,28 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
     if (saved == null || saved == recipe.name || !mounted) return;
     setState(() {
       if (_expanded.remove(recipe.name)) _expanded.add(saved);
-      _undo.remove(recipe.name);
+      _forget(recipe.name);
+    });
+  }
+
+  /// Reads the open card at another factor, in another unit, or both — for as
+  /// long as it stays open (FR-REC-7). Nothing about the recipe changes, so
+  /// the way back is the reading it was written in.
+  Future<void> _scale(Recipe recipe) async {
+    final chosen = await showDialog<_AmountView>(
+      context: context,
+      builder: (_) => _ScaleDialog(
+        recipe: recipe.name,
+        view: _views[recipe.name] ?? _asWritten,
+      ),
+    );
+    if (chosen == null || !mounted) return;
+    setState(() {
+      if (chosen == _asWritten) {
+        _views.remove(recipe.name);
+      } else {
+        _views[recipe.name] = chosen;
+      }
     });
   }
 
@@ -139,7 +208,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
     if (mounted) {
       setState(() {
         _expanded.remove(recipe.name);
-        _undo.remove(recipe.name);
+        _forget(recipe.name);
       });
     }
   }
@@ -180,16 +249,22 @@ class _Details extends StatelessWidget {
     required this.model,
     required this.vocabulary,
     required this.recipe,
+    required this.view,
     required this.onMade,
     required this.onReset,
     this.onUndo,
   });
 
-  /// Read for the stock behind each line (FR-DIS-1).
+  /// Read for the stock behind each line (FR-DIS-1), and for the ratio one
+  /// part converts at (FR-SET-1).
   final Model model;
 
   final List<Tag> vocabulary;
   final Recipe recipe;
+
+  /// How this card is reading its amounts, [_asWritten] until asked otherwise.
+  final _AmountView view;
+
   final VoidCallback onMade;
   final VoidCallback onReset;
 
@@ -199,6 +274,8 @@ class _Details extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final worn = wornInOrder(vocabulary, recipe.tags);
+    final settings = model.settings.copyWith(display: view.unit);
+    final transformed = view != _asWritten;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -214,8 +291,9 @@ class _Details extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.only(bottom: 4),
             child: _Line(
-              formatRecipeLine(line),
+              displayRecipeLine(line, settings, scale: view.scale),
               stockOf(model, line.ingredient),
+              transformed: transformed,
             ),
           ),
         if (recipe.notes.isNotEmpty) ...[
@@ -237,16 +315,33 @@ class _Details extends StatelessWidget {
 /// One line as the file writes it, followed by a dot when its bottle is low or
 /// out (FR-DIS-1). An optional line is marked too — the dot reports the bottle,
 /// and the line's own "(optional)" says it does not count against the verdict.
+/// A [transformed] card italicises the measure, the only part of the line that
+/// is then not what the recipe says.
 class _Line extends StatelessWidget {
-  const _Line(this.text, this.stock);
+  const _Line(this.line, this.stock, {required this.transformed});
 
-  final String text;
+  final DisplayedLine line;
   final StockLevel stock;
+  final bool transformed;
 
   @override
   Widget build(BuildContext context) => Row(
     children: [
-      Flexible(child: Text(text)),
+      Flexible(
+        child: Text.rich(
+          TextSpan(
+            children: [
+              TextSpan(
+                text: line.measure,
+                style: transformed
+                    ? const TextStyle(fontStyle: FontStyle.italic)
+                    : null,
+              ),
+              TextSpan(text: ' ${line.body}'),
+            ],
+          ),
+        ),
+      ),
       if (stock != StockLevel.in_)
         Padding(
           padding: const EdgeInsets.only(left: 6),
@@ -302,6 +397,94 @@ class _MadeRow extends StatelessWidget {
       ],
     );
   }
+}
+
+/// Both readings settled in one place, applied on Apply and dropped on Cancel
+/// — the card behind stands as it was until then. ×1 in parts is the way back,
+/// so the dialog needs no reset of its own.
+class _ScaleDialog extends StatefulWidget {
+  const _ScaleDialog({required this.recipe, required this.view});
+
+  final String recipe;
+  final _AmountView view;
+
+  @override
+  State<_ScaleDialog> createState() => _ScaleDialogState();
+}
+
+class _ScaleDialogState extends State<_ScaleDialog> {
+  late _AmountView _view = widget.view;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return AlertDialog(
+      scrollable: true,
+      title: const Text('Scale & convert'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        // Full width, so both controls start where the recipe's name does.
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            widget.recipe,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 20),
+          _section(
+            'Amounts',
+            SegmentedButton<int>(
+              segments: [
+                for (final factor in scaleFactors)
+                  ButtonSegment(value: factor, label: Text('×$factor')),
+              ],
+              selected: {_view.scale},
+              showSelectedIcon: false,
+              onSelectionChanged: (picked) => setState(
+                () => _view = (scale: picked.single, unit: _view.unit),
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+          _section(
+            'Show in',
+            SegmentedButton<DisplayUnit>(
+              segments: [
+                for (final unit in DisplayUnit.values)
+                  ButtonSegment(value: unit, label: Text(unit.token)),
+              ],
+              selected: {_view.unit},
+              showSelectedIcon: false,
+              onSelectionChanged: (picked) => setState(
+                () => _view = (scale: _view.scale, unit: picked.single),
+              ),
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(_view),
+          child: const Text('Apply'),
+        ),
+      ],
+    );
+  }
+
+  Widget _section(String label, Widget control) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(label, style: Theme.of(context).textTheme.labelLarge),
+      const SizedBox(height: 8),
+      control,
+    ],
+  );
 }
 
 const _months = [

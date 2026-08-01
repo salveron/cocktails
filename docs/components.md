@@ -21,7 +21,7 @@ lib/
       line_format.dart         # compact-line grammar
       validation.dart          # ValidationIssue + rule set, otherNames
       availability.dart        # Availability, availabilityOf, stockOf
-      scaling.dart             # M17 — ×N scaling, part↔ml display
+      scaling.dart             # ×N scaling, part↔ml display
       discovery.dart           # M13/M18/M19/M20 — search, filter, group, random
       optimizer.dart           # M21
       helpers.dart             # not exported: nameKey, sameName, duplicateNameIndexes,
@@ -211,7 +211,7 @@ String formatAmount(Amount amount);
 String formatNumber(double value);            // canonical number text — amounts, part_ml
 ```
 
-Grammar in [architecture.md](architecture.md#data-format). This file enforces syntax; value rules in validation. The unit is optional and may be plural on the way in; `formatRecipeLine` writes the fullest form, so the codec and the cards read one shape whatever was typed.
+Grammar in [architecture.md](architecture.md#data-format). This file enforces syntax; value rules in validation. The unit is optional and may be plural on the way in; `formatRecipeLine` writes the fullest form, so the codec and the cards read one shape whatever was typed. It composes two halves — `formatMeasure`, `formatLineBody` — layer-visible and out of the barrel, so the display transforms build a line from the same pieces rather than a second spelling of it.
 
 ### Validation
 
@@ -259,6 +259,17 @@ entry's name (rename never collides with itself). All four run same rules, same 
 Named now; implemented in milestones. All pure functions of `Model`. Algorithms in 
 [architecture.md](architecture.md#domain-computations). `groupByBaseSpirit` reads base-marked lines, 
 keys ungrouped tail with `null`. `randomCanMake` takes `Random` for testability.
+
+```dart
+const scaleFactors = [1, 2, 3, 4];                    // what a recipe view offers (FR-REC-7)
+typedef DisplayedLine = ({String measure, String body});
+DisplayedLine displayRecipeLine(RecipeLine line, Settings settings, {int scale = 1});
+```
+
+`displayRecipeLine` is how a card reads a line (FR-REC-7, FR-SET-1), split where the transform 
+stops so the measure can be marked as the card's own rather than the recipe's. A caller wanting a 
+unit the settings do not hold passes `settings.copyWith(display: …)` — the reading is the settings 
+that card is under, not a second notion of one.
 
 (See components.md line-by-line for signatures — formatted for readability in source)
 

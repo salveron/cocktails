@@ -100,10 +100,17 @@ RecipeLine parseRecipeLine(String line) {
 }
 
 /// Canonical form: single spaces, the [formatAmount] amount text.
-String formatRecipeLine(RecipeLine line) {
+String formatRecipeLine(RecipeLine line) =>
+    '${formatMeasure(line.amount, line.unit)} ${formatLineBody(line)}';
+
+/// The halves a line reads in, split where a display transform stops
+/// (scaling.dart): how much of it, and of what.
+String formatMeasure(Amount amount, Unit unit) =>
+    '${formatAmount(amount)} ${unit.token}';
+
+String formatLineBody(RecipeLine line) {
   final mark = line.mark;
-  return '${formatAmount(line.amount)} ${line.unit.token} '
-      '${line.ingredient}${mark == null ? '' : _suffix(mark)}';
+  return '${line.ingredient}${mark == null ? '' : _suffix(mark)}';
 }
 
 /// Canonical amount text: whole numbers without a trailing `.0`, ranges as

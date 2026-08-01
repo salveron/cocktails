@@ -32,8 +32,9 @@ Two tag vocabularies separate, so one name may exist in both (different meanings
 - **FR-REC-6** A "made it" action stamps the current date and increments a times-made
   counter; the recipe shows both. The last stamp can be taken back, and the history can be
   reset to never-made — miscounts are correctable, since nothing else can lower the count.
-- **FR-REC-7** The recipe view can scale ingredient amounts ×2/×3/×4 (display only; range
-  ends scale together).
+- **FR-REC-7** The recipe view can scale ingredient amounts ×2/×3/×4, and can read one open
+  recipe on its own in the other display unit, without moving the global toggle (FR-SET-1). Display only:
+  range ends scale together, and the reading is forgotten when the recipe is closed.
 - **FR-REC-8** An ingredient line may be marked as a base spirit of the recipe; the mark can
   be cleared. The two line marks are mutually exclusive — a base line cannot be optional.
 
@@ -70,7 +71,8 @@ empty so no reference to it can mean two things.
 ### Settings
 
 - **FR-SET-1** Global ratio (ml per part). Toggle switches part-based amounts between parts/ml; 
-  other units display as entered.
+  other units display as entered. One open recipe may be read in the other unit (FR-REC-7); the 
+  toggle is where that choice is made for all of them.
 
 ### Data exchange
 

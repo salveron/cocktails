@@ -142,6 +142,12 @@ Rules:
 - **Line parsing**: the compact-line grammar above has a single shared parser/formatter pair
   in the domain layer, used identically by the recipe form and the YAML codec, and covered
   by round-trip unit tests.
+- **Display transforms** (FR-REC-7, FR-SET-1): a factor multiplies every amount, both ends of
+  a range together; a part-based amount converts at `part_ml` where the reading asks for ml,
+  and anything already measured shows as entered. The result is text alone — a display value
+  rounds to two decimals, since multiplying a decimal in binary lands a hair off — computed
+  where a card is drawn and stored nowhere. At ×1 in parts it is the canonical line again, so
+  the display path and the file path cannot disagree.
 
 ## Platform facts
 

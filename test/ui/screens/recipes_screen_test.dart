@@ -87,6 +87,31 @@ StockLevel? dotOnLine(WidgetTester tester, String line) {
   return dots.isEmpty ? null : dots.single.stock;
 }
 
+/// The run of the line reading [line] drawn in italics — empty where the card
+/// is showing the amounts the recipe itself carries.
+String italicOn(WidgetTester tester, String line) {
+  final spans = tester.widget<Text>(find.text(line)).textSpan! as TextSpan;
+  return [
+    for (final span in spans.children!.cast<TextSpan>())
+      if (span.style?.fontStyle == FontStyle.italic) span.text!,
+  ].join();
+}
+
+/// Settles that card's own dialog on [factor] and [unit], leaving whatever it
+/// does not name where the dialog opened it.
+Future<void> scale(
+  WidgetTester tester,
+  String name, {
+  int? factor,
+  String? unit,
+  String button = 'Apply',
+}) async {
+  await chooseOnRow(tester, name, 'Scale & convert');
+  if (factor != null) await tap(tester, find.text('×$factor'));
+  if (unit != null) await tap(tester, find.text(unit));
+  await tap(tester, find.text(button));
+}
+
 final madeButton = find.widgetWithText(FilledButton, 'Made it');
 final undoButton = find.widgetWithText(TextButton, 'Undo');
 
@@ -299,6 +324,141 @@ void main() {
       await search(tester, 'daiq');
       await search(tester, '');
       expect(find.text('1 part campari'), findsOneWidget);
+    });
+  });
+
+  group('scale & convert', () {
+    testWidgets('a closed card has no amounts to read otherwise', (
+      tester,
+    ) async {
+      await pumpRecipes(tester);
+      await tap(tester, rowMenu('Negroni'));
+      expect(find.text('Scale & convert'), findsNothing);
+      expect(find.text('Edit'), findsOneWidget);
+    });
+
+    testWidgets('the factor multiplies every line (FR-REC-7)', (tester) async {
+      await pumpRecipes(tester);
+      await tap(tester, find.text('Negroni'));
+      await scale(tester, 'Negroni', factor: 2);
+
+      expect(find.text('2 part gin (base)'), findsOneWidget);
+      expect(find.text('2 part campari'), findsOneWidget);
+      expect(find.text('2 part sweet vermouth'), findsOneWidget);
+    });
+
+    testWidgets('a range scales at both ends', (tester) async {
+      await pumpRecipes(tester);
+      await tap(tester, find.text('Daiquiri'));
+      await scale(tester, 'Daiquiri', factor: 3);
+      expect(find.text('4.5-6 part white rum (base)'), findsOneWidget);
+    });
+
+    testWidgets('ml converts parts and leaves the rest as entered', (
+      tester,
+    ) async {
+      await pumpRecipes(tester);
+      await tap(tester, find.text('Whiskey Sour'));
+      await scale(tester, 'Whiskey Sour', unit: 'ml');
+
+      expect(find.text('60 ml bourbon (base)'), findsOneWidget);
+      expect(find.text('22.5 ml sugar syrup'), findsOneWidget);
+      expect(find.text('1 piece egg white (optional)'), findsOneWidget);
+    });
+
+    testWidgets('the name row says how the card is being read', (tester) async {
+      await pumpRecipes(tester);
+      await tap(tester, find.text('Negroni'));
+      await scale(tester, 'Negroni', factor: 2);
+      expect(find.text('(×2)'), findsOneWidget);
+
+      await scale(tester, 'Negroni', unit: 'ml');
+      expect(find.text('(×2, ml)'), findsOneWidget);
+      expect(find.text('60 ml campari'), findsOneWidget);
+    });
+
+    testWidgets('only the measure is italic, and only when it is not the '
+        'recipe\'s own', (tester) async {
+      await pumpRecipes(tester);
+      await tap(tester, find.text('Negroni'));
+      expect(italicOn(tester, '1 part gin (base)'), isEmpty);
+
+      await scale(tester, 'Negroni', factor: 2);
+      expect(italicOn(tester, '2 part gin (base)'), '2 part');
+    });
+
+    testWidgets('a low bottle is still marked on a scaled line', (
+      tester,
+    ) async {
+      await pumpRecipes(tester, stockedModel);
+      await tap(tester, find.text('Negroni'));
+      await scale(tester, 'Negroni', factor: 2);
+      expect(dotOnLine(tester, '2 part campari'), StockLevel.low);
+    });
+
+    testWidgets('cancelled, the card stands as it was', (tester) async {
+      await pumpRecipes(tester);
+      await tap(tester, find.text('Negroni'));
+      await scale(tester, 'Negroni', factor: 4, button: 'Cancel');
+
+      expect(find.text('1 part gin (base)'), findsOneWidget);
+      expect(find.textContaining('×'), findsNothing);
+    });
+
+    testWidgets('as written is the way back', (tester) async {
+      await pumpRecipes(tester);
+      await tap(tester, find.text('Negroni'));
+      await scale(tester, 'Negroni', factor: 3, unit: 'ml');
+      await scale(tester, 'Negroni', factor: 1, unit: 'part');
+
+      expect(find.text('1 part gin (base)'), findsOneWidget);
+      expect(find.textContaining('×'), findsNothing);
+    });
+
+    testWidgets('the dialog opens where the card stands', (tester) async {
+      await pumpRecipes(tester);
+      await tap(tester, find.text('Negroni'));
+      await scale(tester, 'Negroni', factor: 2);
+      await chooseOnRow(tester, 'Negroni', 'Scale & convert');
+
+      final chosen = tester.widget<SegmentedButton<int>>(
+        find.byType(SegmentedButton<int>),
+      );
+      expect(chosen.selected, {2});
+    });
+
+    testWidgets('one card reading otherwise leaves the others alone', (
+      tester,
+    ) async {
+      await pumpRecipes(tester);
+      await tap(tester, find.text('Negroni'));
+      await tap(tester, find.text('Daiquiri'));
+      await scale(tester, 'Negroni', factor: 2);
+
+      expect(find.text('2 part campari'), findsOneWidget);
+      expect(find.text('1.5-2 part white rum (base)'), findsOneWidget);
+    });
+
+    testWidgets('closing the card forgets how it was read', (tester) async {
+      await pumpRecipes(tester);
+      await tap(tester, find.text('Negroni'));
+      await scale(tester, 'Negroni', factor: 2);
+      await tap(tester, find.text('Negroni'));
+      await tap(tester, find.text('Negroni'));
+
+      expect(find.text('1 part gin (base)'), findsOneWidget);
+      expect(find.textContaining('×'), findsNothing);
+    });
+
+    testWidgets('nothing about the recipe changes (display only)', (
+      tester,
+    ) async {
+      final store = await pumpRecipes(tester);
+      await tap(tester, find.text('Negroni'));
+      await scale(tester, 'Negroni', factor: 4, unit: 'ml');
+
+      expect(find.text('120 ml gin (base)'), findsOneWidget);
+      expect(store.saveCount, 0);
     });
   });
 

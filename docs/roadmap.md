@@ -96,8 +96,13 @@ First usable slice; recipes reference both vocabularies, so this precedes Phase 
       writer still emits the full singular form; the form keeps one empty line rather than two,
       opens notes one line tall, and the theme dims every hint so a placeholder never reads as
       content.
-- [ ] **M17 Scaling & unit display** — ×2/3/4 scaling and part↔ml display conversion in
-      the recipe view (FR-REC-7; display half of FR-SET-1).
+- [x] **M17 Scaling & unit display** — `displayRecipeLine` over a line, a factor and the
+      settings: every amount multiplies, both ends of a range together, and a part-based one
+      converts at `part_ml` where the reading asks for ml (FR-REC-7; display half of FR-SET-1).
+      Behind the recipe card's ⋮, one dialog settles both for that card alone and for as long
+      as it stays open — the name row says "(×2, ml)", each line's measure turns italic, and
+      the recipe, the file and the global setting stand untouched. `formatRecipeLine` splits
+      into the two halves both paths now compose, so ×1 in parts is the canonical line again.
 
 ## Phase 3 — Discovery
 
