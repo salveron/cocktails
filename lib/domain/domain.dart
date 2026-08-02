@@ -4,7 +4,6 @@ library;
 export 'src/availability.dart';
 export 'src/model.dart';
 export 'src/model_edits.dart';
-export 'src/line_format.dart'
-    hide reservedSuffixes, formatMeasure, formatLineBody;
+export 'src/line_format.dart' hide reservedSuffixes, formatMeasure;
 export 'src/scaling.dart';
 export 'src/validation.dart';

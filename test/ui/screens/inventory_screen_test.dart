@@ -195,7 +195,7 @@ void main() {
 
       expect(rowTexts(tester), ['sloe gin', 'In stock', 'campari', 'Out']);
       expect(
-        store.saved?.recipeNamed('Negroni')?.lines.first.ingredient,
+        store.saved?.recipeNamed('Negroni')?.lines.first.ingredients.single,
         'sloe gin',
       );
       // One entry, one save: a rename must not spend two backup rotations.
@@ -321,7 +321,9 @@ void main() {
           recipes: [
             Recipe(
               'Gin Fizz',
-              lines: const [RecipeLine(Amount(2), 'part', 'jenever')],
+              lines: const [
+                RecipeLine(Amount(2), 'part', ['jenever']),
+              ],
             ),
           ],
         ),

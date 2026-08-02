@@ -10,9 +10,9 @@ void main() {
     ],
   );
 
-  const gin = RecipeLine(Amount(1), 'part', 'gin');
-  const campari = RecipeLine(Amount(1), 'part', 'campari');
-  const vermouth = RecipeLine(Amount(1), 'part', 'sweet vermouth');
+  const gin = RecipeLine(Amount(1), 'part', ['gin']);
+  const campari = RecipeLine(Amount(1), 'part', ['campari']);
+  const vermouth = RecipeLine(Amount(1), 'part', ['sweet vermouth']);
 
   Availability of(List<RecipeLine> lines) =>
       availabilityOf(bar, Recipe('Negroni', lines: lines));
@@ -33,7 +33,9 @@ void main() {
     test('a base line counts like any other required one', () {
       expect(
         of(const [
-          RecipeLine(Amount(1), 'part', 'sweet vermouth', mark: LineMark.base),
+          RecipeLine(Amount(1), 'part', [
+            'sweet vermouth',
+          ], mark: LineMark.base),
         ]),
         Availability.missing,
       );
@@ -43,13 +45,10 @@ void main() {
       expect(
         of(const [
           gin,
-          RecipeLine(
-            Amount(1),
-            'part',
+          RecipeLine(Amount(1), 'part', [
             'sweet vermouth',
-            mark: LineMark.optional,
-          ),
-          RecipeLine(Amount(1), 'part', 'campari', mark: LineMark.optional),
+          ], mark: LineMark.optional),
+          RecipeLine(Amount(1), 'part', ['campari'], mark: LineMark.optional),
         ]),
         Availability.makeable,
       );
@@ -57,8 +56,76 @@ void main() {
 
     test('a bottle the vocabulary does not hold reads as out', () {
       expect(
-        of(const [RecipeLine(Amount(1), 'part', 'rye')]),
+        of(const [
+          RecipeLine(Amount(1), 'part', ['rye']),
+        ]),
         Availability.missing,
+      );
+    });
+  });
+
+  group('stockOfLine (ADR 11)', () {
+    StockLevel stockOf3(List<String> ingredients) =>
+        stockOfLine(bar, RecipeLine(const Amount(1), 'part', ingredients));
+
+    test('one bottle on hand makes the line, whatever it stands beside', () {
+      expect(stockOf3(['sweet vermouth', 'gin']), StockLevel.in_);
+      expect(stockOf3(['gin', 'sweet vermouth']), StockLevel.in_);
+    });
+
+    test('the best of what is left carries it', () {
+      expect(stockOf3(['sweet vermouth', 'campari']), StockLevel.low);
+    });
+
+    test('a group with nothing on hand is out', () {
+      expect(stockOf3(['sweet vermouth', 'rye']), StockLevel.out);
+    });
+
+    test('one bottle answers as it always did', () {
+      expect(stockOf3(['campari']), StockLevel.low);
+    });
+  });
+
+  group('availabilityOf over groups (ADR 11)', () {
+    test('a group with one bottle on hand makes the recipe', () {
+      expect(
+        of(const [
+          gin,
+          RecipeLine(Amount(1), 'part', ['sweet vermouth', 'campari']),
+        ]),
+        Availability.makeableLow,
+      );
+    });
+
+    test('what would have been missing is makeable through the choice', () {
+      expect(
+        of(const [
+          RecipeLine(Amount(1), 'part', ['sweet vermouth', 'gin']),
+        ]),
+        Availability.makeable,
+      );
+    });
+
+    test('a group short of every bottle is still missing', () {
+      expect(
+        of(const [
+          gin,
+          RecipeLine(Amount(1), 'part', ['sweet vermouth', 'rye']),
+        ]),
+        Availability.missing,
+      );
+    });
+
+    test('an optional group counts for nothing either', () {
+      expect(
+        of(const [
+          gin,
+          RecipeLine(Amount(1), 'part', [
+            'sweet vermouth',
+            'rye',
+          ], mark: LineMark.optional),
+        ]),
+        Availability.makeable,
       );
     });
   });

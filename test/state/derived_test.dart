@@ -14,11 +14,16 @@ void main() {
       Recipe(
         'Negroni',
         lines: const [
-          RecipeLine(Amount(1), 'part', 'gin'),
-          RecipeLine(Amount(1), 'part', 'campari'),
+          RecipeLine(Amount(1), 'part', ['gin']),
+          RecipeLine(Amount(1), 'part', ['campari']),
         ],
       ),
-      Recipe('Gin Shot', lines: const [RecipeLine(Amount(1), 'part', 'gin')]),
+      Recipe(
+        'Gin Shot',
+        lines: const [
+          RecipeLine(Amount(1), 'part', ['gin']),
+        ],
+      ),
     ],
   );
 

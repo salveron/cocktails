@@ -13,59 +13,53 @@ void main() {
     test('parses a single-amount line', () {
       expect(
         parseRecipeLine('0.75 part lemon juice', units),
-        const RecipeLine(Amount(0.75), 'part', 'lemon juice'),
+        const RecipeLine(Amount(0.75), 'part', ['lemon juice']),
       );
     });
 
     test('parses an integer amount', () {
       expect(
         parseRecipeLine('2 oz gin', units),
-        const RecipeLine(Amount(2), 'oz', 'gin'),
+        const RecipeLine(Amount(2), 'oz', ['gin']),
       );
     });
 
     test('parses a range amount', () {
       expect(
         parseRecipeLine('1.5-2 part bourbon', units),
-        const RecipeLine(Amount.range(1.5, 2), 'part', 'bourbon'),
+        const RecipeLine(Amount.range(1.5, 2), 'part', ['bourbon']),
       );
     });
 
     test('strips the (optional) suffix', () {
       expect(
         parseRecipeLine('0.5 part egg white (optional)', units),
-        const RecipeLine(
-          Amount(0.5),
-          'part',
+        const RecipeLine(Amount(0.5), 'part', [
           'egg white',
-          mark: LineMark.optional,
-        ),
+        ], mark: LineMark.optional),
       );
     });
 
     test('strips the (base) suffix', () {
       expect(
         parseRecipeLine('1.5 part bourbon (base)', units),
-        const RecipeLine(Amount(1.5), 'part', 'bourbon', mark: LineMark.base),
+        const RecipeLine(Amount(1.5), 'part', ['bourbon'], mark: LineMark.base),
       );
     });
 
     test('without the leading space, (optional) stays in the name', () {
       expect(
         parseRecipeLine('1 part gin(optional)', units),
-        const RecipeLine(Amount(1), 'part', 'gin(optional)'),
+        const RecipeLine(Amount(1), 'part', ['gin(optional)']),
       );
     });
 
     test('two suffixes cannot combine: only the last one is the mark', () {
       expect(
         parseRecipeLine('1 part gin (base) (optional)', units),
-        const RecipeLine(
-          Amount(1),
-          'part',
+        const RecipeLine(Amount(1), 'part', [
           'gin (base)',
-          mark: LineMark.optional,
-        ),
+        ], mark: LineMark.optional),
       );
     });
 
@@ -78,7 +72,7 @@ void main() {
     test('tolerates surrounding and repeated whitespace', () {
       expect(
         parseRecipeLine('  1.5   part   bourbon  ', units),
-        const RecipeLine(Amount(1.5), 'part', 'bourbon'),
+        const RecipeLine(Amount(1.5), 'part', ['bourbon']),
       );
     });
 
@@ -121,27 +115,24 @@ void main() {
     test('a line with no unit is measured in parts', () {
       expect(
         parseRecipeLine('1 gin', units),
-        const RecipeLine(Amount(1), 'part', 'gin'),
+        const RecipeLine(Amount(1), 'part', ['gin']),
       );
       expect(
         parseRecipeLine('0.75 lemon juice', units),
-        const RecipeLine(Amount(0.75), 'part', 'lemon juice'),
+        const RecipeLine(Amount(0.75), 'part', ['lemon juice']),
       );
       expect(
         parseRecipeLine('1.5-2 bourbon (base)', units),
-        const RecipeLine(
-          Amount.range(1.5, 2),
-          'part',
+        const RecipeLine(Amount.range(1.5, 2), 'part', [
           'bourbon',
-          mark: LineMark.base,
-        ),
+        ], mark: LineMark.base),
       );
     });
 
     test('a word that is no unit belongs to the ingredient name', () {
       expect(
         parseRecipeLine('1.5 cup sugar', units),
-        const RecipeLine(Amount(1.5), 'part', 'cup sugar'),
+        const RecipeLine(Amount(1.5), 'part', ['cup sugar']),
       );
     });
 
@@ -149,11 +140,11 @@ void main() {
       const tsp = Unit('tsp');
       expect(
         parseRecipeLine('1.5 tsp sugar', units),
-        const RecipeLine(Amount(1.5), 'part', 'tsp sugar'),
+        const RecipeLine(Amount(1.5), 'part', ['tsp sugar']),
       );
       expect(
         parseRecipeLine('1.5 tsp sugar', const [...units, tsp]),
-        const RecipeLine(Amount(1.5), 'tsp', 'sugar'),
+        const RecipeLine(Amount(1.5), 'tsp', ['sugar']),
       );
     });
 
@@ -197,6 +188,100 @@ void main() {
     });
   });
 
+  group('substitution groups (ADR 11)', () {
+    test('a slash names alternatives, any one of which makes the line', () {
+      expect(
+        parseRecipeLine('1 part cognac / vodka', units),
+        const RecipeLine(Amount(1), 'part', ['cognac', 'vodka']),
+      );
+    });
+
+    test('the spaces around it are optional', () {
+      for (final line in [
+        '1 part cognac/vodka',
+        '1 part cognac /vodka',
+        '1 part cognac  /  vodka',
+      ]) {
+        expect(
+          parseRecipeLine(line, units),
+          const RecipeLine(Amount(1), 'part', ['cognac', 'vodka']),
+        );
+      }
+    });
+
+    test('there may be more than two', () {
+      expect(
+        parseRecipeLine('1 part cognac / brandy / armagnac', units),
+        const RecipeLine(Amount(1), 'part', ['cognac', 'brandy', 'armagnac']),
+      );
+    });
+
+    test('the mark is taken off first, so it governs the whole group', () {
+      expect(
+        parseRecipeLine('2 parts rye / bourbon (base)', units),
+        const RecipeLine(Amount(2), 'part', [
+          'rye',
+          'bourbon',
+        ], mark: LineMark.base),
+      );
+    });
+
+    test('one amount and one unit measure the group', () {
+      expect(
+        parseRecipeLine('2 oz lemon juice / lime juice', units),
+        const RecipeLine(Amount(2), 'oz', ['lemon juice', 'lime juice']),
+      );
+    });
+
+    test('an omitted unit still reads as parts', () {
+      expect(
+        parseRecipeLine('1 cognac/vodka', units),
+        const RecipeLine(Amount(1), 'part', ['cognac', 'vodka']),
+      );
+    });
+
+    test('a name is wanted either side of the slash', () {
+      for (final line in ['1 part cognac /', '1 part / vodka', '1 part /']) {
+        expect(
+          tryParseRecipeLine(line, units).problem,
+          'Expected an ingredient either side of "/": "$line"',
+        );
+        expect(tryParseRecipeLine(line, units).line, isNull);
+      }
+    });
+
+    test('a slash before the mark is no mark at all', () {
+      expect(
+        parseRecipeLine('1 part cognac (base) / vodka', units),
+        const RecipeLine(Amount(1), 'part', ['cognac (base)', 'vodka']),
+      );
+    });
+
+    test('a second amount is a name nothing answers to, not a measure', () {
+      expect(
+        parseRecipeLine('1 part cognac / 2 parts vodka', units),
+        const RecipeLine(Amount(1), 'part', ['cognac', '2 parts vodka']),
+      );
+    });
+
+    test('it writes back spaced, whichever way it was typed', () {
+      expect(
+        formatRecipeLine(parseRecipeLine('1 cognac/vodka', units), units),
+        '1 part cognac / vodka',
+      );
+    });
+
+    test('a group survives parse then format, and format then parse', () {
+      const line = '1.5-2 parts rye / bourbon / cognac (base)';
+      expect(formatRecipeLine(parseRecipeLine(line, units), units), line);
+      const parsed = RecipeLine(Amount(0.5), 'dash', [
+        'absinthe',
+        'pastis',
+      ], mark: LineMark.optional);
+      expect(parseRecipeLine(formatRecipeLine(parsed, units), units), parsed);
+    });
+  });
+
   group('tryParseRecipeLine', () {
     test('never throws, valid or not', () {
       const lines = [
@@ -220,7 +305,7 @@ void main() {
       expect(parsed.problem, isNull);
       expect(
         parsed.line,
-        const RecipeLine(Amount(0.75), 'part', 'lemon juice'),
+        const RecipeLine(Amount(0.75), 'part', ['lemon juice']),
       );
     });
 
@@ -229,12 +314,9 @@ void main() {
       expect(parsed.problem, isNull);
       expect(
         parsed.line,
-        const RecipeLine(
-          Amount(0.5),
-          'part',
+        const RecipeLine(Amount(0.5), 'part', [
           'egg white',
-          mark: LineMark.optional,
-        ),
+        ], mark: LineMark.optional),
       );
     });
 
@@ -291,7 +373,7 @@ void main() {
     test('formats a single amount', () {
       expect(
         formatRecipeLine(
-          const RecipeLine(Amount(0.75), 'part', 'lemon juice'),
+          const RecipeLine(Amount(0.75), 'part', ['lemon juice']),
           units,
         ),
         '0.75 parts lemon juice',
@@ -300,7 +382,7 @@ void main() {
 
     test('drops the trailing .0 from whole numbers', () {
       expect(
-        formatRecipeLine(const RecipeLine(Amount(2), 'oz', 'gin'), units),
+        formatRecipeLine(const RecipeLine(Amount(2), 'oz', ['gin']), units),
         '2 oz gin',
       );
     });
@@ -308,7 +390,7 @@ void main() {
     test('formats a range', () {
       expect(
         formatRecipeLine(
-          const RecipeLine(Amount.range(1.5, 2), 'part', 'bourbon'),
+          const RecipeLine(Amount.range(1.5, 2), 'part', ['bourbon']),
           units,
         ),
         '1.5-2 parts bourbon',
@@ -318,12 +400,9 @@ void main() {
     test('appends the (optional) suffix', () {
       expect(
         formatRecipeLine(
-          const RecipeLine(
-            Amount(0.5),
-            'part',
+          const RecipeLine(Amount(0.5), 'part', [
             'egg white',
-            mark: LineMark.optional,
-          ),
+          ], mark: LineMark.optional),
           units,
         ),
         '0.5 parts egg white (optional)',
@@ -333,7 +412,9 @@ void main() {
     test('appends the (base) suffix', () {
       expect(
         formatRecipeLine(
-          const RecipeLine(Amount(1.5), 'part', 'bourbon', mark: LineMark.base),
+          const RecipeLine(Amount(1.5), 'part', [
+            'bourbon',
+          ], mark: LineMark.base),
           units,
         ),
         '1.5 parts bourbon (base)',
@@ -343,7 +424,7 @@ void main() {
     test('the plural reads for anything but exactly one', () {
       const written = [...units, leaf];
       String measure(Amount amount) => formatRecipeLine(
-        RecipeLine(amount, 'leaf', 'mint'),
+        RecipeLine(amount, 'leaf', ['mint']),
         written,
       ).split(' mint').first;
       expect(measure(const Amount(1)), '1 leaf');
@@ -355,14 +436,14 @@ void main() {
 
     test('a unit reading like its name pluralises to itself', () {
       expect(
-        formatRecipeLine(const RecipeLine(Amount(2), 'ml', 'gin'), units),
+        formatRecipeLine(const RecipeLine(Amount(2), 'ml', ['gin']), units),
         '2 ml gin',
       );
     });
 
     test('a unit the vocabulary has lost prints as written', () {
       expect(
-        formatRecipeLine(const RecipeLine(Amount(2), 'cube', 'sugar'), units),
+        formatRecipeLine(const RecipeLine(Amount(2), 'cube', ['sugar']), units),
         '2 cube sugar',
       );
     });
@@ -401,13 +482,13 @@ void main() {
 
     test('lines survive format then parse', () {
       const lines = [
-        RecipeLine(Amount(2), 'oz', 'gin'),
-        RecipeLine(Amount(0.75), 'part', 'lemon juice'),
-        RecipeLine(Amount.range(1.5, 2), 'part', 'bourbon'),
-        RecipeLine(Amount(0.5), 'part', 'egg white', mark: LineMark.optional),
-        RecipeLine(Amount(2), 'oz', 'rye whiskey', mark: LineMark.base),
-        RecipeLine(Amount(1), 'drop', 'saline solution'),
-        RecipeLine(Amount(3), 'drop', 'saline solution'),
+        RecipeLine(Amount(2), 'oz', ['gin']),
+        RecipeLine(Amount(0.75), 'part', ['lemon juice']),
+        RecipeLine(Amount.range(1.5, 2), 'part', ['bourbon']),
+        RecipeLine(Amount(0.5), 'part', ['egg white'], mark: LineMark.optional),
+        RecipeLine(Amount(2), 'oz', ['rye whiskey'], mark: LineMark.base),
+        RecipeLine(Amount(1), 'drop', ['saline solution']),
+        RecipeLine(Amount(3), 'drop', ['saline solution']),
       ];
       for (final line in lines) {
         expect(

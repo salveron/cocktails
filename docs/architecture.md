@@ -58,6 +58,7 @@ units:                                 # yours to manage (ADR 09)
 ingredients:
   - {name: bourbon, stock: in, aliases: [bourbon whiskey]}  # also answers to (ADR 10)
   - {name: lemon juice, stock: low, tags: [citrus]}
+  - {name: lime juice, tags: [citrus]}
   - {name: rich demerara syrup, tags: [syrup, homemade]}   # stock omitted = out
   - {name: egg white, stock: in}                           # untagged
 
@@ -75,7 +76,7 @@ recipes:
     tags: [sour, classic]
     lines:
       - 1.5-2 parts bourbon (base)
-      - 0.75 parts lemon juice
+      - 0.75 parts lemon juice / lime juice   # either one makes it (ADR 11)
       - 0.5 parts rich demerara syrup
       - 0.5 parts egg white (optional)
     notes: dry shake, then shake with ice
@@ -99,6 +100,10 @@ Rules:
   never both ([ADR 06](adr/06-base-spirit-on-the-line.md)). Amount: decimal or range `a-b`. 
   Unit: optional, resolves against vocabulary (name or plural), omitted = `part` (FR-REC-2). 
   Writer emits singular for 1, plural otherwise. Accepts input plurals. Unknown units reported.
+- Alternatives on a line: `/`-separated, spaces optional on input, written back as ` / ` 
+  ([ADR 11](adr/11-substitutions-on-the-line.md), FR-REC-9). Split is lexical — after the unit, 
+  after the mark — so one amount, unit and mark govern the group and no reading depends on the 
+  vocabulary. `/` barred from every ingredient spelling; a name repeated on one line reported.
 - `made`: ISO date `YYYY-MM-DD` and count. Absent = never made.
 - References must resolve to matching vocabulary; names unique within kind ([ADR 08](adr/08-names-ignore-case.md)). 
   Spelling preserved.
@@ -116,7 +121,8 @@ Rules:
 ## Domain computations
 
 - **Availability** (required lines only): all `in` = makeable; none `out` but some `low` = makeable-low; 
-  any `out` = missing. Derived provider, never stored. Lost bottles read as `out`.
+  any `out` = missing. A line stands at its best-stocked alternative (`stockOfLine`, FR-REC-9). 
+  Derived provider, never stored. Lost bottles read as `out`.
 - **Optimizer** (FR-DIS-6): collect `out` ingredients from each missing recipe; keep sets ≤ N. 
   Score candidate purchases by recipes becoming can-make. Zero-yield dropped.
 - **Line parsing**: shared parser/formatter, both routes (form, codec); takes unit vocabulary 

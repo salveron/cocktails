@@ -24,7 +24,7 @@ Compatible but out of scope (see [requirements.md](requirements.md#out-of-pilot-
 
 - Guest access publishing.
 - PC/desktop app.
-- Formalized preparation, dedicated glassware/garnish fields, photos, substitutions.
+- Formalized preparation, dedicated glassware/garnish fields, photos.
 
 ## Constraints
 

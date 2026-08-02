@@ -11,7 +11,7 @@ Availability availabilityOf(Model model, Recipe recipe) {
   var low = false;
   for (final line in recipe.lines) {
     if (line.isOptional) continue;
-    switch (stockOf(model, line.ingredient)) {
+    switch (stockOfLine(model, line)) {
       case StockLevel.out:
         return Availability.missing;
       case StockLevel.low:
@@ -22,6 +22,16 @@ Availability availabilityOf(Model model, Recipe recipe) {
   }
   return low ? Availability.makeableLow : Availability.makeable;
 }
+
+/// What a line stands at: its best-stocked alternative, since any one of them
+/// makes it (ADR-11). Declaration order runs best to worst, and a line naming
+/// nothing is out — the worst is where the fold starts, so no line can crash
+/// the pass that judges every recipe.
+StockLevel stockOfLine(Model model, RecipeLine line) =>
+    line.ingredients.fold(StockLevel.out, (best, ingredient) {
+      final stock = stockOf(model, ingredient);
+      return stock.index < best.index ? stock : best;
+    });
 
 /// Stock of name outside vocabulary; used mid-edit only.
 StockLevel stockOf(Model model, String ingredient) =>

@@ -21,7 +21,7 @@ lib/
       model_edits.dart         # extension ModelEdits on Model — pure derivations
       line_format.dart         # compact-line grammar
       validation.dart          # ValidationIssue + rule set, otherNames
-      availability.dart        # Availability, availabilityOf, stockOf
+      availability.dart        # Availability, availabilityOf, stockOfLine, stockOf
       scaling.dart             # ×N scaling, part↔ml display
       discovery.dart           # M19/M20 — group, random
       optimizer.dart           # M21
@@ -103,7 +103,7 @@ immutable `final class` values with structural equality. Collections wrapped `Li
 Two identity conventions:
 
 - **Vocabulary entries are entities; references are names.** `Model.ingredients` holds 
-  `Ingredient` values; `RecipeLine.ingredient`, `Recipe.tags`, `Ingredient.tags` hold `String` names. 
+  `Ingredient` values; `RecipeLine.ingredients`, `Recipe.tags`, `Ingredient.tags` hold `String` names. 
   No surrogate IDs — rename is a mutation rewriting references ([architecture.md](architecture.md#system-overview)).
 - **One name however it is capitalised** ([ADR 08](adr/08-names-ignore-case.md)). Every comparison — 
   uniqueness, lookup, reference resolution, delete blocking, rename — goes through `nameKey`; the 
@@ -150,6 +150,11 @@ enum TagColor { teal('teal'), … slate('slate'); … }        // ADR 07, open t
 `RecipeLine.mark` holds that one `LineMark?`, so a base line can never also be optional
 (FR-REC-8); `isBase` and `isOptional` are getters over it, and `marked(LineMark?)` is what
 sets and clears it — `copyWith` cannot, since null is its "keep what you have".
+
+**A line names one or more bottles** ([ADR 11](adr/11-substitutions-on-the-line.md)).
+`RecipeLine.ingredients` is a never-empty `List<String>` with no singular accessor, so every reader
+decides for itself what a group means rather than quietly taking the first. It is the one entity
+list left unwrapped: `List.unmodifiable` would cost the `const` constructor the grammar leans on.
 
 `Model` answers reference questions directly, so no consumer builds its own name index:
 
@@ -248,11 +253,12 @@ typedef ParsedLine = ({RecipeLine? line, String? problem});
 ParsedLine tryParseRecipeLine(String text, List<Unit> units);   // never throws — form, codec
 RecipeLine parseRecipeLine(String text, List<Unit> units);      // throws — built on tryParse
 String formatRecipeLine(RecipeLine line, List<Unit> units);     // canonical form
+String lineMarkSuffix(LineMark? mark);        // ' (base)' / ' (optional)' / '' — cards too
 String formatAmount(Amount amount);
 String formatNumber(double value);            // canonical number text — amounts, part_ml
 ```
 
-Grammar in [architecture.md](architecture.md#data-format). This file enforces syntax; value rules in validation. Both halves take the vocabulary (ADR 09): it decides what counts as a unit and how an amount is spelled, and the line stores the unit's own name whichever spelling was typed. The unit is optional and may be plural on the way in; `formatRecipeLine` writes the canonical form, so the codec and the cards read one shape whatever was typed. It composes two halves — `formatMeasure`, `formatLineBody` — layer-visible and out of the barrel, so the display transforms build a line from the same pieces rather than a second spelling of it.
+Grammar in [architecture.md](architecture.md#data-format). This file enforces syntax; value rules in validation. Both halves take the vocabulary (ADR 09): it decides what counts as a unit and how an amount is spelled, and the line stores the unit's own name whichever spelling was typed. The unit is optional and may be plural on the way in; `formatRecipeLine` writes the canonical form for the file and the form alike. Alternatives split on `/` ([ADR 11](adr/11-substitutions-on-the-line.md)), lexically and after the mark, so the group is never resolved here. `formatMeasure` stays public in `src/` and out of the barrel — the display transform builds its measure from that same piece rather than a second spelling of it; the body is private, since a card writes its own from `ingredients` and `lineMarkSuffix`, in prose rather than in the file's separator.
 
 ### Validation
 
@@ -261,9 +267,10 @@ Contract and rationale: [ADR 05](adr/05-validation-contract.md).
 ```dart
 enum ValidationIssueKind {
   emptyName, whitespaceInName, lineBreakInName, commaInAlias, duplicateName,
-  reservedSuffix,
+  reservedSuffix, separatorInName,                     // grammar's own text, ADR 06/11
   partMlNotPositive, missingUnit, unknownUnit, unknownIngredient, unknownTag,
-  duplicateTag, amountNotPositive, rangeOutOfOrder, noRequiredLine, timesBelowOne,
+  duplicateTag, duplicateAlternative,                  // ADR 11
+  amountNotPositive, rangeOutOfOrder, noRequiredLine, timesBelowOne,
   unsupportedFormat, malformedLine, malformedValue,    // raised by the codec (M6)
 }
 
@@ -306,15 +313,14 @@ keys ungrouped tail with `null`. `randomCanMake` takes `Random` for testability.
 
 ```dart
 const scaleFactors = [1, 2, 3, 4];                    // what a recipe view offers (FR-REC-7)
-typedef DisplayedLine = ({String measure, String body});
-DisplayedLine displayRecipeLine(RecipeLine line, Settings settings, List<Unit> units,
-    {int scale = 1});
+String displayMeasure(RecipeLine line, Settings settings, List<Unit> units, {int scale = 1});
 ```
 
-`displayRecipeLine` is how a card reads a line (FR-REC-7, FR-SET-1), split where the transform 
-stops so the measure can be marked as the card's own rather than the recipe's. A caller wanting a 
-unit the settings do not hold passes `settings.copyWith(display: …)` — the reading is the settings 
-that card is under, not a second notion of one.
+`displayMeasure` is how a card reads a line's amounts (FR-REC-7, FR-SET-1). The measure is the only 
+half that transforms, so it is the only half returned — and marking it as the card's own rather than 
+the recipe's is what the split was for. The card writes the body itself, one alternative at a time 
+(ADR 11). A caller wanting a unit the settings do not hold passes `settings.copyWith(display: …)` — 
+the reading is the settings that card is under, not a second notion of one.
 
 (See components.md line-by-line for signatures — formatted for readability in source)
 
@@ -379,8 +385,9 @@ Everything else is derived, read-only:
 
 `availabilityProvider` — `Map<String, Availability>` by recipe name, `availabilityOf` over every 
 recipe on each model change; empty until the load lands. One pass serves the list's chips and, later, 
-the availability filter, the random pick and the optimizer. Per-line marks read `stockOf` directly 
-(the map answers per recipe, the card asks per bottle).
+the availability filter, the random pick and the optimizer. Per-line marks read `stockOfLine` 
+directly (the map answers per recipe, the card asks per line), and `stockOf` per bottle beneath it — 
+so a card dims the alternatives it lacks against the same rule the verdict was reached by (ADR 11).
 
 Filter, search and order are presentation: widget state where the list is drawn, never persisted and 
 never a provider — nothing model-derived reads them, so there is nothing to invalidate. A consumer 

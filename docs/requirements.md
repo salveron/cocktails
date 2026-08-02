@@ -6,13 +6,13 @@ Single-user mobile app (Android); no accounts, sharing. Direction: [vision.md](v
 
 | Concept | Definition |
 |---|---|
-| Ingredient | Generic name ("bourbon", "lemon juice") from user-managed vocabulary (recipes, inventory). Optional ingredient tags. No brands, hierarchy, substitutions. |
+| Ingredient | Generic name ("bourbon", "lemon juice") from user-managed vocabulary (recipes, inventory). Optional ingredient tags. No brands, no hierarchy. Substitution is per line, not per bottle (FR-REC-9). |
 | Base spirit | Spirit recipe is built on — marked on recipe line, not ingredient (bottle is base *in recipe* only, never by itself). Recipe may mark multiple. |
 | Stock level | Per ingredient: **in stock**, **running low**, **out** (default). |
 | Tag | Coloured label from user vocabulary (interest/style/category; replaces Telegram emojis). Two vocabularies: recipe tags, ingredient tags ([ADR 07](adr/07-tag-colour.md)); optional both sides. |
 | Unit | What a line measures in ("part", "dash"), from a user-managed vocabulary carrying a plural each ([ADR 09](adr/09-units-are-a-vocabulary.md)); part and ml are fixed members. |
 | Recipe | Name + lines + tags + notes + made-history (last date, count). |
-| Availability | Per recipe, required lines only: **makeable** (all in), **makeable-low** (none out, ≥1 low), **missing** (≥1 out). First two = **can-make**. |
+| Availability | Per recipe, required lines only: **makeable** (all in), **makeable-low** (none out, ≥1 low), **missing** (≥1 out). A line stands at its best-stocked alternative (FR-REC-9). First two = **can-make**. |
 
 Names unique within kind, ignoring case ([ADR 08](adr/08-names-ignore-case.md)). 
 Ingredient vocabulary covers aliases too (FR-VOC-6): every spelling names one bottle. 
@@ -35,6 +35,10 @@ Two tag vocabularies separate; one name may exist in both (different meanings).
 - **FR-REC-7** Recipe view scales ×2/×3/×4 and reads one open recipe in other unit without 
   global toggle change (FR-SET-1). Display-only; range ends scale together; forgotten on close.
 - **FR-REC-8** Line may mark as base spirit (clearable). Base and optional mutually exclusive.
+- **FR-REC-9** Line may offer alternatives — bottles interchangeable *in that recipe* 
+  ([ADR 11](adr/11-substitutions-on-the-line.md)): one amount, one unit, one mark govern the group. 
+  Any one on hand makes the line; only when all are out is it missing. Cards read them as prose, 
+  dimming what the bar lacks while it holds something.
 
 ### Vocabularies
 
@@ -119,4 +123,4 @@ See [vision.md](vision.md#future-directions):
 - Non-base grouping.
 - Almost-makeable view (missing exactly one ingredient).
 - Glassware/garnish fields, photo per recipe.
-- Substitutions, hierarchy, quantity-level stock.
+- Ingredient hierarchy, quantity-level stock. (Per-line substitution is in: FR-REC-9.)

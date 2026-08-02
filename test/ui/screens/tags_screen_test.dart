@@ -26,7 +26,9 @@ final tagged = Model(
     Recipe(
       'Negroni',
       tags: const ['classic'],
-      lines: const [RecipeLine(Amount(1), 'part', 'gin')],
+      lines: const [
+        RecipeLine(Amount(1), 'part', ['gin']),
+      ],
     ),
   ],
 );

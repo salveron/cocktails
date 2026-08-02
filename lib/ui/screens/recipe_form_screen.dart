@@ -168,7 +168,7 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
     );
     if (blocked) return _reportProblems(issues, entered.fieldOf);
     if (issues.isEmpty) return _commit(entered.recipe, const []);
-    final missing = _missing(entered.recipe, issues);
+    final missing = _missing(model, entered.recipe);
     if (!await _offerToAdd(missing)) {
       if (mounted) _reportProblems(issues, entered.fieldOf);
       return;
@@ -179,11 +179,14 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
     ]);
   }
 
-  /// Unknown ingredient names in line order (deduplicated).
-  List<String> _missing(Recipe recipe, List<ValidationIssue> issues) => {
-    for (final issue in issues)
-      if (issue.path case ['lines', final int line])
-        recipe.lines[line].ingredient,
+  /// Names no bottle answers to, in line order (deduplicated). Asked of the
+  /// vocabulary rather than read back out of the issues: a line may name
+  /// several bottles (ADR 11) and its issues all share one path, so which of
+  /// them is missing is a question about the model, not about the report.
+  static List<String> _missing(Model model, Recipe recipe) => {
+    for (final line in recipe.lines)
+      for (final ingredient in line.ingredients)
+        if (model.ingredientNamed(ingredient) == null) ingredient,
   }.toList();
 
   /// Line issues under their field; unplaceable issues in snackbar.

@@ -14,12 +14,14 @@ enum ValidationIssueKind {
   commaInAlias,
   duplicateName,
   reservedSuffix,
+  separatorInName,
   partMlNotPositive,
   missingUnit,
   unknownUnit,
   unknownIngredient,
   unknownTag,
   duplicateTag,
+  duplicateAlternative,
   amountNotPositive,
   rangeOutOfOrder,
   noRequiredLine,
@@ -102,7 +104,7 @@ List<ValidationIssue> validateModel({
     'ingredient',
     ingredients.map((i) => i.name).toList(),
     namespace: knownIngredients,
-    extraRule: (name) => _reservedSuffixProblem('name', name),
+    extraRule: (name) => _reservedTextProblem('name', name),
     entryIssues: (i) => [
       ..._checkAliases(ingredients[i].aliases, [
         'ingredients',
@@ -193,7 +195,7 @@ List<ValidationIssue> validateIngredient(
       'ingredient',
       ingredient.name,
       isDuplicate: repeatsName(taken, ingredient.name),
-      extraRule: (name) => _reservedSuffixProblem('name', name),
+      extraRule: (name) => _reservedTextProblem('name', name),
     ),
     ..._checkAliases(ingredient.aliases, const [], taken: taken),
     ..._checkTagReferences(
@@ -291,7 +293,7 @@ List<ValidationIssue> _checkAliases(
         repeatsName(taken, alias)
             ? _duplicateProblem('ingredient', alias)
             : null,
-        _reservedSuffixProblem('alias', alias),
+        _reservedTextProblem('alias', alias),
       ],
     );
   }
@@ -333,8 +335,9 @@ void _addProblems(
   }
 }
 
-/// Mark suffixes are reserved; no bottle spelling may end with one.
-_Problem? _reservedSuffixProblem(String what, String name) {
+/// The grammar's own text is reserved: no bottle spelling may end with a mark
+/// suffix, nor hold the separator that would split it in two (ADR-11).
+_Problem? _reservedTextProblem(String what, String name) {
   for (final suffix in reservedSuffixes) {
     if (name.endsWith(suffix)) {
       return (
@@ -344,7 +347,14 @@ _Problem? _reservedSuffixProblem(String what, String name) {
       );
     }
   }
-  return null;
+  return name.contains(alternativeSeparator)
+      ? (
+          kind: ValidationIssueKind.separatorInName,
+          message:
+              'Ingredient $what holds the reserved '
+              '"$alternativeSeparator" separator: "$name"',
+        )
+      : null;
 }
 
 _Problem? _nameProblem(String entity, String name) {
@@ -425,16 +435,29 @@ List<ValidationIssue> _checkRecipe(
   for (var l = 0; l < recipe.lines.length; l++) {
     final line = recipe.lines[l];
     final amount = formatAmount(line.amount);
+    // Any one alternative makes the line, but each must name a bottle, and
+    // naming one twice is a slip rather than a choice (ADR-11).
+    final repeated = duplicateNameIndexes(line.ingredients).toSet();
     _addProblems(
       issues,
       [...basePath, 'lines', l],
       [
-        knownIngredients.contains(nameKey(line.ingredient))
-            ? null
-            : (
-                kind: ValidationIssueKind.unknownIngredient,
-                message: 'Unknown ingredient: "${line.ingredient}"',
-              ),
+        for (var a = 0; a < line.ingredients.length; a++) ...[
+          knownIngredients.contains(nameKey(line.ingredients[a]))
+              ? null
+              : (
+                  kind: ValidationIssueKind.unknownIngredient,
+                  message: 'Unknown ingredient: "${line.ingredients[a]}"',
+                ),
+          repeated.contains(a)
+              ? (
+                  kind: ValidationIssueKind.duplicateAlternative,
+                  message:
+                      'Duplicate alternative on the line: '
+                      '"${line.ingredients[a]}"',
+                )
+              : null,
+        ],
         knownUnits.contains(nameKey(line.unit))
             ? null
             : (

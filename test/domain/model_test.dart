@@ -285,32 +285,26 @@ void main() {
     RecipeLine build({
       Amount amount = const Amount(0.5),
       String unit = 'part',
-      String ingredient = 'egg white',
+      List<String> ingredients = const ['egg white'],
       LineMark? mark,
-    }) => RecipeLine(amount, unit, ingredient, mark: mark);
+    }) => RecipeLine(amount, unit, ingredients, mark: mark);
 
     test('defaults to unmarked: neither base nor optional', () {
-      const line = RecipeLine(Amount(1.5), 'part', 'bourbon');
+      const line = RecipeLine(Amount(1.5), 'part', ['bourbon']);
       expect(line.mark, isNull);
       expect(line.isBase, isFalse);
       expect(line.isOptional, isFalse);
     });
 
     test('one mark answers both questions', () {
-      const base = RecipeLine(
-        Amount(1.5),
-        'part',
+      const base = RecipeLine(Amount(1.5), 'part', [
         'bourbon',
-        mark: LineMark.base,
-      );
+      ], mark: LineMark.base);
       expect(base.isBase, isTrue);
       expect(base.isOptional, isFalse);
-      const optional = RecipeLine(
-        Amount(0.5),
-        'part',
+      const optional = RecipeLine(Amount(0.5), 'part', [
         'egg white',
-        mark: LineMark.optional,
-      );
+      ], mark: LineMark.optional);
       expect(optional.isBase, isFalse);
       expect(optional.isOptional, isTrue);
     });
@@ -320,48 +314,40 @@ void main() {
       expect(build().hashCode, build().hashCode);
       expect(build(), isNot(build(amount: const Amount(1))));
       expect(build(), isNot(build(unit: 'ml')));
-      expect(build(), isNot(build(ingredient: 'gin')));
+      expect(build(), isNot(build(ingredients: const ['gin'])));
+      expect(build(), isNot(build(ingredients: const ['egg white', 'gin'])));
       expect(build(), isNot(build(mark: LineMark.optional)));
       expect(build(mark: LineMark.base), isNot(build(mark: LineMark.optional)));
     });
 
     test('copyWith replaces one field and carries the rest', () {
-      const line = RecipeLine(
-        Amount(0.5),
-        'part',
+      const line = RecipeLine(Amount(0.5), 'part', [
         'egg white',
-        mark: LineMark.optional,
-      );
+      ], mark: LineMark.optional);
       expect(line.copyWith(), line);
       expect(
         line.copyWith(amount: const Amount(1)),
-        const RecipeLine(
-          Amount(1),
-          'part',
+        const RecipeLine(Amount(1), 'part', [
           'egg white',
-          mark: LineMark.optional,
-        ),
+        ], mark: LineMark.optional),
       );
       expect(
         line.copyWith(unit: 'ml'),
-        const RecipeLine(
-          Amount(0.5),
-          'ml',
+        const RecipeLine(Amount(0.5), 'ml', [
           'egg white',
-          mark: LineMark.optional,
-        ),
+        ], mark: LineMark.optional),
       );
       expect(
-        line.copyWith(ingredient: 'gin'),
-        const RecipeLine(Amount(0.5), 'part', 'gin', mark: LineMark.optional),
+        line.copyWith(ingredients: const ['gin']),
+        const RecipeLine(Amount(0.5), 'part', ['gin'], mark: LineMark.optional),
       );
     });
 
     test('marked sets, replaces and clears the mark', () {
-      const line = RecipeLine(Amount(1.5), 'part', 'bourbon');
+      const line = RecipeLine(Amount(1.5), 'part', ['bourbon']);
       expect(
         line.marked(LineMark.base),
-        const RecipeLine(Amount(1.5), 'part', 'bourbon', mark: LineMark.base),
+        const RecipeLine(Amount(1.5), 'part', ['bourbon'], mark: LineMark.base),
       );
       expect(
         line.marked(LineMark.base).marked(LineMark.optional).mark,
@@ -421,7 +407,7 @@ void main() {
       String name = 'Whiskey Sour',
       List<String> tags = const ['sour'],
       List<RecipeLine> lines = const [
-        RecipeLine(Amount.range(1.5, 2), 'part', 'bourbon'),
+        RecipeLine(Amount.range(1.5, 2), 'part', ['bourbon']),
       ],
       String notes = 'dry shake, then shake with ice',
       int? madeTimes = 12,
@@ -447,7 +433,7 @@ void main() {
       final recipe = Recipe('Whiskey Sour', tags: ['sour']);
       expect(() => recipe.tags.add('classic'), throwsUnsupportedError);
       expect(
-        () => recipe.lines.add(const RecipeLine(Amount(1), 'part', 'gin')),
+        () => recipe.lines.add(const RecipeLine(Amount(1), 'part', ['gin'])),
         throwsUnsupportedError,
       );
     });
@@ -466,7 +452,13 @@ void main() {
       expect(build(), isNot(build(tags: const ['sour', 'classic'])));
       expect(
         build(),
-        isNot(build(lines: const [RecipeLine(Amount(2), 'part', 'bourbon')])),
+        isNot(
+          build(
+            lines: const [
+              RecipeLine(Amount(2), 'part', ['bourbon']),
+            ],
+          ),
+        ),
       );
       expect(build(), isNot(build(notes: 'stirred')));
       expect(build(), isNot(build(madeTimes: 13)));
@@ -482,8 +474,16 @@ void main() {
         build(tags: const ['classic']),
       );
       expect(
-        recipe.copyWith(lines: [const RecipeLine(Amount(2), 'ml', 'rye')]),
-        build(lines: const [RecipeLine(Amount(2), 'ml', 'rye')]),
+        recipe.copyWith(
+          lines: [
+            const RecipeLine(Amount(2), 'ml', ['rye']),
+          ],
+        ),
+        build(
+          lines: const [
+            RecipeLine(Amount(2), 'ml', ['rye']),
+          ],
+        ),
       );
       expect(recipe.copyWith(notes: 'stirred'), build(notes: 'stirred'));
       expect(

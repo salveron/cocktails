@@ -18,8 +18,9 @@ units:
   - {name: dash, plural: dashes}
 
 ingredients:
-  - {name: bourbon, stock: in}
+  - {name: bourbon, stock: in, aliases: [bourbon whiskey]}
   - {name: lemon juice, stock: low, tags: [citrus]}
+  - {name: lime juice, tags: [citrus]}
   - {name: rich demerara syrup, tags: [syrup, homemade]}
   - {name: egg white, stock: in}
 
@@ -37,7 +38,7 @@ recipes:
     tags: [sour, classic]
     lines:
       - 1.5-2 parts bourbon (base)
-      - 0.75 parts lemon juice
+      - 0.75 parts lemon juice / lime juice
       - 0.5 parts rich demerara syrup
       - 0.5 parts egg white (optional)
     notes: dry shake, then shake with ice
@@ -58,8 +59,9 @@ units:                                 # yours to manage (ADR 09)
   - {name: dash, plural: dashes}
 
 ingredients:
-  - {name: bourbon, stock: in}
+  - {name: bourbon, stock: in, aliases: [bourbon whiskey]}  # also answers to (ADR 10)
   - {name: lemon juice, stock: low, tags: [citrus]}
+  - {name: lime juice, tags: [citrus]}
   - {name: rich demerara syrup, tags: [syrup, homemade]}   # stock omitted = out
   - {name: egg white, stock: in}                           # untagged
 
@@ -77,7 +79,7 @@ recipes:
     tags: [sour, classic]
     lines:
       - 1.5-2 parts bourbon (base)
-      - 0.75 parts lemon juice
+      - 0.75 parts lemon juice / lime juice   # either one makes it (ADR 11)
       - 0.5 parts rich demerara syrup
       - 0.5 parts egg white (optional)
     notes: dry shake, then shake with ice
@@ -91,8 +93,13 @@ Model docModel() => Model(
     Unit('dash', plural: 'dashes'),
   ],
   ingredients: [
-    Ingredient('bourbon', stock: StockLevel.in_),
+    Ingredient(
+      'bourbon',
+      stock: StockLevel.in_,
+      aliases: const ['bourbon whiskey'],
+    ),
     Ingredient('lemon juice', stock: StockLevel.low, tags: const ['citrus']),
+    Ingredient('lime juice', tags: const ['citrus']),
     Ingredient('rich demerara syrup', tags: const ['syrup', 'homemade']),
     Ingredient('egg white', stock: StockLevel.in_),
   ],
@@ -110,15 +117,12 @@ Model docModel() => Model(
       'Whiskey Sour',
       tags: const ['sour', 'classic'],
       lines: const [
-        RecipeLine(
-          Amount.range(1.5, 2),
-          'part',
+        RecipeLine(Amount.range(1.5, 2), 'part', [
           'bourbon',
-          mark: LineMark.base,
-        ),
-        RecipeLine(Amount(0.75), 'part', 'lemon juice'),
-        RecipeLine(Amount(0.5), 'part', 'rich demerara syrup'),
-        RecipeLine(Amount(0.5), 'part', 'egg white', mark: LineMark.optional),
+        ], mark: LineMark.base),
+        RecipeLine(Amount(0.75), 'part', ['lemon juice', 'lime juice']),
+        RecipeLine(Amount(0.5), 'part', ['rich demerara syrup']),
+        RecipeLine(Amount(0.5), 'part', ['egg white'], mark: LineMark.optional),
       ],
       notes: 'dry shake, then shake with ice',
       made: MadeHistory(DateTime(2026, 7, 18), 12),
@@ -269,7 +273,9 @@ recipes: []
         recipes: [
           Recipe(
             'gin: a study',
-            lines: const [RecipeLine(Amount(1), 'oz', 'rum # dark')],
+            lines: const [
+              RecipeLine(Amount(1), 'oz', ['rum # dark']),
+            ],
             notes: 'stir.\nstrain — serve "up"',
           ),
         ],
@@ -433,7 +439,7 @@ recipes: []
         '    lines: [2 parts whiskey]\n',
       );
       expect(
-        model.recipeNamed('Old Fashioned')!.lines.single.ingredient,
+        model.recipeNamed('Old Fashioned')!.lines.single.ingredients.single,
         'bourbon',
       );
     });
@@ -1029,21 +1035,21 @@ recipes: []
             'gin: a study',
             tags: const ['no', '1976'],
             lines: const [
-              RecipeLine(Amount(1), 'oz', 'rum # dark'),
-              RecipeLine(
-                Amount.range(1, 2.5),
-                'drop',
+              RecipeLine(Amount(1), 'oz', ['rum # dark']),
+              RecipeLine(Amount.range(1, 2.5), 'drop', [
                 'lime, fresh',
-                mark: LineMark.optional,
-              ),
-              RecipeLine(Amount(0.5), 'barspoon', 'crème de violette'),
+              ], mark: LineMark.optional),
+              RecipeLine(Amount(0.5), 'barspoon', ['crème de violette']),
+              RecipeLine(Amount(2), 'part', ['bourbon', 'rum # dark']),
             ],
             notes: 'stir.\nstrain — serve "up"',
             made: MadeHistory(DateTime(2025, 1, 3), 4),
           ),
           Recipe(
             'Plain',
-            lines: const [RecipeLine(Amount(1), 'part', 'bourbon')],
+            lines: const [
+              RecipeLine(Amount(1), 'part', ['bourbon']),
+            ],
           ),
         ],
       );
@@ -1057,6 +1063,41 @@ recipes: []
       final model = decoded(commentedText);
       expect(codec.encode(model), canonicalText);
       expect(decoded(canonicalText), model);
+    });
+
+    test('a substitution group is written and read back whole (ADR 11)', () {
+      final model = Model(
+        ingredients: [Ingredient('cognac'), Ingredient('vodka')],
+        recipes: [
+          Recipe(
+            'Sidecar',
+            lines: const [
+              RecipeLine(Amount(1), 'part', [
+                'cognac',
+                'vodka',
+              ], mark: LineMark.base),
+            ],
+          ),
+        ],
+      );
+      final text = codec.encode(model);
+      expect(text, contains('      - 1 part cognac / vodka (base)\n'));
+      expect(decoded(text), model);
+      expect(codec.encode(decoded(text)), text);
+    });
+
+    test('a hand-written group normalises its spacing on the rewrite', () {
+      final model = decoded(
+        'format: 1\n'
+        'ingredients:\n'
+        '  - name: cognac\n'
+        '  - name: vodka\n'
+        'recipes:\n'
+        '  - name: Sidecar\n'
+        '    lines:\n'
+        '      - 1 cognac/vodka\n',
+      );
+      expect(codec.encode(model), contains('      - 1 part cognac / vodka\n'));
     });
 
     test('hand-written input normalises on the first rewrite', () {

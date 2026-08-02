@@ -6,16 +6,20 @@ void main() {
     'Whiskey Sour',
     tags: ['sour', 'classic'],
     lines: const [
-      RecipeLine(Amount.range(1.5, 2), 'part', 'bourbon', mark: LineMark.base),
-      RecipeLine(Amount(0.75), 'part', 'lemon juice'),
-      RecipeLine(Amount(0.5), 'part', 'egg white', mark: LineMark.optional),
+      RecipeLine(Amount.range(1.5, 2), 'part', [
+        'bourbon',
+      ], mark: LineMark.base),
+      RecipeLine(Amount(0.75), 'part', ['lemon juice']),
+      RecipeLine(Amount(0.5), 'part', ['egg white'], mark: LineMark.optional),
     ],
     notes: 'dry shake, then shake with ice',
   );
   final negroni = Recipe(
     'Negroni',
     tags: ['classic'],
-    lines: const [RecipeLine(Amount(1), 'part', 'gin')],
+    lines: const [
+      RecipeLine(Amount(1), 'part', ['gin']),
+    ],
   );
   final model = Model(
     settings: const Settings(partMl: 25),
@@ -215,14 +219,14 @@ void main() {
         model,
         'rye',
       ).recipeNamed('Whiskey Sour')?.lines.first;
-      expect(line?.ingredient, 'rye');
+      expect(line?.ingredients.single, 'rye');
       expect(line?.mark, LineMark.base);
     });
 
     test('rewrites optional lines too', () {
       final edited = renamed(model, 'aquafaba', from: 'egg white');
       expect(
-        edited.recipeNamed('Whiskey Sour')?.lines.last.ingredient,
+        edited.recipeNamed('Whiskey Sour')?.lines.last.ingredients.single,
         'aquafaba',
       );
       expect(edited.recipeNamed('Whiskey Sour')?.lines.last.isOptional, isTrue);
@@ -230,6 +234,26 @@ void main() {
 
     test('leaves a recipe that never referenced it untouched', () {
       expect(renamed(model, 'rye').recipeNamed('Negroni'), same(negroni));
+    });
+
+    test('reaches a bottle standing as one alternative of a group', () {
+      final grouped = model.copyWith(
+        recipes: [
+          Recipe(
+            'Sidecar',
+            lines: const [
+              RecipeLine(Amount(1), 'part', ['bourbon', 'gin']),
+            ],
+          ),
+        ],
+      );
+      expect(
+        renamed(
+          grouped,
+          'rye',
+        ).recipeNamed('Sidecar')?.lines.single.ingredients,
+        ['rye', 'gin'],
+      );
     });
 
     test('an unknown name lands the entry all the same', () {
@@ -247,7 +271,7 @@ void main() {
       final edited = renamed(model, 'Bourbon');
       expect(namesOf(edited.ingredients).first, 'Bourbon');
       expect(
-        edited.recipeNamed('Whiskey Sour')?.lines.first.ingredient,
+        edited.recipeNamed('Whiskey Sour')?.lines.first.ingredients.single,
         'Bourbon',
       );
     });
@@ -270,7 +294,10 @@ void main() {
         replacing: 'bourbon',
       );
       expect(edited.ingredientNamed('rye')?.aliases, isEmpty);
-      expect(edited.recipeNamed('Whiskey Sour')?.lines.first.ingredient, 'rye');
+      expect(
+        edited.recipeNamed('Whiskey Sour')?.lines.first.ingredients.single,
+        'rye',
+      );
     });
 
     test('and neither does one taking the old name as an alias', () {
@@ -280,7 +307,7 @@ void main() {
       );
       expect(edited.ingredientNamed('gin')?.name, 'sloe gin');
       expect(
-        edited.recipeNamed('Negroni')?.lines.single.ingredient,
+        edited.recipeNamed('Negroni')?.lines.single.ingredients.single,
         'sloe gin',
       );
     });
@@ -481,14 +508,17 @@ void main() {
     );
 
     List<String> ingredientsOf(Model model, String recipe) => [
-      for (final line in model.recipeNamed(recipe)!.lines) line.ingredient,
+      for (final line in model.recipeNamed(recipe)!.lines)
+        line.ingredients.single,
     ];
 
     Model naming(Model model, String ingredient) => model.copyWith(
       recipes: [
         Recipe(
           'Old Fashioned',
-          lines: [RecipeLine(const Amount(2), 'part', ingredient)],
+          lines: [
+            RecipeLine(const Amount(2), 'part', [ingredient]),
+          ],
         ),
       ],
     );
@@ -514,6 +544,28 @@ void main() {
       expect(unknown.withCanonicalIngredientNames(), same(unknown));
     });
 
+    test('every alternative of a group settles, the rest left alone', () {
+      final grouped = aliased.copyWith(
+        recipes: [
+          Recipe(
+            'Old Fashioned',
+            lines: const [
+              RecipeLine(Amount(2), 'part', ['WHISKEY', 'rye', 'gin']),
+            ],
+          ),
+        ],
+      );
+      expect(
+        grouped
+            .withCanonicalIngredientNames()
+            .recipeNamed('Old Fashioned')!
+            .lines
+            .single
+            .ingredients,
+        ['bourbon', 'rye', 'gin'],
+      );
+    });
+
     test('a model already canonical is the very same model', () {
       final empty = Model();
       expect(model.withCanonicalIngredientNames(), same(model));
@@ -526,12 +578,9 @@ void main() {
             recipes: [
               whiskeySour.copyWith(
                 lines: [
-                  const RecipeLine(
-                    Amount.range(1.5, 2),
-                    'part',
+                  const RecipeLine(Amount.range(1.5, 2), 'part', [
                     'WHISKEY',
-                    mark: LineMark.base,
-                  ),
+                  ], mark: LineMark.base),
                   ...whiskeySour.lines.skip(1),
                 ],
               ),
@@ -547,7 +596,9 @@ void main() {
       final shared = model.withRecipe(
         Recipe(
           'Old Fashioned',
-          lines: const [RecipeLine(Amount(2), 'part', 'bourbon')],
+          lines: const [
+            RecipeLine(Amount(2), 'part', ['bourbon']),
+          ],
         ),
       );
       expect(shared.recipesUsingIngredient('bourbon'), [
@@ -610,11 +661,28 @@ void main() {
         recipes: [
           Recipe(
             'Old Fashioned',
-            lines: const [RecipeLine(Amount(2), 'part', 'whiskey')],
+            lines: const [
+              RecipeLine(Amount(2), 'part', ['whiskey']),
+            ],
           ),
         ],
       );
       expect(byAlias.recipesUsingIngredient('bourbon'), ['Old Fashioned']);
+    });
+
+    test('standing as one alternative still blocks a delete (ADR 11)', () {
+      final grouped = model.copyWith(
+        recipes: [
+          Recipe(
+            'Sidecar',
+            lines: const [
+              RecipeLine(Amount(1), 'part', ['cognac', 'bourbon']),
+            ],
+          ),
+        ],
+      );
+      expect(grouped.recipesUsingIngredient('bourbon'), ['Sidecar']);
+      expect(grouped.recipesUsingIngredient('gin'), isEmpty);
     });
 
     test('each query looks only at its own side', () {

@@ -50,8 +50,8 @@ Successful add clears search. Recipes add pushes [recipe form](#recipe-form).
 
 - **Card in-place expansion** (single tap, NFR-1). Independent, collapse same tap. 
   Two open side-by-side, scroll stable.
-- **Compact**: name + tags (dots, inventory idiom) + ingredient names (dots, ellipsized). 
-  Amounts on expand.
+- **Compact**: name + tags (dots, inventory idiom) + ingredient names (`·`-joined, ellipsized), 
+  a group reading as prose within one slot. Amounts on expand.
 - **Expanded**: tags as chips, lines as `formatRecipeLine` writes, notes, made row. 
   Empty sections absent (except made row carries button).
 - **Edit/delete** behind ⋮ (menu pairs with availability chip). Delete confirms. 
@@ -65,8 +65,12 @@ Successful add clears search. Recipes add pushes [recipe form](#recipe-form).
   dies with card.
 - **Availability chip** (FR-DIS-1): "Ready"/"Low"/"Missing" (traffic light, no count). 
   Trailing slot outside expanding body. List opens in this order (FR-DIS-8).
-- **Line marks**: stock dot after line if bottle low/out (tooltip shows level); no dot = in stock. 
-  Optional lines dotted too (dot + "(optional)" together).
+- **Line marks**: stock dot after line if the line is low/out (tooltip shows level); no dot = in 
+  stock. Optional lines dotted too (dot + "(optional)" together).
+- **Substitution groups** (FR-REC-9, [ADR 11](adr/11-substitutions-on-the-line.md)): read as prose 
+  — "cognac or vodka" — open and shut alike, where the file writes `/`. Bottles the bar lacks dim, 
+  but only while it holds one; a group short of everything dims nothing and takes the dot, so the 
+  dot keeps meaning "this line is the problem". Dot follows the group's best (`stockOfLine`).
 - **Made row**: history text (absent until first stamp), Undo, "Made it" (FR-REC-6). 
   Undo one-deep. Long-press resets to never-made.
 
@@ -74,15 +78,16 @@ Successful add clears search. Recipes add pushes [recipe form](#recipe-form).
 
 Create/edit: pushed page, Save in app bar. Mirrors file order (name, lines, tags, notes).
 
-- **Line fields** (FR-REC-2/3/8): grammar like file ("1.5 part gin (base)"). `tryParseRecipeLine` 
-  on change; problem under field. Forgiving: unit omittable, plural accepted, case/alias resolved. 
-  Form saves as typed; line lands under vocabulary's spelling.
+- **Line fields** (FR-REC-2/3/8/9): grammar like file ("1.5 part gin (base)", "1 part gin / vodka"). 
+  `tryParseRecipeLine` on change; problem under field. Forgiving: unit omittable, plural accepted, 
+  case/alias resolved, `/` spaced or not. Form saves as typed; line lands under vocabulary's 
+  spelling. Fields show `/`, cards show "or" — the form is where a line is re-edited.
 - **Self-growing lines**: empty line at bottom; typing adds next; erasing spare removes it. 
   Empty dropped on save. No drag/delete button.
 - **Save blocked** until name passes live checks and all lines parse. `validateRecipe` checks 
   whole on save. Per-field issues under field; list-level refusals via snackbar.
 - **Unknown ingredients**: if only issue, confirm to add (out, untagged). Aliases resolve first 
-  (no near-duplicates offered).
+  (no near-duplicates offered). A group offers only the alternatives no bottle answers to.
 - **Tags**: chip picker (recipe vocab). **Notes**: multiline field, opens one line tall.
 - **Back**: untouched pops silently; dirty asks to discard. Whole entry → one disk save.
 

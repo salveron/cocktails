@@ -64,7 +64,9 @@ void main() {
         Recipe(
           'Martini',
           tags: const ['classic'],
-          lines: const [RecipeLine(Amount(2), 'part', 'gin')],
+          lines: const [
+            RecipeLine(Amount(2), 'part', ['gin']),
+          ],
           notes: 'Stir.',
         ),
       );
@@ -102,7 +104,7 @@ void main() {
       expect(find.text('Add missing ingredients?'), findsNothing);
       expect(
         store.saved!.recipeNamed('Martini')!.lines.single,
-        const RecipeLine(Amount(2), 'part', 'gin'),
+        const RecipeLine(Amount(2), 'part', ['gin']),
       );
     });
 
@@ -124,7 +126,7 @@ void main() {
       expect(find.text('Add missing ingredients?'), findsNothing);
       expect(
         store.saved!.recipeNamed('Martini')!.lines.single,
-        const RecipeLine(Amount(2), 'part', 'gin'),
+        const RecipeLine(Amount(2), 'part', ['gin']),
       );
     });
 
@@ -136,7 +138,7 @@ void main() {
       await tap(tester, find.text('Save'));
       expect(
         store.saved!.recipeNamed('Martini')!.lines.single,
-        const RecipeLine(Amount(2), 'part', 'gin'),
+        const RecipeLine(Amount(2), 'part', ['gin']),
       );
     });
 
@@ -197,8 +199,56 @@ void main() {
       expect(saved.ingredientNamed('rye'), Ingredient('rye'));
       expect(
         saved.recipeNamed('Sazerac')!.lines.first,
-        const RecipeLine(Amount(2), 'part', 'rye', mark: LineMark.base),
+        const RecipeLine(Amount(2), 'part', ['rye'], mark: LineMark.base),
       );
+    });
+
+    testWidgets('a group is typed as one line and saved whole (ADR 11)', (
+      tester,
+    ) async {
+      final store = await pumpList(tester);
+      await openAdd(tester);
+      await typeInto(tester, nameField, 'Sidecar');
+      await typeInto(tester, lineFields.first, '1 part gin/bourbon (base)');
+      await tap(tester, find.text('Save'));
+      expect(find.text('Add missing ingredients?'), findsNothing);
+      expect(
+        store.saved!.recipeNamed('Sidecar')!.lines.single,
+        const RecipeLine(Amount(1), 'part', [
+          'gin',
+          'bourbon',
+        ], mark: LineMark.base),
+      );
+    });
+
+    testWidgets('only the alternatives no bottle answers to are offered', (
+      tester,
+    ) async {
+      final store = await pumpList(tester);
+      await openAdd(tester);
+      await typeInto(tester, nameField, 'Sidecar');
+      await typeInto(tester, lineFields.first, '1 part gin / cognac / rye');
+      await tap(tester, find.text('Save'));
+      expect(find.text('• cognac'), findsOneWidget);
+      expect(find.text('• rye'), findsOneWidget);
+      expect(find.text('• gin'), findsNothing);
+      await tap(tester, find.text('Add and save'));
+      expect(store.saved!.ingredientNamed('cognac'), Ingredient('cognac'));
+      expect(store.saved!.recipeNamed('Sidecar')!.lines.single.ingredients, [
+        'gin',
+        'cognac',
+        'rye',
+      ]);
+    });
+
+    testWidgets('a group refuses the bottle it already names', (tester) async {
+      final store = await pumpList(tester);
+      await openAdd(tester);
+      await typeInto(tester, nameField, 'Sidecar');
+      await typeInto(tester, lineFields.first, '1 part gin / GIN');
+      await tap(tester, find.text('Save'));
+      expect(lineError(tester, 0), 'Duplicate alternative on the line: "GIN"');
+      expect(store.saved, isNull);
     });
 
     testWidgets('a name wanted by two lines is offered once', (tester) async {
@@ -310,7 +360,10 @@ void main() {
       await typeInto(tester, lineFields.at(1), '');
       await tap(tester, find.text('Save'));
       expect(
-        store.saved!.recipeNamed('Negroni')!.lines.map((l) => l.ingredient),
+        store.saved!
+            .recipeNamed('Negroni')!
+            .lines
+            .map((l) => l.ingredients.single),
         ['gin', 'sweet vermouth'],
       );
     });
@@ -376,7 +429,9 @@ void main() {
           recipes: [
             Recipe(
               'Negroni',
-              lines: const [RecipeLine(Amount(1), 'part', 'gin')],
+              lines: const [
+                RecipeLine(Amount(1), 'part', ['gin']),
+              ],
               made: MadeHistory(DateTime(2026, 7, 12), 0),
             ),
           ],

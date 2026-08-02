@@ -42,7 +42,11 @@ extension ModelEdits on Model {
     for (final recipe in recipes) {
       final resolved = _withLines(
         recipe,
-        (line) => line.copyWith(ingredient: _resolved(this, line)),
+        (line) => line.copyWith(
+          ingredients: [
+            for (final name in line.ingredients) _resolved(this, name),
+          ],
+        ),
       );
       moved |= !identical(resolved, recipe);
       canonical.add(resolved);
@@ -61,9 +65,12 @@ extension ModelEdits on Model {
               for (final recipe in recipes)
                 _withLines(
                   recipe,
-                  (line) => line.ingredient.sameName(from)
-                      ? line.copyWith(ingredient: ingredient.name)
-                      : line,
+                  (line) => line.copyWith(
+                    ingredients: [
+                      for (final name in line.ingredients)
+                        name.sameName(from) ? ingredient.name : name,
+                    ],
+                  ),
                 ),
             ],
     );
@@ -142,7 +149,11 @@ extension ModelEdits on Model {
     final wanted = ingredientNamed(name)?.name ?? name;
     return [
       for (final recipe in recipes)
-        if (recipe.lines.any((line) => _resolved(this, line).sameName(wanted)))
+        if (recipe.lines.any(
+          (line) => line.ingredients.any(
+            (name) => _resolved(this, name).sameName(wanted),
+          ),
+        ))
           recipe.name,
     ];
   }
@@ -168,9 +179,9 @@ extension ModelEdits on Model {
 
 String _tagName(Tag tag) => tag.name;
 
-/// The bottle [line] means, under its own name.
-String _resolved(Model model, RecipeLine line) =>
-    model.ingredientNamed(line.ingredient)?.name ?? line.ingredient;
+/// The bottle [name] means, under its own name.
+String _resolved(Model model, String name) =>
+    model.ingredientNamed(name)?.name ?? name;
 
 /// [recipe] with every line put through [rewrite] — the recipe itself where
 /// none moved, so an edit reaching no line rebuilds nothing and callers can

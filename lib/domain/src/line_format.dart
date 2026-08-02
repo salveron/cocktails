@@ -6,14 +6,19 @@ import 'model.dart';
 
 /// Reserved mark suffixes; ingredient names cannot end with them.
 final reservedSuffixes = List<String>.unmodifiable([
-  for (final mark in LineMark.values) _suffix(mark),
+  for (final mark in LineMark.values) lineMarkSuffix(mark),
 ]);
 
-String _suffix(LineMark mark) => ' (${mark.token})';
+/// How a mark reads at the end of a line; nothing for an unmarked one. Shared
+/// with the cards, which write the body themselves (docs/ui-design.md).
+String lineMarkSuffix(LineMark? mark) => mark == null ? '' : ' (${mark.token})';
 
 final _linePattern = RegExp(r'^(\S+)\s+(\S.*)$');
 final _amountPattern = RegExp(r'^(\d+(?:\.\d+)?)(?:-(\d+(?:\.\d+)?))?$');
 final _space = RegExp(r'\s');
+
+/// Splits alternatives, spaced or not: "cognac / vodka", "cognac/vodka".
+final _separator = RegExp('\\s*${RegExp.escape(alternativeSeparator)}\\s*');
 
 /// Parsed line or error; never throws.
 typedef ParsedLine = ({RecipeLine? line, String? problem});
@@ -24,7 +29,9 @@ ParsedLine tryParseRecipeLine(String text, List<Unit> units) {
   final mark = _markOf(trimmed);
   final body = mark == null
       ? trimmed
-      : trimmed.substring(0, trimmed.length - _suffix(mark).length).trimRight();
+      : trimmed
+            .substring(0, trimmed.length - lineMarkSuffix(mark).length)
+            .trimRight();
   final match = _linePattern.firstMatch(body);
   if (match == null) {
     return (line: null, problem: _shapeProblem(trimmed));
@@ -37,8 +44,18 @@ ParsedLine tryParseRecipeLine(String text, List<Unit> units) {
   if (measured == null) {
     return (line: null, problem: _shapeProblem(trimmed));
   }
+  // The mark came off first, so it governs the group, not one bottle of it.
+  final ingredients = measured.ingredient.split(_separator);
+  if (ingredients.any((name) => name.isEmpty)) {
+    return (
+      line: null,
+      problem:
+          'Expected an ingredient either side of '
+          '"$alternativeSeparator": "$trimmed"',
+    );
+  }
   return (
-    line: RecipeLine(amount, measured.unit, measured.ingredient, mark: mark),
+    line: RecipeLine(amount, measured.unit, ingredients, mark: mark),
     problem: null,
   );
 }
@@ -63,7 +80,7 @@ String _shapeProblem(String text) =>
 /// The mark [trimmed] ends with, if any; only the last one counts.
 LineMark? _markOf(String trimmed) {
   for (final mark in LineMark.values) {
-    if (trimmed.endsWith(_suffix(mark))) return mark;
+    if (trimmed.endsWith(lineMarkSuffix(mark))) return mark;
   }
   return null;
 }
@@ -80,16 +97,18 @@ RecipeLine parseRecipeLine(String line, List<Unit> units) {
 
 /// Canonical form: single spaces, the [formatAmount] amount text.
 String formatRecipeLine(RecipeLine line, List<Unit> units) =>
-    '${formatMeasure(line.amount, line.unit, units)} ${formatLineBody(line)}';
+    '${formatMeasure(line.amount, line.unit, units)} ${_formatLineBody(line)}';
 
 /// Line halves split where display transform stops (scaling.dart).
 String formatMeasure(Amount amount, String unit, List<Unit> units) =>
     '${formatAmount(amount)} ${units.unitNamed(unit)?.spelling(amount) ?? unit}';
 
-String formatLineBody(RecipeLine line) {
-  final mark = line.mark;
-  return '${line.ingredient}${mark == null ? '' : _suffix(mark)}';
-}
+/// Canonical body: alternatives joined by the separator, then the mark. A card
+/// writes its own, one alternative at a time, from [lineMarkSuffix] and these
+/// same names — the file's separator is not what it reads (ADR-11).
+String _formatLineBody(RecipeLine line) =>
+    line.ingredients.join(' $alternativeSeparator ') +
+    lineMarkSuffix(line.mark);
 
 /// Canonical amount text: integers without `.0`, ranges as `a-b`.
 String formatAmount(Amount amount) => amount.isRange

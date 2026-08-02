@@ -36,25 +36,24 @@ final stockedModel = Model(
     Recipe(
       'Gin Shot',
       lines: const [
-        RecipeLine(Amount(1), 'part', 'gin'),
-        RecipeLine(
-          Amount(1),
-          'dash',
+        RecipeLine(Amount(1), 'part', ['gin']),
+        RecipeLine(Amount(1), 'dash', [
           'sweet vermouth',
-          mark: LineMark.optional,
-        ),
+        ], mark: LineMark.optional),
       ],
     ),
     Recipe(
       'Campari Shot',
-      lines: const [RecipeLine(Amount(1), 'part', 'campari')],
+      lines: const [
+        RecipeLine(Amount(1), 'part', ['campari']),
+      ],
     ),
     Recipe(
       'Negroni',
       lines: const [
-        RecipeLine(Amount(1), 'part', 'gin'),
-        RecipeLine(Amount(1), 'part', 'campari'),
-        RecipeLine(Amount(1), 'part', 'sweet vermouth'),
+        RecipeLine(Amount(1), 'part', ['gin']),
+        RecipeLine(Amount(1), 'part', ['campari']),
+        RecipeLine(Amount(1), 'part', ['sweet vermouth']),
       ],
     ),
   ],
@@ -88,6 +87,46 @@ String verdictOn(WidgetTester tester, String name) => tester
       ),
     )
     .data!;
+
+/// Two recipes of nothing but groups: one line for each way a group can read
+/// — a bottle on hand, only a low one, nothing at all — and one carrying a
+/// mark, so the mark is seen to govern the group rather than a bottle of it.
+final substitutedModel = Model(
+  ingredients: [
+    Ingredient('campari', stock: StockLevel.low),
+    Ingredient('cognac'),
+    Ingredient('gin', stock: StockLevel.in_),
+    Ingredient('sweet vermouth'),
+    Ingredient('vodka', stock: StockLevel.in_),
+  ],
+  recipes: [
+    Recipe(
+      'Sidecar',
+      lines: const [
+        RecipeLine(Amount(1), 'part', ['cognac', 'vodka']),
+        RecipeLine(Amount(1), 'part', ['cognac', 'campari']),
+        RecipeLine(Amount(1), 'part', ['cognac', 'sweet vermouth']),
+      ],
+    ),
+    Recipe(
+      'Gimlet',
+      lines: const [
+        RecipeLine(Amount(1), 'part', ['gin', 'vodka'], mark: LineMark.base),
+      ],
+    ),
+  ],
+);
+
+/// The bottles on the line reading [line] drawn in the dimmed ink — the ones a
+/// group offers that the bar cannot supply. They are the only runs carrying a
+/// colour of their own, so the colour is what tells them apart.
+List<String> dimmedOn(WidgetTester tester, String line) {
+  final spans = tester.widget<Text>(find.text(line)).textSpan! as TextSpan;
+  return [
+    for (final span in spans.children!.cast<TextSpan>())
+      if (span.style?.color != null) span.text!,
+  ];
+}
 
 /// What the dot beside the line reading [line] reports, or null when that line
 /// carries none — which is how an in-stock bottle reads.
@@ -320,6 +359,90 @@ void main() {
       await pumpRecipes(tester, aliasedModel);
       await search(tester, 'juniper');
       expect(namesOn(tester), ['Negroni']);
+    });
+  });
+
+  group('substitution groups (ADR 11)', () {
+    testWidgets('a card reads the group as prose, not as the file', (
+      tester,
+    ) async {
+      await pumpRecipes(tester, substitutedModel);
+      await tap(tester, find.text('Sidecar'));
+      expect(find.text('1 part cognac or vodka'), findsOneWidget);
+      expect(find.textContaining('/'), findsNothing);
+    });
+
+    testWidgets('the bottle the bar cannot supply dims, the other stands', (
+      tester,
+    ) async {
+      await pumpRecipes(tester, substitutedModel);
+      await tap(tester, find.text('Sidecar'));
+      expect(dimmedOn(tester, '1 part cognac or vodka'), ['cognac']);
+    });
+
+    testWidgets('one bottle on hand leaves the line undotted', (tester) async {
+      await pumpRecipes(tester, substitutedModel);
+      await tap(tester, find.text('Sidecar'));
+      expect(dotOnLine(tester, '1 part cognac or vodka'), isNull);
+    });
+
+    testWidgets('the dot reports the best the group can do', (tester) async {
+      await pumpRecipes(tester, substitutedModel);
+      await tap(tester, find.text('Sidecar'));
+      expect(dotOnLine(tester, '1 part cognac or campari'), StockLevel.low);
+      expect(dimmedOn(tester, '1 part cognac or campari'), ['cognac']);
+    });
+
+    testWidgets('a group short of everything dims nothing and says so', (
+      tester,
+    ) async {
+      await pumpRecipes(tester, substitutedModel);
+      await tap(tester, find.text('Sidecar'));
+      expect(dimmedOn(tester, '1 part cognac or sweet vermouth'), isEmpty);
+      expect(
+        dotOnLine(tester, '1 part cognac or sweet vermouth'),
+        StockLevel.out,
+      );
+    });
+
+    testWidgets('the mark governs the group, not a bottle of it', (
+      tester,
+    ) async {
+      await pumpRecipes(tester, substitutedModel);
+      await tap(tester, find.text('Gimlet'));
+      expect(find.text('1 part gin or vodka (base)'), findsOneWidget);
+      expect(dimmedOn(tester, '1 part gin or vodka (base)'), isEmpty);
+    });
+
+    testWidgets('one bottle on hand makes the recipe (FR-DIS-1)', (
+      tester,
+    ) async {
+      await pumpRecipes(tester, substitutedModel);
+      expect(verdictOn(tester, 'Gimlet'), 'Ready');
+      expect(verdictOn(tester, 'Sidecar'), 'Missing');
+    });
+
+    testWidgets('the shut card sums the group as prose too', (tester) async {
+      await pumpRecipes(tester, substitutedModel);
+      expect(
+        find.text(
+          'cognac or vodka · cognac or campari · cognac or sweet vermouth',
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('a search reaches a recipe by any bottle of a group', (
+      tester,
+    ) async {
+      await pumpRecipes(tester, substitutedModel);
+      await search(tester, 'campari');
+      expect(namesOn(tester, const ['Gimlet', 'Sidecar']), ['Sidecar']);
+      await search(tester, 'vodka');
+      expect(namesOn(tester, const ['Gimlet', 'Sidecar']), [
+        'Gimlet',
+        'Sidecar',
+      ]);
     });
   });
 

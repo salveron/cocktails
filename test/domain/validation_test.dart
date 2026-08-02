@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 /// The required line every recipe now needs (FR-REC-2), so a fixture about
 /// some other rule does not trip that one. Its bottle is declared alongside.
-const _gin = RecipeLine(Amount(1), 'part', 'gin');
+const _gin = RecipeLine(Amount(1), 'part', ['gin']);
 
 /// The spellings a line may measure in, as a recipe check asks for them.
 final shippedUnits = defaultUnits.spellings.toSet();
@@ -90,7 +90,9 @@ void main() {
         recipes: [
           Recipe(
             'Dashes',
-            lines: const [RecipeLine(Amount(2), 'dash', 'bitters')],
+            lines: const [
+              RecipeLine(Amount(2), 'dash', ['bitters']),
+            ],
           ),
         ],
       );
@@ -176,20 +178,14 @@ void main() {
             'Whiskey Sour',
             tags: ['sour', 'classic'],
             lines: const [
-              RecipeLine(
-                Amount.range(1.5, 2),
-                'part',
+              RecipeLine(Amount.range(1.5, 2), 'part', [
                 'bourbon',
-                mark: LineMark.base,
-              ),
-              RecipeLine(Amount(0.75), 'part', 'lemon juice'),
-              RecipeLine(Amount(0.5), 'part', 'rich demerara syrup'),
-              RecipeLine(
-                Amount(0.5),
-                'part',
+              ], mark: LineMark.base),
+              RecipeLine(Amount(0.75), 'part', ['lemon juice']),
+              RecipeLine(Amount(0.5), 'part', ['rich demerara syrup']),
+              RecipeLine(Amount(0.5), 'part', [
                 'egg white',
-                mark: LineMark.optional,
-              ),
+              ], mark: LineMark.optional),
             ],
             notes: 'dry shake, then shake with ice',
             made: MadeHistory(DateTime(2026, 7, 18), 12),
@@ -236,6 +232,44 @@ void main() {
         expect(issues.single.path, ['ingredients', 0]);
         expect(issues.single.message, contains('reserved'));
       }
+    });
+
+    test('flags a slash in an ingredient name (ADR 11)', () {
+      final issues = validateModel(
+        ingredients: [Ingredient('sweet / dry vermouth')],
+      );
+      expect(issues, hasLength(1));
+      expect(issues.single.path, ['ingredients', 0]);
+      expect(issues.single.kind, ValidationIssueKind.separatorInName);
+      expect(
+        issues.single.message,
+        'Ingredient name holds the reserved "/" separator: '
+        '"sweet / dry vermouth"',
+      );
+    });
+
+    test('flags a slash in an alias too, spaced or not', () {
+      for (final alias in ['sweet/dry', 'sweet / dry']) {
+        final issues = validateModel(
+          ingredients: [
+            Ingredient('vermouth', aliases: [alias]),
+          ],
+        );
+        expect(issues, hasLength(1), reason: alias);
+        expect(issues.single.path, ['ingredients', 0, 'aliases', 0]);
+        expect(issues.single.kind, ValidationIssueKind.separatorInName);
+      }
+    });
+
+    test('the slash rule is ingredient-only: it splits nothing else', () {
+      final issues = validateModel(
+        ingredients: [Ingredient('gin')],
+        recipeTags: [const Tag('half/half', color: TagColor.rose)],
+        recipes: [
+          Recipe('Sour / Fizz', tags: const ['half/half'], lines: const [_gin]),
+        ],
+      );
+      expect(issues, isEmpty);
     });
 
     test('the reserved suffix rule is ingredient-only', () {
@@ -331,7 +365,9 @@ void main() {
           recipes: [
             Recipe(
               'Old Fashioned',
-              lines: const [RecipeLine(Amount(2), 'part', 'whiskey')],
+              lines: const [
+                RecipeLine(Amount(2), 'part', ['whiskey']),
+              ],
             ),
           ],
         ),
@@ -345,7 +381,9 @@ void main() {
           Recipe(
             'Negroni',
             tags: ['classic'],
-            lines: const [RecipeLine(Amount(1), 'part', 'gin')],
+            lines: const [
+              RecipeLine(Amount(1), 'part', ['gin']),
+            ],
           ),
         ],
       );
@@ -372,7 +410,9 @@ void main() {
     test('flags a recipe with nothing required, at its lines', () {
       for (final lines in [
         const <RecipeLine>[],
-        const [RecipeLine(Amount(1), 'part', 'gin', mark: LineMark.optional)],
+        const [
+          RecipeLine(Amount(1), 'part', ['gin'], mark: LineMark.optional),
+        ],
       ]) {
         final issues = validateModel(
           ingredients: [Ingredient('gin')],
@@ -391,7 +431,7 @@ void main() {
             Recipe(
               'Negroni',
               lines: const [
-                RecipeLine(Amount(1), 'part', 'gin', mark: LineMark.base),
+                RecipeLine(Amount(1), 'part', ['gin'], mark: LineMark.base),
               ],
             ),
           ],
@@ -407,8 +447,8 @@ void main() {
           Recipe(
             'Martini',
             lines: const [
-              RecipeLine(Amount(0), 'part', 'gin'),
-              RecipeLine(Amount.range(2, 1.5), 'part', 'gin'),
+              RecipeLine(Amount(0), 'part', ['gin']),
+              RecipeLine(Amount.range(2, 1.5), 'part', ['gin']),
             ],
           ),
         ],
@@ -442,7 +482,9 @@ void main() {
         recipes: [
           Recipe(
             'Negroni',
-            lines: const [RecipeLine(Amount(1), 'part', 'vermouth')],
+            lines: const [
+              RecipeLine(Amount(1), 'part', ['vermouth']),
+            ],
           ),
         ],
       );
@@ -538,7 +580,9 @@ void main() {
           Recipe(
             'Martini',
             tags: const ['unknown'],
-            lines: const [RecipeLine(Amount(0), 'part', 'gin')],
+            lines: const [
+              RecipeLine(Amount(0), 'part', ['gin']),
+            ],
           ),
           Recipe('', lines: const [_gin]),
         ],
@@ -557,7 +601,9 @@ void main() {
         Recipe(
           'Whiskey Sour',
           tags: const ['sour'],
-          lines: const [RecipeLine(Amount(1.5), 'part', 'bourbon')],
+          lines: const [
+            RecipeLine(Amount(1.5), 'part', ['bourbon']),
+          ],
         ),
         knownIngredients: {'bourbon'},
         knownTags: {'sour'},
@@ -571,7 +617,9 @@ void main() {
         Recipe(
           'whiskey sour',
           tags: const ['SOUR'],
-          lines: const [RecipeLine(Amount(1.5), 'part', 'Bourbon')],
+          lines: const [
+            RecipeLine(Amount(1.5), 'part', ['Bourbon']),
+          ],
         ),
         knownIngredients: {'bourbon'},
         knownTags: {'sour'},
@@ -587,9 +635,9 @@ void main() {
           'Martini',
           tags: const ['unknown'],
           lines: const [
-            RecipeLine(Amount(1), 'part', 'gin'),
-            RecipeLine(Amount(1), 'part', 'vermouth'),
-            RecipeLine(Amount(0), 'part', 'missing'),
+            RecipeLine(Amount(1), 'part', ['gin']),
+            RecipeLine(Amount(1), 'part', ['vermouth']),
+            RecipeLine(Amount(0), 'part', ['missing']),
           ],
           made: MadeHistory(DateTime(2026, 7, 18), 0),
         ),
@@ -603,6 +651,85 @@ void main() {
         ['lines', 2],
         ['made', 'times'],
       ]);
+    });
+
+    test('every alternative must name a bottle (ADR 11)', () {
+      final issues = validateRecipe(
+        Recipe(
+          'Sidecar',
+          lines: const [
+            RecipeLine(Amount(1), 'part', ['cognac', 'vodka']),
+          ],
+        ),
+        knownIngredients: {'cognac'},
+        knownTags: const {},
+        knownUnits: shippedUnits,
+      );
+      expect(issues, hasLength(1));
+      expect(issues.single.kind, ValidationIssueKind.unknownIngredient);
+      expect(issues.single.message, 'Unknown ingredient: "vodka"');
+    });
+
+    test('a group every bottle of which is known is clean', () {
+      expect(
+        validateRecipe(
+          Recipe(
+            'Sidecar',
+            lines: const [
+              RecipeLine(Amount(1), 'part', ['cognac', 'vodka']),
+            ],
+          ),
+          knownIngredients: {'cognac', 'vodka'},
+          knownTags: const {},
+          knownUnits: shippedUnits,
+        ),
+        isEmpty,
+      );
+    });
+
+    test('both unknown alternatives are named, under the one line path', () {
+      final issues = validateRecipe(
+        Recipe(
+          'Sidecar',
+          lines: const [
+            _gin,
+            RecipeLine(Amount(1), 'part', ['cognac', 'vodka']),
+          ],
+        ),
+        knownIngredients: {'gin'},
+        knownTags: const {},
+        knownUnits: shippedUnits,
+      );
+      expect(issues.map((i) => i.message), [
+        'Unknown ingredient: "cognac"',
+        'Unknown ingredient: "vodka"',
+      ]);
+      expect(issues.map((i) => i.path), [
+        ['lines', 1],
+        ['lines', 1],
+      ]);
+    });
+
+    test('naming one bottle twice is a slip, not a choice', () {
+      final issues = validateRecipe(
+        Recipe(
+          'Sidecar',
+          lines: const [
+            RecipeLine(Amount(1), 'part', ['cognac', 'COGNAC']),
+          ],
+        ),
+        knownIngredients: {'cognac'},
+        knownTags: const {},
+        knownUnits: shippedUnits,
+      );
+      expect(issues, hasLength(1));
+      expect(issues.single.kind, ValidationIssueKind.duplicateAlternative);
+      expect(issues.single.path, ['lines', 0]);
+      expect(
+        issues.single.message,
+        'Duplicate alternative on the line: '
+        '"COGNAC"',
+      );
     });
 
     test('flags a tag repeated on the recipe, in tag order', () {
@@ -659,7 +786,9 @@ void main() {
       final recipe = Recipe(
         'Martini',
         tags: const ['unknown'],
-        lines: const [RecipeLine(Amount(0), 'part', 'missing')],
+        lines: const [
+          RecipeLine(Amount(0), 'part', ['missing']),
+        ],
       );
       final modelIssues = validateModel(recipes: [recipe]);
       final recipeIssues = validateRecipe(
@@ -886,8 +1015,8 @@ void main() {
           'Martini',
           tags: const ['unknown', 'unknown'],
           lines: const [
-            RecipeLine(Amount(0), 'part', 'missing'),
-            RecipeLine(Amount.range(2, 1), 'part', 'gin'),
+            RecipeLine(Amount(0), 'part', ['missing']),
+            RecipeLine(Amount.range(2, 1), 'part', ['gin']),
           ],
           made: MadeHistory(DateTime(2026, 7, 18), 0),
         ),

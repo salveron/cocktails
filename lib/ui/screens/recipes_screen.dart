@@ -19,6 +19,10 @@ typedef _AmountView = ({int scale, DisplayUnit unit});
 
 const _asWritten = (scale: 1, unit: DisplayUnit.part);
 
+/// How a substitution group reads on a card — prose, where the grammar and the
+/// file keep the separator (ADR 11).
+const _or = ' or ';
+
 /// What the name row adds while a card is reading its amounts otherwise.
 String? _viewNote(_AmountView view) {
   final notes = [
@@ -118,7 +122,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
     final view = _views[recipe.name] ?? _asWritten;
     final note = _viewNote(view);
     final summary = [
-      for (final line in recipe.lines) line.ingredient,
+      for (final line in recipe.lines) line.ingredients.join(_or),
     ].join(' · ');
     return VocabularyRow(
       title: expanded
@@ -203,8 +207,8 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
   static List<String> _spellings(Model model, Recipe recipe) => [
     recipe.name,
     for (final line in recipe.lines)
-      ...(model.ingredientNamed(line.ingredient)?.spellings ??
-          [line.ingredient]),
+      for (final ingredient in line.ingredients)
+        ...(model.ingredientNamed(ingredient)?.spellings ?? [ingredient]),
   ];
 
   /// On rename, move expansion state from old name to new name.
@@ -334,8 +338,14 @@ class _Details extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.only(bottom: 4),
             child: _Line(
-              displayRecipeLine(line, settings, model.units, scale: view.scale),
-              stockOf(model, line.ingredient),
+              line,
+              measure: displayMeasure(
+                line,
+                settings,
+                model.units,
+                scale: view.scale,
+              ),
+              model: model,
               transformed: transformed,
             ),
           ),
@@ -355,43 +365,70 @@ class _Details extends StatelessWidget {
   }
 }
 
-/// One line as the file writes it, followed by a dot when its bottle is low or
-/// out (FR-DIS-1). An optional line is marked too — the dot reports the bottle,
-/// and the line's own "(optional)" says it does not count against the verdict.
+/// One line: the measure, the bottles it may be built from, the mark — then a
+/// dot where the line is short (FR-DIS-1). An optional line is marked too: the
+/// dot reports the bottle, and the line's own "(optional)" says it does not
+/// count against the verdict. Where a group has something on hand, the
+/// alternatives that are out dim, so the eye lands on the one to reach for;
+/// where it has nothing, none dims and the dot carries it alone (ADR 11).
 /// A [transformed] card italicises the measure, the only part of the line that
 /// is then not what the recipe says.
 class _Line extends StatelessWidget {
-  const _Line(this.line, this.stock, {required this.transformed});
+  const _Line(
+    this.line, {
+    required this.measure,
+    required this.model,
+    required this.transformed,
+  });
 
-  final DisplayedLine line;
-  final StockLevel stock;
+  final RecipeLine line;
+  final String measure;
+  final Model model;
   final bool transformed;
 
   @override
-  Widget build(BuildContext context) => Row(
-    children: [
-      Flexible(
-        child: Text.rich(
-          TextSpan(
-            children: [
-              TextSpan(
-                text: line.measure,
-                style: transformed
-                    ? const TextStyle(fontStyle: FontStyle.italic)
-                    : null,
-              ),
-              TextSpan(text: ' ${line.body}'),
-            ],
+  Widget build(BuildContext context) {
+    final stock = stockOfLine(model, line);
+    final dimmed = TextStyle(
+      color: Theme.of(context).colorScheme.onSurfaceVariant,
+    );
+    return Row(
+      children: [
+        Flexible(
+          child: Text.rich(
+            TextSpan(
+              children: [
+                TextSpan(
+                  text: measure,
+                  style: transformed
+                      ? const TextStyle(fontStyle: FontStyle.italic)
+                      : null,
+                ),
+                for (var i = 0; i < line.ingredients.length; i++) ...[
+                  TextSpan(text: i == 0 ? ' ' : _or),
+                  TextSpan(
+                    text: line.ingredients[i],
+                    style:
+                        stock != StockLevel.out &&
+                            stockOf(model, line.ingredients[i]) ==
+                                StockLevel.out
+                        ? dimmed
+                        : null,
+                  ),
+                ],
+                TextSpan(text: lineMarkSuffix(line.mark)),
+              ],
+            ),
           ),
         ),
-      ),
-      if (stock != StockLevel.in_)
-        Padding(
-          padding: const EdgeInsets.only(left: 6),
-          child: StockDot(stock),
-        ),
-    ],
-  );
+        if (stock != StockLevel.in_)
+          Padding(
+            padding: const EdgeInsets.only(left: 6),
+            child: StockDot(stock),
+          ),
+      ],
+    );
+  }
 }
 
 /// The card's last line: what the history reads, the Undo the last stamp left

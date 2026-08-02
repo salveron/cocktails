@@ -9,8 +9,8 @@ void main() {
     'Negroni',
     tags: ['classic'],
     lines: const [
-      RecipeLine(Amount(1), 'part', 'gin'),
-      RecipeLine(Amount(1), 'part', 'campari'),
+      RecipeLine(Amount(1), 'part', ['gin']),
+      RecipeLine(Amount(1), 'part', ['campari']),
     ],
   );
   final stored = Model(
@@ -142,7 +142,10 @@ void main() {
       final model = modelOf(container);
       expect(model.ingredientNamed('gin'), isNull);
       expect(model.ingredientNamed('dry gin')?.tags, ['juniper']);
-      expect(model.recipeNamed('Negroni')?.lines.first.ingredient, 'dry gin');
+      expect(
+        model.recipeNamed('Negroni')?.lines.first.ingredients.single,
+        'dry gin',
+      );
       // The whole entry is one edit, so one backup rotation covers it.
       expect(store.saveCount, 1);
     });
@@ -255,7 +258,10 @@ void main() {
       final model = modelOf(container);
       expect(model.ingredientNamed('gin'), isNull);
       expect(model.ingredientNamed('jenever')?.aliases, isEmpty);
-      expect(model.recipeNamed('Negroni')?.lines.first.ingredient, 'jenever');
+      expect(
+        model.recipeNamed('Negroni')?.lines.first.ingredients.single,
+        'jenever',
+      );
     });
 
     test('upsertRecipe adds and replaces by name', () async {
@@ -272,7 +278,12 @@ void main() {
     test('upsertRecipe carries the ingredients it introduced', () async {
       final container = await started();
       await controllerOf(container).upsertRecipe(
-        Recipe('Sazerac', lines: const [RecipeLine(Amount(2), 'part', 'rye')]),
+        Recipe(
+          'Sazerac',
+          lines: const [
+            RecipeLine(Amount(2), 'part', ['rye']),
+          ],
+        ),
         addingIngredients: [Ingredient('rye'), Ingredient('absinthe')],
       );
       final model = modelOf(container);
@@ -300,15 +311,15 @@ void main() {
         Recipe(
           'Gin Fizz',
           lines: const [
-            RecipeLine(Amount(2), 'part', 'jenever'),
-            RecipeLine(Amount(1), 'part', 'CAMPARI'),
+            RecipeLine(Amount(2), 'part', ['jenever']),
+            RecipeLine(Amount(1), 'part', ['CAMPARI']),
           ],
         ),
       );
       expect(
         modelOf(
           container,
-        ).recipeNamed('Gin Fizz')!.lines.map((line) => line.ingredient),
+        ).recipeNamed('Gin Fizz')!.lines.map((line) => line.ingredients.single),
         ['gin', 'campari'],
       );
     });
@@ -316,11 +327,18 @@ void main() {
     test('a bottle this edit introduces answers for its own line', () async {
       final container = await started();
       await controllerOf(container).upsertRecipe(
-        Recipe('Sazerac', lines: const [RecipeLine(Amount(2), 'part', 'RYE')]),
+        Recipe(
+          'Sazerac',
+          lines: const [
+            RecipeLine(Amount(2), 'part', ['RYE']),
+          ],
+        ),
         addingIngredients: [Ingredient('rye')],
       );
       expect(
-        modelOf(container).recipeNamed('Sazerac')!.lines.single.ingredient,
+        modelOf(
+          container,
+        ).recipeNamed('Sazerac')!.lines.single.ingredients.single,
         'rye',
       );
       expect(store.saveCount, 1);

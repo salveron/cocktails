@@ -247,46 +247,58 @@ extension UnitLookup on List<Unit> {
   ];
 }
 
-/// A line names unit and ingredient by name, resolved against vocabularies (ADR-09).
+/// What separates a line's alternatives, in the grammar and in the file
+/// (ADR-11); barred from ingredient spellings so the split stays unambiguous.
+const alternativeSeparator = '/';
+
+/// A line names unit and ingredients by name, resolved against vocabularies
+/// (ADR-09). More than one name is a substitution group: any one of them on
+/// hand makes the line (ADR-11). Never empty — the grammar is the only maker
+/// of lines and it refuses one naming nothing; no assert, since a const
+/// constructor cannot evaluate one.
 final class RecipeLine {
   final Amount amount;
   final String unit;
-  final String ingredient;
+  final List<String> ingredients;
   final LineMark? mark;
 
-  const RecipeLine(this.amount, this.unit, this.ingredient, {this.mark});
+  const RecipeLine(this.amount, this.unit, this.ingredients, {this.mark});
 
   bool get isBase => mark == LineMark.base;
 
   bool get isOptional => mark == LineMark.optional;
 
-  RecipeLine copyWith({Amount? amount, String? unit, String? ingredient}) =>
-      RecipeLine(
-        amount ?? this.amount,
-        unit ?? this.unit,
-        ingredient ?? this.ingredient,
-        mark: mark,
-      );
+  RecipeLine copyWith({
+    Amount? amount,
+    String? unit,
+    List<String>? ingredients,
+  }) => RecipeLine(
+    amount ?? this.amount,
+    unit ?? this.unit,
+    ingredients ?? this.ingredients,
+    mark: mark,
+  );
 
   /// Only way to change/clear the mark (copyWith uses null for "keep").
   RecipeLine marked(LineMark? mark) =>
-      RecipeLine(amount, unit, ingredient, mark: mark);
+      RecipeLine(amount, unit, ingredients, mark: mark);
 
   @override
   bool operator ==(Object other) =>
       other is RecipeLine &&
       other.amount == amount &&
       other.unit == unit &&
-      other.ingredient == ingredient &&
+      listEquals(other.ingredients, ingredients) &&
       other.mark == mark;
 
   @override
-  int get hashCode => Object.hash(amount, unit, ingredient, mark);
+  int get hashCode =>
+      Object.hash(amount, unit, Object.hashAll(ingredients), mark);
 
   @override
   String toString() {
     final mark = this.mark;
-    return 'RecipeLine($amount $unit $ingredient'
+    return 'RecipeLine($amount $unit ${ingredients.join(' $alternativeSeparator ')}'
         '${mark == null ? '' : ', ${mark.token}'})';
   }
 }

@@ -8,10 +8,10 @@ import 'model.dart';
 /// The factors a recipe view offers (FR-REC-7), the first as written.
 const scaleFactors = [1, 2, 3, 4];
 
-typedef DisplayedLine = ({String measure, String body});
-
-/// [line] at [scale]; anchored to reserved units (ADR-09).
-DisplayedLine displayRecipeLine(
+/// [line]'s measure at [scale]; anchored to reserved units (ADR-09). The
+/// measure is all that transforms — a card writes the body itself, one
+/// alternative at a time (docs/ui-design.md#recipes-screen).
+String displayMeasure(
   RecipeLine line,
   Settings settings,
   List<Unit> units, {
@@ -20,13 +20,10 @@ DisplayedLine displayRecipeLine(
   final inMl =
       line.unit.sameName(partUnit) && settings.display == DisplayUnit.ml;
   final factor = inMl ? scale * settings.partMl : scale.toDouble();
-  return (
-    measure: formatMeasure(
-      _scaled(line.amount, factor),
-      inMl ? mlUnit : line.unit,
-      units,
-    ),
-    body: formatLineBody(line),
+  return formatMeasure(
+    _scaled(line.amount, factor),
+    inMl ? mlUnit : line.unit,
+    units,
   );
 }
 

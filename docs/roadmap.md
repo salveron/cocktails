@@ -142,11 +142,25 @@ First usable slice; recipes reference both vocabularies, so this precedes Phase 
       bottle it is built from, aliases included (FR-DIS-2 widened, ADR 10) — hence "answers to" where
       a list says nothing matches. Availability is dropped as a filter, its order (FR-DIS-8) being
       what puts the makeable first; a grammar for compound queries is out of pilot scope.
+- [x] **M18a Ingredient substitutions** — a line offers alternatives, and any one of them on hand
+      makes it ([ADR 11](adr/11-substitutions-on-the-line.md), FR-REC-9): `RecipeLine.ingredients`
+      is a never-empty list with no singular accessor, so the nine readers each decide what a group
+      means rather than quietly taking the first. The grammar splits the tail on `/`, spaced or not,
+      after the unit and after the mark — so one amount, one unit and one mark govern the group and
+      no reading depends on the bar; `/` joins the mark suffixes barred from every ingredient
+      spelling, since `sweet / dry vermouth` would otherwise have two readings. `stockOfLine` takes
+      the best of a group and is the one home the verdict and the card both read, so a card can dim
+      what the bar lacks — but only while it holds something, leaving an all-short group undimmed
+      under the dot that already says so. Cards read "or" where the file reads `/`; the form keeps
+      the separator, being where a line is re-edited. `displayRecipeLine` becomes `displayMeasure`,
+      the body it returned having transformed nothing.
 - [ ] **M19 Base-spirit grouping** — grouped browsing with ungrouped tail section
-      (FR-DIS-4).
+      (FR-DIS-4). A group marked `(base)` must decide whether its recipe files under every
+      alternative spirit (ADR 11).
 - [ ] **M20 Random pick** — one can-make suggestion respecting active filters (FR-DIS-5).
 - [ ] **M21 Optimizer domain** — combination search and ranking (FR-DIS-6) with a
-      performance test at NFR-2 scale.
+      performance test at NFR-2 scale. A substitution group counts as satisfied by any one
+      purchase, which changes what a candidate set yields (ADR 11).
 - [ ] **M22 Optimizer screen** — budget selector, ranked combinations, running-low restock
       reminders (FR-DIS-6/7).
 
