@@ -2,6 +2,7 @@ import 'package:cocktails/data/data.dart';
 import 'package:cocktails/domain/domain.dart';
 import 'package:cocktails/state/state.dart';
 import 'package:cocktails/ui/app.dart';
+import 'package:cocktails/ui/theme.dart';
 import 'package:cocktails/ui/widgets/color_chip.dart';
 import 'package:cocktails/ui/widgets/search_field.dart';
 import 'package:cocktails/ui/widgets/tag_choices.dart';
@@ -114,7 +115,8 @@ Future<void> pumpApp(WidgetTester tester, {ModelStore? store}) async {
   await tester.pumpAndSettle();
 }
 
-/// One screen on its own, pumped past its startup load.
+/// One screen on its own, pumped past its startup load — under the app's own
+/// theme, so a screen is judged in the ink it will actually be drawn in.
 Future<void> pumpScreen(
   WidgetTester tester,
   Widget screen, {
@@ -123,7 +125,10 @@ Future<void> pumpScreen(
 }) async {
   await tester.pumpWidget(
     scoped(
-      MaterialApp(home: Scaffold(body: screen)),
+      MaterialApp(
+        theme: cocktailsTheme(Brightness.light),
+        home: Scaffold(body: screen),
+      ),
       store: store,
       today: today,
     ),

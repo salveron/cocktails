@@ -4,6 +4,11 @@ import 'package:flutter/material.dart';
 /// Material 3 derives both schemes from it (docs/ui-design.md#app-shell).
 const seedColor = Color(0xFFB26A00);
 
+/// The one dim, worn by a hint and by a bottle a group offers that the bar
+/// lacks: faint enough that neither reads as the text beside it (ui-design.md).
+Color dimmedInk(ColorScheme colors) =>
+    colors.onSurfaceVariant.withValues(alpha: 0.6);
+
 ThemeData cocktailsTheme(Brightness brightness) {
   final colors = ColorScheme.fromSeed(
     seedColor: seedColor,
@@ -11,12 +16,8 @@ ThemeData cocktailsTheme(Brightness brightness) {
   );
   return ThemeData(
     colorScheme: colors,
-    // A hint is an offer, not content: dim enough that an empty field is never
-    // read as a filled one (docs/ui-design.md#recipe-form).
     inputDecorationTheme: InputDecorationThemeData(
-      hintStyle: TextStyle(
-        color: colors.onSurfaceVariant.withValues(alpha: 0.6),
-      ),
+      hintStyle: TextStyle(color: dimmedInk(colors)),
     ),
   );
 }

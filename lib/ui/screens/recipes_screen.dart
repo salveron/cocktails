@@ -5,6 +5,7 @@ import 'package:cocktails/state/state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../theme.dart';
 import '../widgets/color_chip.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/model_view.dart';
@@ -20,8 +21,10 @@ typedef _AmountView = ({int scale, DisplayUnit unit});
 const _asWritten = (scale: 1, unit: DisplayUnit.part);
 
 /// How a substitution group reads on a card — prose, where the grammar and the
-/// file keep the separator (ADR 11).
+/// file keep the separator (ADR 11). Italic on the open card, so a word made of
+/// two letters is still seen between the bottles it stands between.
 const _or = ' or ';
+const _italic = TextStyle(fontStyle: FontStyle.italic);
 
 /// What the name row adds while a card is reading its amounts otherwise.
 String? _viewNote(_AmountView view) {
@@ -369,8 +372,9 @@ class _Details extends StatelessWidget {
 /// dot where the line is short (FR-DIS-1). An optional line is marked too: the
 /// dot reports the bottle, and the line's own "(optional)" says it does not
 /// count against the verdict. Where a group has something on hand, the
-/// alternatives that are out dim, so the eye lands on the one to reach for;
-/// where it has nothing, none dims and the dot carries it alone (ADR 11).
+/// alternatives that are out fall to [dimmedInk], the ink an unfilled field's
+/// hint wears, so the eye lands on the one to reach for; where it has nothing,
+/// none dims and the dot carries it alone (ADR 11).
 /// A [transformed] card italicises the measure, the only part of the line that
 /// is then not what the recipe says.
 class _Line extends StatelessWidget {
@@ -389,23 +393,19 @@ class _Line extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final stock = stockOfLine(model, line);
-    final dimmed = TextStyle(
-      color: Theme.of(context).colorScheme.onSurfaceVariant,
-    );
+    final dimmed = TextStyle(color: dimmedInk(Theme.of(context).colorScheme));
     return Row(
       children: [
         Flexible(
           child: Text.rich(
             TextSpan(
               children: [
-                TextSpan(
-                  text: measure,
-                  style: transformed
-                      ? const TextStyle(fontStyle: FontStyle.italic)
-                      : null,
-                ),
+                TextSpan(text: measure, style: transformed ? _italic : null),
                 for (var i = 0; i < line.ingredients.length; i++) ...[
-                  TextSpan(text: i == 0 ? ' ' : _or),
+                  if (i == 0)
+                    const TextSpan(text: ' ')
+                  else
+                    const TextSpan(text: _or, style: _italic),
                   TextSpan(
                     text: line.ingredients[i],
                     style:

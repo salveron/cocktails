@@ -9,7 +9,9 @@ requirements in [requirements.md](requirements.md).
   Settings: app bar gear (ratio, toggle, vocabularies, data exchange).
 - **`IndexedStack`** (keeps scroll/search). Forms/settings pushed via `Navigator`. 
   Recipe view inside list. `Navigator` 1.0, no nested routers.
-- **Theme**: seed colour, platform-picked light/dark. Hint dimmed (60%) so empty ≠ filled.
+- **Theme**: seed colour, platform-picked light/dark. `dimmedInk` (`onSurfaceVariant` at 60%) is 
+  the one dim: a hint, so empty ≠ filled; a bottle a group offers that the bar lacks. One home, so 
+  the two cannot drift.
 - **`ModelView`**: only reader of `modelProvider`'s `AsyncValue`. Screens never see loading/failure.
 - **`EmptyState`**: icon, title, fill hint.
 - **`StartupIssues`**: displays FR-DAT-4 problems above all screens (dismissable).
@@ -68,9 +70,12 @@ Successful add clears search. Recipes add pushes [recipe form](#recipe-form).
 - **Line marks**: stock dot after line if the line is low/out (tooltip shows level); no dot = in 
   stock. Optional lines dotted too (dot + "(optional)" together).
 - **Substitution groups** (FR-REC-9, [ADR 11](adr/11-substitutions-on-the-line.md)): read as prose 
-  — "cognac or vodka" — open and shut alike, where the file writes `/`. Bottles the bar lacks dim, 
-  but only while it holds one; a group short of everything dims nothing and takes the dot, so the 
-  dot keeps meaning "this line is the problem". Dot follows the group's best (`stockOfLine`).
+  — "cognac or vodka" — open and shut alike, where the file writes `/`. Bottles the bar lacks fall 
+  to `dimmedInk`, but only while it holds one; a group short of everything dims nothing and takes 
+  the dot, so the dot keeps meaning "this line is the problem". Dot follows the group's best 
+  (`stockOfLine`). The "or" is italic on the open card — two letters between two names need it. 
+  Italic thus does double duty with the scaled measure below; position tells them apart, and the 
+  name row's "(×2, ml)" is what actually announces a transformed card.
 - **Made row**: history text (absent until first stamp), Undo, "Made it" (FR-REC-6). 
   Undo one-deep. Long-press resets to never-made.
 

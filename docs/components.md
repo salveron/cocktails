@@ -44,7 +44,8 @@ lib/
       derived.dart             # availabilityProvider; visible recipes, grouping, optimizer
   ui/                          # no barrel — leaves, imported directly; design in ui-design.md
     app.dart                   # MaterialApp and the shell: destinations, app bar, gear
-    theme.dart                 # the seed colour, the two schemes, the dimmed hint style
+    theme.dart                 # the seed colour, the two schemes, `dimmedInk` — the one
+                               #   dim, worn by a hint and by a bottle the bar lacks
     palette.dart               # the fixed hues: stock signals and the tag palette
     screens/                   # one file per destination, plus settings, tags, units,
                                #   recipe form

@@ -117,16 +117,25 @@ final substitutedModel = Model(
   ],
 );
 
+/// The runs the line reading [line] is drawn from — the one place a test
+/// reaches into a line's spans, however it means to judge them.
+List<TextSpan> runsOn(WidgetTester tester, String line) =>
+    (tester.widget<Text>(find.text(line)).textSpan! as TextSpan).children!
+        .cast<TextSpan>();
+
 /// The bottles on the line reading [line] drawn in the dimmed ink — the ones a
 /// group offers that the bar cannot supply. They are the only runs carrying a
 /// colour of their own, so the colour is what tells them apart.
-List<String> dimmedOn(WidgetTester tester, String line) {
-  final spans = tester.widget<Text>(find.text(line)).textSpan! as TextSpan;
-  return [
-    for (final span in spans.children!.cast<TextSpan>())
-      if (span.style?.color != null) span.text!,
-  ];
-}
+List<String> dimmedOn(WidgetTester tester, String line) => [
+  for (final run in runsOn(tester, line))
+    if (run.style?.color != null) run.text!,
+];
+
+/// The ink those bottles wear; fails the test where the line dims nothing.
+Color dimInkOn(WidgetTester tester, String line) => runsOn(
+  tester,
+  line,
+).firstWhere((run) => run.style?.color != null).style!.color!;
 
 /// What the dot beside the line reading [line] reports, or null when that line
 /// carries none — which is how an in-stock bottle reads.
@@ -144,15 +153,12 @@ StockLevel? dotOnLine(WidgetTester tester, String line) {
   return dots.isEmpty ? null : dots.single.stock;
 }
 
-/// The run of the line reading [line] drawn in italics — empty where the card
-/// is showing the amounts the recipe itself carries.
-String italicOn(WidgetTester tester, String line) {
-  final spans = tester.widget<Text>(find.text(line)).textSpan! as TextSpan;
-  return [
-    for (final span in spans.children!.cast<TextSpan>())
-      if (span.style?.fontStyle == FontStyle.italic) span.text!,
-  ].join();
-}
+/// The runs of the line reading [line] drawn in italics, joined: the "or" of a
+/// group, and the measure of a card not reading the amounts as written.
+String italicOn(WidgetTester tester, String line) => [
+  for (final run in runsOn(tester, line))
+    if (run.style?.fontStyle == FontStyle.italic) run.text!,
+].join();
 
 /// Settles that card's own dialog on [factor] and [unit], leaving whatever it
 /// does not name where the dialog opened it.
@@ -378,6 +384,26 @@ void main() {
       await pumpRecipes(tester, substitutedModel);
       await tap(tester, find.text('Sidecar'));
       expect(dimmedOn(tester, '1 part cognac or vodka'), ['cognac']);
+    });
+
+    testWidgets('it dims as far as an unfilled field\'s hint does', (
+      tester,
+    ) async {
+      await pumpRecipes(tester, substitutedModel);
+      await tap(tester, find.text('Sidecar'));
+      final theme = Theme.of(tester.element(find.text('Sidecar')));
+      expect(
+        dimInkOn(tester, '1 part cognac or vodka'),
+        theme.inputDecorationTheme.hintStyle!.color,
+      );
+    });
+
+    testWidgets('the "or" carrying the group is italic, and it alone', (
+      tester,
+    ) async {
+      await pumpRecipes(tester, substitutedModel);
+      await tap(tester, find.text('Sidecar'));
+      expect(italicOn(tester, '1 part cognac or vodka'), ' or ');
     });
 
     testWidgets('one bottle on hand leaves the line undotted', (tester) async {
@@ -642,14 +668,24 @@ void main() {
       expect(find.text('60 ml campari'), findsOneWidget);
     });
 
-    testWidgets('only the measure is italic, and only when it is not the '
-        'recipe\'s own', (tester) async {
+    testWidgets('the measure turns italic when it is not the recipe\'s own', (
+      tester,
+    ) async {
       await pumpRecipes(tester);
       await tap(tester, find.text('Negroni'));
       expect(italicOn(tester, '1 part gin (base)'), isEmpty);
 
       await scale(tester, 'Negroni', factor: 2);
       expect(italicOn(tester, '2 parts gin (base)'), '2 parts');
+    });
+
+    testWidgets('a scaled group italicises both, each saying its own thing', (
+      tester,
+    ) async {
+      await pumpRecipes(tester, substitutedModel);
+      await tap(tester, find.text('Gimlet'));
+      await scale(tester, 'Gimlet', factor: 2);
+      expect(italicOn(tester, '2 parts gin or vodka (base)'), '2 parts or ');
     });
 
     testWidgets('a low bottle is still marked on a scaled line', (
