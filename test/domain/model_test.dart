@@ -63,12 +63,6 @@ void main() {
       expect(const Unit('dash'), isNot(const Unit('drop')));
       expect(const Unit('dash'), isNot(const Unit('dash', plural: 'dashes')));
     });
-
-    test('copyWith replaces one field and carries the rest', () {
-      const dash = Unit('dash', plural: 'dashes');
-      expect(dash.copyWith(name: 'splash').plural, 'dashes');
-      expect(dash.copyWith(plural: 'dashez').name, 'dash');
-    });
   });
 
   group('UnitLookup', () {

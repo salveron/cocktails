@@ -37,7 +37,9 @@ final class ModelController extends AsyncNotifier<Model> {
       Empty() => (Model(), const <String>[]),
       Corrupt(:final issues, :final recoveredFromBackup) => (
         recoveredFromBackup ?? Model(),
-        List<String>.unmodifiable(issues.map(_describe)),
+        List<String>.unmodifiable([
+          for (final issue in issues) issue.description,
+        ]),
       ),
     };
     _startupIssues = issues;
@@ -108,8 +110,3 @@ final class ModelController extends AsyncNotifier<Model> {
     await ref.read(modelStoreProvider).save(edited);
   }
 }
-
-/// Issue description; worded as import report does (FR-DAT-4).
-String _describe(SourcedIssue sourced) => sourced.line == null
-    ? sourced.issue.message
-    : 'line ${sourced.line}: ${sourced.issue.message}';

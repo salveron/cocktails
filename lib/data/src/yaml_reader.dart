@@ -130,60 +130,91 @@ Settings _readSettings(YamlNode? node, List<ValidationIssue> issues) {
     _report(issues, const ['settings'], 'settings must be a mapping', node);
     return defaults;
   }
-  _checkKeys(node, const {'part_ml', 'display'}, const ['settings'], issues);
-  var partMl = defaults.partMl;
-  final partMlNode = node.nodes['part_ml'];
-  if (partMlNode != null) {
-    final value = partMlNode.value;
-    if (value is num && value.isFinite) {
-      partMl = value.toDouble();
-    } else {
-      _report(
-        issues,
-        const ['settings', 'part_ml'],
-        'part_ml must be a number',
-        partMlNode,
-      );
-    }
-  }
-  var display = defaults.display;
-  final displayNode = node.nodes['display'];
-  if (displayNode != null) {
-    final value = displayNode.value;
-    final parsed = value is String ? DisplayUnit.fromToken(value) : null;
-    if (parsed == null) {
-      _report(
-        issues,
-        const ['settings', 'display'],
-        'display must be part or ml',
-        displayNode,
-      );
-    } else {
-      display = parsed;
-    }
-  }
-  return Settings(partMl: partMl, display: display);
+  const path = ['settings'];
+  _checkKeys(node, const {'part_ml', 'display'}, path, issues);
+  return Settings(
+    partMl:
+        _readValue<double>(
+          node,
+          'part_ml',
+          path,
+          issues,
+          parse: (value) =>
+              value is num && value.isFinite ? value.toDouble() : null,
+          requirement: 'part_ml must be a number',
+        ) ??
+        defaults.partMl,
+    // Its own wording rather than the token list: two readings, named.
+    display:
+        _readValue<DisplayUnit>(
+          node,
+          'display',
+          path,
+          issues,
+          parse: (value) => DisplayUnit.fromToken(_asString(value) ?? ''),
+          requirement: 'display must be part or ml',
+        ) ??
+        defaults.display,
+  );
 }
 
+/// A top-level section's entries; the same walk as any other string list,
+/// rooted at the file itself.
 List<T> _readEntries<T>(
   YamlMap root,
   String key,
   List<ValidationIssue> issues,
   _EntryReader<T> readEntry,
 ) {
-  final node = root.nodes[key];
-  if (node == null) return [];
-  if (node is! YamlList) {
-    _report(issues, [key], '$key must be a list', node);
-    return [];
-  }
   final entries = <T>[];
-  for (var i = 0; i < node.nodes.length; i++) {
-    final entry = readEntry(node.nodes[i], [key, i], issues);
+  _forEachEntry(root, key, const [], issues, (node, path) {
+    final entry = readEntry(node, path, issues);
     if (entry != null) entries.add(entry);
-  }
+  });
   return entries;
 }
+
+/// The value [key] carries, put through [parse]; null where the key is absent
+/// or carries something [parse] refuses, which is reported as failing
+/// [requirement]. A [required] key reports its absence; an optional one leaves
+/// that to the caller's default.
+T? _readValue<T>(
+  YamlMap map,
+  String key,
+  List<Object> path,
+  List<ValidationIssue> issues, {
+  required T? Function(Object? value) parse,
+  required String requirement,
+  bool required = false,
+}) {
+  final node = map.nodes[key];
+  if (node == null) {
+    if (required) _reportMissing(issues, path, key);
+    return null;
+  }
+  final parsed = parse(node.value);
+  if (parsed == null) _report(issues, [...path, key], requirement, node);
+  return parsed;
+}
+
+String? _asString(Object? value) => value is String ? value : null;
+
+/// A string field under [key]; every one asks for the same thing.
+String? _readText(
+  YamlMap map,
+  String key,
+  List<Object> path,
+  List<ValidationIssue> issues, {
+  bool required = false,
+}) => _readValue<String>(
+  map,
+  key,
+  path,
+  issues,
+  parse: _asString,
+  requirement: '$key must be a string',
+  required: required,
+);
 
 /// Omitted `plural` means it reads like the name.
 Unit? _readUnit(
@@ -196,11 +227,8 @@ Unit? _readUnit(
     return null;
   }
   _checkKeys(node, const {'name', 'plural'}, path, issues);
-  final name = _readName(node, path, issues);
-  final pluralNode = node.nodes['plural'];
-  final plural = pluralNode == null
-      ? ''
-      : _stringValue(pluralNode, [...path, 'plural'], issues, 'plural') ?? '';
+  final name = _readText(node, 'name', path, issues, required: true);
+  final plural = _readText(node, 'plural', path, issues) ?? '';
   return name == null ? null : Unit(name, plural: plural);
 }
 
@@ -214,15 +242,16 @@ Ingredient? _readIngredient(
     return null;
   }
   _checkKeys(node, const {'name', 'stock', 'tags', 'aliases'}, path, issues);
-  final name = _readName(node, path, issues);
+  final name = _readText(node, 'name', path, issues, required: true);
   final stock =
       _readToken(
-        node.nodes['stock'],
+        node,
         'stock',
         path,
         issues,
         fromToken: StockLevel.fromToken,
-        tokens: [for (final value in StockLevel.values) value.token],
+        values: StockLevel.values,
+        token: (value) => value.token,
       ) ??
       StockLevel.out;
   final aliases = _readNames(node, 'aliases', path, issues, 'Alias');
@@ -239,42 +268,42 @@ Tag? _readTag(YamlNode node, List<Object> path, List<ValidationIssue> issues) {
     return null;
   }
   _checkKeys(node, const {'name', 'color'}, path, issues);
-  final name = _readName(node, path, issues);
-  final colorNode = node.nodes['color'];
-  if (colorNode == null) _reportMissing(issues, path, 'color');
+  final name = _readText(node, 'name', path, issues, required: true);
   final color = _readToken(
-    colorNode,
+    node,
     'color',
     path,
     issues,
     fromToken: TagColor.fromToken,
-    tokens: [for (final value in TagColor.values) value.token],
+    values: TagColor.values,
+    token: (value) => value.token,
+    required: true,
   );
   return name == null || color == null ? null : Tag(name, color: color);
 }
 
 /// Enum-token value or null; one bad token doesn't cost other entry fields.
+/// The tokens on offer are the message, so no call site spells them out.
 T? _readToken<T extends Enum>(
-  YamlNode? valueNode,
+  YamlMap map,
   String key,
   List<Object> path,
   List<ValidationIssue> issues, {
   required T? Function(String) fromToken,
-  required List<String> tokens,
-}) {
-  if (valueNode == null) return null;
-  final value = valueNode.value;
-  final parsed = value is String ? fromToken(value) : null;
-  if (parsed == null) {
-    _report(
-      issues,
-      [...path, key],
-      '$key must be one of ${tokens.join(', ')}',
-      valueNode,
-    );
-  }
-  return parsed;
-}
+  required List<T> values,
+  required String Function(T value) token,
+  bool required = false,
+}) => _readValue<T>(
+  map,
+  key,
+  path,
+  issues,
+  parse: (value) => fromToken(_asString(value) ?? ''),
+  requirement:
+      '$key must be one of '
+      '${[for (final value in values) token(value)].join(', ')}',
+  required: required,
+);
 
 /// List of bare names under [key]: tags worn, aliases answered to.
 List<String> _readNames(
@@ -304,7 +333,7 @@ Recipe? _readRecipe(
   }
   const keys = {'name', 'tags', 'lines', 'notes', 'made'};
   _checkKeys(node, keys, path, issues);
-  final name = _readName(node, path, issues);
+  final name = _readText(node, 'name', path, issues, required: true);
   final tags = _readNames(node, 'tags', path, issues, 'Tag');
   final lines = <RecipeLine>[];
   _forEachEntry(node, 'lines', path, issues, (entryNode, entryPath) {
@@ -324,11 +353,7 @@ Recipe? _readRecipe(
       lines.add(line);
     }
   });
-  var notes = '';
-  final notesNode = node.nodes['notes'];
-  if (notesNode != null) {
-    notes = _stringValue(notesNode, [...path, 'notes'], issues, 'notes') ?? '';
-  }
+  final notes = _readText(node, 'notes', path, issues) ?? '';
   MadeHistory? made;
   final madeNode = node.nodes['made'];
   if (madeNode != null) {
@@ -367,56 +392,26 @@ MadeHistory? _readMade(
     return null;
   }
   _checkKeys(node, const {'last', 'times'}, path, issues);
-  DateTime? last;
-  final lastNode = node.nodes['last'];
-  if (lastNode == null) {
-    _reportMissing(issues, path, 'last');
-  } else {
-    final text = _stringValue(lastNode, [...path, 'last'], issues, 'last');
-    if (text != null) {
-      last = _tryParseDate(text);
-      if (last == null) {
-        _report(
-          issues,
-          [...path, 'last'],
-          'last must be a date (YYYY-MM-DD)',
-          lastNode,
-        );
-      }
-    }
-  }
-  int? times;
-  final timesNode = node.nodes['times'];
-  if (timesNode == null) {
-    _reportMissing(issues, path, 'times');
-  } else {
-    final value = timesNode.value;
-    if (value is int) {
-      times = value;
-    } else {
-      _report(
-        issues,
-        [...path, 'times'],
-        'times must be a whole number',
-        timesNode,
-      );
-    }
-  }
+  final last = _readValue<DateTime>(
+    node,
+    'last',
+    path,
+    issues,
+    parse: (value) => _tryParseDate(_asString(value) ?? ''),
+    requirement: 'last must be a date (YYYY-MM-DD)',
+    required: true,
+  );
+  final times = _readValue<int>(
+    node,
+    'times',
+    path,
+    issues,
+    parse: (value) => value is int ? value : null,
+    requirement: 'times must be a whole number',
+    required: true,
+  );
   if (last == null || times == null) return null;
   return MadeHistory(last, times);
-}
-
-String? _readName(
-  YamlMap map,
-  List<Object> path,
-  List<ValidationIssue> issues,
-) {
-  final node = map.nodes['name'];
-  if (node == null) {
-    _reportMissing(issues, path, 'name');
-    return null;
-  }
-  return _stringValue(node, [...path, 'name'], issues, 'name');
 }
 
 /// Required key missing; path is the entry itself, no inner node.

@@ -1,6 +1,7 @@
 /// The two dialogs vocabulary editing needs — the entry and the deletion —
 /// shared by the ingredient and tag screens
-/// (docs/ui-design.md#vocabulary-editing).
+/// (docs/ui-design.md#vocabulary-editing), and beside them the one reading of
+/// the [ValidationIssue] path contract (ADR 05) every form puts under a field.
 library;
 
 import 'package:cocktails/domain/domain.dart';
@@ -13,6 +14,35 @@ import 'vocabulary_list.dart';
 /// Show first issue or nothing if empty (untouched field not an error).
 String? fieldError(String text, List<ValidationIssue> issues) =>
     text.isEmpty || issues.isEmpty ? null : issues.first.message;
+
+/// The issues one field owns: [key] is the entry key leading to it, left out
+/// for the name, whose issues carry no path at all.
+List<ValidationIssue> issuesUnder(
+  List<ValidationIssue> issues, [
+  String? key,
+]) => [
+  for (final issue in issues)
+    if (key == null
+        ? issue.path.isEmpty
+        : issue.path.isNotEmpty && issue.path.first == key)
+      issue,
+];
+
+/// The message each field shows, keyed as [fieldOf] names it: the first issue
+/// naming a field wins, since the rules are reported in the order they are
+/// meant to be read. An issue [fieldOf] places nowhere is left out — its
+/// caller has its own way of reporting one.
+Map<K, String> firstIssuePerField<K extends Object>(
+  List<ValidationIssue> issues,
+  K? Function(ValidationIssue issue) fieldOf,
+) {
+  final problems = <K, String>{};
+  for (final issue in issues) {
+    final field = fieldOf(issue);
+    if (field != null) problems.putIfAbsent(field, () => issue.message);
+  }
+  return problems;
+}
 
 /// What the entry dialog settles: the name, the spellings the entry also
 /// answers to (ADR 10) and the tags it wears — either empty where the
@@ -112,6 +142,17 @@ Future<bool> confirmDialog(
       ),
     ) ??
     false;
+
+/// Ask before dropping edits; only what is being dropped differs, so the rest
+/// of the wording is settled here.
+Future<bool> confirmDiscard(BuildContext context, String title) =>
+    confirmDialog(
+      context,
+      title: title,
+      message: 'Your edits will be lost.',
+      cancel: 'Keep editing',
+      confirm: 'Discard',
+    );
 
 /// Ask to delete; true only if free and confirmed. A blocked entry names what
 /// stands in the way and offers nothing to confirm, so it answers false.
@@ -248,7 +289,7 @@ class _EntryDialogState extends State<_EntryDialog> {
             autofocus: true,
             decoration: InputDecoration(
               hintText: widget.hintText,
-              errorText: fieldError(entry.name, _under(issues)),
+              errorText: fieldError(entry.name, issuesUnder(issues)),
             ),
             onSubmitted: save == null ? null : (_) => save(),
           ),
@@ -260,7 +301,10 @@ class _EntryDialogState extends State<_EntryDialog> {
               controller: _aliases,
               decoration: InputDecoration(
                 hintText: 'Also known as (comma-separated)',
-                errorText: fieldError(_aliases.text, _under(issues, 'aliases')),
+                errorText: fieldError(
+                  _aliases.text,
+                  issuesUnder(issues, 'aliases'),
+                ),
               ),
               onSubmitted: save == null ? null : (_) => save(),
             ),
@@ -292,16 +336,6 @@ class _EntryDialogState extends State<_EntryDialog> {
     );
   }
 }
-
-/// The issues one field owns: [key] is the entry key leading to it, left out
-/// for the name, whose issues carry no path at all (ADR 05).
-List<ValidationIssue> _under(List<ValidationIssue> issues, [String? key]) => [
-  for (final issue in issues)
-    if (key == null
-        ? issue.path.isEmpty
-        : issue.path.isNotEmpty && issue.path.first == key)
-      issue,
-];
 
 /// All colors at once (six fit on screen); checkmark uses swatch's own ink.
 class _Swatches extends StatelessWidget {

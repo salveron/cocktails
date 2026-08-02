@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../widgets/editor_form.dart';
 import '../widgets/vocabulary_dialogs.dart';
 import '../widgets/model_view.dart';
 import '../widgets/tag_choices.dart';
@@ -43,19 +44,17 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
   );
   late final _notes = TextEditingController(text: widget.original?.notes ?? '');
 
-  /// Bottom line always empty to grow the list; emptied lines dropped on save.
   /// The vocabulary a line is written against comes from the model, so the
   /// fields open in the spelling the file holds (ADR 09).
-  late final _lines = [
-    for (final line in widget.original?.lines ?? const <RecipeLine>[])
-      _lineController(formatRecipeLine(line, widget.units)),
-    _lineController(''),
-  ];
-
-  /// Controllers of fields the list has taken back. Their `TextField` outlives
-  /// them by a build, so disposing one where it is dropped would be a
-  /// use-after-dispose; the form disposes them all when it closes.
-  final _dropped = <TextEditingController>[];
+  late final _lines = GrowingRows<TextEditingController>(
+    blankRow: _lineController,
+    isBlank: (line) => line.isBlank,
+    disposeRow: (line) => line.dispose(),
+    initial: [
+      for (final line in widget.original?.lines ?? const <RecipeLine>[])
+        _lineController(formatRecipeLine(line, widget.units)),
+    ],
+  );
 
   late final _tags = {...?widget.original?.tags};
 
@@ -73,28 +72,21 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
   void dispose() {
     _name.dispose();
     _notes.dispose();
-    for (final line in [..._lines, ..._dropped]) {
-      line.dispose();
-    }
+    _lines.dispose();
     super.dispose();
   }
 
-  TextEditingController _lineController(String text) {
+  TextEditingController _lineController([String text = '']) {
     final controller = TextEditingController(text: text);
     controller.addListener(() => _lineEdited(controller));
     return controller;
   }
 
-  /// Grows a field below the last one typed into, and takes the spare back
-  /// when that line is erased again — one field stands empty, never two, and
-  /// never the one the cursor is in (docs/ui-design.md#recipe-form).
+  /// An edited line drops the problem its last save left under it, and the
+  /// list settles around it (docs/ui-design.md#recipe-form).
   void _lineEdited(TextEditingController controller) => setState(() {
-    _saveProblems.remove(_lines.indexOf(controller));
-    if (!_blank(_lines.last)) {
-      _lines.add(_lineController(''));
-    } else if (_lines.length > 1 && _blank(_lines[_lines.length - 2])) {
-      _dropped.add(_lines.removeLast());
-    }
+    _saveProblems.remove(_lines.rows.indexOf(controller));
+    _lines.settle();
   });
 
   /// Whether anything changed since opening; asks on back if dirty.
@@ -104,10 +96,7 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
         _notes.text != (original?.notes ?? '') ||
         !setEquals(_tags, {...?original?.tags}) ||
         !listEquals(
-          [
-            for (final line in _lines)
-              if (!_blank(line)) line.text,
-          ],
+          [for (final line in _lines.entered) line.text],
           [
             for (final line in original?.lines ?? const <RecipeLine>[])
               formatRecipeLine(line, widget.units),
@@ -121,21 +110,20 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
 
   /// Name alone — kept apart by the empty path a name issue carries, so what
   /// the half-typed rest of the form is still missing waits for Save.
-  List<ValidationIssue> _nameIssues(Model model) => [
-    for (final issue in validateRecipe(
+  List<ValidationIssue> _nameIssues(Model model) => issuesUnder(
+    validateRecipe(
       Recipe(_name.text),
       knownIngredients: const {},
       knownTags: const {},
       knownUnits: const {},
       otherRecipeNames: _otherNames(model),
-    ))
-      if (issue.path.isEmpty) issue,
-  ];
+    ),
+  );
 
   /// Parse result per line (null if empty/valid); computed once per build.
   List<String?> get _syntaxProblems => [
-    for (final line in _lines)
-      if (_blank(line))
+    for (final line in _lines.rows)
+      if (line.isBlank)
         null
       else
         tryParseRecipeLine(line.text, widget.units).problem,
@@ -148,9 +136,10 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
   ({Recipe recipe, List<int> fieldOf}) _entered(List<Tag> vocabulary) {
     final lines = <RecipeLine>[];
     final fieldOf = <int>[];
-    for (var field = 0; field < _lines.length; field++) {
-      if (_blank(_lines[field])) continue;
-      lines.add(parseRecipeLine(_lines[field].text, widget.units));
+    for (var field = 0; field < _lines.rows.length; field++) {
+      final line = _lines.rows[field];
+      if (line.isBlank) continue;
+      lines.add(parseRecipeLine(line.text, widget.units));
       fieldOf.add(field);
     }
     return (
@@ -200,15 +189,16 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
   /// Line issues under their field; unplaceable issues in snackbar.
   void _reportProblems(List<ValidationIssue> issues, List<int> fieldOf) {
     setState(() {
-      _saveProblems.clear();
-      // Reversed: keep first issue per field (validation order).
-      for (final issue in issues.reversed) {
-        if (issue.path case ['lines', final int line]) {
-          _saveProblems[fieldOf[line]] = issue.message;
-        }
-      }
+      _saveProblems
+        ..clear()
+        ..addAll(
+          firstIssuePerField(issues, (issue) => _fieldOf(issue, fieldOf)),
+        );
     });
-    final unplaceable = issues.where((issue) => !_isLineIssue(issue)).toList();
+    final unplaceable = [
+      for (final issue in issues)
+        if (_fieldOf(issue, fieldOf) == null) issue,
+    ];
     if (unplaceable.isNotEmpty) {
       ScaffoldMessenger.of(
         context,
@@ -216,10 +206,13 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
     }
   }
 
-  static bool _isLineIssue(ValidationIssue issue) => switch (issue.path) {
-    ['lines', int()] => true,
-    _ => false,
-  };
+  /// The line field [issue] belongs under, or null where it names the recipe
+  /// as a whole and only the snackbar can carry it.
+  static int? _fieldOf(ValidationIssue issue, List<int> fieldOf) =>
+      switch (issue.path) {
+        ['lines', final int line] => fieldOf[line],
+        _ => null,
+      };
 
   Future<bool> _offerToAdd(List<String> names) => confirmDialog(
     context,
@@ -243,17 +236,6 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
     if (mounted) Navigator.of(context).pop(recipe.name);
   }
 
-  Future<void> _confirmDiscard() async {
-    final discard = await confirmDialog(
-      context,
-      title: 'Discard this recipe?',
-      message: 'Your edits will be lost.',
-      cancel: 'Keep editing',
-      confirm: 'Discard',
-    );
-    if (discard && mounted) Navigator.of(context).pop();
-  }
-
   @override
   Widget build(BuildContext context) => ModelView((model) {
     final vocabulary = sortedByName(model.recipeTags);
@@ -262,72 +244,52 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
     final syntax = _syntaxProblems;
     final canSave =
         nameIssues.isEmpty && syntax.every((problem) => problem == null);
-    return PopScope(
-      canPop: !_dirty,
-      onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) unawaited(_confirmDiscard());
-      },
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text(
-            original == null ? 'New recipe' : 'Edit "${original.name}"',
+    return EditorScaffold(
+      title: original == null ? 'New recipe' : 'Edit "${original.name}"',
+      dirty: _dirty,
+      discardTitle: 'Discard this recipe?',
+      onSave: canSave ? () => unawaited(_save(model, vocabulary)) : null,
+      children: [
+        TextField(
+          controller: _name,
+          autofocus: original == null,
+          decoration: InputDecoration(
+            hintText: 'Recipe name',
+            errorText: fieldError(_name.text, nameIssues),
           ),
-          actions: [
-            TextButton(
-              onPressed: canSave
-                  ? () => unawaited(_save(model, vocabulary))
-                  : null,
-              child: const Text('Save'),
-            ),
-          ],
         ),
-        body: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            TextField(
-              controller: _name,
-              autofocus: original == null,
+        const _SectionLabel('Ingredients'),
+        for (var field = 0; field < _lines.rows.length; field++)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: TextField(
+              controller: _lines.rows[field],
               decoration: InputDecoration(
-                hintText: 'Recipe name',
-                errorText: fieldError(_name.text, nameIssues),
+                hintText: '1.5 parts gin (base)',
+                errorText: syntax[field] ?? _saveProblems[field],
               ),
             ),
-            const _SectionLabel('Ingredients'),
-            for (var field = 0; field < _lines.length; field++)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: TextField(
-                  controller: _lines[field],
-                  decoration: InputDecoration(
-                    hintText: '1.5 parts gin (base)',
-                    errorText: syntax[field] ?? _saveProblems[field],
-                  ),
-                ),
-              ),
-            if (vocabulary.isNotEmpty) ...[
-              const _SectionLabel('Tags'),
-              TagChoices(
-                vocabulary: vocabulary,
-                chosen: _tags,
-                onToggle: (tag) => setState(() => _tags.toggle(tag)),
-              ),
-            ],
-            const _SectionLabel('Notes'),
-            TextField(
-              controller: _notes,
-              maxLines: null,
-              decoration: const InputDecoration(
-                hintText: 'Preparation, glassware, garnish…',
-              ),
-            ),
-          ],
+          ),
+        if (vocabulary.isNotEmpty) ...[
+          const _SectionLabel('Tags'),
+          TagChoices(
+            vocabulary: vocabulary,
+            chosen: _tags,
+            onToggle: (tag) => setState(() => _tags.toggle(tag)),
+          ),
+        ],
+        const _SectionLabel('Notes'),
+        TextField(
+          controller: _notes,
+          maxLines: null,
+          decoration: const InputDecoration(
+            hintText: 'Preparation, glassware, garnish…',
+          ),
         ),
-      ),
+      ],
     );
   });
 }
-
-bool _blank(TextEditingController field) => field.text.trim().isEmpty;
 
 class _SectionLabel extends StatelessWidget {
   const _SectionLabel(this.text);

@@ -13,6 +13,11 @@ final class SourcedIssue {
 
   SourcedIssue(this.issue, this.line);
 
+  /// As a report reads it: no data-format path, unlike [toString] (FR-DAT-4).
+  String get description => _placed(issue.message);
+
+  String _placed(String text) => line == null ? text : 'line $line: $text';
+
   @override
   bool operator ==(Object other) =>
       other is SourcedIssue && other.issue == issue && other.line == line;
@@ -21,5 +26,5 @@ final class SourcedIssue {
   int get hashCode => Object.hash(issue, line);
 
   @override
-  String toString() => line == null ? '$issue' : 'line $line: $issue';
+  String toString() => _placed('$issue');
 }

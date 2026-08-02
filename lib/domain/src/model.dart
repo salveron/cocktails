@@ -192,9 +192,6 @@ final class Unit {
   bool answersTo(String token) =>
       name.sameName(token) || pluralName.sameName(token);
 
-  Unit copyWith({String? name, String? plural}) =>
-      Unit(name ?? this.name, plural: plural ?? this.plural);
-
   @override
   bool operator ==(Object other) =>
       other is Unit && other.name == name && other.plural == plural;

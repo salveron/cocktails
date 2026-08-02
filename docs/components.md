@@ -56,8 +56,10 @@ lib/
                                #     plus the orders it reads in, the spellings it searches
                                #     by, byName and Set.toggle
                                #   vocabulary_dialogs — entry (name, aliases, colour, tags),
-                               #     delete, plus VocabularyEntry and fieldError, the rule
-                               #     the recipe form shares
+                               #     delete, discard, plus VocabularyEntry and the one
+                               #     reading of issue paths into fields every form shares
+                               #   editor_form — the pushed editor both forms wear: the
+                               #     Save/discard frame and the self-growing row list
 test/                          # mirrors lib/, plus test/architecture_test.dart
 ```
 

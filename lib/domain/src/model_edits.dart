@@ -24,7 +24,13 @@ extension ModelEdits on Model {
         : copyWith(
             units: units,
             recipes: [
-              for (final recipe in recipes) _withUnitsRenamed(recipe, renamed),
+              for (final recipe in recipes)
+                _withLines(
+                  recipe,
+                  (line) => line.copyWith(
+                    unit: renamed[nameKey(line.unit)] ?? line.unit,
+                  ),
+                ),
             ],
           );
   }
@@ -34,9 +40,12 @@ extension ModelEdits on Model {
     final canonical = <Recipe>[];
     var moved = false;
     for (final recipe in recipes) {
-      final lines = _canonicalLines(this, recipe.lines);
-      moved |= lines != null;
-      canonical.add(lines == null ? recipe : recipe.copyWith(lines: lines));
+      final resolved = _withLines(
+        recipe,
+        (line) => line.copyWith(ingredient: _resolved(this, line)),
+      );
+      moved |= !identical(resolved, recipe);
+      canonical.add(resolved);
     }
     return moved ? copyWith(recipes: canonical) : this;
   }
@@ -50,7 +59,12 @@ extension ModelEdits on Model {
           ? recipes
           : [
               for (final recipe in recipes)
-                _withLinesRenamed(recipe, from, ingredient.name),
+                _withLines(
+                  recipe,
+                  (line) => line.ingredient.sameName(from)
+                      ? line.copyWith(ingredient: ingredient.name)
+                      : line,
+                ),
             ],
     );
   }
@@ -158,28 +172,19 @@ String _tagName(Tag tag) => tag.name;
 String _resolved(Model model, RecipeLine line) =>
     model.ingredientNamed(line.ingredient)?.name ?? line.ingredient;
 
-/// [lines] resolved; null if each already stood under its own name.
-List<RecipeLine>? _canonicalLines(Model model, List<RecipeLine> lines) {
-  final canonical = <RecipeLine>[];
+/// [recipe] with every line put through [rewrite] — the recipe itself where
+/// none moved, so an edit reaching no line rebuilds nothing and callers can
+/// tell by identity.
+Recipe _withLines(Recipe recipe, RecipeLine Function(RecipeLine line) rewrite) {
+  final lines = <RecipeLine>[];
   var moved = false;
-  for (final line in lines) {
-    final name = _resolved(model, line);
-    moved |= name != line.ingredient;
-    canonical.add(line.copyWith(ingredient: name));
+  for (final line in recipe.lines) {
+    final rewritten = rewrite(line);
+    moved |= rewritten != line;
+    lines.add(rewritten);
   }
-  return moved ? canonical : null;
+  return moved ? recipe.copyWith(lines: lines) : recipe;
 }
-
-/// Recipe with measures rewritten under [renamed]; unchanged if none moved.
-Recipe _withUnitsRenamed(Recipe recipe, Map<String, String> renamed) =>
-    recipe.lines.any((line) => renamed.containsKey(nameKey(line.unit)))
-    ? recipe.copyWith(
-        lines: [
-          for (final line in recipe.lines)
-            line.copyWith(unit: renamed[nameKey(line.unit)] ?? line.unit),
-        ],
-      )
-    : recipe;
 
 /// Tags with [from] renamed to [to]; via copyWith to preserve color.
 List<Tag> _renamedTag(List<Tag> tags, String from, String to) => [
@@ -205,19 +210,6 @@ List<T> _without<T>(List<T> items, String name, String Function(T) nameOf) => [
   for (final item in items)
     if (!nameOf(item).sameName(name)) item,
 ];
-
-/// Recipe with references rewritten; unchanged if none matched.
-Recipe _withLinesRenamed(Recipe recipe, String from, String to) =>
-    recipe.lines.any((line) => line.ingredient.sameName(from))
-    ? recipe.copyWith(
-        lines: [
-          for (final line in recipe.lines)
-            line.ingredient.sameName(from)
-                ? line.copyWith(ingredient: to)
-                : line,
-        ],
-      )
-    : recipe;
 
 /// Tags with [from] rewritten to [to]; null if none matched.
 List<String>? _tagsRenamed(List<String> tags, String from, String to) =>
