@@ -14,16 +14,16 @@ extension NameComparison on String {
   bool sameName(String other) => nameKey(this) == nameKey(other);
 }
 
+/// Whether [name] already stands in [seen], which gains it either way.
+bool repeatsName(Set<String> seen, String name) => !seen.add(nameKey(name));
+
 /// Indexes in [names] whose value already appeared at a lower index.
 List<int> duplicateNameIndexes(List<String> names) {
   final seen = <String>{};
-  final duplicates = <int>[];
-  for (var i = 0; i < names.length; i++) {
-    if (!seen.add(nameKey(names[i]))) {
-      duplicates.add(i);
-    }
-  }
-  return duplicates;
+  return [
+    for (var i = 0; i < names.length; i++)
+      if (repeatsName(seen, names[i])) i,
+  ];
 }
 
 /// Element-wise equality; lists of different lengths are never equal.

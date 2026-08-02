@@ -14,35 +14,43 @@ import 'vocabulary_list.dart';
 String? fieldError(String text, List<ValidationIssue> issues) =>
     text.isEmpty || issues.isEmpty ? null : issues.first.message;
 
-/// Get ingredient name and tags, or null if cancelled.
-Future<({String name, List<String> tags})?> promptForIngredient(
+/// What the entry dialog settles: the name, the spellings the entry also
+/// answers to (ADR 10) and the tags it wears — either empty where the
+/// vocabulary has none of them.
+typedef VocabularyEntry = ({
+  String name,
+  List<String> aliases,
+  List<String> tags,
+});
+
+/// Get ingredient name, aliases and tags, or null if cancelled.
+Future<VocabularyEntry?> promptForIngredient(
   BuildContext context, {
   required String title,
   required String hintText,
-  required List<ValidationIssue> Function(String name) validate,
+  required List<ValidationIssue> Function(VocabularyEntry entry) validate,
   required List<Tag> vocabulary,
+  List<String> aliases = const [],
   List<String> chosen = const [],
   String initial = '',
-}) async {
-  final answer = await _prompt(
-    context,
-    title: title,
-    hintText: hintText,
-    validate: validate,
-    initial: initial,
-    color: null,
-    vocabulary: vocabulary,
-    chosen: chosen,
-  );
-  return answer == null ? null : (name: answer.name, tags: answer.tags);
-}
+}) async => (await _prompt(
+  context,
+  title: title,
+  hintText: hintText,
+  validate: validate,
+  initial: initial,
+  aliases: aliases.join(', '),
+  color: null,
+  vocabulary: vocabulary,
+  chosen: chosen,
+))?.entry;
 
 /// Get tag name and color from single dialog, or null if cancelled.
 Future<Tag?> promptForTag(
   BuildContext context, {
   required String title,
   required String hintText,
-  required List<ValidationIssue> Function(String name) validate,
+  required List<ValidationIssue> Function(VocabularyEntry entry) validate,
   required TagColor color,
   String initial = '',
 }) async => switch (await _prompt(
@@ -51,12 +59,13 @@ Future<Tag?> promptForTag(
   hintText: hintText,
   validate: validate,
   initial: initial,
+  aliases: null,
   color: color,
   vocabulary: const [],
   chosen: const [],
 )) {
-  (name: final String name, color: final TagColor color, tags: _) => Tag(
-    name,
+  (entry: final entry, color: final TagColor color) => Tag(
+    entry.name,
     color: color,
   ),
   _ => null,
@@ -127,24 +136,26 @@ Future<bool> confirmDelete(
         cancel: 'Close',
       );
 
-typedef _Entry = ({String name, TagColor? color, List<String> tags});
+typedef _Answer = ({VocabularyEntry entry, TagColor? color});
 
-Future<_Entry?> _prompt(
+Future<_Answer?> _prompt(
   BuildContext context, {
   required String title,
   required String hintText,
-  required List<ValidationIssue> Function(String name) validate,
+  required List<ValidationIssue> Function(VocabularyEntry entry) validate,
   required String initial,
+  required String? aliases,
   required TagColor? color,
   required List<Tag> vocabulary,
   required List<String> chosen,
-}) => showDialog<_Entry>(
+}) => showDialog<_Answer>(
   context: context,
   builder: (context) => _EntryDialog(
     title: title,
     hintText: hintText,
     validate: validate,
     initial: initial,
+    aliases: aliases,
     color: color,
     vocabulary: vocabulary,
     chosen: chosen,
@@ -157,6 +168,7 @@ class _EntryDialog extends StatefulWidget {
     required this.hintText,
     required this.validate,
     required this.initial,
+    required this.aliases,
     required this.color,
     required this.vocabulary,
     required this.chosen,
@@ -164,8 +176,12 @@ class _EntryDialog extends StatefulWidget {
 
   final String title;
   final String hintText;
-  final List<ValidationIssue> Function(String name) validate;
+  final List<ValidationIssue> Function(VocabularyEntry entry) validate;
   final String initial;
+
+  /// The spellings already answered to, as the field reads them (null if this
+  /// vocabulary has no aliases).
+  final String? aliases;
 
   /// Opening color (null if no color for this vocabulary).
   final TagColor? color;
@@ -180,6 +196,7 @@ class _EntryDialog extends StatefulWidget {
 
 class _EntryDialogState extends State<_EntryDialog> {
   late final _name = TextEditingController(text: widget.initial);
+  late final _aliases = TextEditingController(text: widget.aliases ?? '');
   late TagColor? _color = widget.color;
   late final Set<String> _tags = {...widget.chosen};
 
@@ -187,29 +204,36 @@ class _EntryDialogState extends State<_EntryDialog> {
   void initState() {
     super.initState();
     _name.addListener(() => setState(() {}));
+    _aliases.addListener(() => setState(() {}));
   }
 
   @override
   void dispose() {
     _name.dispose();
+    _aliases.dispose();
     super.dispose();
   }
 
   void _toggle(String tag) => setState(() => _tags.toggle(tag));
 
+  /// What the one comma-separated field says (ADR 10) — trimmed, and without
+  /// the blank a separator being typed leaves behind.
+  List<String> get _aliasNames => [
+    for (final spelling in _aliases.text.split(','))
+      if (spelling.trim() case final trimmed when trimmed.isNotEmpty) trimmed,
+  ];
+
   @override
   Widget build(BuildContext context) {
-    final name = _name.text;
-    final issues = widget.validate(name);
-    final save = name.isEmpty || issues.isNotEmpty
+    final entry = (
+      name: _name.text,
+      aliases: _aliasNames,
+      tags: [for (final tag in wornInOrder(widget.vocabulary, _tags)) tag.name],
+    );
+    final issues = widget.validate(entry);
+    final save = entry.name.isEmpty || issues.isNotEmpty
         ? null
-        : () => Navigator.of(context).pop((
-            name: name,
-            color: _color,
-            tags: [
-              for (final tag in wornInOrder(widget.vocabulary, _tags)) tag.name,
-            ],
-          ));
+        : () => Navigator.of(context).pop((entry: entry, color: _color));
     final color = _color;
     return AlertDialog(
       scrollable: true,
@@ -224,10 +248,23 @@ class _EntryDialogState extends State<_EntryDialog> {
             autofocus: true,
             decoration: InputDecoration(
               hintText: widget.hintText,
-              errorText: fieldError(name, issues),
+              errorText: fieldError(entry.name, _under(issues)),
             ),
             onSubmitted: save == null ? null : (_) => save(),
           ),
+          // Closer than the sections below: both fields are what the entry is
+          // called, not two things to settle.
+          if (widget.aliases != null) ...[
+            const SizedBox(height: 8),
+            TextField(
+              controller: _aliases,
+              decoration: InputDecoration(
+                hintText: 'Also known as (comma-separated)',
+                errorText: fieldError(_aliases.text, _under(issues, 'aliases')),
+              ),
+              onSubmitted: save == null ? null : (_) => save(),
+            ),
+          ],
           if (color != null) ...[
             const SizedBox(height: 20),
             _Swatches(
@@ -255,6 +292,16 @@ class _EntryDialogState extends State<_EntryDialog> {
     );
   }
 }
+
+/// The issues one field owns: [key] is the entry key leading to it, left out
+/// for the name, whose issues carry no path at all (ADR 05).
+List<ValidationIssue> _under(List<ValidationIssue> issues, [String? key]) => [
+  for (final issue in issues)
+    if (key == null
+        ? issue.path.isEmpty
+        : issue.path.isNotEmpty && issue.path.first == key)
+      issue,
+];
 
 /// All colors at once (six fit on screen); checkmark uses swatch's own ink.
 class _Swatches extends StatelessWidget {

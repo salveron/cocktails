@@ -106,6 +106,28 @@ void main() {
       );
     });
 
+    testWidgets('a bottle named by an alias is that bottle (ADR 10)', (
+      tester,
+    ) async {
+      final store = await pumpList(
+        tester,
+        recipeModel.withIngredient(
+          Ingredient('gin', aliases: const ['jenever']),
+        ),
+      );
+      await openAdd(tester);
+      await typeInto(tester, nameField, 'Martini');
+      await typeInto(tester, lineFields.first, '2 parts Jenever');
+      await tap(tester, find.text('Save'));
+      // The offer is not built for a name the vocabulary already answers to,
+      // so an alias can no longer create a near-duplicate bottle.
+      expect(find.text('Add missing ingredients?'), findsNothing);
+      expect(
+        store.saved!.recipeNamed('Martini')!.lines.single,
+        const RecipeLine(Amount(2), 'part', 'gin'),
+      );
+    });
+
     testWidgets('a line with no unit is that many parts', (tester) async {
       final store = await pumpList(tester);
       await openAdd(tester);

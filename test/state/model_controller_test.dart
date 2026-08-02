@@ -237,6 +237,27 @@ void main() {
       expect(modelOf(container).hasTag(TagKind.ingredient, 'juniper'), isFalse);
     });
 
+    test('upsertIngredient renames onto an alias it lets go of', () async {
+      final container = await started(
+        MemoryModelStore(
+          stored.withIngredient(
+            Ingredient(
+              'gin',
+              stock: StockLevel.in_,
+              aliases: const ['jenever'],
+            ),
+          ),
+        ),
+      );
+      await controllerOf(
+        container,
+      ).upsertIngredient(Ingredient('jenever'), replacing: 'gin');
+      final model = modelOf(container);
+      expect(model.ingredientNamed('gin'), isNull);
+      expect(model.ingredientNamed('jenever')?.aliases, isEmpty);
+      expect(model.recipeNamed('Negroni')?.lines.first.ingredient, 'jenever');
+    });
+
     test('upsertRecipe adds and replaces by name', () async {
       final container = await started();
       await controllerOf(container).upsertRecipe(Recipe('Americano'));
@@ -260,6 +281,48 @@ void main() {
       expect(model.recipeNamed('Sazerac'), isNotNull);
       // The whole entry is one edit, so one model reaches the disk and one
       // backup rotation covers the action.
+      expect(store.saveCount, 1);
+    });
+
+    test('upsertRecipe stores every line under the bottle it names', () async {
+      final container = await started(
+        MemoryModelStore(
+          stored.withIngredient(
+            Ingredient(
+              'gin',
+              stock: StockLevel.in_,
+              aliases: const ['jenever'],
+            ),
+          ),
+        ),
+      );
+      await controllerOf(container).upsertRecipe(
+        Recipe(
+          'Gin Fizz',
+          lines: const [
+            RecipeLine(Amount(2), 'part', 'jenever'),
+            RecipeLine(Amount(1), 'part', 'CAMPARI'),
+          ],
+        ),
+      );
+      expect(
+        modelOf(
+          container,
+        ).recipeNamed('Gin Fizz')!.lines.map((line) => line.ingredient),
+        ['gin', 'campari'],
+      );
+    });
+
+    test('a bottle this edit introduces answers for its own line', () async {
+      final container = await started();
+      await controllerOf(container).upsertRecipe(
+        Recipe('Sazerac', lines: const [RecipeLine(Amount(2), 'part', 'RYE')]),
+        addingIngredients: [Ingredient('rye')],
+      );
+      expect(
+        modelOf(container).recipeNamed('Sazerac')!.lines.single.ingredient,
+        'rye',
+      );
       expect(store.saveCount, 1);
     });
 

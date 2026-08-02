@@ -17,6 +17,7 @@ enum ValidationIssueKind {
   emptyName,
   whitespaceInName,
   lineBreakInName,
+  commaInAlias,
   duplicateName,
   reservedSuffix,
   partMlNotPositive,
@@ -97,26 +98,35 @@ List<ValidationIssue> validateModel({
     );
   }
   _checkUnits(issues, units);
-  final ingredientNames = ingredients.map((i) => i.name).toList();
   final ingredientTagNames = ingredientTags.map((t) => t.name).toList();
   final recipeTagNames = recipeTags.map((t) => t.name).toList();
   final knownIngredientTags = nameKeys(ingredientTagNames);
+  // Names and aliases share one namespace (ADR 10): the entries walk it
+  // together, each one's aliases spoken for right after its own name, and what
+  // it holds by the end is exactly what a recipe line may resolve against.
+  final knownIngredients = <String>{};
   _checkNames(
     issues,
     'ingredients',
     'ingredient',
-    ingredientNames,
-    extraRule: _reservedSuffixProblem,
-    entryIssues: (i) => _checkTagReferences(
-      ingredients[i].tags,
-      ['ingredients', i],
-      known: knownIngredientTags,
-      entity: 'ingredient',
-    ),
+    ingredients.map((i) => i.name).toList(),
+    namespace: knownIngredients,
+    extraRule: (name) => _reservedSuffixProblem('name', name),
+    entryIssues: (i) => [
+      ..._checkAliases(ingredients[i].aliases, [
+        'ingredients',
+        i,
+      ], taken: knownIngredients),
+      ..._checkTagReferences(
+        ingredients[i].tags,
+        ['ingredients', i],
+        known: knownIngredientTags,
+        entity: 'ingredient',
+      ),
+    ],
   );
   _checkNames(issues, 'ingredient_tags', 'ingredient tag', ingredientTagNames);
   _checkNames(issues, 'recipe_tags', 'recipe tag', recipeTagNames);
-  final knownIngredients = nameKeys(ingredientNames);
   final knownRecipeTags = nameKeys(recipeTagNames);
   _checkNames(
     issues,
@@ -186,10 +196,11 @@ Set<String> otherNames(Set<String> names, String? except) => {
     if (except == null || !name.sameName(except)) name,
 };
 
-/// Checks one ingredient — its name and its tag references — before it enters
-/// the vocabulary (M11); an empty result means valid. [otherIngredientNames]
-/// holds every *other* entry's name, so renaming an entry never collides with
-/// itself.
+/// Checks one ingredient — its name, the aliases it also answers to, and its
+/// tag references — before it enters the vocabulary (M11); an empty result
+/// means valid. [otherIngredientNames] holds every *other* entry's spellings,
+/// aliases among them (ADR 10), so an entry collides with neither itself nor
+/// its own aliases.
 ///
 /// Paths are relative to the entry, so a name issue carries an empty path —
 /// the same convention as [validateRecipe].
@@ -197,20 +208,24 @@ List<ValidationIssue> validateIngredient(
   Ingredient ingredient, {
   required Set<String> knownIngredientTags,
   Set<String> otherIngredientNames = const {},
-}) => [
-  ..._checkName(
-    'ingredient',
-    ingredient.name,
-    isDuplicate: _holdsName(otherIngredientNames, ingredient.name),
-    extraRule: _reservedSuffixProblem,
-  ),
-  ..._checkTagReferences(
-    ingredient.tags,
-    const [],
-    known: nameKeys(knownIngredientTags),
-    entity: 'ingredient',
-  ),
-];
+}) {
+  final taken = nameKeys(otherIngredientNames);
+  return [
+    ..._checkName(
+      'ingredient',
+      ingredient.name,
+      isDuplicate: repeatsName(taken, ingredient.name),
+      extraRule: (name) => _reservedSuffixProblem('name', name),
+    ),
+    ..._checkAliases(ingredient.aliases, const [], taken: taken),
+    ..._checkTagReferences(
+      ingredient.tags,
+      const [],
+      known: nameKeys(knownIngredientTags),
+      entity: 'ingredient',
+    ),
+  ];
+}
 
 /// Checks one tag before it enters a vocabulary (M12); an empty result means
 /// valid. Serves either vocabulary — [otherTagNames] is what says which, and
@@ -264,21 +279,24 @@ bool _holdsName(Set<String> names, String name) =>
 /// come out in index order. [extraRule] adds a rule only one vocabulary has;
 /// [entryIssues] appends an entry's own issues behind its name issues, which
 /// is what keeps a recipe's lines from trailing the next recipe's name.
+/// [namespace] is the set the names are unique within, handed in where an
+/// entry brings spellings of its own to it and left holding them all.
 void _checkNames(
   List<ValidationIssue> issues,
   String key,
   String entity,
   List<String> names, {
+  Set<String>? namespace,
   _Problem? Function(String name)? extraRule,
   List<ValidationIssue> Function(int index)? entryIssues,
 }) {
-  final duplicates = duplicateNameIndexes(names).toSet();
+  final taken = namespace ?? <String>{};
   for (var i = 0; i < names.length; i++) {
     issues.addAll(
       _checkName(
         entity,
         names[i],
-        isDuplicate: duplicates.contains(i),
+        isDuplicate: repeatsName(taken, names[i]),
         extraRule: extraRule,
         basePath: [key, i],
       ),
@@ -287,6 +305,39 @@ void _checkNames(
       issues.addAll(entryIssues(i));
     }
   }
+}
+
+/// Every rule on the spellings a bottle also answers to (FR-VOC-6). They stand
+/// in the vocabulary's one namespace, so [taken] arrives holding what is
+/// already spoken for and leaves holding these too; the comma is barred
+/// because the field they are typed in separates on it (ADR 10).
+List<ValidationIssue> _checkAliases(
+  List<String> aliases,
+  List<Object> basePath, {
+  required Set<String> taken,
+}) {
+  final issues = <ValidationIssue>[];
+  for (var a = 0; a < aliases.length; a++) {
+    final alias = aliases[a];
+    _addProblems(
+      issues,
+      [...basePath, 'aliases', a],
+      [
+        _nameProblem('ingredient alias', alias),
+        alias.contains(',')
+            ? (
+                kind: ValidationIssueKind.commaInAlias,
+                message: 'Comma in ingredient alias: "$alias"',
+              )
+            : null,
+        repeatsName(taken, alias)
+            ? _duplicateProblem('ingredient', alias)
+            : null,
+        _reservedSuffixProblem('alias', alias),
+      ],
+    );
+  }
+  return issues;
 }
 
 /// The single home of the name rules, whether the name arrives inside a list
@@ -325,13 +376,15 @@ void _addProblems(
   }
 }
 
-_Problem? _reservedSuffixProblem(String name) {
+/// The mark suffixes a line ends in are the grammar's, so no spelling of a
+/// bottle may end in one — [what] only says which spelling this is.
+_Problem? _reservedSuffixProblem(String what, String name) {
   for (final suffix in reservedSuffixes) {
     if (name.endsWith(suffix)) {
       return (
         kind: ValidationIssueKind.reservedSuffix,
         message:
-            'Ingredient name ends with the reserved "$suffix" suffix: "$name"',
+            'Ingredient $what ends with the reserved "$suffix" suffix: "$name"',
       );
     }
   }

@@ -185,11 +185,12 @@ Color chipColor(WidgetTester tester, String label) {
   return (chip.decoration as BoxDecoration).color!;
 }
 
-/// The dialog's own field, told apart from the search field behind it.
-final dialogField = find.descendant(
-  of: find.byType(AlertDialog),
-  matching: find.byType(TextField),
-);
+/// The dialog's name field, told apart from the search field behind it and
+/// from whatever else the entry carries below it — the name always opens the
+/// dialog, so it is the first field in it.
+final dialogField = find
+    .descendant(of: find.byType(AlertDialog), matching: find.byType(TextField))
+    .first;
 
 /// A form field told apart by its hint — the one thing each field keeps
 /// whatever is typed into it.
@@ -218,9 +219,16 @@ Future<void> typeInto(WidgetTester tester, Finder target, String text) async {
   await tester.pumpAndSettle();
 }
 
-/// Types [text] into the dialog's own field — never the search behind it.
+/// Types [text] into the dialog's name field — never the search behind it.
 Future<void> type(WidgetTester tester, String text) =>
     typeInto(tester, dialogField, text);
+
+/// The one comma-separated field a bottle's other spellings are typed into.
+final aliasesField = field('Also known as (comma-separated)');
+
+/// Types [text] into it.
+Future<void> typeAliases(WidgetTester tester, String text) =>
+    typeInto(tester, aliasesField, text);
 
 /// Opens whatever the list's add button opens.
 Future<void> openAdd(WidgetTester tester) =>

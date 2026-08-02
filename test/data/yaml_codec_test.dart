@@ -198,6 +198,28 @@ recipes: []
       expect(text, contains('\nrecipes:\n  - name: Nothing Yet\n'));
     });
 
+    test('an entry writes the spellings it also answers to (ADR 10)', () {
+      final model = Model(
+        ingredients: [
+          Ingredient(
+            'bourbon',
+            stock: StockLevel.in_,
+            aliases: const ['bourbon whiskey', 'bourbon whisky'],
+            tags: const ['oaked'],
+          ),
+        ],
+        ingredientTags: const [Tag('oaked', color: TagColor.slate)],
+      );
+      expect(
+        codec.encode(model),
+        contains(
+          '\ningredients:\n'
+          '  - {name: bourbon, stock: in, tags: [oaked], '
+          'aliases: [bourbon whiskey, bourbon whisky]}\n',
+        ),
+      );
+    });
+
     test('a tag colour is written even though nothing is default', () {
       final model = Model(
         ingredientTags: const [Tag('citrus', color: TagColor.sand)],
@@ -388,6 +410,34 @@ recipes: []
       expect(model.settings, const Settings(partMl: 25));
     });
 
+    test('reads the spellings a bottle answers to (ADR 10)', () {
+      final model = decoded(
+        'format: 1\n'
+        'ingredients:\n'
+        '  - {name: bourbon, aliases: [bourbon whiskey, bourbon whisky]}\n',
+      );
+      expect(model.ingredients.single.aliases, [
+        'bourbon whiskey',
+        'bourbon whisky',
+      ]);
+      expect(model.ingredientNamed('bourbon whisky')?.name, 'bourbon');
+    });
+
+    test('a hand-edited line naming one is stored canonical', () {
+      final model = decoded(
+        'format: 1\n'
+        'ingredients:\n'
+        '  - {name: bourbon, aliases: [whiskey]}\n'
+        'recipes:\n'
+        '  - name: Old Fashioned\n'
+        '    lines: [2 parts whiskey]\n',
+      );
+      expect(
+        model.recipeNamed('Old Fashioned')!.lines.single.ingredient,
+        'bourbon',
+      );
+    });
+
     test('never throws, whatever the input', () {
       const inputs = [
         '',
@@ -541,6 +591,30 @@ recipes: []
         'ingredients[1].stock',
         4,
         messagePart: 'stock must be one of in, low, out: 7',
+      );
+    });
+
+    test('an aliases section that is not a list of strings', () {
+      final issues = rejected(
+        'format: 1\n'
+        'ingredients:\n'
+        '  - {name: gin, aliases: genever}\n'
+        '  - {name: rum, aliases: [7]}\n',
+      );
+      expect(issues, hasLength(2));
+      expectIssue(
+        issues[0],
+        ValidationIssueKind.malformedValue,
+        'ingredients[0].aliases',
+        3,
+        messagePart: 'aliases must be a list: "genever"',
+      );
+      expectIssue(
+        issues[1],
+        ValidationIssueKind.malformedValue,
+        'ingredients[1].aliases[0]',
+        4,
+        messagePart: 'Alias must be a string: 7',
       );
     });
 
@@ -991,11 +1065,12 @@ recipes: []
         'ingredients:\n'
         '  - name: gin\n'
         '    stock: in\n'
+        '    aliases: [genever]\n'
         '  - name: bitters\n'
         'recipes:\n'
         '  - name: Gin Shot\n'
         '    lines:\n'
-        '      - 2.0-2.0 oz gin\n'
+        '      - 2.0-2.0 oz genever\n'
         '      - 2 dashes bitters\n'
         '      - 1 GIN\n',
       );
@@ -1016,7 +1091,7 @@ units:
   - {name: piece, plural: pieces}
 
 ingredients:
-  - {name: gin, stock: in}
+  - {name: gin, stock: in, aliases: [genever]}
   - {name: bitters}
 
 ingredient_tags: []
@@ -1028,7 +1103,7 @@ recipes:
     lines:
       - 2 oz gin
       - 2 dashes bitters
-      - 1 part GIN
+      - 1 part gin
 ''');
     });
   });

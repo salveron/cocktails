@@ -36,9 +36,36 @@ extension ModelEdits on Model {
           );
   }
 
-  /// Adds [ingredient], or replaces the entry of its name where it stands.
-  Model withIngredient(Ingredient ingredient) =>
-      copyWith(ingredients: _upserted(ingredients, ingredient, (i) => i.name));
+  /// Every recipe line under the bottle's own name — where an alias or another
+  /// case becomes the entry it means, and where an unknown name stays (ADR 10).
+  Model withCanonicalIngredientNames() {
+    final canonical = <Recipe>[];
+    var moved = false;
+    for (final recipe in recipes) {
+      final lines = _canonicalLines(this, recipe.lines);
+      moved |= lines != null;
+      canonical.add(lines == null ? recipe : recipe.copyWith(lines: lines));
+    }
+    return moved ? copyWith(recipes: canonical) : this;
+  }
+
+  /// Adds [ingredient], or replaces the entry of its name — or the one named
+  /// [replacing], every recipe line that named it following (FR-VOC-1). The
+  /// whole entry settles at once, since a bottle renamed as its aliases change
+  /// has no valid model to stop at halfway (ADR 10). The name it replaces is
+  /// compared exactly, as [withUnits] compares its own.
+  Model withIngredient(Ingredient ingredient, {String? replacing}) {
+    final from = replacing ?? ingredient.name;
+    return copyWith(
+      ingredients: _upserted(ingredients, ingredient, (i) => i.name, at: from),
+      recipes: from == ingredient.name
+          ? recipes
+          : [
+              for (final recipe in recipes)
+                _withLinesRenamed(recipe, from, ingredient.name),
+            ],
+    );
+  }
 
   Model withoutIngredient(String name) =>
       copyWith(ingredients: _without(ingredients, name, (i) => i.name));
@@ -46,23 +73,6 @@ extension ModelEdits on Model {
   Model withStock(String ingredient, StockLevel stock) {
     final entry = ingredientNamed(ingredient);
     return entry == null ? this : withIngredient(entry.copyWith(stock: stock));
-  }
-
-  /// Renames the entry and rewrites every recipe line that referenced it —
-  /// a name is the only reference there is (FR-VOC-1).
-  Model withIngredientRenamed(String from, String to) {
-    if (ingredientNamed(from) == null) return this;
-    return copyWith(
-      ingredients: [
-        for (final ingredient in ingredients)
-          ingredient.name.sameName(from)
-              ? ingredient.copyWith(name: to)
-              : ingredient,
-      ],
-      recipes: [
-        for (final recipe in recipes) _withLinesRenamed(recipe, from, to),
-      ],
-    );
   }
 
   /// Adds [tag] to [kind]'s vocabulary, or replaces the entry of its name.
@@ -131,13 +141,17 @@ extension ModelEdits on Model {
   }
 
   /// Names of the recipes standing in the way of deleting the ingredient, in
-  /// model order; empty when it is free to go (FR-VOC-1). Optional lines count
-  /// — they reference the vocabulary just as required ones do.
-  List<String> recipesUsingIngredient(String name) => [
-    for (final recipe in recipes)
-      if (recipe.lines.any((line) => line.ingredient.sameName(name)))
-        recipe.name,
-  ];
+  /// model order; empty when it is free to go (FR-VOC-1). Optional lines count,
+  /// and so does one naming the bottle by an alias — both ends resolving
+  /// through the one index (ADR 10).
+  List<String> recipesUsingIngredient(String name) {
+    final wanted = ingredientNamed(name)?.name ?? name;
+    return [
+      for (final recipe in recipes)
+        if (recipe.lines.any((line) => _resolved(this, line).sameName(wanted)))
+          recipe.name,
+    ];
+  }
 
   /// [recipesUsingIngredient] for a unit: what stands in the way of deleting
   /// it, since a line measured in a unit references it as it does a bottle.
@@ -163,6 +177,22 @@ extension ModelEdits on Model {
 
 String _tagName(Tag tag) => tag.name;
 
+/// The bottle [line] means, under its own name; as typed where there is none.
+String _resolved(Model model, RecipeLine line) =>
+    model.ingredientNamed(line.ingredient)?.name ?? line.ingredient;
+
+/// [lines] resolved, or null where each already stood under its own name.
+List<RecipeLine>? _canonicalLines(Model model, List<RecipeLine> lines) {
+  final canonical = <RecipeLine>[];
+  var moved = false;
+  for (final line in lines) {
+    final name = _resolved(model, line);
+    moved |= name != line.ingredient;
+    canonical.add(line.copyWith(ingredient: name));
+  }
+  return moved ? canonical : null;
+}
+
 /// The recipe with its measures rewritten under [renamed], or the very same
 /// recipe where none of them moved — [_withLinesRenamed] for units.
 Recipe _withUnitsRenamed(Recipe recipe, Map<String, String> renamed) =>
@@ -183,11 +213,18 @@ List<Tag> _renamedTag(List<Tag> tags, String from, String to) => [
     tag.name.sameName(from) ? tag.copyWith(name: to) : tag,
 ];
 
-/// [item] in place of the entry sharing its name, appended when there is none.
-List<T> _upserted<T>(List<T> items, T item, String Function(T) nameOf) {
-  final name = nameOf(item);
-  final index = items.indexWhere((entry) => nameOf(entry).sameName(name));
-  return index < 0 ? [...items, item] : ([...items]..[index] = item);
+/// [item] in place of the entry named [at], else of its own name, else added.
+List<T> _upserted<T>(
+  List<T> items,
+  T item,
+  String Function(T) nameOf, {
+  String? at,
+}) {
+  for (final name in [?at, nameOf(item)]) {
+    final index = items.indexWhere((entry) => nameOf(entry).sameName(name));
+    if (index >= 0) return [...items]..[index] = item;
+  }
+  return [...items, item];
 }
 
 List<T> _without<T>(List<T> items, String name, String Function(T) nameOf) => [

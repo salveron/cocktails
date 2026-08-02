@@ -38,16 +38,17 @@ Future<Answer<T>> openDialog<T>(
   return answer;
 }
 
-/// The real ingredient rules, with "gin" already taken.
-List<ValidationIssue> rule(String name) => validateIngredient(
-  Ingredient(name),
-  knownIngredientTags: const {},
-  otherIngredientNames: const {'gin'},
+/// The real ingredient rules, with "gin" and "genever" already taken — the
+/// second an alias, so the dialog is judged against the whole namespace.
+List<ValidationIssue> rule(VocabularyEntry entry) => validateIngredient(
+  Ingredient(entry.name, aliases: entry.aliases, tags: entry.tags),
+  knownIngredientTags: {for (final tag in ingredientTags) tag.name},
+  otherIngredientNames: const {'gin', 'genever'},
 );
 
 /// The real tag rules, with "classic" already taken.
-List<ValidationIssue> tagRule(String name) => validateTag(
-  Tag(name, color: TagColor.teal),
+List<ValidationIssue> tagRule(VocabularyEntry entry) => validateTag(
+  Tag(entry.name, color: TagColor.teal),
   otherTagNames: const {'classic'},
 );
 
@@ -58,11 +59,12 @@ const ingredientTags = [
 ];
 
 void main() {
-  Future<Answer<({String name, List<String> tags})?>> openIngredient(
+  Future<Answer<VocabularyEntry?>> openIngredient(
     WidgetTester tester, {
     String title = 'New ingredient',
     String initial = '',
     List<Tag> vocabulary = const [],
+    List<String> aliases = const [],
     List<String> chosen = const [],
   }) => openDialog(
     tester,
@@ -72,6 +74,7 @@ void main() {
       hintText: 'Ingredient name',
       validate: rule,
       vocabulary: vocabulary,
+      aliases: aliases,
       chosen: chosen,
       initial: initial,
     ),
@@ -207,6 +210,79 @@ void main() {
         expect(find.byTooltip(color.token), findsNothing, reason: color.token);
       }
     });
+
+    testWidgets('the one field splits on its commas', (tester) async {
+      final answer = await openIngredient(tester);
+      await type(tester, 'bourbon');
+      await typeAliases(tester, 'bourbon whiskey, bourbon whisky');
+      await tap(tester, find.text('Save'));
+      expect(answer.value?.aliases, const [
+        'bourbon whiskey',
+        'bourbon whisky',
+      ]);
+    });
+
+    testWidgets('a separator half typed leaves no blank behind', (
+      tester,
+    ) async {
+      final answer = await openIngredient(tester);
+      await type(tester, 'bourbon');
+      await typeAliases(tester, ' bourbon whiskey , ');
+      expect(saveEnabled(tester), isTrue);
+      await tap(tester, find.text('Save'));
+      expect(answer.value?.aliases, const ['bourbon whiskey']);
+    });
+
+    testWidgets('an edit opens on the spellings it already answers to', (
+      tester,
+    ) async {
+      final answer = await openIngredient(
+        tester,
+        title: 'Edit "bourbon"',
+        initial: 'bourbon',
+        aliases: const ['bourbon whiskey', 'bourbon whisky'],
+      );
+      expect(find.text('bourbon whiskey, bourbon whisky'), findsOneWidget);
+      await tap(tester, find.text('Save'));
+      expect(answer.value?.aliases, const [
+        'bourbon whiskey',
+        'bourbon whisky',
+      ]);
+    });
+
+    testWidgets('an alias is refused what a name is refused', (tester) async {
+      final answer = await openIngredient(tester);
+      await type(tester, 'sloe gin');
+      const refused = {
+        // Another bottle's spelling, its own name, and itself twice — one
+        // namespace, however the collision is reached.
+        'genever': 'Duplicate ingredient name: "genever"',
+        'sloe gin': 'Duplicate ingredient name: "sloe gin"',
+        'juniper, juniper': 'Duplicate ingredient name: "juniper"',
+        'gin (base)': 'reserved',
+      };
+      for (final entry in refused.entries) {
+        await typeAliases(tester, entry.key);
+        expect(
+          find.textContaining(entry.value),
+          findsOneWidget,
+          reason: entry.key,
+        );
+        expect(saveEnabled(tester), isFalse, reason: entry.key);
+      }
+      await typeAliases(tester, 'juniper spirit');
+      expect(saveEnabled(tester), isTrue);
+      await tap(tester, find.text('Save'));
+      expect(answer.value?.aliases, const ['juniper spirit']);
+    });
+
+    testWidgets('each field carries its own refusal', (tester) async {
+      await openIngredient(tester);
+      await type(tester, 'gin');
+      await typeAliases(tester, 'genever');
+      expect(find.text('Duplicate ingredient name: "gin"'), findsOneWidget);
+      expect(find.text('Duplicate ingredient name: "genever"'), findsOneWidget);
+    });
   });
 
   group('tag dialog', () {
@@ -230,6 +306,11 @@ void main() {
     testWidgets('a tag wears no tags of its own', (tester) async {
       await openTag(tester);
       expect(find.byType(TagChoices), findsNothing);
+    });
+
+    testWidgets('nor answers to any other name', (tester) async {
+      await openTag(tester);
+      expect(aliasesField, findsNothing);
     });
 
     testWidgets('the palette starts where the field starts', (tester) async {

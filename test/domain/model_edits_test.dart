@@ -190,8 +190,16 @@ void main() {
   });
 
   group('ingredient rename', () {
+    /// The bourbon entry under a new name, everything else about it kept —
+    /// the whole entry as the dialog hands it back.
+    Model renamed(Model model, String to, {String from = 'bourbon'}) =>
+        model.withIngredient(
+          model.ingredientNamed(from)!.copyWith(name: to),
+          replacing: from,
+        );
+
     test('renames the entry where it stands', () {
-      final edited = model.withIngredientRenamed('bourbon', 'rye');
+      final edited = renamed(model, 'rye');
       expect(namesOf(edited.ingredients), [
         'rye',
         'lemon juice',
@@ -203,14 +211,16 @@ void main() {
     });
 
     test('rewrites every referencing line', () {
-      final edited = model.withIngredientRenamed('bourbon', 'rye');
-      final line = edited.recipeNamed('Whiskey Sour')?.lines.first;
+      final line = renamed(
+        model,
+        'rye',
+      ).recipeNamed('Whiskey Sour')?.lines.first;
       expect(line?.ingredient, 'rye');
       expect(line?.mark, LineMark.base);
     });
 
     test('rewrites optional lines too', () {
-      final edited = model.withIngredientRenamed('egg white', 'aquafaba');
+      final edited = renamed(model, 'aquafaba', from: 'egg white');
       expect(
         edited.recipeNamed('Whiskey Sour')?.lines.last.ingredient,
         'aquafaba',
@@ -219,27 +229,22 @@ void main() {
     });
 
     test('leaves a recipe that never referenced it untouched', () {
-      final edited = model.withIngredientRenamed('bourbon', 'rye');
-      expect(edited.recipeNamed('Negroni'), same(negroni));
+      expect(renamed(model, 'rye').recipeNamed('Negroni'), same(negroni));
     });
 
-    test('an unknown name changes nothing', () {
-      expect(model.withIngredientRenamed('rye', 'bourbon'), same(model));
+    test('an unknown name lands the entry all the same', () {
+      final edited = model.withIngredient(Ingredient('rye'), replacing: 'gone');
+      expect(namesOf(edited.ingredients).last, 'rye');
+      expect(edited.recipes, model.recipes);
     });
 
     test('renaming onto an existing name is rejected', () {
-      expect(
-        () => model.withIngredientRenamed('bourbon', 'gin'),
-        throwsArgumentError,
-      );
-      expect(
-        () => model.withIngredientRenamed('bourbon', 'GIN'),
-        throwsArgumentError,
-      );
+      expect(() => renamed(model, 'gin'), throwsArgumentError);
+      expect(() => renamed(model, 'GIN'), throwsArgumentError);
     });
 
     test('recapitalising is a rename of that entry, not a collision', () {
-      final edited = model.withIngredientRenamed('bourbon', 'Bourbon');
+      final edited = renamed(model, 'Bourbon');
       expect(namesOf(edited.ingredients).first, 'Bourbon');
       expect(
         edited.recipeNamed('Whiskey Sour')?.lines.first.ingredient,
@@ -247,10 +252,36 @@ void main() {
       );
     });
 
-    test('the name to rename is read however it is written (ADR 08)', () {
+    test('the name it replaces is read however it is written (ADR 08)', () {
       expect(
-        model.withIngredientRenamed('BOURBON', 'rye').ingredients.first,
+        renamed(model, 'rye', from: 'BOURBON').ingredients.first,
         Ingredient('rye', stock: StockLevel.in_, tags: const ['oaked']),
+      );
+    });
+
+    test('a rename dropping an alias never builds the half of it', () {
+      final aliased = model.withIngredient(
+        Ingredient('bourbon', stock: StockLevel.in_, aliases: const ['rye']),
+      );
+      // The new name is the alias the same edit lets go of, so applying the
+      // two halves in either order would collide with itself (ADR 10).
+      final edited = aliased.withIngredient(
+        Ingredient('rye', stock: StockLevel.in_),
+        replacing: 'bourbon',
+      );
+      expect(edited.ingredientNamed('rye')?.aliases, isEmpty);
+      expect(edited.recipeNamed('Whiskey Sour')?.lines.first.ingredient, 'rye');
+    });
+
+    test('and neither does one taking the old name as an alias', () {
+      final edited = model.withIngredient(
+        Ingredient('sloe gin', aliases: const ['gin']),
+        replacing: 'gin',
+      );
+      expect(edited.ingredientNamed('gin')?.name, 'sloe gin');
+      expect(
+        edited.recipeNamed('Negroni')?.lines.single.ingredient,
+        'sloe gin',
       );
     });
   });
@@ -443,6 +474,74 @@ void main() {
     });
   });
 
+  group('withCanonicalIngredientNames (ADR 10)', () {
+    /// The vocabulary with one bottle answering to a second spelling.
+    final aliased = model.withIngredient(
+      Ingredient('bourbon', stock: StockLevel.in_, aliases: const ['whiskey']),
+    );
+
+    List<String> ingredientsOf(Model model, String recipe) => [
+      for (final line in model.recipeNamed(recipe)!.lines) line.ingredient,
+    ];
+
+    Model naming(Model model, String ingredient) => model.copyWith(
+      recipes: [
+        Recipe(
+          'Old Fashioned',
+          lines: [RecipeLine(const Amount(2), 'part', ingredient)],
+        ),
+      ],
+    );
+
+    test('an alias becomes the bottle it names', () {
+      final canonical = naming(
+        aliased,
+        'whiskey',
+      ).withCanonicalIngredientNames();
+      expect(ingredientsOf(canonical, 'Old Fashioned'), ['bourbon']);
+    });
+
+    test('so does a spelling in another case (ADR 08)', () {
+      final canonical = naming(
+        aliased,
+        'BOURBON',
+      ).withCanonicalIngredientNames();
+      expect(ingredientsOf(canonical, 'Old Fashioned'), ['bourbon']);
+    });
+
+    test('a line naming no known bottle is left as written', () {
+      final unknown = naming(aliased, 'rye');
+      expect(unknown.withCanonicalIngredientNames(), same(unknown));
+    });
+
+    test('a model already canonical is the very same model', () {
+      final empty = Model();
+      expect(model.withCanonicalIngredientNames(), same(model));
+      expect(empty.withCanonicalIngredientNames(), same(empty));
+    });
+
+    test('every other part of the recipe rides along untouched', () {
+      final canonical = aliased
+          .copyWith(
+            recipes: [
+              whiskeySour.copyWith(
+                lines: [
+                  const RecipeLine(
+                    Amount.range(1.5, 2),
+                    'part',
+                    'WHISKEY',
+                    mark: LineMark.base,
+                  ),
+                  ...whiskeySour.lines.skip(1),
+                ],
+              ),
+            ],
+          )
+          .withCanonicalIngredientNames();
+      expect(canonical.recipeNamed('Whiskey Sour'), whiskeySour);
+    });
+  });
+
   group('reference queries', () {
     test('recipesUsingIngredient names them in model order', () {
       final shared = model.withRecipe(
@@ -500,6 +599,22 @@ void main() {
         'Whiskey Sour',
         'Negroni',
       ]);
+    });
+
+    test('so does one made by an alias, either end of it (ADR 10)', () {
+      final aliased = model.withIngredient(
+        Ingredient('bourbon', aliases: const ['whiskey']),
+      );
+      expect(aliased.recipesUsingIngredient('whiskey'), ['Whiskey Sour']);
+      final byAlias = aliased.copyWith(
+        recipes: [
+          Recipe(
+            'Old Fashioned',
+            lines: const [RecipeLine(Amount(2), 'part', 'whiskey')],
+          ),
+        ],
+      );
+      expect(byAlias.recipesUsingIngredient('bourbon'), ['Old Fashioned']);
     });
 
     test('each query looks only at its own side', () {

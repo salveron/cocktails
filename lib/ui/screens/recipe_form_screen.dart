@@ -141,20 +141,16 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
         tryParseRecipeLine(line.text, widget.units).problem,
   ];
 
-  /// Parsed recipe and fieldOf map for aligning issues with fields. A line
-  /// takes the vocabulary's own spelling of the bottle it names (ADR 08), so
-  /// "gin" typed against "Gin" saves as that bottle rather than a second one.
-  ({Recipe recipe, List<int> fieldOf}) _entered(
-    Model model,
-    List<Tag> vocabulary,
-  ) {
+  /// Parsed recipe and fieldOf map for aligning issues with fields. Lines are
+  /// kept as typed: "gin" against "Gin" and an alias against the bottle it
+  /// names both settle on the way to the model (ADR 08, ADR 10), so the form
+  /// judges what it sees and stores what the vocabulary calls it.
+  ({Recipe recipe, List<int> fieldOf}) _entered(List<Tag> vocabulary) {
     final lines = <RecipeLine>[];
     final fieldOf = <int>[];
     for (var field = 0; field < _lines.length; field++) {
       if (_blank(_lines[field])) continue;
-      final line = parseRecipeLine(_lines[field].text, widget.units);
-      final known = model.ingredientNamed(line.ingredient);
-      lines.add(known == null ? line : line.copyWith(ingredient: known.name));
+      lines.add(parseRecipeLine(_lines[field].text, widget.units));
       fieldOf.add(field);
     }
     return (
@@ -170,10 +166,10 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
   }
 
   Future<void> _save(Model model, List<Tag> vocabulary) async {
-    final entered = _entered(model, vocabulary);
+    final entered = _entered(vocabulary);
     final issues = validateRecipe(
       entered.recipe,
-      knownIngredients: model.ingredientNames,
+      knownIngredients: model.ingredientSpellings(),
       knownTags: model.tagNames(TagKind.recipe),
       knownUnits: model.unitSpellings,
       otherRecipeNames: _otherNames(model),

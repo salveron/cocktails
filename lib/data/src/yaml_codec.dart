@@ -83,6 +83,8 @@ final class YamlCodec {
     if (issues.isNotEmpty) {
       return Rejected([for (final issue in issues) _sourced(root, issue)]);
     }
+    // A hand-edited file may name a bottle by an alias; the model holds the
+    // canonical name, so the next save writes it back that way (ADR 10).
     return Decoded(
       Model(
         settings: parts.settings,
@@ -91,7 +93,7 @@ final class YamlCodec {
         ingredientTags: parts.ingredientTags,
         recipeTags: parts.recipeTags,
         recipes: parts.recipes,
-      ),
+      ).withCanonicalIngredientNames(),
     );
   }
 

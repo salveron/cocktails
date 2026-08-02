@@ -15,7 +15,9 @@ Single-user mobile app (Android); no accounts, sharing. Direction: [vision.md](v
 | Availability | Per recipe, required lines only: **makeable** (all in), **makeable-low** (none out, ≥1 low), **missing** (≥1 out). First two = **can-make**. |
 
 Names unique within kind, ignoring case — "Gin" and "gin" are one name ([ADR 08](adr/08-names-ignore-case.md)).
-Two tag vocabularies separate, so one name may exist in both (different meanings).
+In the ingredient vocabulary that uniqueness covers aliases too (FR-VOC-6): every spelling in it,
+whosever it is, names one bottle. Two tag vocabularies separate, so one name may exist in both
+(different meanings).
 
 ## Functional requirements
 
@@ -44,7 +46,8 @@ Two tag vocabularies separate, so one name may exist in both (different meanings
 ### Vocabularies
 
 - **FR-VOC-1** Add, rename (propagates), delete ingredients and either tag vocabulary; deletion blocked 
-  while referenced (recipe for ingredient/recipe tag; ingredient for ingredient tag).
+  while referenced (recipe for ingredient/recipe tag; ingredient for ingredient tag). An ingredient
+  entry carries its aliases (FR-VOC-6) beside its name, settled in the same edit.
 - **FR-VOC-3** Every tag carries colour from fixed palette (chosen on create, changeable, shown 
   everywhere). Palette holds no green/amber/red (signal stock/availability, [ADR 07](adr/07-tag-colour.md)).
 - **FR-VOC-4** Ingredients tagged from own vocabulary (separate from recipe tags). Tag for ingredients 
@@ -55,12 +58,19 @@ Two tag vocabularies separate, so one name may exist in both (different meanings
   part, ml, oz, dash, barspoon, drop, piece. **part** and **ml** cannot be renamed or deleted: the
   ratio and the display toggle are anchored to them (FR-SET-1); their plurals are editable.
 
+- **FR-VOC-6** An ingredient answers to more than one name ([ADR 10](adr/10-ingredient-aliases.md)):
+  the entry carries aliases, and a name resolves to that bottle wherever a name resolves — a recipe
+  line, the inventory search, an imported file. A reference is always stored under the entry's own
+  name, which is also the only one displayed; aliases show nowhere but the dialog editing them.
+  No alias holds a comma, the one field they are typed in being separated by it.
+
 FR-VOC-2 left for FR-REC-8 in [ADR 06](adr/06-base-spirit-on-the-line.md); its number stays
 empty so no reference to it can mean two things.
 
 ### Inventory
 
-- **FR-INV-1** Inventory lists all ingredients with stock level, searchable by name.
+- **FR-INV-1** Inventory lists all ingredients with stock level, searchable by any name the bottle
+  answers to (FR-VOC-6); the row found reads under its own name.
 - **FR-INV-2** Stock level toggles with single tap per ingredient.
 - **FR-INV-3** Inventory shows ingredient tags in colour; can filter by them (combines with name search).
 

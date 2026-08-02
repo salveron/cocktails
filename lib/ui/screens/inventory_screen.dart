@@ -35,6 +35,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
     return VocabularyList<Ingredient>(
       entries: model.ingredients,
       nameOf: (ingredient) => ingredient.name,
+      spellingsOf: (ingredient) => ingredient.spellings,
       rowOf: (ingredient) => _row(model, vocabulary, ingredient),
       onAdd: (query) => _add(model, vocabulary, query),
       noun: 'ingredient',
@@ -102,19 +103,21 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
       context,
       title: 'New ingredient',
       hintText: 'Ingredient name',
-      validate: _nameRule(model),
+      validate: _entryRule(model),
       vocabulary: vocabulary,
       initial: query,
     );
     if (added == null || !context.mounted) return false;
     await ref
         .read(modelProvider.notifier)
-        .upsertIngredient(Ingredient(added.name, tags: added.tags));
+        .upsertIngredient(
+          Ingredient(added.name, aliases: added.aliases, tags: added.tags),
+        );
     if (mounted) setState(_picked.clear);
     return true;
   }
 
-  /// Atomic upsert: name + tags edited together; stock stays unchanged.
+  /// Atomic upsert: name, aliases and tags edited together; stock unchanged.
   Future<void> _edit(
     Model model,
     List<Tag> vocabulary,
@@ -124,8 +127,9 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
       context,
       title: 'Edit "${ingredient.name}"',
       hintText: 'Ingredient name',
-      validate: _nameRule(model, except: ingredient.name),
+      validate: _entryRule(model, except: ingredient.name),
       vocabulary: vocabulary,
+      aliases: ingredient.aliases,
       chosen: ingredient.tags,
       initial: ingredient.name,
     );
@@ -133,7 +137,11 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
     await ref
         .read(modelProvider.notifier)
         .upsertIngredient(
-          ingredient.copyWith(name: edited.name, tags: edited.tags),
+          ingredient.copyWith(
+            name: edited.name,
+            aliases: edited.aliases,
+            tags: edited.tags,
+          ),
           replacing: ingredient.name,
         );
   }
@@ -150,13 +158,14 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
   }
 }
 
-/// Name rules (excluding [except] to prevent collision on rename).
-List<ValidationIssue> Function(String) _nameRule(
+/// The vocabulary's own rules over the entry as the dialog has it — every
+/// spelling but [except]'s to collide with, so a rename never hits itself.
+List<ValidationIssue> Function(VocabularyEntry) _entryRule(
   Model model, {
   String? except,
 }) =>
-    (name) => validateIngredient(
-      Ingredient(name),
+    (entry) => validateIngredient(
+      Ingredient(entry.name, aliases: entry.aliases, tags: entry.tags),
       knownIngredientTags: model.tagNames(TagKind.ingredient),
-      otherIngredientNames: otherNames(model.ingredientNames, except),
+      otherIngredientNames: model.ingredientSpellings(except: except),
     );

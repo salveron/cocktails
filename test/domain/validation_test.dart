@@ -293,6 +293,52 @@ void main() {
       );
     });
 
+    test(
+      'an alias is a spelling of the vocabulary, at its own path (ADR 10)',
+      () {
+        final issues = validateModel(
+          ingredients: [
+            Ingredient('bourbon', aliases: const ['rye']),
+            Ingredient('gin', aliases: const ['Rye', 'bourbon']),
+          ],
+        );
+        expect(issues.map((i) => i.path), [
+          ['ingredients', 1, 'aliases', 0],
+          ['ingredients', 1, 'aliases', 1],
+        ]);
+        expect(issues[0].message, 'Duplicate ingredient name: "Rye"');
+        expect(issues[1].message, 'Duplicate ingredient name: "bourbon"');
+      },
+    );
+
+    test('a name repeating an earlier alias reports on the name', () {
+      final issues = validateModel(
+        ingredients: [
+          Ingredient('bourbon', aliases: const ['rye']),
+          Ingredient('rye'),
+        ],
+      );
+      expect(issues.single.path, ['ingredients', 1]);
+      expect(issues.single.kind, ValidationIssueKind.duplicateName);
+    });
+
+    test('a line may name a bottle by an alias', () {
+      expect(
+        validateModel(
+          ingredients: [
+            Ingredient('bourbon', aliases: const ['whiskey']),
+          ],
+          recipes: [
+            Recipe(
+              'Old Fashioned',
+              lines: const [RecipeLine(Amount(2), 'part', 'whiskey')],
+            ),
+          ],
+        ),
+        isEmpty,
+      );
+    });
+
     test('flags unknown ingredient and tag references', () {
       final issues = validateModel(
         recipes: [
@@ -697,6 +743,78 @@ void main() {
         validateModel(ingredients: [entry]).map((i) => i.message).toList(),
         check(entry).map((i) => i.message).toList(),
       );
+    });
+
+    group('aliases (ADR 10)', () {
+      test('a spelling of its own is valid', () {
+        expect(
+          check(Ingredient('bourbon', aliases: const ['bourbon whiskey'])),
+          isEmpty,
+        );
+      });
+
+      test('the name rules apply, at the alias own path', () {
+        final issues = check(
+          Ingredient('bourbon', aliases: const ['', ' rye ', 'rye (base)']),
+        );
+        expect(issues.map((i) => i.path), [
+          ['aliases', 0],
+          ['aliases', 1],
+          ['aliases', 2],
+        ]);
+        expect(issues.map((i) => i.kind), [
+          ValidationIssueKind.emptyName,
+          ValidationIssueKind.whitespaceInName,
+          ValidationIssueKind.reservedSuffix,
+        ]);
+      });
+
+      test('a comma is barred, the field being separated by one', () {
+        final issue = check(
+          Ingredient('bourbon', aliases: const ['rye, whiskey']),
+        ).single;
+        expect(issue.kind, ValidationIssueKind.commaInAlias);
+        expect(issue.message, 'Comma in ingredient alias: "rye, whiskey"');
+      });
+
+      test('names and aliases share one namespace', () {
+        for (final aliases in [
+          const ['gin'], // another entry's name
+          const ['GIN'], // the same name, differently written (ADR 08)
+          const ['Bourbon'], // its own entry's name
+          const ['rye', 'RYE'], // itself, twice
+        ]) {
+          final issues = check(
+            Ingredient('bourbon', aliases: aliases),
+            others: {'gin'},
+          );
+          expect(
+            issues.single.kind,
+            ValidationIssueKind.duplicateName,
+            reason: '$aliases',
+          );
+        }
+      });
+
+      test('an alias may repeat a name in another vocabulary', () {
+        expect(
+          check(
+            Ingredient('bourbon', aliases: const ['juniper']),
+            known: {'juniper'},
+          ),
+          isEmpty,
+        );
+      });
+
+      test('reports what validateModel reports for the same entry', () {
+        final entry = Ingredient('bourbon', aliases: const ['gin', 'Bourbon']);
+        expect(
+          validateModel(
+            ingredients: [Ingredient('gin'), entry],
+          ).where((i) => i.path.contains('aliases')).map((i) => i.message),
+          check(entry, others: {'gin'}).map((i) => i.message),
+        );
+      });
     });
   });
 

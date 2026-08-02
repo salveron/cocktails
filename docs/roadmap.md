@@ -127,11 +127,13 @@ First usable slice; recipes reference both vocabularies, so this precedes Phase 
       the unit, `part` and `ml` locked (FR-VOC-5, [ui-design.md](ui-design.md#units)). The rows are
       judged by `validateModel` itself, so the screen refuses exactly what an import would, and
       `setUnits` carries the lot — renames included — to the disk in one write.
-- [ ] **M17d Ingredient aliases** — a bottle answers to more than one name
-      ([ADR 10](adr/10-ingredient-aliases.md)): `Ingredient.aliases` behind one
+- [x] **M17d Ingredient aliases** — a bottle answers to more than one name
+      ([ADR 10](adr/10-ingredient-aliases.md), FR-VOC-6): `Ingredient.aliases` behind one
       comma-separated field in the entry dialog, resolved wherever a name resolves — the recipe
       form, the inventory search, a hand-edited file — and always stored under the bottle's own
-      name.
+      name. Uniqueness widens to every spelling, `ingredientNamed` indexes them all, and
+      `withCanonicalIngredientNames` is the one derivation putting a line under the bottle it
+      names, so the codec and `upsertRecipe` share it and the form resolves nothing itself.
 - [ ] **M18 Filters** — by tags, ingredients, availability; combinable (FR-DIS-3).
 - [ ] **M19 Base-spirit grouping** — grouped browsing with ungrouped tail section
       (FR-DIS-4).

@@ -221,7 +221,7 @@ Ingredient? _readIngredient(
     _report(issues, path, 'Ingredient entry must be a mapping', node);
     return null;
   }
-  _checkKeys(node, const {'name', 'stock', 'tags'}, path, issues);
+  _checkKeys(node, const {'name', 'stock', 'tags', 'aliases'}, path, issues);
   final name = _readName(node, path, issues);
   final stock =
       _readToken(
@@ -233,8 +233,11 @@ Ingredient? _readIngredient(
         tokens: [for (final value in StockLevel.values) value.token],
       ) ??
       StockLevel.out;
-  final tags = _readTagNames(node, path, issues);
-  return name == null ? null : Ingredient(name, stock: stock, tags: tags);
+  final aliases = _readNames(node, 'aliases', path, issues, 'Alias');
+  final tags = _readNames(node, 'tags', path, issues, 'Tag');
+  return name == null
+      ? null
+      : Ingredient(name, stock: stock, aliases: aliases, tags: tags);
 }
 
 /// Unlike `stock`, `color` has no default to fall back on: every tag carries
@@ -286,19 +289,22 @@ T? _readToken<T extends Enum>(
   return parsed;
 }
 
-/// The `tags:` list an entry carries — names only, since the colour lives with
-/// the tag. Shared by the two kinds of entry that reference a vocabulary.
-List<String> _readTagNames(
+/// A list of bare names under [key] — the `tags:` an entry wears, since the
+/// colour lives with the tag, and the `aliases:` a bottle answers to. [what]
+/// only words the message a bad element gets.
+List<String> _readNames(
   YamlMap node,
+  String key,
   List<Object> path,
   List<ValidationIssue> issues,
+  String what,
 ) {
-  final tags = <String>[];
-  _forEachEntry(node, 'tags', path, issues, (entryNode, entryPath) {
-    final tag = _stringValue(entryNode, entryPath, issues, 'Tag');
-    if (tag != null) tags.add(tag);
+  final names = <String>[];
+  _forEachEntry(node, key, path, issues, (entryNode, entryPath) {
+    final name = _stringValue(entryNode, entryPath, issues, what);
+    if (name != null) names.add(name);
   });
-  return tags;
+  return names;
 }
 
 Recipe? _readRecipe(
@@ -314,7 +320,7 @@ Recipe? _readRecipe(
   const keys = {'name', 'tags', 'lines', 'notes', 'made'};
   _checkKeys(node, keys, path, issues);
   final name = _readName(node, path, issues);
-  final tags = _readTagNames(node, path, issues);
+  final tags = _readNames(node, 'tags', path, issues, 'Tag');
   final lines = <RecipeLine>[];
   _forEachEntry(node, 'lines', path, issues, (entryNode, entryPath) {
     final text = _stringValue(entryNode, entryPath, issues, 'Recipe line');

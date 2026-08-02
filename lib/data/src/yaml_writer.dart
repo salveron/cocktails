@@ -61,6 +61,8 @@ List<String> _ingredientEntry(Ingredient ingredient) =>
       if (ingredient.stock != StockLevel.out)
         'stock: ${ingredient.stock.token}',
       if (ingredient.tags.isNotEmpty) 'tags: ${_flowList(ingredient.tags)}',
+      if (ingredient.aliases.isNotEmpty)
+        'aliases: ${_flowList(ingredient.aliases)}',
     ]);
 
 /// A tag's colour is never omitted — there is no default to omit it against.

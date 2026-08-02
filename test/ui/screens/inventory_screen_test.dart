@@ -229,6 +229,109 @@ void main() {
     });
   });
 
+  group('aliases (ADR 10)', () {
+    /// One bottle answering to two spellings besides its own.
+    final aliasedModel = fixtureModel.withIngredient(
+      Ingredient(
+        'gin',
+        stock: StockLevel.in_,
+        aliases: const ['jenever', 'london dry'],
+      ),
+    );
+
+    testWidgets('a search finds the bottle under any of its spellings', (
+      tester,
+    ) async {
+      await pumpInventory(tester, aliasedModel);
+      for (final query in ['jenever', 'LONDON', 'gin']) {
+        await search(tester, query);
+        expect(rowTexts(tester), ['gin', 'In stock'], reason: query);
+      }
+    });
+
+    testWidgets('and the row it finds still reads under its own name', (
+      tester,
+    ) async {
+      await pumpInventory(tester, aliasedModel);
+      await search(tester, 'jenever');
+      // Aliases are for finding, not for showing: only the search box holds
+      // the word that found the row.
+      expect(rowTexts(tester), ['gin', 'In stock']);
+    });
+
+    testWidgets('a new bottle can be born answering to more than one', (
+      tester,
+    ) async {
+      final store = await pumpInventory(tester, fixtureModel);
+      await tap(tester, find.byTooltip('Add ingredient'));
+      await type(tester, 'bourbon');
+      await typeAliases(tester, 'bourbon whiskey, bourbon whisky');
+      await tap(tester, find.text('Save'));
+
+      expect(store.saved?.ingredientNamed('bourbon whisky')?.name, 'bourbon');
+      expect(store.saved?.ingredientNamed('bourbon')?.aliases, const [
+        'bourbon whiskey',
+        'bourbon whisky',
+      ]);
+    });
+
+    testWidgets('an edit settles the name and the spellings at once', (
+      tester,
+    ) async {
+      final store = await pumpInventory(tester, aliasedModel);
+      await chooseOnRow(tester, 'gin', 'Edit');
+      expect(find.text('jenever, london dry'), findsOneWidget);
+      await type(tester, 'sloe gin');
+      await typeAliases(tester, 'jenever');
+      await tap(tester, find.text('Save'));
+
+      expect(store.saved?.ingredientNamed('gin'), isNull);
+      expect(store.saved?.ingredientNamed('jenever')?.name, 'sloe gin');
+      // One entry, one save: the rename carries the whole bottle with it.
+      expect(store.saveCount, 1);
+    });
+
+    testWidgets('a bottle does not collide with its own spellings', (
+      tester,
+    ) async {
+      await pumpInventory(tester, aliasedModel);
+      await chooseOnRow(tester, 'gin', 'Edit');
+      expect(saveEnabled(tester), isTrue);
+    });
+
+    testWidgets('but it does collide with another bottle spelling', (
+      tester,
+    ) async {
+      await pumpInventory(tester, aliasedModel);
+      await chooseOnRow(tester, 'campari', 'Edit');
+      await typeAliases(tester, 'london dry');
+      expect(
+        find.text('Duplicate ingredient name: "london dry"'),
+        findsOneWidget,
+      );
+      expect(saveEnabled(tester), isFalse);
+    });
+
+    testWidgets('a recipe naming one blocks the delete it names', (
+      tester,
+    ) async {
+      await pumpInventory(
+        tester,
+        aliasedModel.copyWith(
+          recipes: [
+            Recipe(
+              'Gin Fizz',
+              lines: const [RecipeLine(Amount(2), 'part', 'jenever')],
+            ),
+          ],
+        ),
+      );
+      await chooseOnRow(tester, 'gin', 'Delete');
+      expect(find.text('Cannot delete "gin"'), findsOneWidget);
+      expect(find.text('• Gin Fizz'), findsOneWidget);
+    });
+  });
+
   group('inventory order', () {
     testWidgets('the orders keep out of sight until they are asked for', (
       tester,

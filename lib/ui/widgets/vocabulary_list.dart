@@ -124,12 +124,18 @@ class VocabularyList<T> extends StatefulWidget {
     this.onAdd,
     this.filter,
     this.orders = alphabetical,
+    this.spellingsOf,
     super.key,
   });
 
   final List<T> entries;
   final String Function(T entry) nameOf;
   final VocabularyRow Function(T entry) rowOf;
+
+  /// Every spelling the search matches an entry by — the name alone where a
+  /// screen names none. A bottle answers to its aliases too (ADR 10), and is
+  /// still found under the one name its row reads under.
+  final List<String> Function(T entry)? spellingsOf;
 
   /// What this list can be read by, over and above its name.
   final ListOrders<T> orders;
@@ -205,7 +211,9 @@ class _VocabularyListState<T> extends State<VocabularyList<T>> {
       widget.entries
           .where(
             (entry) =>
-                matchesQuery(widget.nameOf(entry), _search.text) &&
+                (widget.spellingsOf?.call(entry) ?? [widget.nameOf(entry)]).any(
+                  (spelling) => matchesQuery(spelling, _search.text),
+                ) &&
                 (filter?.test(entry) ?? true),
           )
           .toList(),

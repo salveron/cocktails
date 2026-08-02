@@ -26,7 +26,10 @@ requirements in [requirements.md](requirements.md).
 `SearchField` is pinned above the list, always visible: no tap stands between the screen and
 a search (NFR-1). `matchesQuery` beside it is the one rule every name search applies —
 case-insensitive, anywhere in the name, surrounding space ignored — so inventory (FR-INV-1)
-and the recipe list (FR-DIS-2) cannot drift apart. The query is the field's own
+and the recipe list (FR-DIS-2) cannot drift apart. A screen whose entries answer to more than
+one name hands the list all of them, and a match on any is a match: the inventory finds a
+bottle by an alias (FR-VOC-6), and the row it finds still reads under the one name the app
+calls it. The query is the field's own
 `TextEditingController`, owned by the screen; the combinable filters of FR-DIS-3 are a
 separate concern and get their own provider.
 
@@ -56,11 +59,18 @@ what it is narrowing by — so the list can name it in the face it shows when no
 
 Ingredients and tags use same two dialogs (screens can't drift):
 
-- **Entry dialog**: one field (new or edit). Takes vocab `validate…` function; shows first issue 
-  under field; Save unreachable until none (app refuses what codec refuses, reserved suffixes 
+- **Entry dialog**: one field (new or edit). Takes vocab `validate…` function over the whole entry; 
+  shows first issue under the field that owns it — the empty path under the name, `aliases` under 
+  the aliases; Save unreachable until none (app refuses what codec refuses, reserved suffixes 
   included). Untouched empty field not marked. Under field: whatever entry carries (palette for tag, 
   ingredient-tag vocab for ingredient) — one-place settle, no sub-dialogs. New tag opens on first 
   unused colour (distinct without asking).
+- **A bottle's other spellings are a second plain field** (FR-VOC-6), directly under the name and 
+  always on show, add and edit alike: they are part of what the entry is called, not a mode it 
+  enters. One comma-separated field, hinted as one, so the separator can never stand inside a value 
+  — the rule validation keeps for hand-edited files. Trimmed on the way in, blanks dropped, so a 
+  separator half typed is not yet a mistake. Nowhere else displays them ([ADR 
+  10](adr/10-ingredient-aliases.md)): this dialog is the only place a bottle's aliases are read.
 - **Chosen marked in mark's ink**: tick in swatch (plain circle, room) or ring outside chip (full of 
   name). Filter row wears same ring. Ring transparent when unpicked (picking changes colour, nothing 
   else; no re-flow).
@@ -128,8 +138,10 @@ Top to bottom mirrors card and file (name, lines, tags, notes, FR-REC-1..5).
   only reader (form can't drift from codec). `tryParseRecipeLine` on every change; problem under field 
   (entry dialog idiom; untouched empty not mistake). Hint shows shape. Typing is forgiving where the 
   file is: the unit may be left out ("1 gin") or plural ("2 dashes"), and a bottle typed in any case 
-  is the bottle it names ([ADR 08](adr/08-names-ignore-case.md)) — the line saved carries the 
-  vocabulary's own spelling and the full unit, so the card reads canonically whatever was typed.
+  ([ADR 08](adr/08-names-ignore-case.md)) or under any name it answers to ([ADR 
+  10](adr/10-ingredient-aliases.md)) is the bottle it names — the form saves what it sees and the 
+  line lands under the vocabulary's own spelling, with the full unit, so the card reads canonically 
+  whatever was typed.
 - **Lines self-grow**: bottom field always empty; typing spawns next, and erasing that line takes the 
   spare back — one field stands empty, never two, and never the one the cursor is in (a field emptied 
   mid-list stays until save, since removing it under the cursor is worse). Empty fields dropped on 
@@ -142,7 +154,8 @@ Top to bottom mirrors card and file (name, lines, tags, notes, FR-REC-1..5).
   nothing required (FR-REC-2) refuses there, its path naming the lines list, not one line.
 - **Unknown ingredients: offer not wall**: if only issue, confirmation lists and adds them (out, 
   untagged) before save (never dead-ends to inventory). Declining marks fields. Typos caught where 
-  list read, before confirming.
+  list read, before confirming. An aliased name resolves before the offer is built, so a bottle 
+  already known under another spelling is never offered as a new one (FR-VOC-6).
 - **Tags/notes ask nothing**: picker is dialogs' chip row over recipe vocab (FR-REC-4), absent if 
   empty. Notes: one multiline field opening one line tall and growing with what is typed (FR-REC-5) — 
   most recipes carry a sentence, and an empty box three lines deep pushes the rest off screen.
@@ -159,9 +172,10 @@ Top to bottom mirrors card and file (name, lines, tags, notes, FR-REC-1..5).
   hues not scheme roles (amber seed: `primaryContainer` brown, `tertiaryContainer` green; collided).
 - **Row tap advances stock one step** (`in → low → out → in`; real transition = one tap, FR-INV-2; 
   each saves via controller).
-- **Edit/delete behind per-row ⋮** (row tap taken by stock; vocab actions own target). Edit: name 
-  and tags at once in add dialog (bottle born tagged). Whole entry (rename) → model one edit (one 
-  save, components.md#state-contracts). New bottle starts out (one tap corrects).
+- **Edit/delete behind per-row ⋮** (row tap taken by stock; vocab actions own target). Edit: name, 
+  aliases and tags at once in add dialog (bottle born tagged and answering to every name it has). 
+  Whole entry (rename) → model one edit (one save, components.md#state-contracts). New bottle starts 
+  out (one tap corrects).
 - **Tag as dot after name** (borderless, chip fill, vocab order; two matching tags match dots). Dot 
   read against legend (must be legend's colour). Names would crowd and repeat; name ellipsizes, dots 
   don't (half-drawn run misreports count).

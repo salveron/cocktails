@@ -186,13 +186,23 @@ void main() {
     Ingredient build({
       String name = 'gin',
       StockLevel stock = StockLevel.out,
+      List<String> aliases = const [],
       List<String> tags = const [],
-    }) => Ingredient(name, stock: stock, tags: tags);
+    }) => Ingredient(name, stock: stock, aliases: aliases, tags: tags);
 
-    test('defaults to out of stock and untagged', () {
+    test('defaults to out of stock, unaliased and untagged', () {
       final ingredient = Ingredient('bourbon');
       expect(ingredient.stock, StockLevel.out);
+      expect(ingredient.aliases, isEmpty);
       expect(ingredient.tags, isEmpty);
+    });
+
+    test('answers to its own name first, then to every alias', () {
+      expect(Ingredient('bourbon').spellings, ['bourbon']);
+      expect(
+        Ingredient('bourbon', aliases: const ['bourbon whiskey']).spellings,
+        ['bourbon', 'bourbon whiskey'],
+      );
     });
 
     test('equality and hashCode isolate each field', () {
@@ -200,6 +210,7 @@ void main() {
       expect(build().hashCode, build().hashCode);
       expect(build(), isNot(build(name: 'rum')));
       expect(build(), isNot(build(stock: StockLevel.low)));
+      expect(build(), isNot(build(aliases: const ['london dry'])));
       expect(build(), isNot(build(tags: const ['juniper'])));
     });
 
@@ -207,28 +218,46 @@ void main() {
       final ingredient = Ingredient(
         'gin',
         stock: StockLevel.low,
+        aliases: const ['london dry'],
         tags: const ['juniper'],
       );
       expect(ingredient.copyWith(), ingredient);
       expect(
         ingredient.copyWith(name: 'rum'),
-        Ingredient('rum', stock: StockLevel.low, tags: const ['juniper']),
+        build(
+          name: 'rum',
+          stock: StockLevel.low,
+          aliases: const ['london dry'],
+          tags: const ['juniper'],
+        ),
       );
       expect(
         ingredient.copyWith(stock: StockLevel.in_),
-        Ingredient('gin', stock: StockLevel.in_, tags: const ['juniper']),
+        build(
+          stock: StockLevel.in_,
+          aliases: const ['london dry'],
+          tags: const ['juniper'],
+        ),
+      );
+      expect(
+        ingredient.copyWith(aliases: const []),
+        build(stock: StockLevel.low, tags: const ['juniper']),
       );
       expect(
         ingredient.copyWith(tags: const []),
-        Ingredient('gin', stock: StockLevel.low),
+        build(stock: StockLevel.low, aliases: const ['london dry']),
       );
     });
 
-    test('the tag list cannot be changed from outside', () {
+    test('neither list can be changed from outside', () {
+      final aliases = ['london dry'];
       final tags = ['juniper'];
-      final ingredient = Ingredient('gin', tags: tags);
+      final ingredient = Ingredient('gin', aliases: aliases, tags: tags);
+      aliases.add('dry gin');
       tags.add('botanical');
+      expect(ingredient.aliases, ['london dry']);
       expect(ingredient.tags, ['juniper']);
+      expect(() => ingredient.aliases.add('dry gin'), throwsUnsupportedError);
       expect(() => ingredient.tags.add('botanical'), throwsUnsupportedError);
     });
   });
@@ -742,16 +771,104 @@ void main() {
 
       test('the name sets are the lists, ready for validation', () {
         final model = build();
-        expect(model.ingredientNames, {'bourbon'});
         expect(model.recipeNames, {'Whiskey Sour'});
         expect(model.tagNames(TagKind.recipe), {'sour'});
         expect(model.tagNames(TagKind.ingredient), {'oaked'});
-        expect(Model().ingredientNames, isEmpty);
-        expect(() => model.ingredientNames.add('rye'), throwsUnsupportedError);
         expect(
           () => model.tagNames(TagKind.recipe).add('tiki'),
           throwsUnsupportedError,
         );
+      });
+
+      test('an alias answers for the bottle it belongs to (ADR 10)', () {
+        final model = Model(
+          ingredients: [
+            Ingredient(
+              'bourbon',
+              stock: StockLevel.in_,
+              aliases: const ['bourbon whiskey'],
+            ),
+          ],
+        );
+        expect(model.ingredientNamed('bourbon whiskey')?.name, 'bourbon');
+        expect(model.ingredientNamed('BOURBON WHISKEY')?.name, 'bourbon');
+        expect(model.ingredientNamed('whiskey'), isNull);
+      });
+    });
+
+    group('ingredientSpellings', () {
+      final model = Model(
+        ingredients: [
+          Ingredient('bourbon', aliases: const ['bourbon whiskey']),
+          Ingredient('gin'),
+        ],
+      );
+
+      test('gathers names and aliases into one namespace', () {
+        expect(model.ingredientSpellings(), {
+          'bourbon',
+          'bourbon whiskey',
+          'gin',
+        });
+        expect(Model().ingredientSpellings(), isEmpty);
+      });
+
+      test('drops the whole entry it is told to leave out', () {
+        expect(model.ingredientSpellings(except: 'bourbon'), {'gin'});
+        expect(model.ingredientSpellings(except: 'BOURBON'), {'gin'});
+        expect(model.ingredientSpellings(except: 'bourbon whiskey'), {
+          'bourbon',
+          'bourbon whiskey',
+          'gin',
+        });
+      });
+    });
+
+    group('one namespace for every spelling (ADR 10)', () {
+      test('an alias may not repeat another bottle name', () {
+        expect(
+          () => Model(
+            ingredients: [
+              Ingredient('bourbon', aliases: const ['Rye']),
+              Ingredient('rye'),
+            ],
+          ),
+          throwsArgumentError,
+        );
+      });
+
+      test('nor another bottle alias', () {
+        expect(
+          () => Model(
+            ingredients: [
+              Ingredient('bourbon', aliases: const ['whiskey']),
+              Ingredient('rye', aliases: const ['whiskey']),
+            ],
+          ),
+          throwsArgumentError,
+        );
+      });
+
+      test('nor its own entry name', () {
+        expect(
+          () => Model(
+            ingredients: [
+              Ingredient('bourbon', aliases: const ['Bourbon']),
+            ],
+          ),
+          throwsArgumentError,
+        );
+      });
+
+      test('but two bottles may alias the same name in other vocabularies', () {
+        final model = Model(
+          ingredients: [
+            Ingredient('bourbon', aliases: const ['sour']),
+          ],
+          ingredientTags: const [Tag('sour', color: TagColor.sand)],
+          recipes: [Recipe('sour')],
+        );
+        expect(model.ingredientNamed('sour')?.name, 'bourbon');
       });
     });
   });

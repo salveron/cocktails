@@ -25,8 +25,8 @@ lib/
       scaling.dart             # ×N scaling, part↔ml display
       discovery.dart           # M13/M18/M19/M20 — search, filter, group, random
       optimizer.dart           # M21
-      helpers.dart             # not exported: nameKey, sameName, duplicateNameIndexes,
-                               #   listEquals
+      helpers.dart             # not exported: nameKey, sameName, repeatsName,
+                               #   duplicateNameIndexes, listEquals
   data/
     data.dart                  # barrel — the store, the codec, and their result types
     src/
@@ -53,9 +53,11 @@ lib/
                                #   color_chip — the pill, chip, dot and dotted name
                                #   tag_choices — the row tags are picked from
                                #   vocabulary_list — the searchable list all four screens are,
-                               #     plus the orders it reads in, byName and Set.toggle
-                               #   vocabulary_dialogs — entry (name, colour, tags), delete,
-                               #     plus fieldError, the rule the recipe form shares
+                               #     plus the orders it reads in, the spellings it searches
+                               #     by, byName and Set.toggle
+                               #   vocabulary_dialogs — entry (name, aliases, colour, tags),
+                               #     delete, plus VocabularyEntry and fieldError, the rule
+                               #     the recipe form shares
 test/                          # mirrors lib/, plus test/architecture_test.dart
 ```
 
@@ -104,6 +106,11 @@ Two identity conventions:
 - **One name however it is capitalised** ([ADR 08](adr/08-names-ignore-case.md)). Every comparison — 
   uniqueness, lookup, reference resolution, delete blocking, rename — goes through `nameKey`; the 
   spelling stored is the spelling shown. Lookup maps are keyed by the fold, so resolution stays O(1).
+- **A bottle answers to more than one name** ([ADR 10](adr/10-ingredient-aliases.md)). 
+  `Ingredient.aliases` holds them and `Ingredient.spellings` is the name and the aliases together — 
+  one namespace, unique under the fold, indexed by `ingredientNamed` so no caller learns an alias 
+  exists. A reference is stored under the entry's own name, `withCanonicalIngredientNames` being the 
+  one derivation that puts it there, wherever the line came from.
 - **Two tag vocabularies are peers.** `Model.recipeTags` and `Model.ingredientTags` are separate 
   `Tag` lists, unique within each ([ADR 07](adr/07-tag-colour.md)). A `Tag` carries no scope: 
   `TagKind` names the side, and every tag operation takes one rather than existing twice under two 
@@ -150,16 +157,18 @@ Recipe? recipeNamed(String name);
 List<Tag> tagsOf(TagKind kind);
 bool hasTag(TagKind kind, String name);
 
-Set<String> get ingredientNames;      // the sets every validate… call asks for
-Set<String> get recipeNames;
+Set<String> get recipeNames;          // the sets every validate… call asks for
 Set<String> get unitSpellings;
 Set<String> tagNames(TagKind kind);
+Set<String> ingredientSpellings({String? except});   // names and aliases, ADR 10
 ```
 
 These are backed by a `late final` map built on first use. `Model` stays immutable and the
 memoisation is invisible; a lookup is O(1) after the first call, which is what the recipe list,
 availability, and the optimizer all need at NFR-2 scale. The name sets are memoised on the same
 terms, so a form judging a name on every keystroke builds one once instead of one per frame.
+`ingredientSpellings` is the exception, built per call: every caller leaves an entry out of it —
+the one being edited, which must collide with neither its own name nor its own aliases.
 
 ### Two contracts, one rule set
 
@@ -181,8 +190,8 @@ so `model.dart` holds shape and invariants:
 Model withSettings(Settings settings);
 typedef UnitEdit = ({Unit unit, String? was});        // the row and the name it came from
 Model withUnits(List<UnitEdit> edits);                // the whole vocabulary, renames propagated
-Model withIngredient(Ingredient ingredient);          // add, or replace the entry of that name
-Model withIngredientRenamed(String from, String to);  // rewrites every referencing recipe line
+Model withCanonicalIngredientNames();                 // every line under its bottle's own name
+Model withIngredient(Ingredient ingredient, {String? replacing});   // add, replace, rename
 Model withoutIngredient(String name);
 Model withStock(String ingredient, StockLevel stock);
 Model withTag(TagKind kind, Tag tag);                 // add or replace in that vocabulary
@@ -202,6 +211,11 @@ List<String> usersOfTag(TagKind kind, String name);
 name it came from, so a rename rewrites every line measured in it and two units can trade names in
 one edit. Compared exactly, not folded — a recapitalisation is the same unit under a new spelling,
 and the lines take it too (ADR 08).
+
+`withIngredient` takes its `replacing` for the same reason, one step down: the entry dialog settles
+name, aliases and tags together, and a rename that also lets an alias go — or takes the old name on
+as one — has no valid model to stop at halfway (ADR 10). A `replacing` naming no entry falls back to
+the entry's own name, so a stale name still cannot crash.
 
 A tag edit touches only its own side: renaming a recipe tag never reads an ingredient, and
 `usersOfTag` blocks deletion from its own side only. One name may stand in both vocabularies and
@@ -244,7 +258,8 @@ Contract and rationale: [ADR 05](adr/05-validation-contract.md).
 
 ```dart
 enum ValidationIssueKind {
-  emptyName, whitespaceInName, lineBreakInName, duplicateName, reservedSuffix,
+  emptyName, whitespaceInName, lineBreakInName, commaInAlias, duplicateName,
+  reservedSuffix,
   partMlNotPositive, missingUnit, unknownUnit, unknownIngredient, unknownTag,
   duplicateTag, amountNotPositive, rangeOutOfOrder, noRequiredLine, timesBelowOne,
   unsupportedFormat, malformedLine, malformedValue,    // raised by the codec (M6)
@@ -278,7 +293,8 @@ Behaviour switches on `kind`; `message` is display-only.
 
 `validateModel`: whole-file entry point for import (M6). Others check single entry a form edits 
 (M11/M12/M14) in one call: paths relative, empty for name. `other…Names` holds every *other* 
-entry's name (rename never collides with itself). All four run same rules, same code.
+entry's name — every *spelling* for the ingredient vocabulary, whose namespace holds aliases too 
+(ADR 10) — so a rename never collides with itself. All four run same rules, same code.
 
 ### Computations
 
@@ -322,7 +338,8 @@ cross-layer coupling [ADR 02](adr/02-persistence-and-export-format.md) avoids.
 4. Run `validateModel` on parts (referential, value rules) only if step 3 clean (broken shape 
    never cascades to spurious reference errors).
 5. Resolve `ValidationIssue.path` against parse tree for line numbers.
-6. Build `Model` (cannot throw; duplicates ruled out).
+6. Build `Model` (cannot throw; duplicates ruled out), then `withCanonicalIngredientNames` — a
+   hand-edited line naming a bottle by an alias is held under the bottle's own name (ADR 10).
 
 Step 5 is **only** place data-format keys bind to source positions (domain has no YAML knowledge).
 
@@ -349,7 +366,10 @@ edits every row at once, and a rename among them must reach the recipe lines in 
 
 Each mutation is one line over `ModelEdits` derivation. All run through single private path: await 
 startup load, derive, publish, save. The three `upsert…`s with `replacing` compose several derivations 
-(whole form/dialog reaches disk as one model, the rename it leaves behind included). Awaiting load makes edits during startup land on 
+(whole form/dialog reaches disk as one model, the rename it leaves behind included). `upsertRecipe` 
+ends on `withCanonicalIngredientNames`, so a line typed in any spelling — another case, an alias — 
+lands under the bottle it names, the bottles that same edit adds included (ADR 08, ADR 10); the 
+recipe form therefore stores what it was given rather than resolving names itself. Awaiting load makes edits during startup land on 
 loaded model, not replace. Edit that leaves model unchanged is not saved (no backup waste). UI never 
 constructs `Model` or touches `ModelStore` ([ADR 03](adr/03-app-structure-and-state.md)).
 

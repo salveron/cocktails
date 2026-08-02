@@ -60,7 +60,7 @@ units:                                 # yours to manage (ADR 09)
   - {name: dash, plural: dashes}
 
 ingredients:
-  - {name: bourbon, stock: in}
+  - {name: bourbon, stock: in, aliases: [bourbon whiskey]}  # also answers to (ADR 10)
   - {name: lemon juice, stock: low, tags: [citrus]}
   - {name: rich demerara syrup, tags: [syrup, homemade]}   # stock omitted = out
   - {name: egg white, stock: in}                           # untagged
@@ -97,7 +97,12 @@ Rules:
   must be among the names: an omitted unit is a part (FR-REC-2) and the ratio converts between the
   two (FR-SET-1). A file dropping one is reported, not repaired.
 - Ingredient entries: `name` required; `stock` is `in` | `low` | `out` (default `out`); `tags`
-  is a list of `ingredient_tags` names, absent when there are none.
+  is a list of `ingredient_tags` names, absent when there are none; `aliases` is a list of the
+  other spellings the bottle answers to ([ADR 10](adr/10-ingredient-aliases.md)), absent likewise.
+  Names and aliases share one namespace: every spelling in the section, whosever it is, is unique
+  under the fold, and none holds a comma. A reference resolves against every spelling and is
+  stored under the entry's own name, so a hand-written `2 parts bourbon whiskey` reads back as
+  `2 parts bourbon`.
 - Tag entries: `name` and `color` both required — `color` is one of `teal` | `indigo` | `plum` |
   `rose` | `sand` | `slate`, the palette of [ADR 07](adr/07-tag-colour.md). The two tag
   sections are separate vocabularies of the same shape, each unique within itself; one name may
@@ -135,8 +140,8 @@ Rules:
 - The pilot reads and writes format `1` only; a future format bump migrates old files on
   import inside the codec.
 - The round-trip guarantee (FR-DAT-5) is over canonical files: a hand-written `1.50`, `2.0`,
-  `2 dash` or `1 gin` normalises to `1.5`, `2`, `2 dashes` and `1 part gin` on the first
-  rewrite. Content is preserved, byte-identity
+  `2 dash`, `1 gin` or `1 part GIN` normalises to `1.5`, `2`, `2 dashes`, `1 part gin` and the
+  bottle's own spelling on the first rewrite. Content is preserved, byte-identity
   only from the app's own output onward.
 - Dart's `yaml` package is parse-only, so the canonical writer is a small custom emitter —
   spec'd by this section and pinned by the round-trip tests.

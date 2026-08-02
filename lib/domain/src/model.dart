@@ -86,6 +86,11 @@ final class Ingredient {
   final String name;
   final StockLevel stock;
 
+  /// The other spellings the bottle answers to (FR-VOC-6): "bourbon whiskey"
+  /// for the entry called "bourbon". They are for finding, never for showing
+  /// (docs/adr/10-ingredient-aliases.md).
+  final List<String> aliases;
+
   /// Names from the ingredient-tag vocabulary, as [Recipe.tags] holds names
   /// from the recipe one (FR-VOC-4). Optional: most bottles carry none.
   final List<String> tags;
@@ -93,29 +98,43 @@ final class Ingredient {
   Ingredient(
     this.name, {
     this.stock = StockLevel.out,
+    List<String> aliases = const [],
     List<String> tags = const [],
-  }) : tags = List.unmodifiable(tags);
+  }) : aliases = List.unmodifiable(aliases),
+       tags = List.unmodifiable(tags);
 
-  Ingredient copyWith({String? name, StockLevel? stock, List<String>? tags}) =>
-      Ingredient(
-        name ?? this.name,
-        stock: stock ?? this.stock,
-        tags: tags ?? this.tags,
-      );
+  /// Every spelling it answers to, its own name first — the one namespace the
+  /// vocabulary is unique within, as [UnitLookup.spellings] is for units.
+  List<String> get spellings => [name, ...aliases];
+
+  Ingredient copyWith({
+    String? name,
+    StockLevel? stock,
+    List<String>? aliases,
+    List<String>? tags,
+  }) => Ingredient(
+    name ?? this.name,
+    stock: stock ?? this.stock,
+    aliases: aliases ?? this.aliases,
+    tags: tags ?? this.tags,
+  );
 
   @override
   bool operator ==(Object other) =>
       other is Ingredient &&
       other.name == name &&
       other.stock == stock &&
+      listEquals(other.aliases, aliases) &&
       listEquals(other.tags, tags);
 
   @override
-  int get hashCode => Object.hash(name, stock, Object.hashAll(tags));
+  int get hashCode =>
+      Object.hash(name, stock, Object.hashAll(aliases), Object.hashAll(tags));
 
   @override
   String toString() =>
       'Ingredient($name, stock: ${stock.token}'
+      '${aliases.isEmpty ? '' : ', aliases: $aliases'}'
       '${tags.isEmpty ? '' : ', tags: $tags'})';
 }
 
@@ -425,10 +444,9 @@ final class Model {
        ingredientTags = List.unmodifiable(ingredientTags),
        recipes = List.unmodifiable(recipes) {
     _requireUniqueNames('unit', this.units.spellings);
-    _requireUniqueNames(
-      'ingredient',
-      this.ingredients.map((i) => i.name).toList(),
-    );
+    _requireUniqueNames('ingredient', [
+      for (final ingredient in this.ingredients) ...ingredient.spellings,
+    ]);
     _requireUniqueNames(
       'recipe tag',
       this.recipeTags.map((t) => t.name).toList(),
@@ -456,8 +474,9 @@ final class Model {
     recipes: recipes ?? this.recipes,
   );
 
-  /// The entry [name] names, whatever case it is written in, and so the one
-  /// place a typed or stored reference becomes the entry it means (ADR 08).
+  /// The entry [name] names, whatever case it is written in and whichever of
+  /// its spellings it is — the one place a typed or stored reference becomes
+  /// the entry it means (ADR 08, ADR 10).
   Ingredient? ingredientNamed(String name) => _ingredientsByName[nameKey(name)];
 
   Recipe? recipeNamed(String name) => _recipesByName[nameKey(name)];
@@ -473,9 +492,12 @@ final class Model {
   /// Built on first lookup and kept, which is what makes repeated reference
   /// questions O(1) at NFR-2 scale. Safe behind an immutable face: the lists
   /// they index can never change. Keyed by the fold, since the name is the
-  /// same name however it is written.
+  /// same name however it is written — and by every alias too, so one index
+  /// answers for every spelling a bottle has (ADR 10).
   late final Map<String, Ingredient> _ingredientsByName = {
-    for (final ingredient in ingredients) nameKey(ingredient.name): ingredient,
+    for (final ingredient in ingredients)
+      for (final spelling in ingredient.spellings)
+        nameKey(spelling): ingredient,
   };
   late final Map<String, Recipe> _recipesByName = {
     for (final recipe in recipes) nameKey(recipe.name): recipe,
@@ -484,12 +506,19 @@ final class Model {
   /// The names a list holds, as the set validation asks for — memoised on the
   /// same terms, so a form judging a name on every keystroke pays once, and
   /// unmodifiable so handing one out cannot reach back into the model.
-  late final Set<String> ingredientNames = Set.unmodifiable({
-    for (final ingredient in ingredients) ingredient.name,
-  });
   late final Set<String> recipeNames = Set.unmodifiable({
     for (final recipe in recipes) recipe.name,
   });
+
+  /// Every spelling the ingredient vocabulary answers to — names and aliases
+  /// in one namespace (ADR 10) — bar the entry named [except], so a bottle
+  /// judged for a rename collides with neither itself nor its own aliases.
+  /// Built per call rather than memoised: an entry drops out of most of them.
+  Set<String> ingredientSpellings({String? except}) => {
+    for (final ingredient in ingredients)
+      if (except == null || !ingredient.name.sameName(except))
+        ...ingredient.spellings,
+  };
 
   /// The spellings a line may measure in, as the reference rules ask for them.
   late final Set<String> unitSpellings = Set.unmodifiable(units.spellings);

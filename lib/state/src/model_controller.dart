@@ -19,8 +19,7 @@ final modelProvider = AsyncNotifierProvider<ModelController, Model>(
   ModelController.new,
 );
 
-/// What the startup load could not read, ready to display; empty when the
-/// store was healthy (FR-DAT-4).
+/// What the startup load could not read; empty when it read fine (FR-DAT-4).
 final startupIssuesProvider = Provider<List<String>>((ref) {
   ref.watch(modelProvider);
   return ref.watch(modelProvider.notifier).startupIssues;
@@ -56,15 +55,10 @@ final class ModelController extends AsyncNotifier<Model> {
   Future<void> setUnits(List<UnitEdit> units) =>
       _edit((model) => model.withUnits(units));
 
-  /// Adds [ingredient] or replaces the one of its name, [replacing] renamed
-  /// first so every recipe line that named it follows (FR-VOC-1).
+  /// Adds [ingredient] or replaces the one named [replacing], every recipe
+  /// line that named it following (FR-VOC-1) — one derivation, as settled.
   Future<void> upsertIngredient(Ingredient ingredient, {String? replacing}) =>
-      _edit((model) {
-        final renamed = replacing == null || replacing == ingredient.name
-            ? model
-            : model.withIngredientRenamed(replacing, ingredient.name);
-        return renamed.withIngredient(ingredient);
-      });
+      _edit((model) => model.withIngredient(ingredient, replacing: replacing));
 
   Future<void> removeIngredient(String name) =>
       _edit((model) => model.withoutIngredient(name));
@@ -85,9 +79,10 @@ final class ModelController extends AsyncNotifier<Model> {
   Future<void> removeTag(TagKind kind, String name) =>
       _edit((model) => model.withoutTag(kind, name));
 
-  /// Adds [recipe] or replaces the one of its name, with whatever the same
-  /// action introduced: the [addingIngredients] it named and did not find, and
-  /// the [replacing] name a rename leaves behind.
+  /// Adds [recipe] or replaces the one of its name, with what the same action
+  /// introduced: the [addingIngredients] it named and did not find, and the
+  /// [replacing] name a rename leaves behind. Lines arrive as typed and land
+  /// under the bottles they name, this edit's own included (ADR 08, ADR 10).
   Future<void> upsertRecipe(
     Recipe recipe, {
     List<Ingredient> addingIngredients = const [],
@@ -100,7 +95,7 @@ final class ModelController extends AsyncNotifier<Model> {
     if (replacing != null && replacing != recipe.name) {
       edited = edited.withoutRecipe(replacing);
     }
-    return edited.withRecipe(recipe);
+    return edited.withRecipe(recipe).withCanonicalIngredientNames();
   });
 
   Future<void> removeRecipe(String name) =>
@@ -113,14 +108,11 @@ final class ModelController extends AsyncNotifier<Model> {
   Future<void> setMade(String name, MadeHistory? made) =>
       _edit((model) => model.withRecipeHistory(name, made));
 
-  /// The one route from an edit to the disk: derive, publish, persist. It
-  /// waits for the startup load, so an edit made while the app is still
-  /// starting lands on the loaded model instead of replacing it. An edit that
-  /// changes nothing is not saved — that write would only push a good backup
-  /// out of the rotation. Whatever one form or dialog settles arrives here as
-  /// one edit, so it spends one save and one backup rotation, never several: a
-  /// recipe naming three new bottles must not save itself over its own
-  /// history (FR-DAT-4).
+  /// The one route from an edit to the disk: derive, publish, persist. It waits
+  /// for the startup load, so an edit made during startup lands on the loaded
+  /// model instead of replacing it, and an edit changing nothing is not saved —
+  /// that write would only push a good backup out of the rotation. Whatever a
+  /// form settles arrives as one edit, so it spends one save (FR-DAT-4).
   Future<void> _edit(Model Function(Model) edit) async {
     final model = await future;
     final edited = edit(model);

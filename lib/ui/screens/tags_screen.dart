@@ -150,13 +150,14 @@ class _TagTab extends ConsumerWidget {
     await ref.read(modelProvider.notifier).removeTag(kind, tag.name);
   }
 
-  /// Name rules (excluding [except] to prevent collision on rename).
-  List<ValidationIssue> Function(String) _nameRule(
+  /// Name rules (excluding [except] to prevent collision on rename). A tag
+  /// answers to its name alone, so the entry's other halves go unread.
+  List<ValidationIssue> Function(VocabularyEntry) _nameRule(
     TagColor color, {
     String? except,
   }) =>
-      (name) => validateTag(
-        Tag(name, color: color),
+      (entry) => validateTag(
+        Tag(entry.name, color: color),
         otherTagNames: otherNames(model.tagNames(kind), except),
       );
 }
