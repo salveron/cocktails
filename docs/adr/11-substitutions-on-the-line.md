@@ -55,5 +55,6 @@ decision; how it is written is this one. Decided before M18a.
 - `displayRecipeLine` becomes `displayMeasure` — the body it returned transformed nothing, and a
   card writes its own now. `formatLineBody` is private again.
 - **M19** must decide whether a group marked `(base)` files its recipe under every alternative
-  spirit (FR-DIS-4).
+  spirit (FR-DIS-4) — dissolved by [ADR 12](12-base-spirit-narrows.md), which makes base a
+  predicate: a group matches under every alternative it names.
 - **M21**'s optimizer must count a group as satisfied by any one purchase (FR-DIS-6).

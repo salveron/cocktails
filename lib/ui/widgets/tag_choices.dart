@@ -13,6 +13,7 @@ class TagChoices extends StatelessWidget {
     required this.chosen,
     required this.onToggle,
     this.scrolling = false,
+    this.leading,
     super.key,
   });
 
@@ -23,6 +24,10 @@ class TagChoices extends StatelessWidget {
   /// If true, scroll horizontally; if false, wrap (single line when pinned).
   final bool scrolling;
 
+  /// A chip of the screen's own, standing before the tags in the same row so
+  /// one scroller carries both narrowings (ADR 12).
+  final Widget? leading;
+
   @override
   Widget build(BuildContext context) {
     // Unbounded width prevents wrapping; works both inside/outside scroller.
@@ -30,10 +35,11 @@ class TagChoices extends StatelessWidget {
       spacing: 8,
       runSpacing: 8,
       children: [
+        ?leading,
         for (final tag in vocabulary)
           InkWell(
             onTap: () => onToggle(tag.name),
-            borderRadius: BorderRadius.circular(11),
+            borderRadius: chipRadius,
             child: TagChip(tag, chosen: chosen.contains(tag.name)),
           ),
       ],

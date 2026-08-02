@@ -26,7 +26,7 @@ Offline app: entire database in memory, one YAML file byte-identical to export
 
 Three layers ([ADR 03](adr/03-app-structure-and-state.md)):
 
-- **Domain** — pure Dart: entities, availability, grouping, optimizer, validation. Search and 
+- **Domain** — pure Dart: entities, availability, discovery, optimizer, validation. Search and 
   filtering are presentation: narrowing a list on screen, over the queries the domain answers. 
 - **Data** — storage interface + YAML adapter (codec, atomicity, backups).
 - **Presentation** — Flutter screens. Reads via Riverpod; derived state in computed providers.
@@ -123,6 +123,9 @@ Rules:
 - **Availability** (required lines only): all `in` = makeable; none `out` but some `low` = makeable-low; 
   any `out` = missing. A line stands at its best-stocked alternative (`stockOfLine`, FR-REC-9). 
   Derived provider, never stored. Lost bottles read as `out`.
+- **Base spirit** (FR-DIS-4, [ADR 12](adr/12-base-spirit-narrows.md)): a predicate, not a placement. 
+  Every alternative of every base line counts, so a group matches under each bottle it names; the 
+  spirits offered are read off the recipes, deduped by name key and read A→Z.
 - **Optimizer** (FR-DIS-6): collect `out` ingredients from each missing recipe; keep sets ≤ N. 
   Score candidate purchases by recipes becoming can-make. Zero-yield dropped.
 - **Line parsing**: shared parser/formatter, both routes (form, codec); takes unit vocabulary 
@@ -146,7 +149,7 @@ Rules:
 
 ## Testing
 
-- **Unit tests** (pure Dart, no device): availability, grouping, optimizer, validation, 
+- **Unit tests** (pure Dart, no device): availability, discovery, optimizer, validation, 
   YAML round-trip (FR-DAT-5).
 - **Integration tests**: atomic write, backup rotation, corrupt-file recovery.
 - **Widget tests**: recipe form, stock toggle, import confirmation, list search and filtering.

@@ -154,9 +154,19 @@ First usable slice; recipes reference both vocabularies, so this precedes Phase 
       under the dot that already says so. Cards read "or" where the file reads `/`; the form keeps
       the separator, being where a line is re-edited. `displayRecipeLine` becomes `displayMeasure`,
       the body it returned having transformed nothing.
-- [ ] **M19 Base-spirit grouping** — grouped browsing with ungrouped tail section
-      (FR-DIS-4). A group marked `(base)` must decide whether its recipe files under every
-      alternative spirit (ADR 11).
+- [x] **M19 Base spirit narrows** — the browsing FR-DIS-4 asked to be grouped becomes a filter
+      instead ([ADR 12](adr/12-base-spirit-narrows.md)): base is a predicate, not a placement, so
+      ADR 11's deferred question dissolves — a marked group answers under every bottle it names,
+      where a section could have filed its recipe under only one. Grouping is refused for what it
+      would cost: a second list layout over search, tags, six orders and per-card expansion, and
+      availability — the order the list opens in — demoted to *within* a section. `discovery.dart`
+      lands `basesOf`, `baseSpirits` and `marksBase`; `groupByBaseSpirit` is never written. One
+      chip leads the filter row, reading `Base: Any` / `Base: Gin` / `Base: None` and opening the
+      spirits the collection is actually built on — `tagFilter` takes it as a leading filter, so
+      the two narrowings share one scroller and one no-match message, and a vocabulary with no tags
+      still gets the chip. It wears `neutralSwatch`, the one scheme-derived ground in `palette.dart`,
+      since a bottle's name is neither a tag nor a signal. A pick gone stale stops narrowing rather
+      than emptying the list, as a tag pick does.
 - [ ] **M20 Random pick** — one can-make suggestion respecting active filters (FR-DIS-5).
 - [ ] **M21 Optimizer domain** — combination search and ranking (FR-DIS-6) with a
       performance test at NFR-2 scale. A substitution group counts as satisfied by any one

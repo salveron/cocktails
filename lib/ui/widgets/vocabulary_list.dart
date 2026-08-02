@@ -52,17 +52,27 @@ typedef ListFilter<T> = ({
 ///
 /// [picked] is read against [vocabulary] rather than trusted, so a tag renamed
 /// or deleted elsewhere stops narrowing rather than emptying the list.
+///
+/// [leading] is a narrowing the screen builds itself — the recipes' base spirit
+/// (ADR 12). Its row stands first among the chips, in the one scroller, and its
+/// reason joins the tags' in the one message; a vocabulary with nothing in it
+/// still draws it.
 ListFilter<T>? tagFilter<T>({
   required List<Tag> vocabulary,
   required Set<String> picked,
   required void Function(String tag) onToggle,
   required List<String> Function(T entry) tagsOf,
+  ListFilter<T>? leading,
 }) {
-  if (vocabulary.isEmpty) return null;
+  if (vocabulary.isEmpty && leading == null) return null;
   final chosen = {
     for (final tag in vocabulary)
       if (picked.contains(tag.name)) tag.name,
   };
+  final reasons = [
+    ?leading?.narrowing,
+    if (chosen.isNotEmpty) 'every tag you picked',
+  ];
   return (
     row: Padding(
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
@@ -71,10 +81,12 @@ ListFilter<T>? tagFilter<T>({
         chosen: chosen,
         onToggle: onToggle,
         scrolling: true,
+        leading: leading?.row,
       ),
     ),
-    test: (entry) => chosen.every(tagsOf(entry).contains),
-    narrowing: chosen.isEmpty ? null : 'every tag you picked',
+    test: (entry) =>
+        (leading?.test(entry) ?? true) && chosen.every(tagsOf(entry).contains),
+    narrowing: reasons.isEmpty ? null : reasons.join(' and '),
   );
 }
 

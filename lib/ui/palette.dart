@@ -1,4 +1,5 @@
-/// Every fixed hue the app draws (docs/ui-design.md#tag-and-stock-colours).
+/// Every ground a chip stands on (docs/ui-design.md#tag-and-stock-colours): the
+/// fixed hues that mean something, and the one neutral that means nothing.
 library;
 
 import 'package:cocktails/domain/domain.dart';
@@ -39,6 +40,13 @@ Swatch tagColors(TagColor color, Brightness brightness) => _forTheme(
   },
   brightness,
 );
+
+/// What a chip carrying no signal stands on — the base filter, which names a
+/// bottle rather than a level (ADR 12). Scheme roles precisely because every
+/// other swatch is a fixed hue: this one can read as neither tag nor traffic
+/// light, and follows the theme for free.
+Swatch neutralSwatch(ColorScheme colors) =>
+    (fill: colors.surfaceContainerHighest, ink: colors.onSurfaceVariant);
 
 /// Map tones to theme: pale fill/deep ink in light, reverse in dark.
 Swatch _forTheme(({Color pale, Color deep}) tones, Brightness brightness) =>

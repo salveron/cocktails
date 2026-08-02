@@ -29,6 +29,7 @@ Base never optional; marks mutually exclusive. Decided before M11/M14.
 ## Consequences
 
 - FR-VOC-2→FR-REC-8. FR-DIS-4 keys on marked lines.
-- M11 loses flag, M14 gains mark, M19 groups.
+- M11 loses flag, M14 gains mark, M19 narrows by the mark rather than grouping on it
+  ([ADR 12](12-base-spirit-narrows.md)).
 - Old files rejected as unknown-key.
 - All ingredient info stays one line (FR-DAT-2).

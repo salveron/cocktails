@@ -77,7 +77,9 @@ empty so no reference to it can mean two things.
 - **FR-DIS-3** Recipe list filterable by tag(s), combining with the search (FR-INV-3's idiom on 
   the other list). Availability is not a filter: the availability order (FR-DIS-8) is what puts 
   the makeable first.
-- **FR-DIS-4** Browse grouped by base spirit (recipe under each base mark; unmarked form ungrouped tail).
+- **FR-DIS-4** Recipe list narrowable by base spirit ([ADR 12](adr/12-base-spirit-narrows.md)): one 
+  spirit at a time, matching any alternative of any base line (ADR 11); *no base* is a choice of its 
+  own, reaching the unmarked. Combines with the search and the tag filter.
 - **FR-DIS-5** Random pick suggests one can-make recipe respecting active filters.
 - **FR-DIS-6** Optimizer: budget **N** (1–3); evaluates ≤N out-of-stock ingredient combos; 
   reports recipes becoming can-make (ranked by count). Zero-yield hidden.

@@ -23,7 +23,7 @@ lib/
       validation.dart          # ValidationIssue + rule set, otherNames
       availability.dart        # Availability, availabilityOf, stockOfLine, stockOf
       scaling.dart             # ×N scaling, part↔ml display
-      discovery.dart           # M19/M20 — group, random
+      discovery.dart           # basesOf, baseSpirits, marksBase; M20 — random
       optimizer.dart           # M21
       helpers.dart             # not exported: nameKey, sameName, repeatsName,
                                #   duplicateNameIndexes, listEquals
@@ -41,16 +41,20 @@ lib/
     state.dart                 # barrel — every provider
     src/
       model_controller.dart    # the one writable provider
-      derived.dart             # availabilityProvider; visible recipes, grouping, optimizer
+      derived.dart             # availabilityProvider; visible recipes, optimizer
   ui/                          # no barrel — leaves, imported directly; design in ui-design.md
     app.dart                   # MaterialApp and the shell: destinations, app bar, gear
     theme.dart                 # the seed colour, the two schemes, `dimmedInk` — the one
                                #   dim, worn by a hint and by a bottle the bar lacks
-    palette.dart               # the fixed hues: stock signals and the tag palette
+    palette.dart               # the fixed hues — stock signals and the tag palette —
+                               #   and `neutralSwatch`, the ground a chip meaning
+                               #   nothing by its colour stands on (ADR 12)
     screens/                   # one file per destination, plus settings, tags, units,
                                #   recipe form
     widgets/                   # empty_state, model_view, search_field, startup_issues,
-                               #   color_chip — the pill, chip, dot and dotted name
+                               #   color_chip — the pill, chip, dot and dotted name,
+                               #     plus `chipRadius`, the corner a chip and the ink
+                               #     under it both round to
                                #   tag_choices — the row tags are picked from
                                #   vocabulary_list — the searchable list all four screens are,
                                #     plus the orders it reads in, the spellings it searches
@@ -309,13 +313,25 @@ entry's name — every *spelling* for the ingredient vocabulary, whose namespace
 ### Computations
 
 Named now; implemented in milestones. All pure functions of `Model`. Algorithms in 
-[architecture.md](architecture.md#domain-computations). `groupByBaseSpirit` reads base-marked lines, 
-keys ungrouped tail with `null`. `randomCanMake` takes `Random` for testability.
+[architecture.md](architecture.md#domain-computations). `randomCanMake` takes `Random` for testability.
 
 ```dart
 const scaleFactors = [1, 2, 3, 4];                    // what a recipe view offers (FR-REC-7)
 String displayMeasure(RecipeLine line, Settings settings, List<Unit> units, {int scale = 1});
+
+Set<String> basesOf(Recipe recipe);                   // discovery.dart — FR-DIS-4, ADR 12
+List<String> baseSpirits(Model model);
+String baseSpiritNamed(Model model, String spirit);   // the spelling the offering uses
+bool marksBase(Recipe recipe, String? spirit);        // null asks for the unmarked
 ```
+
+Base spirit is a predicate, not a placement ([ADR 12](adr/12-base-spirit-narrows.md)): `basesOf` 
+takes every alternative of every base line, so a marked group answers under each bottle it names, 
+and `baseSpirits` folds those into what the filter offers — resolved through `baseSpiritNamed` 
+*before* being weighed for repetition, so two spellings of one bottle are one spirit; A→Z. 
+`baseSpiritNamed` is also how a screen holding a pick reads it against a changed vocabulary, so a 
+bottle merely recased goes on narrowing. Comparison runs through `helpers.dart`, which stays 
+unexported — no screen folds a name itself.
 
 `displayMeasure` is how a card reads a line's amounts (FR-REC-7, FR-SET-1). The measure is the only 
 half that transforms, so it is the only half returned — and marking it as the card's own rather than 

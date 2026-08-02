@@ -7,9 +7,19 @@ import 'package:flutter/material.dart';
 
 import '../palette.dart';
 
+/// A chip's outer corner — its ring, and the ripple of whatever makes it
+/// tappable. One home, so a chip and the ink under it cannot round differently.
+const chipRadius = BorderRadius.all(Radius.circular(11));
+
 /// Label on colored ground (no meaning from color alone).
 class ColorChip extends StatelessWidget {
-  const ColorChip(this.label, {required this.swatch, this.chosen, super.key});
+  const ColorChip(
+    this.label, {
+    required this.swatch,
+    this.chosen,
+    this.opensMenu = false,
+    super.key,
+  });
 
   final String label;
   final Swatch swatch;
@@ -17,29 +27,46 @@ class ColorChip extends StatelessWidget {
   /// If true/false, show ring; if null, no ring (not a choice).
   final bool? chosen;
 
+  /// If true, wear the arrow saying a tap opens a menu rather than toggling.
+  final bool opensMenu;
+
   @override
   Widget build(BuildContext context) {
     final chosen = this.chosen;
+    final style = Theme.of(
+      context,
+    ).textTheme.labelMedium?.copyWith(color: swatch.ink);
+    final text = Text(label, style: style);
     final chip = DecoratedBox(
       decoration: BoxDecoration(
         color: swatch.fill,
         borderRadius: BorderRadius.circular(8),
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-        child: Text(
-          label,
-          style: Theme.of(
-            context,
-          ).textTheme.labelMedium?.copyWith(color: swatch.ink),
-        ),
+        padding: EdgeInsets.fromLTRB(10, 4, opensMenu ? 2 : 10, 4),
+        child: opensMenu
+            ? Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  text,
+                  // Sized to the label's own line, so a chip opening a menu
+                  // stands exactly as tall as one that toggles; a theme
+                  // dropping either number falls back to labelMedium's own.
+                  Icon(
+                    Icons.arrow_drop_down,
+                    size: (style?.fontSize ?? 12) * (style?.height ?? 1.33),
+                    color: swatch.ink,
+                  ),
+                ],
+              )
+            : text,
       ),
     );
     if (chosen == null) return chip;
     return Container(
       padding: const EdgeInsets.all(2),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(11),
+        borderRadius: chipRadius,
         // Transparent border keeps layout stable on state change.
         border: Border.all(color: chosen ? swatch.ink : Colors.transparent),
       ),

@@ -319,6 +319,43 @@ Future<void> chooseTag(WidgetTester tester, String name) => tap(
   find.descendant(of: find.byType(AlertDialog), matching: find.text(name)),
 );
 
+/// The base-spirit chip, and what it reads (FR-DIS-4). One chip on a screen
+/// opens a menu rather than toggling, so that is the whole of the telling.
+final baseChip = find.byWidgetPredicate(
+  (widget) => widget is ColorChip && widget.opensMenu,
+);
+
+String basePick(WidgetTester tester) =>
+    tester.widget<ColorChip>(baseChip).label;
+
+/// Whether it wears the ring a picked tag wears — that is, whether it narrows.
+bool baseRinged(WidgetTester tester) =>
+    tester.widget<ColorChip>(baseChip).chosen!;
+
+/// The chip reading [label], for the geometry a filter row is judged by.
+Finder chipOf(WidgetTester tester, String label) =>
+    find.ancestor(of: find.text(label), matching: find.byType(ColorChip));
+
+/// Picks [label] out of that chip's menu — a spirit, "No base" or "Any base".
+Future<void> pickBase(WidgetTester tester, String label) async {
+  await tap(tester, baseChip);
+  await tap(tester, find.text(label));
+}
+
+/// Every offering that menu makes, in order, leaving it open to be read.
+Future<List<String>> baseChoices(WidgetTester tester) async {
+  await tap(tester, baseChip);
+  return [
+    for (final text in tester.widgetList<Text>(
+      find.descendant(
+        of: find.byWidgetPredicate((widget) => widget is PopupMenuItem),
+        matching: find.byType(Text),
+      ),
+    ))
+      text.data!,
+  ];
+}
+
 /// Toggles the tag [name] in a chip row — the inventory's filter or the
 /// recipe form's picker, which are the same row twice.
 Future<void> pickTag(WidgetTester tester, String name) => tap(

@@ -58,9 +58,19 @@ Successful add clears search. Recipes add pushes [recipe form](#recipe-form).
   Empty sections absent (except made row carries button).
 - **Edit/delete** behind ⋮ (menu pairs with availability chip). Delete confirms. 
   Rename keeps card open.
-- **Filter row** under search: recipe tags as chips, the inventory's row exactly (FR-DIS-3, 
-  `tagFilter`). Narrows to recipes wearing *all* picked; combines with search. Add clears picks. 
-  Availability filters through the order it opens in, not a chip.
+- **Filter row** under search: the base chip, then recipe tags as chips — the inventory's row 
+  exactly (FR-DIS-3, `tagFilter`, which takes the base chip as its leading filter so one scroller 
+  carries both and one message joins their reasons). Narrows to recipes wearing *all* picked tags; 
+  combines with search. Add clears every pick. Availability filters through the order it opens in, 
+  not a chip.
+- **Base chip** (FR-DIS-4, [ADR 12](adr/12-base-spirit-narrows.md)): reads `Base: Any` / `Base: Gin` 
+  / `Base: None` — the dimension named, so it cannot be read as a tag called "Base", and the bottle 
+  in the vocabulary's own spelling. Tapping opens **Any base**, **No base**, then every base spirit 
+  A→Z, the one in force ticked. `neutralSwatch`, since a bottle's name is neither tag nor signal; 
+  the arrow says the tap opens a menu. Ringed like a picked tag while it narrows (**Any base** 
+  alone is unringed), and ringed transparent otherwise — so it keeps a tag chip's height and 
+  spacing either way, `chipRadius` rounding both alike. Absent where nothing marks a base; a pick 
+  gone stale opens the list rather than emptying it, as the tag row does.
 - **Scale & unit** behind ⋮ (expanded cards only, FR-REC-7): factor ×1–×4, unit for part-based 
   (FR-SET-1 this card only). ×1 in parts cancels.
 - **Display-only transforms**: name row shows "(×2, ml)", measures italic. No persistence; 
@@ -131,3 +141,7 @@ Behind Settings. Form, not `VocabularyList` (no search/sort). Rows editable in p
 Each token: fill + ink pair (one per theme) in `palette.dart`. One traffic light (stock, 
 availability). Fill: chip/dot colour. Ink: text/pick ring. `switch` exhaustive 
 ([ADR 07](adr/07-tag-colour.md)).
+
+`neutralSwatch` is the exception and the reason the rest are fixed: built from scheme roles 
+(`surfaceContainerHighest`/`onSurfaceVariant`), it can read as neither a tag colour nor a signal, 
+and follows light/dark for free. Worn by a chip whose colour means nothing — today the base filter.

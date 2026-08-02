@@ -1,9 +1,11 @@
 import 'package:cocktails/data/data.dart';
 import 'package:cocktails/domain/domain.dart';
+import 'package:cocktails/state/state.dart';
 import 'package:cocktails/ui/screens/recipes_screen.dart';
 import 'package:cocktails/ui/widgets/color_chip.dart';
 import 'package:cocktails/ui/widgets/tag_choices.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../harness.dart';
@@ -337,6 +339,185 @@ void main() {
       await typeInto(tester, nameField, 'Martini');
       await typeInto(tester, lineFields.first, '2 parts gin');
       await tap(tester, find.text('Save'));
+      expect(namesOn(tester, [...names, 'Martini']), [
+        'Daiquiri',
+        'Martini',
+        'Negroni',
+        'Whiskey Sour',
+      ]);
+    });
+  });
+
+  group('base spirit (FR-DIS-4)', () {
+    testWidgets('the chip offers what the collection is built on', (
+      tester,
+    ) async {
+      await pumpRecipes(tester);
+      expect(basePick(tester), 'Base: Any');
+      expect(await baseChoices(tester), [
+        'Any base',
+        'No base',
+        'bourbon',
+        'gin',
+        'white rum',
+      ]);
+    });
+
+    testWidgets('there is no chip where nothing is marked', (tester) async {
+      await pumpRecipes(tester, stockedModel);
+      expect(baseChip, findsNothing);
+    });
+
+    testWidgets('it stands in line with the tags beside it', (tester) async {
+      await pumpRecipes(tester);
+      final base = tester.getRect(chipOf(tester, 'Base: Any'));
+      for (final tag in ['classic', 'sour']) {
+        final chip = tester.getRect(chipOf(tester, tag));
+        expect(chip.top, base.top);
+        expect(chip.height, base.height);
+      }
+      // The gap the row puts between two tags, kept before the first of them.
+      final gaps = [
+        for (final pair in [
+          ['Base: Any', 'classic'],
+          ['classic', 'sour'],
+        ])
+          tester.getRect(chipOf(tester, pair.last)).left -
+              tester.getRect(chipOf(tester, pair.first)).right,
+      ];
+      expect(gaps.first, gaps.last);
+    });
+
+    testWidgets('it wears the ring a picked tag does while it narrows', (
+      tester,
+    ) async {
+      await pumpRecipes(tester);
+      expect(baseRinged(tester), isFalse);
+      await pickBase(tester, 'gin');
+      expect(baseRinged(tester), isTrue);
+      await pickBase(tester, 'No base');
+      expect(baseRinged(tester), isTrue);
+      await pickBase(tester, 'Any base');
+      expect(baseRinged(tester), isFalse);
+    });
+
+    testWidgets('picking a spirit keeps the recipes built on it', (
+      tester,
+    ) async {
+      await pumpRecipes(tester);
+      await pickBase(tester, 'gin');
+      expect(basePick(tester), 'Base: gin');
+      expect(namesOn(tester), ['Negroni']);
+      expect(await baseChoices(tester), contains('gin'));
+      expect(find.byIcon(Icons.check), findsOneWidget);
+    });
+
+    testWidgets('a marked group answers under every bottle it names', (
+      tester,
+    ) async {
+      await pumpRecipes(tester, substitutedModel);
+      await pickBase(tester, 'vodka');
+      expect(namesOn(tester, ['Gimlet', 'Sidecar']), ['Gimlet']);
+    });
+
+    testWidgets('"No base" reaches the recipes marking none', (tester) async {
+      await pumpRecipes(tester, substitutedModel);
+      await pickBase(tester, 'No base');
+      expect(basePick(tester), 'Base: None');
+      expect(namesOn(tester, ['Gimlet', 'Sidecar']), ['Sidecar']);
+    });
+
+    testWidgets('"Any base" lets the rest back in', (tester) async {
+      await pumpRecipes(tester);
+      await pickBase(tester, 'white rum');
+      expect(namesOn(tester), ['Daiquiri']);
+      await pickBase(tester, 'Any base');
+      expect(basePick(tester), 'Base: Any');
+      expect(namesOn(tester), names);
+    });
+
+    testWidgets('the base, the tags and the search narrow together', (
+      tester,
+    ) async {
+      await pumpRecipes(tester);
+      await pickTag(tester, 'classic');
+      expect(namesOn(tester), ['Negroni', 'Whiskey Sour']);
+      await pickBase(tester, 'bourbon');
+      expect(namesOn(tester), ['Whiskey Sour']);
+      await search(tester, 'negro');
+      expect(namesOn(tester), isEmpty);
+    });
+
+    testWidgets('an empty list blames the base along with the tags', (
+      tester,
+    ) async {
+      await pumpRecipes(tester, untriedModel);
+      await pickBase(tester, 'gin');
+      await pickTag(tester, 'tiki');
+      expect(
+        find.text(
+          'No recipe here matches gin as its base and every tag you picked.',
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('and says so in its own words where it alone emptied it', (
+      tester,
+    ) async {
+      await pumpRecipes(tester, recipeModel);
+      await pickBase(tester, 'No base');
+      expect(
+        find.text('No recipe here matches no base at all.'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('a pick gone stale opens the list rather than emptying it', (
+      tester,
+    ) async {
+      await pumpRecipes(tester);
+      await pickBase(tester, 'gin');
+      expect(namesOn(tester), ['Negroni']);
+
+      await chooseOnRow(tester, 'Negroni', 'Delete');
+      await tap(tester, find.text('Delete'));
+      expect(basePick(tester), 'Base: Any');
+      expect(namesOn(tester), ['Daiquiri', 'Whiskey Sour']);
+    });
+
+    testWidgets('a bottle recased goes on narrowing, under its new name', (
+      tester,
+    ) async {
+      await pumpRecipes(tester);
+      await pickBase(tester, 'gin');
+      expect(namesOn(tester), ['Negroni']);
+
+      await ProviderScope.containerOf(
+            tester.element(find.byType(RecipesScreen)),
+            listen: false,
+          )
+          .read(modelProvider.notifier)
+          .upsertIngredient(Ingredient('Gin'), replacing: 'gin');
+      await tester.pumpAndSettle();
+
+      // One bottle either way (ADR 08), so the pick is not a pick gone stale.
+      expect(basePick(tester), 'Base: Gin');
+      expect(namesOn(tester), ['Negroni']);
+    });
+
+    testWidgets('an add lets the base pick go along with the tags', (
+      tester,
+    ) async {
+      await pumpRecipes(tester);
+      await pickBase(tester, 'white rum');
+      expect(namesOn(tester), ['Daiquiri']);
+
+      await tap(tester, find.byTooltip('Add recipe'));
+      await typeInto(tester, nameField, 'Martini');
+      await typeInto(tester, lineFields.first, '2 parts gin (base)');
+      await tap(tester, find.text('Save'));
+      expect(basePick(tester), 'Base: Any');
       expect(namesOn(tester, [...names, 'Martini']), [
         'Daiquiri',
         'Martini',

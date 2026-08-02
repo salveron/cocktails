@@ -5,6 +5,7 @@ import 'package:cocktails/state/state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../palette.dart';
 import '../theme.dart';
 import '../widgets/color_chip.dart';
 import '../widgets/empty_state.dart';
@@ -19,6 +20,11 @@ import 'recipe_form_screen.dart';
 typedef _AmountView = ({int scale, DisplayUnit unit});
 
 const _asWritten = (scale: 1, unit: DisplayUnit.part);
+
+/// What the list is narrowed to by base spirit (FR-DIS-4, ADR 12) — a record,
+/// so a null *spirit*, the recipes marking no base, is told apart from a null
+/// _pick_, which is no narrowing at all.
+typedef _BasePick = ({String? spirit});
 
 /// How a substitution group reads on a card — prose, where the grammar and the
 /// file keep the separator (ADR 11). Italic on the open card, so a word made of
@@ -64,6 +70,9 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
   /// the search, so nothing about a way of looking reaches the file.
   final _picked = <String>{};
 
+  /// The base spirit narrowing it beside them, absent while it narrows nothing.
+  _BasePick? _base;
+
   void _toggle(String name) => setState(() {
     _expanded.toggle(name);
     if (!_expanded.contains(name)) _forget(name);
@@ -93,6 +102,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
           picked: _picked,
           onToggle: (tag) => setState(() => _picked.toggle(tag)),
           tagsOf: (recipe) => recipe.tags,
+          leading: _baseFilter(model),
         ),
         orders: {
           // A recipe the pass has yet to judge ranks with the missing ones,
@@ -180,6 +190,42 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
     );
   }
 
+  /// The base spirit chip and what it keeps (FR-DIS-4, ADR 12). A pick gone
+  /// stale — the bottle renamed, deleted, or its last base mark cleared — is
+  /// absent from what the collection offers, and so stops narrowing rather than
+  /// emptying the list. Nothing marked anywhere leaves nothing to offer.
+  ListFilter<Recipe>? _baseFilter(Model model) {
+    final spirits = baseSpirits(model);
+    if (spirits.isEmpty) return null;
+    final chosen = _standingPick(model, spirits);
+    return (
+      row: _BaseChip(
+        spirits: spirits,
+        chosen: chosen,
+        onPick: (pick) => setState(() => _base = pick),
+      ),
+      test: (recipe) => chosen == null || marksBase(recipe, chosen.spirit),
+      narrowing: switch (chosen) {
+        null => null,
+        (spirit: null) => 'no base at all',
+        (spirit: final spirit) => '$spirit as its base',
+      },
+    );
+  }
+
+  /// The pick as the collection spells it now, or null where it no longer
+  /// stands among [spirits]. A bottle answers under its own name, so a rename
+  /// changing only its case goes on narrowing (ADR 08) and the chip reads the
+  /// new spelling; one renamed in earnest stops.
+  _BasePick? _standingPick(Model model, List<String> spirits) {
+    final pick = _base;
+    if (pick == null) return null;
+    final picked = pick.spirit;
+    if (picked == null) return pick;
+    final spirit = baseSpiritNamed(model, picked);
+    return spirits.contains(spirit) ? (spirit: spirit) : null;
+  }
+
   /// Opens form and returns saved name (null if cancelled or unchanged).
   Future<String?> _openForm({
     required List<Unit> units,
@@ -195,11 +241,17 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
     ),
   );
 
-  /// The form, and the picked tags let go along with the search once it saves:
-  /// a recipe wearing none of them would otherwise land out of sight.
+  /// The form, and every narrowing let go along with the search once it saves:
+  /// a recipe wearing none of the picked tags, or built on another spirit,
+  /// would otherwise land out of sight.
   Future<bool> _add(List<Unit> units, String query) async {
     final saved = await _openForm(units: units, initialName: query);
-    if (saved != null && mounted) setState(_picked.clear);
+    if (saved != null && mounted) {
+      setState(() {
+        _picked.clear();
+        _base = null;
+      });
+    }
     return saved != null;
   }
 
@@ -291,6 +343,64 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
     setState(() => _undo.remove(recipe.name));
     await ref.read(modelProvider.notifier).setMade(recipe.name, null);
   }
+}
+
+/// What the list is narrowed to, and the menu settling it: any base, no base,
+/// or one of the spirits the collection is built on (FR-DIS-4, ADR 12). Shaped
+/// like the tag chips it stands among, but neutral — a bottle's name is neither
+/// a tag nor a signal, and the chip names its own dimension so it cannot be
+/// read as a tag that happens to be called "Base".
+///
+/// The menu carries its pick wrapped, since a bare null selection is how
+/// [PopupMenuButton] reports a menu dismissed — and "Any base" is a null pick.
+class _BaseChip extends StatelessWidget {
+  const _BaseChip({
+    required this.spirits,
+    required this.chosen,
+    required this.onPick,
+  });
+
+  final List<String> spirits;
+  final _BasePick? chosen;
+  final void Function(_BasePick? pick) onPick;
+
+  @override
+  Widget build(BuildContext context) {
+    final chosen = this.chosen;
+    return PopupMenuButton<({_BasePick? pick})>(
+      tooltip: 'Base spirit',
+      borderRadius: chipRadius,
+      onSelected: (choice) => onPick(choice.pick),
+      itemBuilder: (context) => [
+        _item('Any base', null),
+        _item('No base', (spirit: null)),
+        for (final spirit in spirits) _item(spirit, (spirit: spirit)),
+      ],
+      // Ringed like a picked tag while it narrows, and ringed in the clear
+      // besides, so the chip stands in line with the tags either way.
+      child: ColorChip(
+        'Base: ${chosen == null ? 'Any' : chosen.spirit ?? 'None'}',
+        swatch: neutralSwatch(Theme.of(context).colorScheme),
+        chosen: chosen != null,
+        opensMenu: true,
+      ),
+    );
+  }
+
+  /// One offering, the one in force wearing the tick.
+  PopupMenuItem<({_BasePick? pick})> _item(String label, _BasePick? pick) =>
+      PopupMenuItem(
+        value: (pick: pick),
+        child: Row(
+          children: [
+            SizedBox(
+              width: 28,
+              child: pick == chosen ? const Icon(Icons.check, size: 18) : null,
+            ),
+            Text(label),
+          ],
+        ),
+      );
 }
 
 /// Full recipe card: tags, lines, notes, made row; empty sections omitted.
