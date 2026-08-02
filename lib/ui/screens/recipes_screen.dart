@@ -53,6 +53,10 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
   /// of looking at one card, and neither outlives it.
   final _views = <String, _AmountView>{};
 
+  /// The tags narrowing the list (FR-DIS-3) — screen state like the order and
+  /// the search, so nothing about a way of looking reaches the file.
+  final _picked = <String>{};
+
   void _toggle(String name) => setState(() {
     _expanded.toggle(name);
     if (!_expanded.contains(name)) _forget(name);
@@ -71,12 +75,18 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
       return VocabularyList<Recipe>(
         entries: model.recipes,
         nameOf: (recipe) => recipe.name,
+        spellingsOf: (recipe) => _spellings(model, recipe),
         rowOf: (recipe) =>
             _row(model, vocabulary, recipe, availability[recipe.name]),
-        onAdd: (query) async =>
-            await _openForm(units: model.units, initialName: query) != null,
+        onAdd: (query) => _add(model.units, query),
         noun: 'recipe',
         plural: 'recipes',
+        filter: tagFilter(
+          vocabulary: vocabulary,
+          picked: _picked,
+          onToggle: (tag) => setState(() => _picked.toggle(tag)),
+          tagsOf: (recipe) => recipe.tags,
+        ),
         orders: {
           // A recipe the pass has yet to judge ranks with the missing ones,
           // where a card drawing no chip belongs.
@@ -177,6 +187,25 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
       ),
     ),
   );
+
+  /// The form, and the picked tags let go along with the search once it saves:
+  /// a recipe wearing none of them would otherwise land out of sight.
+  Future<bool> _add(List<Unit> units, String query) async {
+    final saved = await _openForm(units: units, initialName: query);
+    if (saved != null && mounted) setState(_picked.clear);
+    return saved != null;
+  }
+
+  /// What a search reaches a recipe by: its name, and every spelling of every
+  /// bottle it is built from (FR-DIS-2, FR-VOC-6). A line is held under its
+  /// bottle's own name (ADR 10), so the vocabulary is what widens it to the
+  /// rest — and a line naming no bottle still answers to what it says.
+  static List<String> _spellings(Model model, Recipe recipe) => [
+    recipe.name,
+    for (final line in recipe.lines)
+      ...(model.ingredientNamed(line.ingredient)?.spellings ??
+          [line.ingredient]),
+  ];
 
   /// On rename, move expansion state from old name to new name.
   Future<void> _edit(List<Unit> units, Recipe recipe) async {

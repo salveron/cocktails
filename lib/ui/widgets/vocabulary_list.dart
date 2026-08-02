@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 
 import 'empty_state.dart';
 import 'search_field.dart';
+import 'tag_choices.dart';
 
 /// The tie-break under every order: A→Z, case ignored.
 int byName(String a, String b) => a.toLowerCase().compareTo(b.toLowerCase());
@@ -43,6 +44,39 @@ typedef ListFilter<T> = ({
   bool Function(T entry) test,
   String? narrowing,
 });
+
+/// The tag row a list narrows by — the inventory's bottles and the recipes
+/// alike (FR-INV-3, FR-DIS-3): chips that double as the legend for the dots on
+/// the rows, and an entry kept only where it wears every one picked. A
+/// vocabulary with nothing in it has no row and narrows nothing.
+///
+/// [picked] is read against [vocabulary] rather than trusted, so a tag renamed
+/// or deleted elsewhere stops narrowing rather than emptying the list.
+ListFilter<T>? tagFilter<T>({
+  required List<Tag> vocabulary,
+  required Set<String> picked,
+  required void Function(String tag) onToggle,
+  required List<String> Function(T entry) tagsOf,
+}) {
+  if (vocabulary.isEmpty) return null;
+  final chosen = {
+    for (final tag in vocabulary)
+      if (picked.contains(tag.name)) tag.name,
+  };
+  return (
+    row: Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+      child: TagChoices(
+        vocabulary: vocabulary,
+        chosen: chosen,
+        onToggle: onToggle,
+        scrolling: true,
+      ),
+    ),
+    test: (entry) => chosen.every(tagsOf(entry).contains),
+    narrowing: chosen.isEmpty ? null : 'every tag you picked',
+  );
+}
 
 /// Single vocab row with optional body; ripple clipped to card corners.
 class VocabularyRow extends StatelessWidget {
@@ -341,11 +375,13 @@ class _NoMatch extends StatelessWidget {
   final String noun;
   final VoidCallback? onAdd;
 
-  /// Reason message: blames search and/or filter.
+  /// Reason message: blames search and/or filter. "Answers to" rather than "is
+  /// called": a query reaches an entry's other spellings too, and on the
+  /// recipes the bottles it is built from (FR-VOC-6, FR-DIS-2).
   String get _reason {
     final narrowing = this.narrowing;
     final causes = [
-      if (query.isNotEmpty) 'is called "$query"',
+      if (query.isNotEmpty) 'answers to "$query"',
       if (narrowing != null) 'matches $narrowing',
     ];
     return 'No $noun here ${causes.join(' and ')}.';

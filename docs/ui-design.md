@@ -18,7 +18,9 @@ requirements in [requirements.md](requirements.md).
 
 `SearchField` pinned above (NFR-1). `matchesQuery`: case-insensitive, anywhere, no surrounding space.
 Applies to inventory (FR-INV-1) and recipes (FR-DIS-2) identically. Entries answering multiple names 
-(FR-VOC-6): match on any, show under entry's name. Filters (FR-DIS-3) separate provider.
+(FR-VOC-6): match on any, show under entry's name — a recipe answers to its bottles' spellings too, 
+so a query reaches what it is built from. Hence "answers to", not "is called", when nothing matches. 
+Filter and order alike are widget state, never persisted, never on the model's side.
 
 Orders behind one icon (FR-DIS-8): chip row shows offerings + current (direction). Picking current 
 reverses list. No separate Z→A/missing-first chips. Tie-break: name. Rows stable during edit; 
@@ -53,7 +55,10 @@ Successful add clears search. Recipes add pushes [recipe form](#recipe-form).
 - **Expanded**: tags as chips, lines as `formatRecipeLine` writes, notes, made row. 
   Empty sections absent (except made row carries button).
 - **Edit/delete** behind ⋮ (menu pairs with availability chip). Delete confirms. 
-  Rename keeps card open. Filter row under search (tag legend).
+  Rename keeps card open.
+- **Filter row** under search: recipe tags as chips, the inventory's row exactly (FR-DIS-3, 
+  `tagFilter`). Narrows to recipes wearing *all* picked; combines with search. Add clears picks. 
+  Availability filters through the order it opens in, not a chip.
 - **Scale & unit** behind ⋮ (expanded cards only, FR-REC-7): factor ×1–×4, unit for part-based 
   (FR-SET-1 this card only). ×1 in parts cancels.
 - **Display-only transforms**: name row shows "(×2, ml)", measures italic. No persistence; 

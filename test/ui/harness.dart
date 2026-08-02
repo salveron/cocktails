@@ -324,6 +324,11 @@ Future<void> pickTag(WidgetTester tester, String name) => tap(
   find.descendant(of: find.byType(TagChoices), matching: find.text(name)),
 );
 
+/// [text] on a list card, told apart from the filter row standing above the
+/// list: one tag is a chip in both places, that row being the cards' legend.
+Finder onCard(String text) =>
+    find.descendant(of: find.byType(Card), matching: find.text(text));
+
 /// Every dot on the row named [name], in the order they are drawn.
 Finder _dotsOn(String name) => find.descendant(
   of: find.ancestor(of: find.text(name), matching: find.byType(ListTile)),

@@ -23,7 +23,7 @@ lib/
       validation.dart          # ValidationIssue + rule set, otherNames
       availability.dart        # Availability, availabilityOf, stockOf
       scaling.dart             # ×N scaling, part↔ml display
-      discovery.dart           # M13/M18/M19/M20 — search, filter, group, random
+      discovery.dart           # M19/M20 — group, random
       optimizer.dart           # M21
       helpers.dart             # not exported: nameKey, sameName, repeatsName,
                                #   duplicateNameIndexes, listEquals
@@ -42,7 +42,6 @@ lib/
     src/
       model_controller.dart    # the one writable provider
       derived.dart             # availabilityProvider; visible recipes, grouping, optimizer
-      filters.dart             # filter and search UI state
   ui/                          # no barrel — leaves, imported directly; design in ui-design.md
     app.dart                   # MaterialApp and the shell: destinations, app bar, gear
     theme.dart                 # the seed colour, the two schemes, the dimmed hint style
@@ -54,7 +53,8 @@ lib/
                                #   tag_choices — the row tags are picked from
                                #   vocabulary_list — the searchable list all four screens are,
                                #     plus the orders it reads in, the spellings it searches
-                               #     by, byName and Set.toggle
+                               #     by, the tag filter two of them narrow by, byName
+                               #     and Set.toggle
                                #   vocabulary_dialogs — entry (name, aliases, colour, tags),
                                #     delete, discard, plus VocabularyEntry and the one
                                #     reading of issue paths into fields every form shares
@@ -382,8 +382,9 @@ recipe on each model change; empty until the load lands. One pass serves the lis
 the availability filter, the random pick and the optimizer. Per-line marks read `stockOf` directly 
 (the map answers per recipe, the card asks per bottle).
 
-Filter state is presentation, never persisted; own provider so filter change invalidates only visible 
-list, not model-derived.
+Filter, search and order are presentation: widget state where the list is drawn, never persisted and 
+never a provider — nothing model-derived reads them, so there is nothing to invalidate. A consumer 
+outside the screen (M20's random pick, FR-DIS-5) is what would hoist them.
 
 Performance facts (no over-engineering):
 - Every mutation replaces whole `Model` → all model-derived recompute. Hundreds of recipes: availability 

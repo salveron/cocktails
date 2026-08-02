@@ -247,7 +247,7 @@ void main() {
 
         await search(tester, 'tiki');
         expect(
-          find.text('No recipe tag here is called "tiki".'),
+          find.text('No recipe tag here answers to "tiki".'),
           findsOneWidget,
         );
       },

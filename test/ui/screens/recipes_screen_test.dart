@@ -2,6 +2,7 @@ import 'package:cocktails/data/data.dart';
 import 'package:cocktails/domain/domain.dart';
 import 'package:cocktails/ui/screens/recipes_screen.dart';
 import 'package:cocktails/ui/widgets/color_chip.dart';
+import 'package:cocktails/ui/widgets/tag_choices.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -57,6 +58,19 @@ final stockedModel = Model(
       ],
     ),
   ],
+);
+
+/// A tag nothing wears, so the chips alone can empty the list.
+final untriedModel = recipeModel.withTag(
+  TagKind.recipe,
+  const Tag('tiki', color: TagColor.teal),
+);
+
+/// A bottle answering to a second name, so a search can reach a recipe by a
+/// spelling no line of it holds (FR-VOC-6).
+final aliasedModel = recipeModel.withIngredient(
+  Ingredient('gin', aliases: const ['juniper']),
+  replacing: 'gin',
 );
 
 /// What the verdict chip on the row named [name] reads.
@@ -155,7 +169,7 @@ void main() {
       expect(find.byType(FloatingActionButton), findsOneWidget);
       expect(rowMenu('Negroni'), findsOneWidget);
       await search(tester, 'Mai Tai');
-      expect(find.text('No recipe here is called "Mai Tai".'), findsOneWidget);
+      expect(find.text('No recipe here answers to "Mai Tai".'), findsOneWidget);
       expect(find.text('Add "Mai Tai"'), findsOneWidget);
     });
 
@@ -207,6 +221,105 @@ void main() {
       await pumpRecipes(tester, stockedModel);
       await sortBy(tester, 'Availability');
       expect(namesOn(tester, stocked), ['Negroni', 'Campari Shot', 'Gin Shot']);
+    });
+  });
+
+  group('recipe filters', () {
+    testWidgets('the chips are the vocabulary, and absent without one', (
+      tester,
+    ) async {
+      await pumpRecipes(tester, stockedModel);
+      expect(find.byType(TagChoices), findsNothing);
+
+      await pumpRecipes(tester);
+      expect(find.byType(TagChoices), findsOneWidget);
+      expect(find.widgetWithText(ColorChip, 'sour'), findsOneWidget);
+    });
+
+    testWidgets('picking a tag keeps the recipes wearing it', (tester) async {
+      await pumpRecipes(tester);
+      await pickTag(tester, 'classic');
+      expect(isPicked(tester, 'classic'), isTrue);
+      expect(namesOn(tester), ['Negroni', 'Whiskey Sour']);
+    });
+
+    testWidgets('picking a second one keeps only what wears both', (
+      tester,
+    ) async {
+      await pumpRecipes(tester);
+      await pickTag(tester, 'classic');
+      await pickTag(tester, 'sour');
+      expect(namesOn(tester), ['Whiskey Sour']);
+    });
+
+    testWidgets('picking a lit tag again lets the rest back in', (
+      tester,
+    ) async {
+      await pumpRecipes(tester);
+      await pickTag(tester, 'sour');
+      expect(namesOn(tester), ['Whiskey Sour']);
+      await pickTag(tester, 'sour');
+      expect(isPicked(tester, 'sour'), isFalse);
+      expect(namesOn(tester), names);
+    });
+
+    testWidgets('the tags and the search narrow together', (tester) async {
+      await pumpRecipes(tester);
+      await pickTag(tester, 'classic');
+      await search(tester, 'negro');
+      expect(namesOn(tester), ['Negroni']);
+    });
+
+    testWidgets('an empty list blames the tags when they emptied it', (
+      tester,
+    ) async {
+      await pumpRecipes(tester, untriedModel);
+      await pickTag(tester, 'tiki');
+      expect(
+        find.text('No recipe here matches every tag you picked.'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('an add lets the picked tags go along with the search', (
+      tester,
+    ) async {
+      await pumpRecipes(tester);
+      await pickTag(tester, 'sour');
+      expect(namesOn(tester), ['Whiskey Sour']);
+
+      await tap(tester, find.byTooltip('Add recipe'));
+      await typeInto(tester, nameField, 'Martini');
+      await typeInto(tester, lineFields.first, '2 parts gin');
+      await tap(tester, find.text('Save'));
+      expect(namesOn(tester, [...names, 'Martini']), [
+        'Daiquiri',
+        'Martini',
+        'Negroni',
+        'Whiskey Sour',
+      ]);
+    });
+  });
+
+  group('recipe search', () {
+    testWidgets('a bottle finds the recipes built on it (FR-DIS-2)', (
+      tester,
+    ) async {
+      await pumpRecipes(tester);
+      await search(tester, 'rum');
+      expect(namesOn(tester), ['Daiquiri']);
+    });
+
+    testWidgets('and finds every one of them at once', (tester) async {
+      await pumpRecipes(tester);
+      await search(tester, 'juice');
+      expect(namesOn(tester), ['Daiquiri', 'Whiskey Sour']);
+    });
+
+    testWidgets('a bottle answers under its other names too', (tester) async {
+      await pumpRecipes(tester, aliasedModel);
+      await search(tester, 'juniper');
+      expect(namesOn(tester), ['Negroni']);
     });
   });
 
@@ -274,7 +387,7 @@ void main() {
       await tap(tester, find.text('Negroni'));
       expect(find.text('gin · campari · sweet vermouth'), findsNothing);
       expect(dotsOn(tester, 'Negroni'), isEmpty);
-      expect(find.text('classic'), findsOneWidget);
+      expect(onCard('classic'), findsOneWidget);
     });
 
     testWidgets('only the lines with something to report are dotted', (
@@ -302,8 +415,8 @@ void main() {
     testWidgets('the chips wear the tags\' own colours', (tester) async {
       await pumpRecipes(tester);
       await tap(tester, find.text('Whiskey Sour'));
-      expect(find.text('classic'), findsOneWidget);
-      expect(find.text('sour'), findsOneWidget);
+      expect(onCard('classic'), findsOneWidget);
+      expect(onCard('sour'), findsOneWidget);
       expect(chipColor(tester, 'sour'), isNot(chipColor(tester, 'classic')));
     });
 

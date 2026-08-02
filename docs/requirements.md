@@ -68,8 +68,11 @@ empty so no reference to it can mean two things.
 
 - **FR-DIS-1** Recipe list shows availability at glance (makeable-low distinct from makeable). Recipe 
   view marks each line running low/out.
-- **FR-DIS-2** Recipes searchable by name.
-- **FR-DIS-3** List filterable by tag(s), ingredient(s), availability; filters combine.
+- **FR-DIS-2** Recipes searchable by name and by the ingredients they use — any spelling 
+  (FR-VOC-6), the card still reading under the recipe's own name.
+- **FR-DIS-3** Recipe list filterable by tag(s), combining with the search (FR-INV-3's idiom on 
+  the other list). Availability is not a filter: the availability order (FR-DIS-8) is what puts 
+  the makeable first.
 - **FR-DIS-4** Browse grouped by base spirit (recipe under each base mark; unmarked form ungrouped tail).
 - **FR-DIS-5** Random pick suggests one can-make recipe respecting active filters.
 - **FR-DIS-6** Optimizer: budget **N** (1–3); evaluates ≤N out-of-stock ingredient combos; 
@@ -112,6 +115,7 @@ See [vision.md](vision.md#future-directions):
 - PC/desktop app.
 - In-app Telegram parsing (migration via FR-DAT-3 outside app).
 - Formalized prep (ordered steps, technique vocab, filtering).
+- Search grammar for compound queries (several ingredients, logical operators).
 - Non-base grouping.
 - Almost-makeable view (missing exactly one ingredient).
 - Glassware/garnish fields, photo per recipe.

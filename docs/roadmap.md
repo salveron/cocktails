@@ -134,7 +134,14 @@ First usable slice; recipes reference both vocabularies, so this precedes Phase 
       name. Uniqueness widens to every spelling, `ingredientNamed` indexes them all, and
       `withCanonicalIngredientNames` is the one derivation putting a line under the bottle it
       names, so the codec and `upsertRecipe` share it and the form resolves nothing itself.
-- [ ] **M18 Filters** — by tags, ingredients, availability; combinable (FR-DIS-3).
+- [x] **M18 Filters** — the recipe list narrows the way the inventory does: a scrolling chip row of
+      recipe tags under the search, keeping what wears every one picked and combining with the query
+      (FR-DIS-3). The row two screens now share is `tagFilter`, which also reads the picks against the
+      live vocabulary, so a tag renamed or deleted elsewhere stops narrowing on both. Ingredients are
+      reached through the search rather than filtered: a recipe answers to every spelling of every
+      bottle it is built from, aliases included (FR-DIS-2 widened, ADR 10) — hence "answers to" where
+      a list says nothing matches. Availability is dropped as a filter, its order (FR-DIS-8) being
+      what puts the makeable first; a grammar for compound queries is out of pilot scope.
 - [ ] **M19 Base-spirit grouping** — grouped browsing with ungrouped tail section
       (FR-DIS-4).
 - [ ] **M20 Random pick** — one can-make suggestion respecting active filters (FR-DIS-5).

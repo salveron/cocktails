@@ -26,7 +26,8 @@ Offline app: entire database in memory, one YAML file byte-identical to export
 
 Three layers ([ADR 03](adr/03-app-structure-and-state.md)):
 
-- **Domain** — pure Dart: entities, availability, search/filter/group, optimizer, validation. 
+- **Domain** — pure Dart: entities, availability, grouping, optimizer, validation. Search and 
+  filtering are presentation: narrowing a list on screen, over the queries the domain answers. 
 - **Data** — storage interface + YAML adapter (codec, atomicity, backups).
 - **Presentation** — Flutter screens. Reads via Riverpod; derived state in computed providers.
 
@@ -139,8 +140,8 @@ Rules:
 
 ## Testing
 
-- **Unit tests** (pure Dart, no device): availability, filtering/grouping, optimizer, validation, 
+- **Unit tests** (pure Dart, no device): availability, grouping, optimizer, validation, 
   YAML round-trip (FR-DAT-5).
 - **Integration tests**: atomic write, backup rotation, corrupt-file recovery.
-- **Widget tests**: recipe form, stock toggle, import confirmation.
+- **Widget tests**: recipe form, stock toggle, import confirmation, list search and filtering.
 - CI: format check, `flutter analyze`, test suite, local APK build on every push.

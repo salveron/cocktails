@@ -8,7 +8,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../widgets/color_chip.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/model_view.dart';
-import '../widgets/tag_choices.dart';
 import '../widgets/vocabulary_dialogs.dart';
 import '../widgets/vocabulary_list.dart';
 
@@ -30,8 +29,6 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
   @override
   Widget build(BuildContext context) => ModelView((model) {
     final vocabulary = sortedByName(model.ingredientTags);
-    // Ignore deleted/renamed tags; keep intersection with current vocabulary.
-    final picked = _picked.intersection(model.tagNames(TagKind.ingredient));
     return VocabularyList<Ingredient>(
       entries: model.ingredients,
       nameOf: (ingredient) => ingredient.name,
@@ -44,21 +41,12 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
         'Stock': (ingredient) => ingredient.stock.index,
         ...alphabetical,
       },
-      filter: vocabulary.isEmpty
-          ? null
-          : (
-              row: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-                child: TagChoices(
-                  vocabulary: vocabulary,
-                  chosen: picked,
-                  onToggle: _toggle,
-                  scrolling: true,
-                ),
-              ),
-              test: (ingredient) => picked.every(ingredient.tags.contains),
-              narrowing: picked.isEmpty ? null : 'every tag you picked',
-            ),
+      filter: tagFilter(
+        vocabulary: vocabulary,
+        picked: _picked,
+        onToggle: _toggle,
+        tagsOf: (ingredient) => ingredient.tags,
+      ),
       empty: const EmptyState(
         icon: Icons.inventory_2_outlined,
         title: 'No ingredients yet',

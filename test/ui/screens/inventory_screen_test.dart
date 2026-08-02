@@ -131,7 +131,7 @@ void main() {
     ) async {
       await pumpInventory(tester, fixtureModel);
       await search(tester, 'absinthe');
-      expect(find.text('No ingredient here is called "absinthe".'), findsOne);
+      expect(find.text('No ingredient here answers to "absinthe".'), findsOne);
       expect(find.byType(SearchField), findsOneWidget);
     });
 
@@ -520,7 +520,7 @@ void main() {
       await search(tester, 'gin');
       expect(
         find.text(
-          'No ingredient here is called "gin" and matches every tag you '
+          'No ingredient here answers to "gin" and matches every tag you '
           'picked.',
         ),
         findsOneWidget,
