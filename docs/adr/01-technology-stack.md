@@ -4,8 +4,7 @@
 
 ## Context
 
-Single-user offline Android app; vision includes desktop later. Solo developer, Python background, 
-AI-assisted. Scale: hundreds of recipes, instant response (NFR-2). Open-source, free.
+Offline Android app, desktop later. Solo + AI. Hundreds of recipes, instant (NFR-2). Open-source.
 
 ## Decision
 
@@ -28,6 +27,5 @@ AI-assisted. Scale: hundreds of recipes, instant response (NFR-2). Open-source, 
 
 ## Consequences
 
-- Dart is new (mitigated by AI assistance, small codebase).
-- Environment: Flutter SDK + Android toolchain on Linux; physical phone over USB.
-- Desktop: new target + layout, not new codebase.
+- Dart is new (mitigated by AI, small codebase).
+- Desktop: new target + layout only.

@@ -1,7 +1,4 @@
-/// YAML tree → model parts (decode steps 3 and 5 of
-/// docs/components.md#data-contracts): shape errors — wrong types, missing or
-/// unknown keys, bad tokens, malformed lines — become issues at data-format
-/// paths, and [lineOfPath] is the one place those paths bind to source lines.
+/// YAML tree → model parts; shape errors become issues at data-format paths.
 library;
 
 import 'package:cocktails/domain/domain.dart';
@@ -42,9 +39,7 @@ ModelParts readModelParts(YamlMap root) {
     'recipes',
   };
   _checkKeys(root, sections, const [], issues);
-  // A file naming no units is read with the ones the app shipped, so nothing
-  // written before they were data reads differently now (ADR 09). The lines
-  // are parsed against them, hence read first.
+  // File with no units uses shipped defaults; parsed against them (ADR-09).
   final units = root.nodes['units'] == null
       ? defaultUnits
       : _readEntries(root, 'units', issues, _readUnit);
@@ -64,9 +59,7 @@ ModelParts readModelParts(YamlMap root) {
   );
 }
 
-/// The 1-based source line [path] leads to — of the deepest resolvable node
-/// when the full path does not exist. A map segment answers with the key's
-/// own line, which reads better for keys whose value starts further down.
+/// 1-based source line [path] leads to; deepest resolvable node if not found.
 int lineOfPath(YamlNode root, List<Object> path) {
   var node = root;
   var span = node.span;
@@ -89,7 +82,7 @@ int lineOfPath(YamlNode root, List<Object> path) {
   return span.start.line + 1;
 }
 
-/// A value's display form for issue messages, kept short.
+/// Value display for issue messages, compact.
 String briefValue(Object? value) {
   final text = switch (value) {
     String() => '"$value"',
@@ -110,8 +103,7 @@ MapEntry<YamlNode, YamlNode>? _entryNamed(YamlMap map, String key) {
   return null;
 }
 
-/// Unknown keys are structural errors — a misspelled key would otherwise
-/// silently drop content on an import that replaces the whole database.
+/// Unknown keys are structural errors; misspelled keys silently lose data.
 void _checkKeys(
   YamlMap map,
   Set<String> known,
@@ -193,7 +185,7 @@ List<T> _readEntries<T>(
   return entries;
 }
 
-/// An omitted `plural` is how an entry says its plural reads like its name.
+/// Omitted `plural` means it reads like the name.
 Unit? _readUnit(
   YamlNode node,
   List<Object> path,
@@ -240,9 +232,7 @@ Ingredient? _readIngredient(
       : Ingredient(name, stock: stock, aliases: aliases, tags: tags);
 }
 
-/// Unlike `stock`, `color` has no default to fall back on: every tag carries
-/// one (docs/adr/07-tag-colour.md), so an entry without it is as incomplete as
-/// one without a name.
+/// Unlike `stock`, `color` is required; every tag carries one (ADR-07).
 Tag? _readTag(YamlNode node, List<Object> path, List<ValidationIssue> issues) {
   if (node is! YamlMap) {
     _report(issues, path, 'Tag entry must be a mapping', node);
@@ -263,10 +253,7 @@ Tag? _readTag(YamlNode node, List<Object> path, List<ValidationIssue> issues) {
   return name == null || color == null ? null : Tag(name, color: color);
 }
 
-/// An enum-token key's value, or null when it is absent or unreadable — one
-/// bad token costs its own value and nothing else in the entry. [tokens] only
-/// spells the legal set out in the message, so a palette that grows says so
-/// without anyone editing the wording; the lookup stays the enum's own.
+/// Enum-token value or null; one bad token doesn't cost other entry fields.
 T? _readToken<T extends Enum>(
   YamlNode? valueNode,
   String key,
@@ -289,9 +276,7 @@ T? _readToken<T extends Enum>(
   return parsed;
 }
 
-/// A list of bare names under [key] — the `tags:` an entry wears, since the
-/// colour lives with the tag, and the `aliases:` a bottle answers to. [what]
-/// only words the message a bad element gets.
+/// List of bare names under [key]: tags worn, aliases answered to.
 List<String> _readNames(
   YamlMap node,
   String key,
@@ -353,8 +338,7 @@ Recipe? _readRecipe(
   return Recipe(name, tags: tags, lines: lines, notes: notes, made: made);
 }
 
-/// Walks the string-list value under [key], handing each element node and its
-/// path to [readEntry] — the shared shape handling of recipe tags and lines.
+/// Walks string-list under [key]; shared shape for tags and lines.
 void _forEachEntry(
   YamlMap map,
   String key,
@@ -435,8 +419,7 @@ String? _readName(
   return _stringValue(node, [...path, 'name'], issues, 'name');
 }
 
-/// A required key the entry did not carry. The path stays the entry's own —
-/// there is no node to point at inside it.
+/// Required key missing; path is the entry itself, no inner node.
 void _reportMissing(
   List<ValidationIssue> issues,
   List<Object> path,
@@ -474,8 +457,7 @@ void _report(
 
 final _datePattern = RegExp(r'^(\d{4})-(\d{2})-(\d{2})$');
 
-/// Strict `YYYY-MM-DD`, rejecting calendar overflow (a `02-31` must not roll
-/// into March) — the emitter writes dates back in exactly this form.
+/// Strict `YYYY-MM-DD`; rejects calendar overflow like `02-31`.
 DateTime? _tryParseDate(String text) {
   final match = _datePattern.firstMatch(text);
   if (match == null) return null;

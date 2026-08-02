@@ -4,13 +4,8 @@
 
 ## Context
 
-Tags are the one labelling mechanism (FR-REC-4). Two shape questions must be settled before 
-screens built on them:
-
-- Tag renders as coloured chip; colour chosen by user, persists (YAML schema, [ADR 02](02-persistence-and-export-format.md)).
-- Ingredients want labels ("citrus", "homemade") but not recipe labels ("classic" irrelevant to bottle).
-
-Decided before M12 (tag screen) and M13/M14 (tag rendering).
+Two shape questions before screens built: colour persistence, two vocabularies (ingredients 
+vs. recipes). Decided before M12/M13/M14.
 
 ## Decision
 
@@ -44,14 +39,7 @@ Decided before M12 (tag screen) and M13/M14 (tag rendering).
 
 ## Consequences
 
-- Requirements gain FR-VOC-4 (ingredient tags), FR-INV-3 (display/filtering); FR-VOC-3 is requirement, 
-  not default. FR-VOC-2 stays retired (no two meanings).
-- Renames per-vocabulary (recipe tag→recipes, ingredient tag→ingredients); colour carries across 
-  (dropping it = data loss).
-- Deletion blocked by own-side references only (FR-VOC-1); model answers `usersOfTag(kind, name)`.
-- `Ingredient` holds a list (not `const`-constructible, like `Recipe`).
-- Name dialog gains palette row (required for tags, absent for ingredients); colour change is own 
-  action on tag screen.
-- Earlier shapes (bare strings, no colour, `tags:` section) rejected as errors; hand-edit like 
-  ADR 06 leftovers.
-- Every tag surface (M13, M14, M18) reads token → swatch map in `ui/`.
+- Gain FR-VOC-4/INV-3. Per-vocabulary renames.
+- Deletion blocked own-side only.
+- Old shapes (no colour) rejected as errors.
+- Tag screens read token→swatch map.

@@ -5,9 +5,8 @@ hand-curated Telegram channel.
 
 ## Problem
 
-Telegram channel: terse recipe lines with emojis. Cannot answer: *what can I make right now*, 
-*what am I missing*, *which purchase unlocks the most new drinks*. Marks stale, emojis 
-conflate meanings, nothing searchable.
+Telegram channel cannot answer: what can I make, what's missing, which purchase unlocks new drinks.
+No searchability, marks stale.
 
 ## Product idea
 
@@ -29,8 +28,8 @@ Compatible but out of scope (see [requirements.md](requirements.md#out-of-pilot-
 
 ## Constraints
 
-Single developer with AI assistance. Single-user, mobile-only. Simplicity wins ties. 
-Telegram migration through import file prepared outside the app; no in-app Telegram format parsing.
+Single developer, AI-assisted. Single-user, mobile-only. Simplicity wins. 
+Telegram migration via external import file only.
 
 ## Success
 

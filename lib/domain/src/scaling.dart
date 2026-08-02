@@ -1,5 +1,4 @@
-/// Display transforms over a recipe's amounts (docs/components.md#computations):
-/// the ×N of FR-REC-7 and the part→ml of FR-SET-1, neither ever stored.
+/// Display transforms: scaling (FR-REC-7) and part→ml conversion (FR-SET-1).
 library;
 
 import 'helpers.dart';
@@ -11,9 +10,7 @@ const scaleFactors = [1, 2, 3, 4];
 
 typedef DisplayedLine = ({String measure, String body});
 
-/// [line] at [scale] under [settings] — at ×1 in parts, exactly what
-/// [formatRecipeLine] writes, split where the transform stops. The conversion
-/// is anchored to the two units no vocabulary can lose (ADR 09).
+/// [line] at [scale]; anchored to reserved units (ADR-09).
 DisplayedLine displayRecipeLine(
   RecipeLine line,
   Settings settings,
@@ -33,8 +30,7 @@ DisplayedLine displayRecipeLine(
   );
 }
 
-/// Multiplying in binary lands a hair off — 0.1 part in ml would read
-/// 3.0000000000000004 — so what is shown rounds where no drink can tell.
+/// Rounds to 2 decimals to avoid binary float artifacts in display.
 Amount _scaled(Amount amount, double factor) =>
     Amount.range(_round(amount.min * factor), _round(amount.max * factor));
 

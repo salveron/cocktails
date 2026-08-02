@@ -4,12 +4,8 @@
 
 ## Context
 
-Units were a closed enum with declared wire tokens — `part ml oz dash barspoon drop piece`. The
-singular was the token; the plural was accepted on input by stripping an `s` or an `es`, and nothing
-ever wrote one, so a card and a file both read "2 dash". Two things an enum cannot give: a unit the
-app never shipped ("tsp", "splash", "cube"), and a plural the app cannot guess ("leaves").
-
-Decided before M17b, and before the units screen (M17c) is built on the result.
+Units were closed enum (seven members). Plural guessed on input, never written. Cannot add units 
+("tsp", "splash") or irregular plurals ("leaves"). Decided before M17b/M17c.
 
 ## Decision
 
@@ -57,14 +53,8 @@ Decided before M17b, and before the units screen (M17c) is built on the result.
 
 ## Consequences
 
-- Requirements: FR-REC-2's unit list becomes the seeded default of a managed vocabulary, FR-SET-1
-  names `part` and `ml` as fixed, and a new FR-VOC-5 covers managing units and their plurals.
-- The data format gains a `units:` section and the plural rule. The round-trip guarantee (FR-DAT-5)
-  is untouched — canonical output stays canonical, spelled the new way.
-- The line grammar is no longer context-free: parsing and formatting both need the vocabulary in
-  hand, which every domain signature that touches a line now says out loud.
-- Existing files need no migration and no re-entry: they load as they are and are rewritten on the
-  next save.
-- An ingredient whose name opens with a word later added as a unit ("cube sugar" once a "cube" unit
-  exists) parses differently. The pre-existing rule stands — a word that resolves is a unit — and
-  the remainder fails to resolve as a bottle, which is where it surfaces.
+- FR-REC-2 becomes seeded default, FR-VOC-5 manages units/plurals.
+- Data format gains `units:` section; FR-DAT-5 unchanged.
+- Grammar context-dependent (needs vocabulary).
+- Existing files load unchanged, rewrite on save.
+- Ingredient names with unit words parse differently (edge case).

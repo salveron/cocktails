@@ -5,8 +5,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 
-/// The composition root: the only place that knows where the store lives
-/// (docs/architecture.md#platform-facts).
+/// Composition root: sole place knowing store location.
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final directory = await getApplicationDocumentsDirectory();

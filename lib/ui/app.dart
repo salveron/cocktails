@@ -1,6 +1,4 @@
-/// The app frame: the Material 3 shell every screen lives in — three
-/// destinations in the bottom bar, settings behind the app bar's gear
-/// (docs/ui-design.md#app-shell).
+/// Material 3 app frame: three bottom-bar destinations, settings gear.
 library;
 
 import 'package:flutter/material.dart';
@@ -52,8 +50,7 @@ enum _Destination {
   final Widget screen;
 }
 
-/// Every destination stays alive in an [IndexedStack], so switching away and
-/// back keeps a screen's scroll position and search text (NFR-1).
+/// IndexedStack keeps destinations alive for scroll/search state preservation (NFR-1).
 class AppShell extends StatefulWidget {
   const AppShell({super.key});
 

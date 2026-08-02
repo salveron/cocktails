@@ -1,7 +1,4 @@
-/// Decode/encode between store text and [Model], with the format-version
-/// gate — the pipeline of docs/components.md#data-contracts. Shape issues
-/// reject before value validation runs, so a broken section never cascades
-/// into spurious reference errors.
+/// Decode/encode between store text and [Model]; format-version gate.
 library;
 
 import 'package:cocktails/domain/domain.dart';

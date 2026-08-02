@@ -14,10 +14,8 @@ enum StockLevel {
   final String token;
   const StockLevel(this.token);
 
-  /// The next step in a bottle's life — full, running low, empty, bought
-  /// again — and so what one tap on the inventory list does (FR-INV-2).
-  /// Declaration order is that life; the wire tokens above are independent
-  /// of it.
+  /// Next step in a bottle's lifecycle (FR-INV-2).
+  /// Declaration order is the life; wire tokens are independent.
   StockLevel get next => values[(index + 1) % values.length];
 
   static StockLevel? fromToken(String text) =>
@@ -35,9 +33,8 @@ enum DisplayUnit {
       _fromToken(values, text, (v) => v.token);
 }
 
-/// What a recipe makes of one of its lines — its base spirit, or a line it can
-/// go without (docs/adr/06-base-spirit-on-the-line.md). One field, so a base
-/// line can never also be optional.
+/// A recipe line's mark: base spirit or optional (ADR-06).
+/// One field ensures a line cannot be both.
 enum LineMark {
   base('base'),
   optional('optional');
@@ -49,12 +46,8 @@ enum LineMark {
       _fromToken(values, text, (v) => v.token);
 }
 
-/// The palette a tag's colour comes from (docs/adr/07-tag-colour.md). Green,
-/// amber and red are absent by design: stock and availability already spend
-/// them on meaning. Every tag has one — there is no unpainted member, so a
-/// colour on screen is always a choice someone made. Declaration order is the
-/// order the picker offers, and the set is open to new members. What each
-/// token looks like is the UI's to say.
+/// Tag color palette; green/amber/red reserved by stock and availability (ADR-07).
+/// Every tag has a color; declaration order is the picker's order.
 enum TagColor {
   teal('teal'),
   indigo('indigo'),
@@ -86,13 +79,10 @@ final class Ingredient {
   final String name;
   final StockLevel stock;
 
-  /// The other spellings the bottle answers to (FR-VOC-6): "bourbon whiskey"
-  /// for the entry called "bourbon". They are for finding, never for showing
-  /// (docs/adr/10-ingredient-aliases.md).
+  /// Other spellings a bottle answers to (FR-VOC-6, ADR-10): for finding, not showing.
   final List<String> aliases;
 
-  /// Names from the ingredient-tag vocabulary, as [Recipe.tags] holds names
-  /// from the recipe one (FR-VOC-4). Optional: most bottles carry none.
+  /// Names from the ingredient-tag vocabulary (FR-VOC-4), optional.
   final List<String> tags;
 
   Ingredient(
@@ -103,8 +93,7 @@ final class Ingredient {
   }) : aliases = List.unmodifiable(aliases),
        tags = List.unmodifiable(tags);
 
-  /// Every spelling it answers to, its own name first — the one namespace the
-  /// vocabulary is unique within, as [UnitLookup.spellings] is for units.
+  /// Every spelling: name first, then aliases; unique namespace (ADR-10).
   List<String> get spellings => [name, ...aliases];
 
   Ingredient copyWith({
@@ -138,14 +127,10 @@ final class Ingredient {
       '${tags.isEmpty ? '' : ', tags: $tags'})';
 }
 
-/// Which of the two vocabularies a tag belongs to. They are peers of one shape
-/// (docs/adr/07-tag-colour.md), so every tag operation takes one of these
-/// rather than existing twice under two names.
+/// Which vocabulary a tag belongs to; peers of one shape (ADR-07).
 enum TagKind { recipe, ingredient }
 
-/// One label in either vocabulary — they differ in what they name, not in what
-/// they are (docs/adr/07-tag-colour.md). The colour is required: an unpainted
-/// tag is not a thing the app can hold.
+/// A tag in either vocabulary; color is required (ADR-07).
 final class Tag {
   final String name;
   final TagColor color;
@@ -166,7 +151,7 @@ final class Tag {
   String toString() => 'Tag($name, color: ${color.token})';
 }
 
-/// A single value when [min] == [max], a range otherwise (FR-REC-2).
+/// A single value or a range (FR-REC-2).
 final class Amount {
   final double min;
   final double max;
@@ -188,23 +173,22 @@ final class Amount {
   String toString() => isRange ? 'Amount($min-$max)' : 'Amount($min)';
 }
 
-/// One measure a line can be written in (docs/adr/09-units-are-a-vocabulary.md).
-/// [plural] is empty where the plural reads the same as the name — "ml", "oz".
+/// One measure a line can be written in (ADR-09).
+/// [plural] empty means plural reads the same as name.
 final class Unit {
   final String name;
   final String plural;
 
   const Unit(this.name, {this.plural = ''});
 
-  /// The plural as it reads: the name itself where none was written.
+  /// The plural as it reads; name itself where none was written.
   String get pluralName => plural.isEmpty ? name : plural;
 
-  /// How [amount] of it is spelled — the singular for exactly one, so "1 part"
-  /// stands beside "0.75 parts" and "1.5-2 parts".
+  /// How [amount] is spelled: singular for one, plural otherwise.
   String spelling(Amount amount) =>
       amount == const Amount(1) ? name : pluralName;
 
-  /// Whether [token] is one of its spellings, however written (ADR 08).
+  /// Whether [token] is one of its spellings, any case (ADR-08).
   bool answersTo(String token) =>
       name.sameName(token) || pluralName.sameName(token);
 
@@ -223,7 +207,7 @@ final class Unit {
       'Unit($name${plural.isEmpty ? '' : ', plural: $plural'})';
 }
 
-/// The units the app shipped with, and what a file naming none is read with.
+/// Default units; also used when a file names none.
 const defaultUnits = [
   Unit(partUnit, plural: 'parts'),
   Unit(mlUnit),
@@ -234,9 +218,7 @@ const defaultUnits = [
   Unit('piece', plural: 'pieces'),
 ];
 
-/// The two the app itself leans on: an omitted unit is a part (FR-REC-2) and
-/// the ratio converts between these two (FR-SET-1), so neither can be renamed
-/// or deleted — only their plurals are the user's.
+/// Reserved units: omitted unit is a part (FR-REC-2), ratio uses these (FR-SET-1).
 const partUnit = 'part';
 const mlUnit = 'ml';
 const reservedUnits = [partUnit, mlUnit];
@@ -245,9 +227,7 @@ bool isReservedUnit(String name) =>
     reservedUnits.any((reserved) => reserved.sameName(name));
 
 extension UnitLookup on List<Unit> {
-  /// The unit [token] names — a spelling of its own, or a plural it never
-  /// wrote ("2 cups" where the plural was left empty). Exact spellings answer
-  /// first, so a stripped guess can never shadow a unit named outright.
+  /// The unit [token] names; exact spellings answer first.
   Unit? unitNamed(String token) {
     for (final spelling in [
       token,
@@ -261,9 +241,7 @@ extension UnitLookup on List<Unit> {
     return null;
   }
 
-  /// Every spelling the vocabulary answers to, in its own order — a plural
-  /// repeating its own name counts once, one repeating another unit's is the
-  /// collision uniqueness refuses.
+  /// Every spelling the vocabulary answers to, in order.
   List<String> get spellings => [
     for (final unit in this) ...[
       unit.name,
@@ -272,8 +250,7 @@ extension UnitLookup on List<Unit> {
   ];
 }
 
-/// A line names its unit as it names its ingredient: by name, resolved against
-/// the vocabulary (ADR 09).
+/// A line names unit and ingredient by name, resolved against vocabularies (ADR-09).
 final class RecipeLine {
   final Amount amount;
   final String unit;
@@ -294,8 +271,7 @@ final class RecipeLine {
         mark: mark,
       );
 
-  /// The only way to change the mark, and the only one that can clear it —
-  /// `copyWith` cannot, since null is its "keep what you have".
+  /// Only way to change/clear the mark (copyWith uses null for "keep").
   RecipeLine marked(LineMark? mark) =>
       RecipeLine(amount, unit, ingredient, mark: mark);
 
@@ -318,7 +294,7 @@ final class RecipeLine {
   }
 }
 
-/// Made-history stamps a date (FR-REC-6): [last] keeps no time of day.
+/// Made-history stamps a date (FR-REC-6); [last] has no time of day.
 final class MadeHistory {
   final DateTime last;
   final int times;
@@ -373,7 +349,7 @@ final class Recipe {
   }) : tags = List.unmodifiable(tags),
        lines = List.unmodifiable(lines);
 
-  /// A null [made] keeps the current history; [stamped] is what rewrites it.
+  /// Null [made] keeps current history; use [stamped] to rewrite.
   Recipe copyWith({
     String? name,
     List<String>? tags,
@@ -388,9 +364,7 @@ final class Recipe {
     made: made ?? this.made,
   );
 
-  /// The only way to rewrite the history, and the only one that can clear it
-  /// back to never made — `copyWith` cannot, since null is its "keep what you
-  /// have" ([RecipeLine.marked] is the same hatch for the same reason).
+  /// Only way to rewrite/clear history (copyWith uses null for "keep").
   Recipe stamped(MadeHistory? made) =>
       Recipe(name, tags: tags, lines: lines, notes: notes, made: made);
 
@@ -419,14 +393,11 @@ final class Recipe {
 final class Model {
   final Settings settings;
 
-  /// What a line may be measured in (ADR 09) — the vocabulary a file naming
-  /// none is read with, so nothing written before they were data changes.
+  /// Units vocabulary; used for files naming none (ADR-09).
   final List<Unit> units;
   final List<Ingredient> ingredients;
 
-  /// The two tag vocabularies (docs/adr/07-tag-colour.md). Peers of one shape,
-  /// each unique within itself — the same name may stand in both and mean two
-  /// different things.
+  /// Two tag vocabularies, peers of one shape; names unique within each (ADR-07).
   final List<Tag> recipeTags;
   final List<Tag> ingredientTags;
   final List<Recipe> recipes;
@@ -474,9 +445,7 @@ final class Model {
     recipes: recipes ?? this.recipes,
   );
 
-  /// The entry [name] names, whatever case it is written in and whichever of
-  /// its spellings it is — the one place a typed or stored reference becomes
-  /// the entry it means (ADR 08, ADR 10).
+  /// The entry [name] names, any case, any spelling (ADR-08, ADR-10).
   Ingredient? ingredientNamed(String name) => _ingredientsByName[nameKey(name)];
 
   Recipe? recipeNamed(String name) => _recipesByName[nameKey(name)];
@@ -489,11 +458,7 @@ final class Model {
   bool hasTag(TagKind kind, String name) =>
       tagsOf(kind).any((tag) => tag.name.sameName(name));
 
-  /// Built on first lookup and kept, which is what makes repeated reference
-  /// questions O(1) at NFR-2 scale. Safe behind an immutable face: the lists
-  /// they index can never change. Keyed by the fold, since the name is the
-  /// same name however it is written — and by every alias too, so one index
-  /// answers for every spelling a bottle has (ADR 10).
+  /// Memoized: keyed by fold and every alias for O(1) lookups (ADR-10).
   late final Map<String, Ingredient> _ingredientsByName = {
     for (final ingredient in ingredients)
       for (final spelling in ingredient.spellings)
@@ -503,29 +468,24 @@ final class Model {
     for (final recipe in recipes) nameKey(recipe.name): recipe,
   };
 
-  /// The names a list holds, as the set validation asks for — memoised on the
-  /// same terms, so a form judging a name on every keystroke pays once, and
-  /// unmodifiable so handing one out cannot reach back into the model.
+  /// Recipe names as validation expects; memoized and unmodifiable.
   late final Set<String> recipeNames = Set.unmodifiable({
     for (final recipe in recipes) recipe.name,
   });
 
-  /// Every spelling the ingredient vocabulary answers to — names and aliases
-  /// in one namespace (ADR 10) — bar the entry named [except], so a bottle
-  /// judged for a rename collides with neither itself nor its own aliases.
-  /// Built per call rather than memoised: an entry drops out of most of them.
+  /// All spellings the vocabulary answers to, except [except] (ADR-10).
   Set<String> ingredientSpellings({String? except}) => {
     for (final ingredient in ingredients)
       if (except == null || !ingredient.name.sameName(except))
         ...ingredient.spellings,
   };
 
-  /// The spellings a line may measure in, as the reference rules ask for them.
+  /// Unit spellings; used by reference rules.
   late final Set<String> unitSpellings = Set.unmodifiable(units.spellings);
 
   Set<String> tagNames(TagKind kind) => _tagNames[kind]!;
 
-  /// Keyed by every [TagKind] there is, so the lookup above always finds one.
+  /// Tag names keyed by kind.
   late final Map<TagKind, Set<String>> _tagNames = {
     for (final kind in TagKind.values)
       kind: Set.unmodifiable({for (final tag in tagsOf(kind)) tag.name}),
@@ -558,10 +518,7 @@ final class Model {
       '${recipes.length} recipes)';
 }
 
-/// The tags [worn] names, in [vocabulary] order. Two entries wearing the same
-/// tags then read the same however they are drawn — chips, dots, or names
-/// written back — and a name the vocabulary no longer holds drops out instead
-/// of showing up unrecognised.
+/// Tags [worn] names, in [vocabulary] order.
 List<Tag> wornInOrder(List<Tag> vocabulary, Iterable<String> worn) {
   final names = nameKeys(worn);
   return [

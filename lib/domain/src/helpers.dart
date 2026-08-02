@@ -1,9 +1,7 @@
-/// Logic shared between domain files. Public within the layer, not exported
-/// from the barrel — the "public in src/, not exported" tier of
-/// docs/adr/04-module-boundaries.md.
+/// Shared domain logic; public in src/, not exported (ADR-04).
 library;
 
-/// One name however it is capitalised (docs/adr/08-names-ignore-case.md).
+/// One name any case (ADR-08).
 String nameKey(String name) => name.toLowerCase();
 
 Set<String> nameKeys(Iterable<String> names) => {
@@ -14,10 +12,10 @@ extension NameComparison on String {
   bool sameName(String other) => nameKey(this) == nameKey(other);
 }
 
-/// Whether [name] already stands in [seen], which gains it either way.
+/// Whether [name] already stands in [seen]; adds it either way.
 bool repeatsName(Set<String> seen, String name) => !seen.add(nameKey(name));
 
-/// Indexes in [names] whose value already appeared at a lower index.
+/// Indexes of duplicate names; repeated values at higher index.
 List<int> duplicateNameIndexes(List<String> names) {
   final seen = <String>{};
   return [
@@ -26,7 +24,7 @@ List<int> duplicateNameIndexes(List<String> names) {
   ];
 }
 
-/// Element-wise equality; lists of different lengths are never equal.
+/// Element-wise equality check.
 bool listEquals<T>(List<T> a, List<T> b) {
   if (a.length != b.length) return false;
   for (var i = 0; i < a.length; i++) {

@@ -1,25 +1,23 @@
-/// The one writable provider — startup load, every mutation, and the save
-/// that follows it (docs/components.md#state-contracts).
+/// The writable provider: startup load, mutations, and saves.
 library;
 
 import 'package:cocktails/data/data.dart';
 import 'package:cocktails/domain/domain.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// Overridden with the file store at the composition root and with the memory
-/// store in tests — the seam that keeps state and widget tests device-free.
+/// Store seam: file in prod, memory in tests.
 final modelStoreProvider = Provider<ModelStore>(
   (ref) => throw UnimplementedError('modelStoreProvider must be overridden'),
 );
 
-/// The clock behind FR-REC-6, a provider so a test can stamp a fixed date.
+/// Clock provider for FR-REC-6; testable for fixed dates.
 final clockProvider = Provider<DateTime Function()>((ref) => DateTime.now);
 
 final modelProvider = AsyncNotifierProvider<ModelController, Model>(
   ModelController.new,
 );
 
-/// What the startup load could not read; empty when it read fine (FR-DAT-4).
+/// Startup load errors; empty when successful (FR-DAT-4).
 final startupIssuesProvider = Provider<List<String>>((ref) {
   ref.watch(modelProvider);
   return ref.watch(modelProvider.notifier).startupIssues;
@@ -30,8 +28,7 @@ final class ModelController extends AsyncNotifier<Model> {
 
   List<String> get startupIssues => _startupIssues;
 
-  /// A corrupt store starts on the newest backup that decoded, or on an empty
-  /// model when none did — with its issues readable either way (FR-DAT-4).
+  /// Corrupt store recovers from newest backup or defaults to empty (FR-DAT-4).
   @override
   Future<Model> build() async {
     final outcome = await ref.watch(modelStoreProvider).load();
@@ -50,13 +47,11 @@ final class ModelController extends AsyncNotifier<Model> {
   Future<void> setSettings(Settings settings) =>
       _edit((model) => model.withSettings(settings));
 
-  /// The unit vocabulary as the units screen settles it, whole (FR-VOC-5) —
-  /// every rename in it reaching the lines measured in it, in the same edit.
+  /// Units vocabulary whole; renames reach measured lines in one edit (FR-VOC-5).
   Future<void> setUnits(List<UnitEdit> units) =>
       _edit((model) => model.withUnits(units));
 
-  /// Adds [ingredient] or replaces the one named [replacing], every recipe
-  /// line that named it following (FR-VOC-1) — one derivation, as settled.
+  /// Adds/replaces ingredient; every line that named it follows (FR-VOC-1).
   Future<void> upsertIngredient(Ingredient ingredient, {String? replacing}) =>
       _edit((model) => model.withIngredient(ingredient, replacing: replacing));
 
@@ -66,8 +61,7 @@ final class ModelController extends AsyncNotifier<Model> {
   Future<void> setStock(String ingredient, StockLevel stock) =>
       _edit((model) => model.withStock(ingredient, stock));
 
-  /// [upsertIngredient] for a tag, in [kind]'s vocabulary: [replacing] renamed
-  /// first, so everything wearing it follows.
+  /// Upserts tag; [replacing] renames first so all wearers follow.
   Future<void> upsertTag(TagKind kind, Tag tag, {String? replacing}) =>
       _edit((model) {
         final renamed = replacing == null || replacing == tag.name
@@ -79,10 +73,7 @@ final class ModelController extends AsyncNotifier<Model> {
   Future<void> removeTag(TagKind kind, String name) =>
       _edit((model) => model.withoutTag(kind, name));
 
-  /// Adds [recipe] or replaces the one of its name, with what the same action
-  /// introduced: the [addingIngredients] it named and did not find, and the
-  /// [replacing] name a rename leaves behind. Lines arrive as typed and land
-  /// under the bottles they name, this edit's own included (ADR 08, ADR 10).
+  /// Adds/replaces recipe; auto-creates missing ingredients; lines canonicalize (ADR-08, ADR-10).
   Future<void> upsertRecipe(
     Recipe recipe, {
     List<Ingredient> addingIngredients = const [],
@@ -104,15 +95,11 @@ final class ModelController extends AsyncNotifier<Model> {
   Future<void> markMade(String name) =>
       _edit((model) => model.withRecipeMade(name, ref.read(clockProvider)()));
 
-  /// Puts a history back where [markMade] found it; a null clears it.
+  /// Restores or clears recipe history.
   Future<void> setMade(String name, MadeHistory? made) =>
       _edit((model) => model.withRecipeHistory(name, made));
 
-  /// The one route from an edit to the disk: derive, publish, persist. It waits
-  /// for the startup load, so an edit made during startup lands on the loaded
-  /// model instead of replacing it, and an edit changing nothing is not saved —
-  /// that write would only push a good backup out of the rotation. Whatever a
-  /// form settles arrives as one edit, so it spends one save (FR-DAT-4).
+  /// Edit route: derive, publish, persist; waits for startup; no-op if unchanged (FR-DAT-4).
   Future<void> _edit(Model Function(Model) edit) async {
     final model = await future;
     final edited = edit(model);
@@ -122,7 +109,7 @@ final class ModelController extends AsyncNotifier<Model> {
   }
 }
 
-/// "what is wrong and where" (FR-DAT-4), worded as the import report words it.
+/// Issue description; worded as import report does (FR-DAT-4).
 String _describe(SourcedIssue sourced) => sourced.line == null
     ? sourced.issue.message
     : 'line ${sourced.line}: ${sourced.issue.message}';

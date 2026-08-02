@@ -4,10 +4,8 @@
 
 ## Context
 
-Rule set (FR-DAT-4) has six consumers (M6, M11/M12, M14, +2 more). Diagnostic type consumed everywhere, 
-expensive to change. Previous shape (path + sentence) insufficient: forms need machine-readable rule for 
-context-specific affordances (e.g., "add this ingredient?" on unknown ref); wording becomes API. Entry 
-points asymmetric: `validateRecipe` checked contents not name; no single-entry vocabulary checks.
+Six consumers (M6, forms, codec). Diagnostic expensive to change. Previous (path + sentence) 
+insufficient: forms need machine-readable kind (context-specific affordances). Entry points asymmetric.
 
 ## Decision
 
@@ -34,8 +32,8 @@ Signatures: [components.md](../components.md#validation).
 
 ## Consequences
 
-- Adding rule: one enum member + one statement. Member is review checkpoint for coverage.
-- Codec (M6) only place data-format paths bind to source positions. Domain has no YAML knowledge.
-- Forms validate one entry in one call; empty path maps to name field.
-- `message` is API; consumers display verbatim. Behavior switches on `kind`, never text.
-- i18n later: give each `kind` a template, drop `message`. `kind` field keeps from touching call sites.
+- Adding rule: one enum + one statement. Review checkpoint.
+- Codec only place paths bind to source positions.
+- Forms one call per entry; empty path = name field.
+- `message` is API; behaviour switches on `kind`.
+- i18n: template per `kind`, drop `message`.

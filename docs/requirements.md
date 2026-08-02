@@ -14,40 +14,32 @@ Single-user mobile app (Android); no accounts, sharing. Direction: [vision.md](v
 | Recipe | Name + lines + tags + notes + made-history (last date, count). |
 | Availability | Per recipe, required lines only: **makeable** (all in), **makeable-low** (none out, ≥1 low), **missing** (≥1 out). First two = **can-make**. |
 
-Names unique within kind, ignoring case — "Gin" and "gin" are one name ([ADR 08](adr/08-names-ignore-case.md)).
-In the ingredient vocabulary that uniqueness covers aliases too (FR-VOC-6): every spelling in it,
-whosever it is, names one bottle. Two tag vocabularies separate, so one name may exist in both
-(different meanings).
+Names unique within kind, ignoring case ([ADR 08](adr/08-names-ignore-case.md)). 
+Ingredient vocabulary covers aliases too (FR-VOC-6): every spelling names one bottle. 
+Two tag vocabularies separate; one name may exist in both (different meanings).
 
 ## Functional requirements
 
 ### Recipes
 
 - **FR-REC-1** Create, edit, and delete recipes through structured forms.
-- **FR-REC-2** An ingredient line is amount + unit + ingredient, the unit drawn from the managed
-  vocabulary of FR-VOC-5 — **part** is the default, so a line may leave it out. An amount may be a
-  range ("1.5–2") and may be written in either spelling; an amount other than exactly 1 reads in
-  the plural. Every recipe carries at least one line that is not optional, so availability always
-  judges something.
-- **FR-REC-3** An ingredient line may be marked optional: it displays with the recipe but
-  is excluded from the availability computation (and thus from the shopping optimizer).
+- **FR-REC-2** Ingredient line: amount + unit + ingredient. Unit from FR-VOC-5; **part** default, 
+  omittable. Amount may be range ("1.5–2"); plural for amounts ≠ 1. ≥1 non-optional line required 
+  (availability judges something).
+- **FR-REC-3** Line may be optional: displays but excluded from availability and optimizer.
 - **FR-REC-4** A recipe carries any number of tags, chosen from the tag vocabulary.
 - **FR-REC-5** A recipe carries one free-text notes field — in the pilot the home for
   preparation steps, techniques, glassware, and garnish, all unformalized.
-- **FR-REC-6** A "made it" action stamps the current date and increments a times-made
-  counter; the recipe shows both. The last stamp can be taken back, and the history can be
-  reset to never-made — miscounts are correctable, since nothing else can lower the count.
-- **FR-REC-7** The recipe view can scale ingredient amounts ×2/×3/×4, and can read one open
-  recipe on its own in the other display unit, without moving the global toggle (FR-SET-1). Display only:
-  range ends scale together, and the reading is forgotten when the recipe is closed.
-- **FR-REC-8** An ingredient line may be marked as a base spirit of the recipe; the mark can
-  be cleared. The two line marks are mutually exclusive — a base line cannot be optional.
+- **FR-REC-6** "Made it" action stamps date and increments counter (shown on recipe). 
+  Last stamp reversible; history resetable to never-made.
+- **FR-REC-7** Recipe view scales ×2/×3/×4 and reads one open recipe in other unit without 
+  global toggle change (FR-SET-1). Display-only; range ends scale together; forgotten on close.
+- **FR-REC-8** Line may mark as base spirit (clearable). Base and optional mutually exclusive.
 
 ### Vocabularies
 
-- **FR-VOC-1** Add, rename (propagates), delete ingredients and either tag vocabulary; deletion blocked 
-  while referenced (recipe for ingredient/recipe tag; ingredient for ingredient tag). An ingredient
-  entry carries its aliases (FR-VOC-6) beside its name, settled in the same edit.
+- **FR-VOC-1** Add, rename (propagates), delete ingredients/tags; deletion blocked while referenced. 
+  Ingredient entry includes aliases (FR-VOC-6), settled in same edit.
 - **FR-VOC-3** Every tag carries colour from fixed palette (chosen on create, changeable, shown 
   everywhere). Palette holds no green/amber/red (signal stock/availability, [ADR 07](adr/07-tag-colour.md)).
 - **FR-VOC-4** Ingredients tagged from own vocabulary (separate from recipe tags). Tag for ingredients 
@@ -58,19 +50,17 @@ whosever it is, names one bottle. Two tag vocabularies separate, so one name may
   part, ml, oz, dash, barspoon, drop, piece. **part** and **ml** cannot be renamed or deleted: the
   ratio and the display toggle are anchored to them (FR-SET-1); their plurals are editable.
 
-- **FR-VOC-6** An ingredient answers to more than one name ([ADR 10](adr/10-ingredient-aliases.md)):
-  the entry carries aliases, and a name resolves to that bottle wherever a name resolves — a recipe
-  line, the inventory search, an imported file. A reference is always stored under the entry's own
-  name, which is also the only one displayed; aliases show nowhere but the dialog editing them.
-  No alias holds a comma, the one field they are typed in being separated by it.
+- **FR-VOC-6** Ingredient answers to multiple names ([ADR 10](adr/10-ingredient-aliases.md)): 
+  aliases in entry, resolved wherever names resolve (recipe line, search, import). 
+  References stored under entry's own name only. No commas in aliases.
 
 FR-VOC-2 left for FR-REC-8 in [ADR 06](adr/06-base-spirit-on-the-line.md); its number stays
 empty so no reference to it can mean two things.
 
 ### Inventory
 
-- **FR-INV-1** Inventory lists all ingredients with stock level, searchable by any name the bottle
-  answers to (FR-VOC-6); the row found reads under its own name.
+- **FR-INV-1** Inventory lists all ingredients with stock level, searchable by any name 
+  (FR-VOC-6); row reads under entry's own name.
 - **FR-INV-2** Stock level toggles with single tap per ingredient.
 - **FR-INV-3** Inventory shows ingredient tags in colour; can filter by them (combines with name search).
 
@@ -79,25 +69,21 @@ empty so no reference to it can mean two things.
 - **FR-DIS-1** Recipe list shows availability at glance (makeable-low distinct from makeable). Recipe 
   view marks each line running low/out.
 - **FR-DIS-2** Recipes searchable by name.
-- **FR-DIS-3** List filterable by tag(s), ingredient(s) (any, not base only), availability; filters combine.
+- **FR-DIS-3** List filterable by tag(s), ingredient(s), availability; filters combine.
 - **FR-DIS-4** Browse grouped by base spirit (recipe under each base mark; unmarked form ungrouped tail).
 - **FR-DIS-5** Random pick suggests one can-make recipe respecting active filters.
-- **FR-DIS-6** Shopping optimizer: budget **N** (select 1–3); evaluates combos of ≤N out-of-stock 
-  ingredients; reports recipes becoming can-make per combo (ranked by count). Zero-yield hidden.
+- **FR-DIS-6** Optimizer: budget **N** (1–3); evaluates ≤N out-of-stock ingredient combos; 
+  reports recipes becoming can-make (ranked by count). Zero-yield hidden.
 - **FR-DIS-7** Optimizer lists running-low ingredients as restock reminders.
-- **FR-DIS-8** Every list — recipes, inventory, both tag vocabularies — can be read in more than
-  one order: by name, and by the signal its rows carry (availability, stock level, tag colour).
-  Picking the order in force reads the list backwards, so "missing first" and Z→A need no entries
-  of their own. Recipes open on availability and the inventory on stock, both tag vocabularies on
-  name; the choice is not kept between runs. Rows keep their places while one of them is edited,
-  so a bottle never moves under the tap that changed it (FR-INV-2).
+- **FR-DIS-8** Lists (recipes, inventory, tags) readable in multiple orders: by name, by signal 
+  (availability, stock, colour). Picking current order reverses it. Default: recipes by availability, 
+  inventory by stock, tags by name (not persisted). Rows stable during edit.
 
 ### Settings
 
-- **FR-SET-1** Global ratio (ml per part). Toggle switches part-based amounts between parts/ml; 
-  other units display as entered. One open recipe may be read in the other unit (FR-REC-7); the 
-  toggle is where that choice is made for all of them. The two units it names are the fixed ones
-  of FR-VOC-5, so the ratio can never lose what it converts between.
+- **FR-SET-1** Global ratio (ml per part). Toggle switches part-based amounts parts↔ml; 
+  others display as entered. One open recipe reads in other unit via toggle (FR-REC-7). 
+  Ratio anchored to fixed part/ml units (FR-VOC-5).
 
 ### Data exchange
 

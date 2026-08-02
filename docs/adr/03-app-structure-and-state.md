@@ -4,8 +4,8 @@
 
 ## Context
 
-Many screens over shared model; derived state (availability, filtered/grouped lists, optimizer results) 
-must update instantly (NFR-2). Maintainer new to Flutter; state management is hardest retrofit point.
+Many screens, shared model. Derived state (availability, filters, optimizer) updates instant (NFR-2). 
+Hardest retrofit point.
 
 ## Decision
 
@@ -27,6 +27,6 @@ in computed providers that cache and recompute on input change.
 
 ## Consequences
 
-- Riverpod is new concept (mitigated by community adoption, documentation, AI training).
-- Pure-Dart domain: hardest logic (availability, optimizer, validation) testable on dev machine, no device.
-- UI never touches model directly; reads through providers, mutations through model-update methods.
+- Riverpod is new (mitigated by adoption, docs, AI).
+- Pure-Dart domain: hard logic testable offline.
+- UI reads via providers, mutates via model methods.

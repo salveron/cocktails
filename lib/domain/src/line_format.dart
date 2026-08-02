@@ -1,14 +1,10 @@
-/// Parser and canonical formatter for the compact recipe-line grammar in
-/// docs/architecture.md: `<amount> [unit] <ingredient name>`, optionally
-/// suffixed with one mark. Enforces syntax only — value rules live in
-/// validation.dart. Both halves take the unit vocabulary (ADR 09), which is
-/// what says where a unit ends and a name begins, and how an amount is spelled.
+/// Parser and formatter for recipe lines: syntax only, no value rules.
+/// Both halves use unit vocabulary to determine unit/name boundary (ADR-09).
 library;
 
 import 'model.dart';
 
-/// The mark suffixes — ` (base)`, ` (optional)` — reserved so that ingredient
-/// names cannot end with one.
+/// Reserved mark suffixes; ingredient names cannot end with them.
 final reservedSuffixes = List<String>.unmodifiable([
   for (final mark in LineMark.values) _suffix(mark),
 ]);
@@ -19,7 +15,7 @@ final _linePattern = RegExp(r'^(\S+)\s+(\S.*)$');
 final _amountPattern = RegExp(r'^(\d+(?:\.\d+)?)(?:-(\d+(?:\.\d+)?))?$');
 final _space = RegExp(r'\s');
 
-/// A parsed line, or the problem preventing one — never throws.
+/// Parsed line or error; never throws.
 typedef ParsedLine = ({RecipeLine? line, String? problem});
 
 /// The single grammar implementation; [parseRecipeLine] is built on it.
@@ -50,10 +46,7 @@ ParsedLine tryParseRecipeLine(String text, List<Unit> units) {
 String _shapeProblem(String text) =>
     'Expected "<amount> [unit] <ingredient>": "$text"';
 
-/// What [rest] measures and of what, under the vocabulary's own spelling. An
-/// omitted unit is a part (FR-REC-2), which is also why a word that is no unit
-/// joins the name and a mistyped one surfaces as an unknown ingredient. Null
-/// when a unit is all that was written.
+/// [rest]'s unit and ingredient under vocabulary's spelling. Omitted unit is a part (FR-REC-2).
 ({String unit, String ingredient})? _measure(String rest, List<Unit> units) {
   final space = rest.indexOf(_space);
   if (space < 0) {
@@ -67,8 +60,7 @@ String _shapeProblem(String text) =>
       : (unit: unit.name, ingredient: rest.substring(space).trimLeft());
 }
 
-/// The mark [trimmed] ends with, if any. Only the last suffix counts: a second
-/// one is part of the ingredient name, where the reserved-suffix rule sees it.
+/// The mark [trimmed] ends with, if any; only the last one counts.
 LineMark? _markOf(String trimmed) {
   for (final mark in LineMark.values) {
     if (trimmed.endsWith(_suffix(mark))) return mark;
@@ -76,8 +68,7 @@ LineMark? _markOf(String trimmed) {
   return null;
 }
 
-/// Throws a [FormatException] naming the offending part when [line] does
-/// not match the grammar.
+/// Throws [FormatException] if [line] doesn't match the grammar.
 RecipeLine parseRecipeLine(String line, List<Unit> units) {
   final parsed = tryParseRecipeLine(line, units);
   final result = parsed.line;
@@ -91,9 +82,7 @@ RecipeLine parseRecipeLine(String line, List<Unit> units) {
 String formatRecipeLine(RecipeLine line, List<Unit> units) =>
     '${formatMeasure(line.amount, line.unit, units)} ${formatLineBody(line)}';
 
-/// The halves a line reads in, split where a display transform stops
-/// (scaling.dart). The measure takes the spelling that amount calls for, or the
-/// name as written where the vocabulary has lost the unit.
+/// Line halves split where display transform stops (scaling.dart).
 String formatMeasure(Amount amount, String unit, List<Unit> units) =>
     '${formatAmount(amount)} ${units.unitNamed(unit)?.spelling(amount) ?? unit}';
 
@@ -102,14 +91,12 @@ String formatLineBody(RecipeLine line) {
   return '${line.ingredient}${mark == null ? '' : _suffix(mark)}';
 }
 
-/// Canonical amount text: whole numbers without a trailing `.0`, ranges as
-/// `a-b` with equal ends collapsed to the single value.
+/// Canonical amount text: integers without `.0`, ranges as `a-b`.
 String formatAmount(Amount amount) => amount.isRange
     ? '${formatNumber(amount.min)}-${formatNumber(amount.max)}'
     : formatNumber(amount.min);
 
-/// Canonical number text of the data format — whole values without `.0` —
-/// shared with the YAML emitter (`part_ml`).
+/// Canonical number: integers without `.0`, shared with YAML emitter.
 String formatNumber(double value) => value == value.truncateToDouble()
     ? value.truncate().toString()
     : value.toString();

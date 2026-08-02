@@ -4,14 +4,8 @@
 
 ## Context
 
-Names are identity ([architecture.md](../architecture.md#system-overview)): a recipe line references a
-bottle by its name, and rename is the one mutation that rewrites every reference. Comparison was `==`
-on the raw string, so capitalisation forked identity — the recipe form matched "gin" against a
-vocabulary holding "Gin", found nothing, and offered to add a second, out-of-stock bottle; the
-inventory took both; a recipe "negroni" could join "Negroni". No screen shows what separates them:
-two rows of the same word, one of them empty.
-
-Decided during the quality-of-life pass after M16, before M18/M20/M21 read names in bulk.
+Names are identity. Case-sensitive comparison forked identity: "gin" vs "Gin" created duplicates. 
+Decided after M16, before M18/M20/M21.
 
 ## Decision
 
@@ -47,11 +41,7 @@ Decided during the quality-of-life pass after M16, before M18/M20/M21 read names
 
 ## Consequences
 
-- Requirements: the uniqueness rule behind FR-DAT-4 and the data-format rules read "unique ignoring
-  case"; FR-REC-2's line grammar is unaffected.
-- An imported file holding both spellings is rejected with a duplicate-name issue on its second
-  entry — hand-edit and re-import, as with the [ADR 06](06-base-spirit-on-the-line.md) and
-  [ADR 07](07-tag-colour.md) leftovers.
-- Sorting already folds (`byName`) and search always did (`matchesQuery`), so no list moves.
-- Adding an ingredient from the recipe form can no longer create a near-duplicate bottle: the "add
-  missing ingredients?" offer lists only names the vocabulary genuinely lacks.
+- FR-DAT-4: unique ignoring case.
+- Both spellings in import rejected (hand-edit like [ADR 06](06-base-spirit-on-the-line.md)).
+- No list reorder (sorting already folded).
+- Recipe form no longer creates near-duplicates.

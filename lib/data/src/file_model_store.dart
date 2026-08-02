@@ -1,7 +1,4 @@
-/// The file adapter behind [ModelStore]: atomic writes, rolling backups, and
-/// recovery from the newest backup that still decodes — the single-writer
-/// discipline of docs/adr/02-persistence-and-export-format.md. File names and
-/// backup depth are docs/architecture.md#platform-facts.
+/// File adapter: atomic writes, rolling backups, recovery from newest valid backup (ADR-02).
 library;
 
 import 'dart:io';
@@ -23,13 +20,10 @@ String _backupName(int index) => 'cocktails.backup-$index.yaml';
 final class FileModelStore implements ModelStore {
   static const _codec = YamlCodec();
 
-  /// Where the store, its backups, and the export copy live. The platform
-  /// path is resolved at the composition root, so this adapter is testable
-  /// against any directory.
+  /// Directory for store, backups, exports; testable with any path.
   final Directory directory;
 
-  /// Serialises every operation; [_pending] collapses overlapping saves so
-  /// only the latest model reaches the disk.
+  /// Queue serializes ops; [_pending] collapses overlapping saves.
   Future<void> _queue = Future.value();
   Model? _pending;
 
@@ -69,7 +63,7 @@ final class FileModelStore implements ModelStore {
     };
   }
 
-  /// The newest backup that decodes, null when none does.
+  /// Newest backup that decodes; null if none do.
   Future<Model?> _recover() async {
     for (var index = 1; index <= _backupDepth; index++) {
       final file = _fileNamed(_backupName(index));
@@ -84,8 +78,7 @@ final class FileModelStore implements ModelStore {
     return null;
   }
 
-  /// Writes whatever [save] last handed over; a no-op once an earlier queue
-  /// entry has already written it.
+  /// Writes pending model; no-op if earlier queue entry already wrote it.
   Future<void> _writePending() async {
     final model = _pending;
     if (model == null) return;
@@ -106,8 +99,7 @@ final class FileModelStore implements ModelStore {
     return copy.path;
   }
 
-  /// Temp file, then rename: a reader never sees a half-written file, and a
-  /// failed write leaves the previous content and the backups untouched.
+  /// Temp+rename pattern: readers never see half-written files.
   Future<void> _write(File target, String text) async =>
       (await _writeTemp(target, text)).rename(target.path);
 
@@ -117,8 +109,7 @@ final class FileModelStore implements ModelStore {
     return temp.writeAsString(text, flush: true);
   }
 
-  /// Shifts the backups down and copies the current store into the newest
-  /// slot, so the file being replaced survives.
+  /// Rotates backups down; current store enters newest slot for survival.
   Future<void> _rotateBackups() async {
     if (!await _storeFile.exists()) return;
     final oldest = _fileNamed(_backupName(_backupDepth));
@@ -143,8 +134,7 @@ final class FileModelStore implements ModelStore {
     null,
   );
 
-  /// Runs [action] after everything already queued, whether that succeeded or
-  /// failed; the caller still sees its own failure.
+  /// Runs [action] after queued work; caller sees own failures.
   Future<T> _enqueue<T>(Future<T> Function() action) {
     final result = _queue.then((_) => action());
     _queue = result.then((_) {}, onError: (_) {});

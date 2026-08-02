@@ -4,12 +4,8 @@
 
 ## Context
 
-[ADR 08](08-names-ignore-case.md) settled that a name is identity, whatever case it is written in.
-It left one thing unsaid: "Bourbon Whiskey" and "bourbon" are one bottle to the person typing them
-and two to the vocabulary. Typing the long form into a recipe line offers to add a second,
-out-of-stock bottle — the trap ADR 08 closed for capitalisation, still open for wording.
-
-Decided before M17d.
+[ADR 08](08-names-ignore-case.md) settled case; it left wording: "Bourbon Whiskey" and "bourbon" 
+are one bottle but two to the vocabulary. Decided before M17d.
 
 ## Decision
 
@@ -50,15 +46,8 @@ Decided before M17d.
 
 ## Consequences
 
-- Requirements: FR-VOC-1's ingredient entry gains aliases, FR-INV-1's search covers them, and a new
-  FR-VOC-6 states what an alias is and where it is understood.
-- The data format gains an `aliases` key on an ingredient entry, and the rule that every spelling in
-  the vocabulary — name or alias — is unique under the fold.
-- Adding a bottle from a recipe line can no longer create a near-duplicate: an aliased name resolves
-  before the "add missing ingredients?" offer is built.
-- A file whose lines use aliases is rewritten on the next save — content preserved, spelling
-  canonical, the same normalisation the unit plural performs ([ADR 09](09-units-are-a-vocabulary.md)).
-- Deleting a bottle still names the recipes standing in the way; a line that referenced it by an
-  alias counts, resolution running through the same index.
-- The vocabulary is searched by more spellings than it has entries, so the name index carries every
-  alias too — built once per model, as the name index already is.
+- FR-VOC-1 gains aliases, FR-INV-1 searches them, FR-VOC-6 new.
+- `aliases` key on entry; every spelling unique under fold.
+- Recipe form no longer creates near-duplicates.
+- Files with aliases rewrite canonical (like unit plurals).
+- Name index carries aliases (built once per model).

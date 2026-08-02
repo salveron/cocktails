@@ -1,18 +1,12 @@
-/// Model validation behind FR-DAT-4 and the recipe form: referential
-/// integrity, duplicate names, and the value rules of the data format in
-/// docs/architecture.md. Takes model parts instead of a [Model] so duplicate
-/// names are reported rather than thrown; issue paths mirror the data-format
-/// keys, ready for mapping to YAML positions (codec) or form fields.
+/// Model validation: referential integrity, names, value rules (FR-DAT-4).
+/// Issues' paths mirror data-format keys for YAML/form mapping.
 library;
 
 import 'helpers.dart';
 import 'line_format.dart';
 import 'model.dart';
 
-/// The rule an issue reports, so consumers switch on the rule instead of
-/// matching [ValidationIssue.message]. The last three are raised by the codec
-/// (M6), which reports its own findings as issues rather than as a second
-/// diagnostic type.
+/// Issue rules; switch on this instead of the message.
 enum ValidationIssueKind {
   emptyName,
   whitespaceInName,
@@ -35,8 +29,7 @@ enum ValidationIssueKind {
   malformedValue,
 }
 
-/// One violation: [path] locates it in data-format keys and indexes, [kind]
-/// names the rule that failed, [message] names the offending value.
+/// One violation: path, rule, and offending value.
 final class ValidationIssue {
   final List<Object> path;
   final ValidationIssueKind kind;
@@ -45,7 +38,7 @@ final class ValidationIssue {
   ValidationIssue(List<Object> path, this.kind, this.message)
     : path = List.unmodifiable(path);
 
-  /// [path] in dotted-and-indexed form, e.g. `recipes[0].lines[2]`.
+  /// [path] as dotted-indexed form, e.g. `recipes[0].lines[2]`.
   String get location {
     final buffer = StringBuffer();
     for (final segment in path) {
@@ -101,9 +94,7 @@ List<ValidationIssue> validateModel({
   final ingredientTagNames = ingredientTags.map((t) => t.name).toList();
   final recipeTagNames = recipeTags.map((t) => t.name).toList();
   final knownIngredientTags = nameKeys(ingredientTagNames);
-  // Names and aliases share one namespace (ADR 10): the entries walk it
-  // together, each one's aliases spoken for right after its own name, and what
-  // it holds by the end is exactly what a recipe line may resolve against.
+  // Names and aliases share one namespace (ADR-10).
   final knownIngredients = <String>{};
   _checkNames(
     issues,
@@ -144,10 +135,7 @@ List<ValidationIssue> validateModel({
   return issues;
 }
 
-/// Every rule on the unit vocabulary (ADR 09): both spellings of an entry are
-/// names — bar an empty plural, which is how an entry says its plural reads
-/// like its name — no spelling repeats another entry's, and the two units the
-/// app leans on are present.
+/// Every rule on the unit vocabulary (ADR-09).
 void _checkUnits(List<ValidationIssue> issues, List<Unit> units) {
   final seen = <String>{};
   for (var i = 0; i < units.length; i++) {
@@ -187,23 +175,13 @@ void _checkUnits(List<ValidationIssue> issues, List<Unit> units) {
   }
 }
 
-/// [names] without [except], which is what every `validate…` call wants: the
-/// names an entry must not collide with, its own left out so a rename never
-/// collides with the name it is leaving — a change of case included, that
-/// being the same name (ADR 08).
+/// [names] minus [except]; omit the original so renames don't self-collide (ADR-08).
 Set<String> otherNames(Set<String> names, String? except) => {
   for (final name in names)
     if (except == null || !name.sameName(except)) name,
 };
 
-/// Checks one ingredient — its name, the aliases it also answers to, and its
-/// tag references — before it enters the vocabulary (M11); an empty result
-/// means valid. [otherIngredientNames] holds every *other* entry's spellings,
-/// aliases among them (ADR 10), so an entry collides with neither itself nor
-/// its own aliases.
-///
-/// Paths are relative to the entry, so a name issue carries an empty path —
-/// the same convention as [validateRecipe].
+/// Checks one ingredient before entering vocabulary; paths relative to entry.
 List<ValidationIssue> validateIngredient(
   Ingredient ingredient, {
   required Set<String> knownIngredientTags,
@@ -227,10 +205,7 @@ List<ValidationIssue> validateIngredient(
   ];
 }
 
-/// Checks one tag before it enters a vocabulary (M12); an empty result means
-/// valid. Serves either vocabulary — [otherTagNames] is what says which, and
-/// the colour needs no checking, being an enum. Argument and path conventions
-/// as in [validateIngredient].
+/// Checks one tag before entering a vocabulary.
 List<ValidationIssue> validateTag(
   Tag tag, {
   Set<String> otherTagNames = const {},
@@ -240,14 +215,7 @@ List<ValidationIssue> validateTag(
   isDuplicate: _holdsName(otherTagNames, tag.name),
 );
 
-/// Checks one recipe — its name and its contents — against the current
-/// vocabularies; an empty result means valid. The entry point the recipe form
-/// uses (M14); [validateModel] is the whole-file entry point, sharing this
-/// same rule set per recipe.
-///
-/// Paths are relative to the recipe itself (`['lines', 2]`, `['made',
-/// 'times']`) and empty for a name issue — there is no list index to anchor to
-/// outside a recipe list. [otherRecipeNames] as in [validateIngredient].
+/// Checks one recipe against vocabularies; paths relative to recipe.
 List<ValidationIssue> validateRecipe(
   Recipe recipe, {
   required Set<String> knownIngredients,
@@ -269,18 +237,11 @@ List<ValidationIssue> validateRecipe(
   ),
 ];
 
-/// Whether [names] already holds [name], the two compared as one name is
-/// (ADR 08). The `known…` sets below are folded once on the way in instead,
-/// being asked the same question line after line.
+/// Whether [names] already holds [name] as one name (ADR-08).
 bool _holdsName(Set<String> names, String name) =>
     names.any((other) => other.sameName(name));
 
-/// Every rule for one list of named entries, applied entry by entry so issues
-/// come out in index order. [extraRule] adds a rule only one vocabulary has;
-/// [entryIssues] appends an entry's own issues behind its name issues, which
-/// is what keeps a recipe's lines from trailing the next recipe's name.
-/// [namespace] is the set the names are unique within, handed in where an
-/// entry brings spellings of its own to it and left holding them all.
+/// Every rule for one list of named entries, applied per entry.
 void _checkNames(
   List<ValidationIssue> issues,
   String key,
@@ -307,10 +268,7 @@ void _checkNames(
   }
 }
 
-/// Every rule on the spellings a bottle also answers to (FR-VOC-6). They stand
-/// in the vocabulary's one namespace, so [taken] arrives holding what is
-/// already spoken for and leaves holding these too; the comma is barred
-/// because the field they are typed in separates on it (ADR 10).
+/// Every rule on ingredient aliases; comma barred (FR-VOC-6, ADR-10).
 List<ValidationIssue> _checkAliases(
   List<String> aliases,
   List<Object> basePath, {
@@ -340,8 +298,7 @@ List<ValidationIssue> _checkAliases(
   return issues;
 }
 
-/// The single home of the name rules, whether the name arrives inside a list
-/// or alone from a form.
+/// Single home of name rules, whether from list or form.
 List<ValidationIssue> _checkName(
   String entity,
   String name, {
@@ -363,7 +320,7 @@ _Problem _duplicateProblem(String entity, String name) => (
   message: 'Duplicate $entity name: "$name"',
 );
 
-/// Every non-null problem in [problems], as issues sharing one [path].
+/// All non-null problems as issues sharing one [path].
 void _addProblems(
   List<ValidationIssue> issues,
   List<Object> path,
@@ -376,8 +333,7 @@ void _addProblems(
   }
 }
 
-/// The mark suffixes a line ends in are the grammar's, so no spelling of a
-/// bottle may end in one — [what] only says which spelling this is.
+/// Mark suffixes are reserved; no bottle spelling may end with one.
 _Problem? _reservedSuffixProblem(String what, String name) {
   for (final suffix in reservedSuffixes) {
     if (name.endsWith(suffix)) {
@@ -410,10 +366,7 @@ _Problem? _nameProblem(String entity, String name) {
   return null;
 }
 
-/// Every rule on one entry's tag references — the name resolves, and no name
-/// twice — applied wherever a list of tag names hangs off an entry. [known]
-/// holds the folded names of the vocabulary that list draws from; [entity]
-/// only words the message.
+/// Every rule on tag references: must resolve, no duplicates.
 List<ValidationIssue> _checkTagReferences(
   List<String> tags,
   List<Object> basePath, {
@@ -459,8 +412,7 @@ List<ValidationIssue> _checkRecipe(
     known: knownTags,
     entity: 'recipe',
   );
-  // Availability judges required lines, so a recipe with none would be
-  // makeable out of nothing (FR-REC-2).
+  // At least one required line needed; optional only can't be made (FR-REC-2).
   if (recipe.lines.every((line) => line.isOptional)) {
     issues.add(
       ValidationIssue(

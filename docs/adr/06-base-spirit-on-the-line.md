@@ -4,10 +4,8 @@
 
 ## Context
 
-Base-ness was a flag on `Ingredient` (FR-VOC-2), making bottles globally base. Wrong: bourbon is 
-base in Whiskey Sour, modifier elsewhere. Grouping (FR-DIS-4) is per-recipe. Base never optional 
-(recipe without base is different recipe), so marks mutually exclusive. Decided before M11, M14 
-build screens.
+Base was ingredient flag (global). Wrong: bourbon base in Sour, modifier elsewhere. Per-recipe (FR-DIS-4).
+Base never optional; marks mutually exclusive. Decided before M11/M14.
 
 ## Decision
 
@@ -30,8 +28,7 @@ build screens.
 
 ## Consequences
 
-- Requirements: FR-VOC-2→FR-REC-8; FR-DAT-1 drops base-spirit flags; FR-DIS-4 keys on marked lines.
-- M11 loses base-spirit flag, M14 gains line mark, M19 groups by it.
-- `groupByBaseSpirit` reads recipe lines; [signature](../components.md#computations) unchanged.
-- Store files with `base: true` on ingredient rejected as unknown-key; hand-edit and re-add per recipe.
-- Everything about an ingredient in recipe stays on one line (shape FR-DAT-2 and AI editing work with).
+- FR-VOC-2→FR-REC-8. FR-DIS-4 keys on marked lines.
+- M11 loses flag, M14 gains mark, M19 groups.
+- Old files rejected as unknown-key.
+- All ingredient info stays one line (FR-DAT-2).

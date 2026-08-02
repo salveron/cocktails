@@ -4,9 +4,8 @@
 
 ## Context
 
-Three layers are folders only; Dart `_` is file-scoped. No layer-private mechanism; shared helpers 
-become app-public. File-scoped privacy leaked wire-format knowledge: parser used `Unit.name` as token; 
-renaming `StockLevel` members couldn't reach reserved word `in`.
+Dart `_` file-scoped only. Shared helpers become app-public. File privacy leaked wire-format 
+(parser used `Unit.name` as token; renaming broke format).
 
 ## Decision
 
@@ -29,8 +28,6 @@ Structure, interfaces in [components.md](../components.md).
 
 ## Consequences
 
-- No compiler enforcement; architecture test is enforcement (runs in CI).
-- Adding file: two-line change (file + export). Export line is layer-membership checkpoint.
-- Layers import one barrel each; internals reorganizable without touching consumers.
-- Files move to `src/`, gain declared tokens before codec written (M5a); format contract fixed before 
-  dependencies.
+- No compiler enforcement; architecture test in CI.
+- Add file: two lines (file + export). Export is checkpoint.
+- Tokens declared before codec (M5a); format contract fixed before dependencies.

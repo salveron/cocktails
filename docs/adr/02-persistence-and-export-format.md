@@ -4,9 +4,8 @@
 
 ## Context
 
-Pilot: hundreds of recipes, tens of KB. [FR-DAT-1..5](../requirements.md): export/import as one 
-human-readable, versioned text file, lossless round-trip. Access point for AI-assisted bulk editing. 
-Single-user, offline, no concurrent writers.
+Hundreds of recipes, tens of KB. [FR-DAT-1..5](../requirements.md): human-readable text, versioned, 
+lossless. AI bulk-edit access point. Single-user, offline.
 
 ## Decision
 
@@ -26,11 +25,7 @@ Single-user, offline, no concurrent writers.
 
 ## Consequences
 
-- YAML schema is public contract; versioned in architecture from day one.
+- YAML schema is public contract; versioned from day one.
 - Every mutation rewrites whole file (trivial at scale).
-- Persistence behind storage interface: domain/UI depend only on interface. Swapping to SQLite 
-  touches one adapter.
-- Strictly single-writer (owner's app). Read-only guest access as publishing. Multiple writers 
-  would invalidate.
-- Scalability: text-only scales to tens of thousands (≈5 MB, tens of ms load/write). Binary data 
-  (photos) outside as referenced assets.
+- Strictly single-writer. Guest access read-only.
+- Scales to tens of thousands (≈5 MB, tens of ms).
