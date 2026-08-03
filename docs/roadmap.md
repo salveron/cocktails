@@ -167,7 +167,27 @@ First usable slice; recipes reference both vocabularies, so this precedes Phase 
       still gets the chip. It wears `neutralSwatch`, the one scheme-derived ground in `palette.dart`,
       since a bottle's name is neither a tag nor a signal. A pick gone stale stops narrowing rather
       than emptying the list, as a tag pick does.
-- [ ] **M20 Random pick** — one can-make suggestion respecting active filters (FR-DIS-5).
+- [x] **M20 Random pick** — one suggestion of what to make now (FR-DIS-5): a dice above the add
+      button, drawing a recipe the bar can make from whatever the list is showing. The draw is the
+      *list's*, not the screen's, so every narrowing already holds and the search never has to leave
+      `VocabularyList` — the hoist [components.md](components.md) predicted this milestone would
+      force turned out unnecessary. `canMake` lands in `availability.dart` as the one reading of
+      what the bar can manage (low counts, unjudged does not), which the optimizer will ask too;
+      `randomCanMake` draws over candidates handed to it rather than over the model, and skips the
+      recipe already standing so a second roll always moves. The pick opens alone — every other card
+      shuts, a roll being one answer rather than a pile — and the list scrolls to it by index on
+      `scrollable_positioned_list` ([ADR 13](adr/13-lists-scroll-by-index.md)), waiting on the
+      measurement the draw's own reshuffle forces, since a row already in view is reached in pixels
+      rather than by index and would otherwise be aimed at where it stood. Once it lands, the card
+      washes from `secondaryContainer` back to rest — colour alone, since a row changing height
+      would fire that same measurement — because a list that stopped moving has not yet said what it
+      stopped *for*. The first dependency taken for ergonomics rather than structure: confined to
+      `vocabulary_list.dart`, pinned exactly against its own dormancy, with the float-to-front
+      fallback recorded so a dead package is a costed edit rather than a redesign. Nothing makeable
+      says so instead of doing nothing. The dice itself is Font Awesome's pair
+      ([ADR 14](adr/14-the-dice-comes-off-font-awesome.md)), the shipped font carrying only single
+      dice that read as domino tiles at button size; `ListDraw` carries the glyph as a widget, so
+      the font is named on the recipes screen and nowhere else.
 - [ ] **M21 Optimizer domain** — combination search and ranking (FR-DIS-6) with a
       performance test at NFR-2 scale. A substitution group counts as satisfied by any one
       purchase, which changes what a candidate set yields (ADR 11).

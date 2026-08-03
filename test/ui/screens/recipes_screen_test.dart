@@ -7,6 +7,7 @@ import 'package:cocktails/ui/widgets/tag_choices.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import '../harness.dart';
 
@@ -56,6 +57,91 @@ final stockedModel = Model(
         RecipeLine(Amount(1), 'part', ['gin']),
         RecipeLine(Amount(1), 'part', ['campari']),
         RecipeLine(Amount(1), 'part', ['sweet vermouth']),
+      ],
+    ),
+  ],
+);
+
+/// A collection long enough that a row can be drawn from beyond the fold: two
+/// worth making at either end of the alphabet, nothing but missing ones between
+/// (ADR 13). Read by name, so availability cannot bring the far one forward.
+final longModel = Model(
+  ingredients: [
+    Ingredient('gin', stock: StockLevel.in_),
+    Ingredient('vodka'),
+  ],
+  recipes: [
+    Recipe(
+      'Aviation',
+      lines: const [
+        RecipeLine(Amount(1), 'part', ['gin']),
+      ],
+    ),
+    for (var filler = 1; filler <= 38; filler++)
+      Recipe(
+        'Filler ${filler.toString().padLeft(2, '0')}',
+        lines: const [
+          RecipeLine(Amount(1), 'part', ['vodka']),
+        ],
+      ),
+    Recipe(
+      'Zombie',
+      lines: const [
+        RecipeLine(Amount(1), 'part', ['gin']),
+      ],
+    ),
+  ],
+);
+
+/// Two worth making side by side at the top, each carrying a body tall enough
+/// to move whatever stands below it, and filler enough to leave the list
+/// scrollable. A draw here always lands on a row the reader can already see —
+/// which the package reaches by measuring pixels rather than by index, and so
+/// the one case a stale measurement throws off (ADR 13).
+const crowded = ['Aviation', 'Bramble'];
+
+final crowdedModel = Model(
+  ingredients: [
+    Ingredient('gin', stock: StockLevel.in_),
+    Ingredient('vodka'),
+  ],
+  recipes: [
+    for (final name in crowded)
+      Recipe(
+        name,
+        notes: 'Stir over ice.\nStrain.\nTwist of lemon.',
+        lines: const [
+          RecipeLine(Amount(1), 'part', ['gin']),
+        ],
+      ),
+    for (var filler = 1; filler <= 20; filler++)
+      Recipe(
+        'Filler ${filler.toString().padLeft(2, '0')}',
+        lines: const [
+          RecipeLine(Amount(1), 'part', ['vodka']),
+        ],
+      ),
+  ],
+);
+
+/// Two worth making on different bases, so a base pick is seen to govern what
+/// a roll may land on — without it the draw would move between them.
+final basedModel = Model(
+  ingredients: [
+    Ingredient('gin', stock: StockLevel.in_),
+    Ingredient('white rum', stock: StockLevel.in_),
+  ],
+  recipes: [
+    Recipe(
+      'Gin Fizz',
+      lines: const [
+        RecipeLine(Amount(1), 'part', ['gin'], mark: LineMark.base),
+      ],
+    ),
+    Recipe(
+      'Rum Fizz',
+      lines: const [
+        RecipeLine(Amount(1), 'part', ['white rum'], mark: LineMark.base),
       ],
     ),
   ],
@@ -213,7 +299,10 @@ void main() {
       tester,
     ) async {
       await pumpRecipes(tester);
-      expect(find.byType(FloatingActionButton), findsOneWidget);
+      expect(
+        find.widgetWithIcon(FloatingActionButton, Icons.add),
+        findsOneWidget,
+      );
       expect(rowMenu('Negroni'), findsOneWidget);
       await search(tester, 'Mai Tai');
       expect(find.text('No recipe here answers to "Mai Tai".'), findsOneWidget);
@@ -524,6 +613,185 @@ void main() {
         'Negroni',
         'Whiskey Sour',
       ]);
+    });
+  });
+
+  group('random pick (FR-DIS-5)', () {
+    /// Gin Shot is ready, Campari Shot low — the two a roll may land on — and
+    /// Negroni is short of a bottle, so the draw has something to refuse.
+    Future<void> pumpDrawable(WidgetTester tester) async {
+      await pumpRecipes(tester, stockedModel);
+    }
+
+    testWidgets('it opens one you can make, and only it', (tester) async {
+      await pumpDrawable(tester);
+      await roll(tester);
+      expect(
+        openCards(tester, stocked).toList(),
+        anyOf(equals(['Campari Shot']), equals(['Gin Shot'])),
+      );
+    });
+
+    testWidgets('low counts as makeable, missing never does', (tester) async {
+      await pumpDrawable(tester);
+      // Every roll among two, so the one it never lands on is the refusal.
+      for (var thrown = 0; thrown < 6; thrown++) {
+        await roll(tester);
+        expect(cardOpen(tester, 'Negroni'), isFalse);
+      }
+    });
+
+    testWidgets('rolling again moves off the one standing', (tester) async {
+      await pumpDrawable(tester);
+      await roll(tester);
+      final first = openCards(tester, stocked).single;
+      await roll(tester);
+      final second = openCards(tester, stocked).single;
+      expect(second, isNot(first));
+      expect([first, second]..sort(), ['Campari Shot', 'Gin Shot']);
+    });
+
+    testWidgets('a roll is one answer, not a pile of them', (tester) async {
+      await pumpDrawable(tester);
+      await tap(tester, find.text('Negroni'));
+      expect(cardOpen(tester, 'Negroni'), isTrue);
+      await roll(tester);
+      expect(cardOpen(tester, 'Negroni'), isFalse);
+      expect(openCards(tester, stocked), hasLength(1));
+    });
+
+    testWidgets('it draws only from what the narrowing leaves', (tester) async {
+      await pumpDrawable(tester);
+      // Reaches Negroni too, campari being on one of its lines — but that one
+      // cannot be made, leaving the draw a single answer to be held to.
+      await search(tester, 'campari');
+      await roll(tester);
+      expect(openCards(tester, stocked), ['Campari Shot']);
+    });
+
+    testWidgets('a base pick governs it too, not just the search', (
+      tester,
+    ) async {
+      await pumpRecipes(tester, basedModel);
+      await pickBase(tester, 'white rum');
+      // Both can be made, so an ungoverned draw would move between them.
+      for (var thrown = 0; thrown < 4; thrown++) {
+        await roll(tester);
+        expect(openCards(tester, const ['Gin Fizz', 'Rum Fizz']), ['Rum Fizz']);
+      }
+    });
+
+    testWidgets('nothing to make says so rather than doing nothing', (
+      tester,
+    ) async {
+      await pumpRecipes(tester);
+      await roll(tester);
+      expect(find.text('Nothing here you can make right now.'), findsOneWidget);
+      expect(openCards(tester, names), isEmpty);
+    });
+
+    testWidgets('the dice reaches as far as the button beside it', (
+      tester,
+    ) async {
+      await pumpDrawable(tester);
+      final buttons = find.byType(FloatingActionButton);
+      expect(buttons, findsNWidgets(2));
+      expect(tester.getSize(buttons.at(0)), tester.getSize(buttons.at(1)));
+    });
+
+    testWidgets('the dice keeps away where there is nothing on show', (
+      tester,
+    ) async {
+      await pumpDrawable(tester);
+      expect(dice, findsOneWidget);
+      await search(tester, 'Mai Tai');
+      expect(dice, findsNothing);
+    });
+
+    testWidgets('the list holds its place through an edit (ADR 13)', (
+      tester,
+    ) async {
+      await pumpRecipes(tester, longModel);
+      await sortBy(tester, 'Name');
+      // Rolling is how the far end is reached; a second roll moves off the
+      // first, and there are only two to land on.
+      await roll(tester);
+      if (!cardOpen(tester, 'Zombie')) await roll(tester);
+      expect(cardOpen(tester, 'Zombie'), isTrue);
+      // Stamping rewrites the model, so the whole list is built afresh under a
+      // reader standing far from the top.
+      await tap(tester, madeButton);
+      expect(cardOpen(tester, 'Zombie'), isTrue);
+    });
+
+    testWidgets('the card it opens is put on screen (ADR 13)', (tester) async {
+      await pumpRecipes(tester, longModel);
+      await sortBy(tester, 'Name');
+      expect(find.text('Zombie'), findsNothing);
+      // Two rolls, so the far one is reached whichever the first landed on.
+      for (var thrown = 0; thrown < 2; thrown++) {
+        await roll(tester);
+        expect(openCards(tester, const ['Aviation', 'Zombie']), hasLength(1));
+      }
+    });
+
+    testWidgets('and one already in view is not carried off the top', (
+      tester,
+    ) async {
+      await pumpRecipes(tester, crowdedModel);
+      // Rolls enough to land on the lower of the pair with the taller one
+      // open above it — the order in which the card shutting takes the drawn
+      // one with it, where the reveal is measured before either has moved.
+      for (var thrown = 1; thrown <= 4; thrown++) {
+        await roll(tester);
+        final drawn = openCards(tester, crowded).single;
+        expect(
+          cardInView(tester, drawn),
+          isTrue,
+          reason: 'roll $thrown left "$drawn" off the list',
+        );
+      }
+    });
+
+    testWidgets('the dice on the button is a pair of dice (ADR 14)', (
+      tester,
+    ) async {
+      await pumpDrawable(tester);
+      final glyph = tester.widget<FaIcon>(
+        find.descendant(of: dice, matching: find.byType(FaIcon)),
+      );
+      expect(glyph.icon, FontAwesomeIcons.dice.data);
+    });
+
+    testWidgets('the one it lands on washes, then settles back', (
+      tester,
+    ) async {
+      await pumpDrawable(tester);
+      // Negroni cannot be made, so no roll lands on it and its fill is where
+      // an unwashed card rests.
+      final resting = cardFill(tester, 'Negroni');
+      await rollWithoutSettling(tester);
+      // The wash waits out the scroll, having nothing to say while the row it
+      // names is still moving.
+      await tester.pump(Durations.medium2);
+      await tester.pump(Durations.short2);
+      final drawn = openCards(tester, stocked).single;
+      expect(
+        cardFill(tester, drawn),
+        isNot(resting),
+        reason: 'the drawn card never left its resting fill',
+      );
+      await tester.pumpAndSettle();
+      expect(cardFill(tester, drawn), resting);
+      expect(cardFill(tester, 'Negroni'), resting);
+    });
+
+    testWidgets('a wash is let go once it is spent', (tester) async {
+      await pumpDrawable(tester);
+      await roll(tester);
+      // Held on to, the row would wash again every time it were scrolled out
+      // of the list and built afresh coming back — saying nothing new.
+      expect(find.byType(TweenAnimationBuilder<double>), findsNothing);
     });
   });
 

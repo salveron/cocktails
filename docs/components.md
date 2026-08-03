@@ -21,9 +21,9 @@ lib/
       model_edits.dart         # extension ModelEdits on Model — pure derivations
       line_format.dart         # compact-line grammar
       validation.dart          # ValidationIssue + rule set, otherNames
-      availability.dart        # Availability, availabilityOf, stockOfLine, stockOf
+      availability.dart        # Availability, availabilityOf, canMake, stockOfLine, stockOf
       scaling.dart             # ×N scaling, part↔ml display
-      discovery.dart           # basesOf, baseSpirits, marksBase; M20 — random
+      discovery.dart           # basesOf, baseSpirits, marksBase, randomCanMake
       optimizer.dart           # M21
       helpers.dart             # not exported: nameKey, sameName, repeatsName,
                                #   duplicateNameIndexes, listEquals
@@ -58,8 +58,10 @@ lib/
                                #   tag_choices — the row tags are picked from
                                #   vocabulary_list — the searchable list all four screens are,
                                #     plus the orders it reads in, the spellings it searches
-                               #     by, the tag filter two of them narrow by, byName
-                               #     and Set.toggle
+                               #     by, the tag filter two of them narrow by, the draw one
+                               #     of them offers over the rows on show, byName and
+                               #     Set.toggle. The one file that knows a list scrolls
+                               #     (ADR 13)
                                #   vocabulary_dialogs — entry (name, aliases, colour, tags),
                                #     delete, discard, plus VocabularyEntry and the one
                                #     reading of issue paths into fields every form shares
@@ -323,7 +325,19 @@ Set<String> basesOf(Recipe recipe);                   // discovery.dart — FR-D
 List<String> baseSpirits(Model model);
 String baseSpiritNamed(Model model, String spirit);   // the spelling the offering uses
 bool marksBase(Recipe recipe, String? spirit);        // null asks for the unmarked
+
+bool canMake(Availability? availability);             // availability.dart — low counts
+Recipe? randomCanMake(Iterable<Recipe> candidates, Map<String, Availability> availability,
+    Random random, {String? besides});                // discovery.dart — FR-DIS-5
 ```
+
+`canMake` is the one reading of what the bar can manage now — low still being a bottle, and a
+recipe the pass has yet to judge reading as missing, the rank the list's order already gives it.
+The optimizer (FR-DIS-6) asks the same question, so it asks it here. `randomCanMake` draws over
+*candidates handed to it* rather than over the model: the caller is the list, and what it hands
+over has already been narrowed, which is how "respecting active filters" costs nothing. `besides`
+is the recipe already standing — skipped while another can be made, so a second roll always moves,
+and compared by name fold like every name (ADR 08).
 
 Base spirit is a predicate, not a placement ([ADR 12](adr/12-base-spirit-narrows.md)): `basesOf` 
 takes every alternative of every base line, so a marked group answers under each bottle it names, 
@@ -408,7 +422,10 @@ so a card dims the alternatives it lacks against the same rule the verdict was r
 
 Filter, search and order are presentation: widget state where the list is drawn, never persisted and 
 never a provider — nothing model-derived reads them, so there is nothing to invalidate. A consumer 
-outside the screen (M20's random pick, FR-DIS-5) is what would hoist them.
+outside the screen is what would hoist them, and the random pick (FR-DIS-5) turned out not to be 
+one: the draw is made *by* the list, over the rows it is already showing, so the search never had to 
+leave `VocabularyList` and no narrowing had to be named twice. What a screen supplies is the draw 
+itself; what it gets back is a name.
 
 Performance facts (no over-engineering):
 - Every mutation replaces whole `Model` → all model-derived recompute. Hundreds of recipes: availability 

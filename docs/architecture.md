@@ -10,7 +10,11 @@ the resulting design at system level, [components.md](components.md) at module l
 - **Riverpod** for state management ([ADR 03](adr/03-app-structure-and-state.md)).
 - Development: Linux + physical Android phone over USB.
 - Minimal dependencies: `flutter_riverpod`, `yaml`, `path_provider`, `share_plus`, `file_picker`. 
-  Riverpod at 2.x (3.x adds unused packages).
+  Riverpod at 2.x (3.x adds unused packages). `scrollable_positioned_list` is the first taken for 
+  ergonomics rather than structure ([ADR 13](adr/13-lists-scroll-by-index.md)), and the bar it sets 
+  for the next: confined to one file, with the way out written down. `font_awesome_flutter` is the 
+  next, taken under that bar ([ADR 14](adr/14-the-dice-comes-off-font-awesome.md)) — by caret where 
+  the other is pinned, a package that still releases being the safer for keeping up with.
 
 ## System overview
 
@@ -126,6 +130,10 @@ Rules:
 - **Base spirit** (FR-DIS-4, [ADR 12](adr/12-base-spirit-narrows.md)): a predicate, not a placement. 
   Every alternative of every base line counts, so a group matches under each bottle it names; the 
   spirits offered are read off the recipes, deduped by name key and read A→Z.
+- **Random pick** (FR-DIS-5): drawn from the rows on show, so every narrowing already holds; 
+  `canMake` is the one reading of what counts (low does, unjudged does not), shared with the 
+  optimizer below. The draw moves off the recipe already standing while another can be made, so a 
+  second roll always answers differently.
 - **Optimizer** (FR-DIS-6): collect `out` ingredients from each missing recipe; keep sets ≤ N. 
   Score candidate purchases by recipes becoming can-make. Zero-yield dropped.
 - **Line parsing**: shared parser/formatter, both routes (form, codec); takes unit vocabulary 

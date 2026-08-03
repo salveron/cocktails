@@ -28,6 +28,12 @@ Orders behind one icon (FR-DIS-8): chip row shows offerings + current (direction
 reverses list. No separate Z→A/missing-first chips. Tie-break: name. Rows stable during edit; 
 list out-of-order until touched after external change. Not persisted.
 
+A list may also offer a **draw** over the rows on show — a button standing over it, answering with 
+the name of a row to put on screen. Only the recipes offer one (FR-DIS-5). The list scrolls to it by 
+index ([ADR 13](adr/13-lists-scroll-by-index.md)), which is why the draw is the list's rather than 
+the screen's: the search never leaves the list, so no narrowing has to be named twice, and the screen 
+learns nothing about where a row stands.
+
 ## Vocabulary editing
 
 `VocabularyList`: search, sort orders, three faces, add button. Screen provides row display, 
@@ -71,6 +77,19 @@ Successful add clears search. Recipes add pushes [recipe form](#recipe-form).
   alone is unringed), and ringed transparent otherwise — so it keeps a tag chip's height and 
   spacing either way, `chipRadius` rounding both alike. Absent where nothing marks a base; a pick 
   gone stale opens the list rather than emptying it, as the tag row does.
+- **Random pick** (FR-DIS-5): a pair of dice (Font Awesome's `dice` — a roll reads as dice being 
+  thrown, and the shipped font carries only single dice, which read as domino tiles at this size; 
+  ADR 14) above the add button, the two alike in size so neither reads as the lesser reach. It 
+  draws one recipe you can make from what is on show (Ready or Low), so the search, the tag picks 
+  and the base pick already hold; shuts every open card, opens that one and scrolls to it. A second 
+  roll moves off the one standing while another can be made, so rolling again always answers. 
+  Absent where nothing is on show; rows on show but none makeable answers with a snackbar rather 
+  than silence.
+- **The wash** on the drawn card: its fill starts at `secondaryContainer` and settles back to where 
+  every other card rests, over 700ms, easing out — the pick saying which one it is once the scroll 
+  has stopped, since a list that merely stopped moving does not say what it stopped *for*. Colour 
+  alone, and only the fill: a row changing height would fire the very measurement the reveal waits 
+  on (ADR 13). It runs once and is let go, so a row scrolled away and back does not say it again.
 - **Scale & unit** behind ⋮ (expanded cards only, FR-REC-7): factor ×1–×4, unit for part-based 
   (FR-SET-1 this card only). ×1 in parts cancels.
 - **Display-only transforms**: name row shows "(×2, ml)", measures italic. No persistence; 

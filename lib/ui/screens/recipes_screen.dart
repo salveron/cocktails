@@ -1,9 +1,11 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:cocktails/domain/domain.dart';
 import 'package:cocktails/state/state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import '../palette.dart';
 import '../theme.dart';
@@ -73,6 +75,11 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
   /// The base spirit narrowing it beside them, absent while it narrows nothing.
   _BasePick? _base;
 
+  /// What the last roll landed on, so the next one moves off it (FR-DIS-5).
+  String? _rolled;
+
+  final _random = Random();
+
   void _toggle(String name) => setState(() {
     _expanded.toggle(name);
     if (!_expanded.contains(name)) _forget(name);
@@ -103,6 +110,11 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
           onToggle: (tag) => setState(() => _picked.toggle(tag)),
           tagsOf: (recipe) => recipe.tags,
           leading: _baseFilter(model),
+        ),
+        draw: (
+          icon: const FaIcon(FontAwesomeIcons.dice),
+          tooltip: 'Random pick',
+          draw: _roll,
         ),
         orders: {
           // A recipe the pass has yet to judge ranks with the missing ones,
@@ -190,6 +202,37 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
     );
   }
 
+  /// Draws one of the recipes on show that the bar can make now and opens it
+  /// alone (FR-DIS-5), answering with its name so the list can put it on screen
+  /// (ADR 13). The draw is over what is on show, so the search, the tag picks
+  /// and the base pick all already hold; a second roll moves off the one
+  /// standing. Everything else shuts, a roll being one answer rather than a
+  /// pile of them. Nothing to draw from says so instead of doing nothing.
+  String? _roll(List<Recipe> onShow) {
+    final drawn = randomCanMake(
+      onShow,
+      ref.read(availabilityProvider),
+      _random,
+      besides: _rolled,
+    );
+    if (drawn == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Nothing here you can make right now.')),
+      );
+      return null;
+    }
+    setState(() {
+      for (final name in _expanded) {
+        _forget(name);
+      }
+      _expanded
+        ..clear()
+        ..add(drawn.name);
+      _rolled = drawn.name;
+    });
+    return drawn.name;
+  }
+
   /// The base spirit chip and what it keeps (FR-DIS-4, ADR 12). A pick gone
   /// stale — the bottle renamed, deleted, or its last base mark cleared — is
   /// absent from what the collection offers, and so stops narrowing rather than
@@ -272,6 +315,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
     if (saved == null || saved == recipe.name || !mounted) return;
     setState(() {
       if (_expanded.remove(recipe.name)) _expanded.add(saved);
+      if (_rolled == recipe.name) _rolled = saved;
       _forget(recipe.name);
     });
   }

@@ -1,6 +1,10 @@
-/// Narrowing the recipe list by what a recipe is built on (FR-DIS-4, ADR 12).
+/// Narrowing the recipe list by what a recipe is built on (FR-DIS-4, ADR 12),
+/// and drawing one of what is left of it (FR-DIS-5).
 library;
 
+import 'dart:math';
+
+import 'availability.dart';
 import 'helpers.dart';
 import 'model.dart';
 
@@ -28,6 +32,27 @@ List<String> baseSpirits(Model model) {
 /// [spirit] under the bottle's own name (ADR 10) — what [baseSpirits] offers.
 String baseSpiritNamed(Model model, String spirit) =>
     model.ingredientNamed(spirit)?.name ?? spirit;
+
+/// What a roll lands on (FR-DIS-5): one of [candidates] the bar can make, drawn
+/// from [random]. Never [besides] — the one already standing — while another is
+/// there, so a second roll always moves. Null where none can be made.
+Recipe? randomCanMake(
+  Iterable<Recipe> candidates,
+  Map<String, Availability> availability,
+  Random random, {
+  String? besides,
+}) {
+  final can = [
+    for (final recipe in candidates)
+      if (canMake(availability[recipe.name])) recipe,
+  ];
+  final moved = [
+    for (final recipe in can)
+      if (besides == null || !recipe.name.sameName(besides)) recipe,
+  ];
+  final drawn = moved.isEmpty ? can : moved;
+  return drawn.isEmpty ? null : drawn[random.nextInt(drawn.length)];
+}
 
 /// Whether [recipe] answers to a pick: [spirit], or — where null — no base.
 bool marksBase(Recipe recipe, String? spirit) => spirit == null

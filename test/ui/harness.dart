@@ -232,9 +232,61 @@ final aliasesField = field('Also known as (comma-separated)');
 Future<void> typeAliases(WidgetTester tester, String text) =>
     typeInto(tester, aliasesField, text);
 
-/// Opens whatever the list's add button opens.
+/// Opens whatever the list's add button opens — told apart by its icon, a list
+/// being allowed a second button beside it (the recipes' dice, FR-DIS-5).
 Future<void> openAdd(WidgetTester tester) =>
-    tap(tester, find.byType(FloatingActionButton));
+    tap(tester, find.widgetWithIcon(FloatingActionButton, Icons.add));
+
+/// The dice over the recipe list, and the roll it makes (FR-DIS-5).
+final dice = find.byTooltip('Random pick');
+
+Future<void> roll(WidgetTester tester) => tap(tester, dice);
+
+/// Rolls without waiting it out, leaving the caller to pump: what the wash does
+/// between the roll and the rest is the whole of what some tests are watching.
+Future<void> rollWithoutSettling(WidgetTester tester) async {
+  await tester.tap(dice);
+  await tester.pump();
+}
+
+/// The fill the card named [name] draws itself in — where the wash starts a
+/// drawn card and where every other card rests (FR-DIS-5).
+Color? cardFill(WidgetTester tester, String name) => tester
+    .widget<Card>(
+      find.ancestor(of: find.text(name), matching: find.byType(Card)).first,
+    )
+    .color;
+
+/// Whether the card named [name] is reading open — only an open card carries
+/// the button that stamps it (FR-REC-6).
+bool cardOpen(WidgetTester tester, String name) => tester.any(
+  find.descendant(
+    of: find.ancestor(of: find.text(name), matching: find.byType(Card)),
+    matching: find.widgetWithText(FilledButton, 'Made it'),
+  ),
+);
+
+/// Which of [names] are reading open, in the order asked.
+Iterable<String> openCards(WidgetTester tester, Iterable<String> names) =>
+    names.where((name) => cardOpen(tester, name));
+
+/// Whether the card named [name] starts somewhere a reader can see it, rather
+/// than above the list or below it — what a reveal promises (ADR 13). Its top
+/// is the whole of the reading: an open card may be taller than the list, and
+/// one carried off the top reads as having gone nowhere.
+///
+/// The list is found as the card's own scroller, so nothing here has to know
+/// which widget draws it.
+bool cardInView(WidgetTester tester, String name) {
+  final card = find
+      .ancestor(of: find.text(name), matching: find.byType(Card))
+      .first;
+  final list = tester.getRect(
+    find.ancestor(of: card, matching: find.byType(Scrollable)).first,
+  );
+  final top = tester.getRect(card).top;
+  return top >= list.top && top < list.bottom;
+}
 
 /// Leaves the pushed page the way the app bar's arrow does, so a [PopScope]
 /// guarding it gets its say.
@@ -336,21 +388,23 @@ bool baseRinged(WidgetTester tester) =>
 Finder chipOf(WidgetTester tester, String label) =>
     find.ancestor(of: find.text(label), matching: find.byType(ColorChip));
 
+/// What that menu is offering, told apart from the list standing behind it — a
+/// bottle's name is on the card of every recipe built from it, so a reading not
+/// held to the menu would find both.
+final _baseMenu = find.byWidgetPredicate((widget) => widget is PopupMenuItem);
+
 /// Picks [label] out of that chip's menu — a spirit, "No base" or "Any base".
 Future<void> pickBase(WidgetTester tester, String label) async {
   await tap(tester, baseChip);
-  await tap(tester, find.text(label));
+  await tap(tester, find.descendant(of: _baseMenu, matching: find.text(label)));
 }
 
-/// Every offering that menu makes, in order, leaving it open to be read.
+/// Every offering it makes, in order, leaving it open to be read.
 Future<List<String>> baseChoices(WidgetTester tester) async {
   await tap(tester, baseChip);
   return [
     for (final text in tester.widgetList<Text>(
-      find.descendant(
-        of: find.byWidgetPredicate((widget) => widget is PopupMenuItem),
-        matching: find.byType(Text),
-      ),
+      find.descendant(of: _baseMenu, matching: find.byType(Text)),
     ))
       text.data!,
   ];

@@ -23,10 +23,13 @@ Availability availabilityOf(Model model, Recipe recipe) {
   return low ? Availability.makeableLow : Availability.makeable;
 }
 
-/// What a line stands at: its best-stocked alternative, since any one of them
-/// makes it (ADR-11). Declaration order runs best to worst, and a line naming
-/// nothing is out — the worst is where the fold starts, so no line can crash
-/// the pass that judges every recipe.
+/// Can make it now (FR-DIS-5): low still counts, and unjudged reads as missing.
+bool canMake(Availability? availability) =>
+    availability != null && availability != Availability.missing;
+
+/// What a line stands at: its best-stocked alternative, any one of them making
+/// it (ADR-11). Order runs best to worst, and folding from the worst leaves a
+/// line naming nothing out rather than crashing the pass over every recipe.
 StockLevel stockOfLine(Model model, RecipeLine line) =>
     line.ingredients.fold(StockLevel.out, (best, ingredient) {
       final stock = stockOf(model, ingredient);

@@ -80,7 +80,10 @@ empty so no reference to it can mean two things.
 - **FR-DIS-4** Recipe list narrowable by base spirit ([ADR 12](adr/12-base-spirit-narrows.md)): one 
   spirit at a time, matching any alternative of any base line (ADR 11); *no base* is a choice of its 
   own, reaching the unmarked. Combines with the search and the tag filter.
-- **FR-DIS-5** Random pick suggests one can-make recipe respecting active filters.
+- **FR-DIS-5** Random pick draws one recipe the bar can make now — low counts, missing does not — 
+  from whatever the list is showing, so the search, the tag picks and the base pick all hold. It 
+  opens that recipe alone and puts it on screen; a second draw moves off the one standing while 
+  another can be made. Nothing makeable among them says so rather than doing nothing.
 - **FR-DIS-6** Optimizer: budget **N** (1–3); evaluates ≤N out-of-stock ingredient combos; 
   reports recipes becoming can-make (ranked by count). Zero-yield hidden.
 - **FR-DIS-7** Optimizer lists running-low ingredients as restock reminders.
