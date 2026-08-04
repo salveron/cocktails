@@ -457,6 +457,10 @@ final class Model {
   /// The entry [name] names, any case, any spelling (ADR-08, ADR-10).
   Ingredient? ingredientNamed(String name) => _ingredientsByName[nameKey(name)];
 
+  /// [name] under the bottle's own spelling — what a reference is stored as and
+  /// an offering reads in. A name outside the vocabulary stands as it came.
+  String bottleNamed(String name) => ingredientNamed(name)?.name ?? name;
+
   Recipe? recipeNamed(String name) => _recipesByName[nameKey(name)];
 
   List<Tag> tagsOf(TagKind kind) => switch (kind) {

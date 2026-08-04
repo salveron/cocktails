@@ -85,7 +85,10 @@ empty so no reference to it can mean two things.
   opens that recipe alone and puts it on screen; a second draw moves off the one standing while 
   another can be made. Nothing makeable among them says so rather than doing nothing.
 - **FR-DIS-6** Optimizer: budget **N** (1–3); evaluates ≤N out-of-stock ingredient combos; 
-  reports recipes becoming can-make (ranked by count). Zero-yield hidden.
+  reports recipes becoming can-make, ranked by count, then by fewest bottles. Zero-yield hidden, 
+  and so is a combo unlocking no more than a smaller one inside it — every bottle offered earns 
+  its place. A substitution group counts as satisfied by any one purchase (FR-REC-9). The best few 
+  of each size are offered rather than every combo ([ADR 15](adr/15-the-optimizer-answers-with-the-best-few.md)).
 - **FR-DIS-7** Optimizer lists running-low ingredients as restock reminders.
 - **FR-DIS-8** Lists (recipes, inventory, tags) readable in multiple orders: by name, by signal 
   (availability, stock, colour). Picking current order reverses it. Default: recipes by availability, 

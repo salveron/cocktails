@@ -265,7 +265,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
     if (pick == null) return null;
     final picked = pick.spirit;
     if (picked == null) return pick;
-    final spirit = baseSpiritNamed(model, picked);
+    final spirit = model.bottleNamed(picked);
     return spirits.contains(spirit) ? (spirit: spirit) : null;
   }
 

@@ -134,8 +134,14 @@ Rules:
   `canMake` is the one reading of what counts (low does, unjudged does not), shared with the 
   optimizer below. The draw moves off the recipe already standing while another can be made, so a 
   second roll always answers differently.
-- **Optimizer** (FR-DIS-6): collect `out` ingredients from each missing recipe; keep sets ≤ N. 
-  Score candidate purchases by recipes becoming can-make. Zero-yield dropped.
+- **Optimizer** (FR-DIS-6, [ADR 15](adr/15-the-optimizer-answers-with-the-best-few.md)): a missing 
+  recipe's gap is not one set of bottles but a choice between several — any one alternative of a 
+  group closes its line (ADR 11) — so the ways of making it are the cross product over the lines it 
+  is short of, cut at N. The bottles worth weighing are exactly those gaps', and every basket of ≤ N 
+  drawn from them is scored by the recipes some part of it closes. A basket must beat each of its 
+  own smaller selves, or it *is* one of them carrying a passenger; a sub-basket's recipes being 
+  always a subset, comparing counts settles it. Ranked by recipes unlocked, then fewest bottles, 
+  then A→Z. Zero-yield never arises — it cannot beat its own parts.
 - **Line parsing**: shared parser/formatter, both routes (form, codec); takes unit vocabulary 
   (decides unit vs. name). Codec reads `units` first.
 - **Display transforms** (FR-REC-7, FR-SET-1): factor multiplies amounts (range ends together); 

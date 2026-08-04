@@ -43,9 +43,7 @@ extension ModelEdits on Model {
       final resolved = _withLines(
         recipe,
         (line) => line.copyWith(
-          ingredients: [
-            for (final name in line.ingredients) _resolved(this, name),
-          ],
+          ingredients: [for (final name in line.ingredients) bottleNamed(name)],
         ),
       );
       moved |= !identical(resolved, recipe);
@@ -146,12 +144,12 @@ extension ModelEdits on Model {
 
   /// Recipe names blocking ingredient deletion, in model order (FR-VOC-1, ADR-10).
   List<String> recipesUsingIngredient(String name) {
-    final wanted = ingredientNamed(name)?.name ?? name;
+    final wanted = bottleNamed(name);
     return [
       for (final recipe in recipes)
         if (recipe.lines.any(
           (line) => line.ingredients.any(
-            (name) => _resolved(this, name).sameName(wanted),
+            (name) => bottleNamed(name).sameName(wanted),
           ),
         ))
           recipe.name,
@@ -178,10 +176,6 @@ extension ModelEdits on Model {
 }
 
 String _tagName(Tag tag) => tag.name;
-
-/// The bottle [name] means, under its own name.
-String _resolved(Model model, String name) =>
-    model.ingredientNamed(name)?.name ?? name;
 
 /// [recipe] with every line put through [rewrite] — the recipe itself where
 /// none moved, so an edit reaching no line rebuilds nothing and callers can

@@ -21,17 +21,13 @@ List<String> baseSpirits(Model model) {
   final seen = <String>{};
   final named = [
     for (final recipe in model.recipes)
-      for (final spirit in basesOf(recipe)) baseSpiritNamed(model, spirit),
+      for (final spirit in basesOf(recipe)) model.bottleNamed(spirit),
   ];
   return [
     for (final spirit in named)
       if (!repeatsName(seen, spirit)) spirit,
-  ]..sort((a, b) => nameKey(a).compareTo(nameKey(b)));
+  ]..sort(compareNames);
 }
-
-/// [spirit] under the bottle's own name (ADR 10) — what [baseSpirits] offers.
-String baseSpiritNamed(Model model, String spirit) =>
-    model.ingredientNamed(spirit)?.name ?? spirit;
 
 /// What a roll lands on (FR-DIS-5): one of [candidates] the bar can make, drawn
 /// from [random]. Never [besides] — the one already standing — while another is

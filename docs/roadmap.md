@@ -188,9 +188,22 @@ First usable slice; recipes reference both vocabularies, so this precedes Phase 
       ([ADR 14](adr/14-the-dice-comes-off-font-awesome.md)), the shipped font carrying only single
       dice that read as domino tiles at button size; `ListDraw` carries the glyph as a widget, so
       the font is named on the recipes screen and nowhere else.
-- [ ] **M21 Optimizer domain** — combination search and ranking (FR-DIS-6) with a
-      performance test at NFR-2 scale. A substitution group counts as satisfied by any one
-      purchase, which changes what a candidate set yields (ADR 11).
+- [x] **M21 Optimizer domain** — combination search and ranking (FR-DIS-6): `purchasesWithin` over
+      `Purchase`, the basket of bottles and the recipes it unlocks. ADR 11's flagged consequence
+      turns out to reshape the search rather than adjust it — a missing recipe's gap is not one set
+      of bottles but a *choice* between several, any one alternative closing its line, so the ways
+      of making it are the cross product over the lines it is short of. The bottles worth weighing
+      are exactly those gaps', which is what keeps a pool of out-of-stock bottles from being every
+      bottle. What [architecture.md](architecture.md#domain-computations) described — sets collected
+      per recipe — would also have missed the combined buy, two unrelated single-bottle gaps being
+      no recipe's own set; that line is rewritten. A basket has to beat each of its own smaller
+      selves or it is one of them carrying a passenger, which subsumes the zero-yield rule rather
+      than sitting beside it. The performance test is the milestone's other half and earned its
+      keep: the first working version took 6.8s at NFR-2 scale, and the profile said the search was
+      43ms while *naming* thirty-five thousand baskets was the rest — hence
+      [ADR 15](adr/15-the-optimizer-answers-with-the-best-few.md), the best few of each size, and
+      ~140ms. `Model.bottleNamed` lands as the one home for "this name, under the entry's own",
+      which `baseSpiritNamed` and two copies in `model_edits.dart` were each spelling separately.
 - [ ] **M22 Optimizer screen** — budget selector, ranked combinations, running-low restock
       reminders (FR-DIS-6/7).
 

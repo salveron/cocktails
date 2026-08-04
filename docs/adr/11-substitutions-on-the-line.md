@@ -57,4 +57,7 @@ decision; how it is written is this one. Decided before M18a.
 - **M19** must decide whether a group marked `(base)` files its recipe under every alternative
   spirit (FR-DIS-4) — dissolved by [ADR 12](12-base-spirit-narrows.md), which makes base a
   predicate: a group matches under every alternative it names.
-- **M21**'s optimizer must count a group as satisfied by any one purchase (FR-DIS-6).
+- **M21**'s optimizer must count a group as satisfied by any one purchase (FR-DIS-6) — which
+  reshaped its search rather than adjusting it: what a missing recipe needs stops being one set of
+  bottles and becomes a choice between several, so the ways of making it are the cross product over
+  the lines it is short of ([ADR 15](15-the-optimizer-answers-with-the-best-few.md)).

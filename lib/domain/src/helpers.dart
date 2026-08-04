@@ -12,6 +12,9 @@ extension NameComparison on String {
   bool sameName(String other) => nameKey(this) == nameKey(other);
 }
 
+/// A→Z, the order every list falls back to and ties break on.
+int compareNames(String a, String b) => nameKey(a).compareTo(nameKey(b));
+
 /// Whether [name] already stands in [seen]; adds it either way.
 bool repeatsName(Set<String> seen, String name) => !seen.add(nameKey(name));
 

@@ -24,9 +24,9 @@ lib/
       availability.dart        # Availability, availabilityOf, canMake, stockOfLine, stockOf
       scaling.dart             # ×N scaling, part↔ml display
       discovery.dart           # basesOf, baseSpirits, marksBase, randomCanMake
-      optimizer.dart           # M21
-      helpers.dart             # not exported: nameKey, sameName, repeatsName,
-                               #   duplicateNameIndexes, listEquals
+      optimizer.dart           # Purchase, purchasesWithin — what to buy next
+      helpers.dart             # not exported: nameKey, sameName, compareNames,
+                               #   repeatsName, duplicateNameIndexes, listEquals
   data/
     data.dart                  # barrel — the store, the codec, and their result types
     src/
@@ -167,6 +167,7 @@ list left unwrapped: `List.unmodifiable` would cost the `const` constructor the 
 
 ```dart
 Ingredient? ingredientNamed(String name);
+String bottleNamed(String name);      // that entry's own spelling; unknown names stand
 Recipe? recipeNamed(String name);
 List<Tag> tagsOf(TagKind kind);
 bool hasTag(TagKind kind, String name);
@@ -323,12 +324,14 @@ String displayMeasure(RecipeLine line, Settings settings, List<Unit> units, {int
 
 Set<String> basesOf(Recipe recipe);                   // discovery.dart — FR-DIS-4, ADR 12
 List<String> baseSpirits(Model model);
-String baseSpiritNamed(Model model, String spirit);   // the spelling the offering uses
 bool marksBase(Recipe recipe, String? spirit);        // null asks for the unmarked
 
 bool canMake(Availability? availability);             // availability.dart — low counts
 Recipe? randomCanMake(Iterable<Recipe> candidates, Map<String, Availability> availability,
     Random random, {String? besides});                // discovery.dart — FR-DIS-5
+
+final class Purchase { List<String> bottles; List<String> unlocks; }   // both A→Z
+List<Purchase> purchasesWithin(Model model, int budget, {int most = 25});  // FR-DIS-6
 ```
 
 `canMake` is the one reading of what the bar can manage now — low still being a bottle, and a
@@ -341,11 +344,18 @@ and compared by name fold like every name (ADR 08).
 
 Base spirit is a predicate, not a placement ([ADR 12](adr/12-base-spirit-narrows.md)): `basesOf` 
 takes every alternative of every base line, so a marked group answers under each bottle it names, 
-and `baseSpirits` folds those into what the filter offers — resolved through `baseSpiritNamed` 
+and `baseSpirits` folds those into what the filter offers — resolved through `Model.bottleNamed` 
 *before* being weighed for repetition, so two spellings of one bottle are one spirit; A→Z. 
-`baseSpiritNamed` is also how a screen holding a pick reads it against a changed vocabulary, so a 
-bottle merely recased goes on narrowing. Comparison runs through `helpers.dart`, which stays 
-unexported — no screen folds a name itself.
+`bottleNamed` is also how a screen holding a pick reads it against a changed vocabulary, so a 
+bottle merely recased goes on narrowing; it is the one home for "this name, under the entry's own", 
+which the optimizer, `withCanonicalIngredientNames` and delete blocking all ask for too. Comparison 
+runs through `helpers.dart`, which stays unexported — no screen folds a name itself.
+
+`purchasesWithin` answers FR-DIS-6 ([ADR 15](adr/15-the-optimizer-answers-with-the-best-few.md)); 
+the algorithm is in [architecture.md](architecture.md#domain-computations). It returns the best 
+`most` baskets *of each size*, not the best `most` overall, so a one-bottle win is never crowded 
+out by the three-bottle baskets that almost always unlock more — which is also what leaves the 
+screen free to read them as one list or as a section per size.
 
 `displayMeasure` is how a card reads a line's amounts (FR-REC-7, FR-SET-1). The measure is the only 
 half that transforms, so it is the only half returned — and marking it as the card's own rather than 
