@@ -141,7 +141,9 @@ Rules:
   drawn from them is scored by the recipes some part of it closes. A basket must beat each of its 
   own smaller selves, or it *is* one of them carrying a passenger; a sub-basket's recipes being 
   always a subset, comparing counts settles it. Ranked by recipes unlocked, then fewest bottles, 
-  then A→Z. Zero-yield never arises — it cannot beat its own parts.
+  then A→Z. Zero-yield never arises — it cannot beat its own parts. What counts as short is the 
+  one thing the reader sets ([ADR 16](adr/16-the-optimizer-buys-what-is-running-low.md)): out of 
+  stock, or anything short of full stock, which is what puts the bottles running low in the pool.
 - **Line parsing**: shared parser/formatter, both routes (form, codec); takes unit vocabulary 
   (decides unit vs. name). Codec reads `units` first.
 - **Display transforms** (FR-REC-7, FR-SET-1): factor multiplies amounts (range ends together); 

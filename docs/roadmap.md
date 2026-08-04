@@ -204,8 +204,21 @@ First usable slice; recipes reference both vocabularies, so this precedes Phase 
       [ADR 15](adr/15-the-optimizer-answers-with-the-best-few.md), the best few of each size, and
       ~140ms. `Model.bottleNamed` lands as the one home for "this name, under the entry's own",
       which `baseSpiritNamed` and two copies in `model_edits.dart` were each spelling separately.
-- [ ] **M22 Optimizer screen** — budget selector, ranked combinations, running-low restock
-      reminders (FR-DIS-6/7).
+- [x] **M22a Restocking widens the search** — what counts as short becomes the reader's to set
+      ([ADR 16](adr/16-the-optimizer-buys-what-is-running-low.md), FR-DIS-6/7 rewritten):
+      `purchasesWithin` takes `restocking`, off leaving M21's answer exactly as it stood, on taking
+      a line short of *full* stock — so the bottles running low join the pool and the goal becomes
+      ready rather than merely makeable. Widening the pool alone would not have done it: a low
+      bottle unlocks nothing under `canMake`, a recipe standing at Low being already can-make, so
+      every basket holding one would have been dropped as a passenger by ADR 15's rule. It is the
+      *goal* that had to move. One flag, one place — the test in `_gapsOf` — since the whole search
+      below it already read "short" rather than "out"; `canMake` itself does not move, the traffic
+      light and the random pick going on as they were. FR-DIS-7 stops asking for a restock list of
+      its own: being shoppable is how a low bottle is reminded of. M21's tests stand as the
+      flag-off case, and the performance test now times both readings over the one collection —
+      58ms plain against 100ms restocking, the pool being bounded by the gaps' own bottles rather
+      than by the shelf.
+- [ ] **M22 Optimizer screen** — budget selector, ranked combinations (FR-DIS-6/7).
 
 ## Phase 4 — Settings & data exchange
 

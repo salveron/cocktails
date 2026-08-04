@@ -21,6 +21,7 @@ void main() {
   );
 
   const inStock = StockLevel.in_;
+  const low = StockLevel.low;
   const out = StockLevel.out;
 
   group('purchasesWithin', () {
@@ -212,9 +213,9 @@ void main() {
       expect(purchasesWithin(model, 3), isEmpty);
     });
 
-    test('a low bottle counts as on hand and is never bought (FR-DIS-7)', () {
+    test('a low bottle counts as on hand and is not bought (ADR 16)', () {
       final model = bar(
-        {'gin': StockLevel.low, 'campari': out},
+        {'gin': low, 'campari': out},
         {
           'Negroni': [
             line(['gin']),
@@ -317,18 +318,105 @@ void main() {
     });
   });
 
+  group('purchasesWithin, restocking (ADR 16)', () {
+    test('reaches a recipe the bar can already make', () {
+      final model = bar(
+        {'gin': low, 'vermouth': inStock},
+        {
+          'Martini': [
+            line(['gin']),
+            line(['vermouth']),
+          ],
+        },
+      );
+      expect(purchasesWithin(model, 1), isEmpty);
+      expect(purchasesWithin(model, 1, restocking: true), [
+        Purchase(['gin'], ['Martini']),
+      ]);
+    });
+
+    // The bottle that is merely low counts against the budget like any other,
+    // so neither half of the pair answers on its own.
+    test('spends the budget on the low bottle beside the missing one', () {
+      final model = bar(
+        {'gin': low, 'campari': out},
+        {
+          'Negroni': [
+            line(['gin']),
+            line(['campari']),
+          ],
+        },
+      );
+      expect(purchasesWithin(model, 2, restocking: true), [
+        Purchase(['campari', 'gin'], ['Negroni']),
+      ]);
+    });
+
+    test('takes any alternative of a group short of full stock (ADR 11)', () {
+      final model = bar(
+        {'lime juice': inStock, 'rum': low, 'vodka': out},
+        {
+          'Daiquiri': [
+            line(['lime juice']),
+            line(['rum', 'vodka']),
+          ],
+        },
+      );
+      expect(purchasesWithin(model, 1, restocking: true), [
+        Purchase(['rum'], ['Daiquiri']),
+        Purchase(['vodka'], ['Daiquiri']),
+      ]);
+    });
+
+    test('leaves a fully stocked recipe alone', () {
+      final model = bar(
+        {'gin': inStock},
+        {
+          'Martini': [
+            line(['gin']),
+          ],
+        },
+      );
+      expect(purchasesWithin(model, 3, restocking: true), isEmpty);
+    });
+
+    test('still never buys for an optional line (FR-REC-3)', () {
+      final model = bar(
+        {'gin': inStock, 'absinthe': low},
+        {
+          'Martini': [
+            line(['gin']),
+            line(['absinthe'], mark: LineMark.optional),
+          ],
+        },
+      );
+      expect(purchasesWithin(model, 2, restocking: true), isEmpty);
+    });
+  });
+
   group('at NFR-2 scale', () {
+    // [withLow] turns a fifth of the shelf from out to low, one draw per bottle
+    // either way — so what restocking adds to the pool is measured against the
+    // very collection the plain reading leaves alone.
     Model collection({
       required int recipes,
       required int bottles,
       int seed = 7,
+      bool withLow = false,
     }) {
       final random = Random(seed);
       final names = [for (var i = 0; i < bottles; i++) 'bottle $i'];
       return Model(
         ingredients: [
           for (final name in names)
-            Ingredient(name, stock: random.nextInt(5) < 2 ? inStock : out),
+            Ingredient(
+              name,
+              stock: switch (random.nextInt(5)) {
+                0 || 1 => inStock,
+                2 when withLow => low,
+                _ => out,
+              },
+            ),
         ],
         recipes: [
           for (var i = 0; i < recipes; i++)
@@ -364,6 +452,27 @@ void main() {
       // A guard against an algorithmic regression, not a stopwatch on the
       // machine: the search this replaced took 6.8s here (M21 notes).
       expect(watch.elapsedMilliseconds, lessThan(750));
+    });
+
+    // Restocking is the expensive reading: every bottle running low joins the
+    // pool, and ADR 15's cost grows with the cube of it. Both readings are
+    // timed over the one collection, so the print says what the switch costs.
+    test('answers either reading of what is short (ADR 16)', () {
+      final model = collection(recipes: 400, bottles: 120, withLow: true);
+      for (final restocking in [false, true]) {
+        final watch = Stopwatch()..start();
+        final ranked = purchasesWithin(model, 3, restocking: restocking);
+        watch.stop();
+        // ignore: avoid_print
+        print(
+          'purchasesWithin(400 recipes, 120 bottles, N=3, '
+          'restocking: $restocking): ${ranked.length} baskets in '
+          '${watch.elapsedMilliseconds}ms',
+        );
+        expect(ranked, isNotEmpty);
+        expect(ranked.length, lessThanOrEqualTo(75));
+        expect(watch.elapsedMilliseconds, lessThan(750));
+      }
     });
 
     test('the best answers survive the cap on how many are kept', () {

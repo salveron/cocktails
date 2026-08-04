@@ -1,5 +1,5 @@
-/// What to buy next (FR-DIS-6): the purchases turning the most missing
-/// recipes makeable, within a budget of so many bottles.
+/// What to buy next (FR-DIS-6, FR-DIS-7): the purchases leaving the most
+/// recipes makeable — or, restocking, fully stocked — within a budget.
 library;
 
 import 'availability.dart';
@@ -40,12 +40,21 @@ final class Purchase {
 /// from it. That search is quick; what is not is dressing every basket it finds
 /// as an answer, and at a few hundred recipes it finds tens of thousands. So a
 /// basket is weighed by its count alone and only the ones kept are ever named.
-List<Purchase> purchasesWithin(Model model, int budget, {int most = 25}) {
+///
+/// [restocking] is what counts as short (ADR 16): a line standing at out, or
+/// one short of full stock — which puts the bottles running low in the pool and
+/// makes the goal ready rather than merely makeable.
+List<Purchase> purchasesWithin(
+  Model model,
+  int budget, {
+  int most = 25,
+  bool restocking = false,
+}) {
   if (budget < 1) return const [];
   final gaps = <({Set<String> bottles, String recipe})>[];
   final pool = <String>{};
   for (final recipe in model.recipes) {
-    for (final gap in _gapsOf(model, recipe, budget)) {
+    for (final gap in _gapsOf(model, recipe, budget, restocking: restocking)) {
       gaps.add((bottles: gap, recipe: recipe.name));
       pool.addAll(gap);
     }
@@ -132,13 +141,22 @@ bool _earnsIts(List<int> basket, int yield, Map<int, int> yields, int radix) {
 }
 
 /// The alternative purchases that would make [recipe] — one per way of closing
-/// every line it is short of, any single alternative closing a group (ADR-11).
-/// Empty where it needs nothing, or needs more than [budget] allows.
-List<Set<String>> _gapsOf(Model model, Recipe recipe, int budget) {
+/// every line [restocking] counts as short, any single alternative closing a
+/// group (ADR-11). Empty where it needs nothing, or more than [budget] allows.
+List<Set<String>> _gapsOf(
+  Model model,
+  Recipe recipe,
+  int budget, {
+  required bool restocking,
+}) {
   var gaps = [<String>{}];
   var short = false;
   for (final line in recipe.lines) {
-    if (line.isOptional || stockOfLine(model, line) != StockLevel.out) continue;
+    if (line.isOptional) continue;
+    final stock = stockOfLine(model, line);
+    if (restocking ? stock == StockLevel.in_ : stock != StockLevel.out) {
+      continue;
+    }
     short = true;
     final ways = {for (final name in line.ingredients) model.bottleNamed(name)};
     final grown = <String, Set<String>>{};

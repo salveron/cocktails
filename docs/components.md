@@ -331,7 +331,8 @@ Recipe? randomCanMake(Iterable<Recipe> candidates, Map<String, Availability> ava
     Random random, {String? besides});                // discovery.dart — FR-DIS-5
 
 final class Purchase { List<String> bottles; List<String> unlocks; }   // both A→Z
-List<Purchase> purchasesWithin(Model model, int budget, {int most = 25});  // FR-DIS-6
+List<Purchase> purchasesWithin(Model model, int budget,               // FR-DIS-6
+    {int most = 25, bool restocking = false});                        // FR-DIS-7, ADR 16
 ```
 
 `canMake` is the one reading of what the bar can manage now — low still being a bottle, and a
@@ -354,8 +355,15 @@ runs through `helpers.dart`, which stays unexported — no screen folds a name i
 `purchasesWithin` answers FR-DIS-6 ([ADR 15](adr/15-the-optimizer-answers-with-the-best-few.md)); 
 the algorithm is in [architecture.md](architecture.md#domain-computations). It returns the best 
 `most` baskets *of each size*, not the best `most` overall, so a one-bottle win is never crowded 
-out by the three-bottle baskets that almost always unlock more — which is also what leaves the 
-screen free to read them as one list or as a section per size.
+out by the three-bottle baskets that almost always unlock more — which is what will let the screen 
+ask for one size at a time off a single search.
+
+`restocking` is what "short" means ([ADR 16](adr/16-the-optimizer-buys-what-is-running-low.md), 
+FR-DIS-7): off, a line standing at out; on, a line short of full stock, so the bottles running low 
+join the pool and the goal becomes ready rather than merely makeable. Decided in one place — the 
+whole search below reads "short", never "out" — which is why it costs the algorithm nothing. 
+`canMake` does not move: the traffic light, the recipe order and the random pick all go on reading 
+low as makeable, and it is the optimizer's own goal that shifts.
 
 `displayMeasure` is how a card reads a line's amounts (FR-REC-7, FR-SET-1). The measure is the only 
 half that transforms, so it is the only half returned — and marking it as the card's own rather than 

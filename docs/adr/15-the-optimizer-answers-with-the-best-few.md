@@ -1,6 +1,6 @@
 # ADR: The optimizer answers with the best few
 
-**Status:** Proposed
+**Status:** Accepted
 
 ## Context
 
