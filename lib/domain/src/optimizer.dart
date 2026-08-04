@@ -6,6 +6,9 @@ import 'availability.dart';
 import 'helpers.dart';
 import 'model.dart';
 
+/// What a budget can be (FR-DIS-6) — one search at the largest answers them all.
+const budgets = [1, 2, 3];
+
 /// Bottles worth buying together and the recipes they unlock, both A→Z. No
 /// passenger rides along — every bottle closes a line some recipe is short of.
 final class Purchase {

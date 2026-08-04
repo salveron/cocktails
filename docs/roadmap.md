@@ -218,7 +218,27 @@ First usable slice; recipes reference both vocabularies, so this precedes Phase 
       flag-off case, and the performance test now times both readings over the one collection —
       58ms plain against 100ms restocking, the pool being bounded by the gaps' own bottles rather
       than by the shelf.
-- [ ] **M22 Optimizer screen** — budget selector, ranked combinations (FR-DIS-6/7).
+- [x] **M22 Optimizer screen** — budget selector, ranked combinations (FR-DIS-6/7), designed in
+      [ui-design.md](ui-design.md#shopping-screen). The budget picks *exactly* N bottles rather than
+      up to N, which is what ADR 15's shelf-per-size was for; and since the best few of each size
+      come off one search, the screen searches once at the largest budget and reads a size off the
+      answer. That the two agree is not obvious enough to comment — a wider budget widens the pool,
+      but only with bottles no recipe is short of on their own, which are dropped as passengers
+      either way — so it is pinned by test instead. The card is the recipes screen's, reused whole:
+      bottles as the title, what they unlock clipped beneath, the count trailing in neutral ink
+      (a number is no signal, so no chip). Open, each bottle carries its stock dot, which is where
+      the switch earns its reading: restocking mixes a bottle merely low with one there is none of.
+      Three empty states, and only the third — nothing at *this* size — has somewhere to go, so it
+      offers the smallest size that answers. `IndexedStack` turned out to be the milestone's real
+      constraint: every destination stays alive, so an ungated watch would have fired a ~100ms
+      search on every stock tap over on the inventory, the most frequent action in the app. The
+      shell now tells each destination whether it is the one on show and `purchasesProvider` is
+      `autoDispose`, so the search stops and its answer is let go with the screen. The one-row
+      header does not fit a 360dp phone as `SegmentedButton` sizes itself: `minimumSize` is dropped
+      on the way to a segment (`segmentStyleFor`), `visualDensity` is what reaches it, and 48dp a
+      segment is the floor. It fits with three pixels to spare, so the row is a `Wrap` — a narrower
+      phone or larger text drops the switch to a second line rather than off the edge, and both
+      readings are held by tests at 320 and 360.
 
 ## Phase 4 — Settings & data exchange
 

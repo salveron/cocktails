@@ -24,6 +24,47 @@ void main() {
   const low = StockLevel.low;
   const out = StockLevel.out;
 
+  // [withLow] turns a fifth of the shelf from out to low, one draw per bottle
+  // either way — so what restocking adds to the pool is measured against the
+  // very collection the plain reading leaves alone.
+  Model collection({
+    required int recipes,
+    required int bottles,
+    int seed = 7,
+    bool withLow = false,
+  }) {
+    final random = Random(seed);
+    final names = [for (var i = 0; i < bottles; i++) 'bottle $i'];
+    return Model(
+      ingredients: [
+        for (final name in names)
+          Ingredient(
+            name,
+            stock: switch (random.nextInt(5)) {
+              0 || 1 => inStock,
+              2 when withLow => low,
+              _ => out,
+            },
+          ),
+      ],
+      recipes: [
+        for (var i = 0; i < recipes; i++)
+          Recipe(
+            'recipe $i',
+            lines: [
+              for (var j = 0; j < 3 + random.nextInt(3); j++)
+                line(
+                  {
+                    names[random.nextInt(bottles)],
+                    if (random.nextInt(4) == 0) names[random.nextInt(bottles)],
+                  }.toList(),
+                ),
+            ],
+          ),
+      ],
+    );
+  }
+
   group('purchasesWithin', () {
     test('one bottle closing the only gap unlocks its recipe', () {
       final model = bar(
@@ -394,49 +435,58 @@ void main() {
     });
   });
 
-  group('at NFR-2 scale', () {
-    // [withLow] turns a fifth of the shelf from out to low, one draw per bottle
-    // either way — so what restocking adds to the pool is measured against the
-    // very collection the plain reading leaves alone.
-    Model collection({
-      required int recipes,
-      required int bottles,
-      int seed = 7,
-      bool withLow = false,
-    }) {
-      final random = Random(seed);
-      final names = [for (var i = 0; i < bottles; i++) 'bottle $i'];
-      return Model(
-        ingredients: [
-          for (final name in names)
-            Ingredient(
-              name,
-              stock: switch (random.nextInt(5)) {
-                0 || 1 => inStock,
-                2 when withLow => low,
-                _ => out,
-              },
-            ),
-        ],
-        recipes: [
-          for (var i = 0; i < recipes; i++)
-            Recipe(
-              'recipe $i',
-              lines: [
-                for (var j = 0; j < 3 + random.nextInt(3); j++)
-                  line(
-                    {
-                      names[random.nextInt(bottles)],
-                      if (random.nextInt(4) == 0)
-                        names[random.nextInt(bottles)],
-                    }.toList(),
-                  ),
-              ],
-            ),
-        ],
-      );
-    }
+  group('one search answers every size', () {
+    // What the shopping screen stands on: it searches once at the largest
+    // budget and reads one size at a time off that answer, rather than
+    // searching afresh whenever the budget moves (ui-design.md#shopping-screen).
+    test('a smaller budget is what the largest already holds at that size', () {
+      final model = collection(recipes: 120, bottles: 40, withLow: true);
+      for (final restocking in [false, true]) {
+        final whole = purchasesWithin(
+          model,
+          budgets.last,
+          restocking: restocking,
+        );
+        for (final budget in budgets) {
+          expect(
+            whole.where((p) => p.bottles.length <= budget).toList(),
+            purchasesWithin(model, budget, restocking: restocking),
+            reason: 'budget $budget, restocking $restocking',
+          );
+        }
+      }
+    });
 
+    // Why it holds: a wider budget widens the pool, but the bottles it adds
+    // are ones no recipe is short of on their own — they close nothing alone,
+    // and a basket unlocking nothing is dropped whatever the budget was.
+    test('the bottles a wider budget adds unlock nothing by themselves', () {
+      final model = bar(
+        {'gin': out, 'lime juice': out, 'campari': out},
+        {
+          'Gimlet': [
+            line(['gin']),
+            line(['lime juice']),
+          ],
+          'Campari Shot': [
+            line(['campari']),
+          ],
+        },
+      );
+      expect(purchasesWithin(model, 1), [
+        Purchase(['campari'], ['Campari Shot']),
+      ]);
+      expect(
+        purchasesWithin(model, 3).where((p) => p.bottles.length == 1).toList(),
+        [
+          Purchase(['campari'], ['Campari Shot']),
+        ],
+        reason: 'gin and lime juice reach the pool at 3, but not on their own',
+      );
+    });
+  });
+
+  group('at NFR-2 scale', () {
     test('answers a three-bottle budget over hundreds of recipes', () {
       final model = collection(recipes: 400, bottles: 120);
       final watch = Stopwatch()..start();

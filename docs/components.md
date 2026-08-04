@@ -330,6 +330,7 @@ bool canMake(Availability? availability);             // availability.dart — l
 Recipe? randomCanMake(Iterable<Recipe> candidates, Map<String, Availability> availability,
     Random random, {String? besides});                // discovery.dart — FR-DIS-5
 
+const budgets = [1, 2, 3];                            // what the optimizer offers (FR-DIS-6)
 final class Purchase { List<String> bottles; List<String> unlocks; }   // both A→Z
 List<Purchase> purchasesWithin(Model model, int budget,               // FR-DIS-6
     {int most = 25, bool restocking = false});                        // FR-DIS-7, ADR 16
@@ -364,6 +365,12 @@ join the pool and the goal becomes ready rather than merely makeable. Decided in
 whole search below reads "short", never "out" — which is why it costs the algorithm nothing. 
 `canMake` does not move: the traffic light, the recipe order and the random pick all go on reading 
 low as makeable, and it is the optimizer's own goal that shifts.
+
+One search at `budgets.last` answers every smaller budget as well: what it holds at a size or under 
+*is* that budget's own answer. A wider budget widens the pool, but only with bottles no recipe is 
+short of on their own — they close nothing alone, so a basket carrying one is dropped as a passenger 
+whatever the budget was. That is what lets the screen search once and read a size off the result 
+([ui-design.md](ui-design.md#shopping-screen)); it is pinned by test rather than asserted here.
 
 `displayMeasure` is how a card reads a line's amounts (FR-REC-7, FR-SET-1). The measure is the only 
 half that transforms, so it is the only half returned — and marking it as the card's own rather than 
@@ -445,10 +452,21 @@ one: the draw is made *by* the list, over the rows it is already showing, so the
 leave `VocabularyList` and no narrowing had to be named twice. What a screen supplies is the draw 
 itself; what it gets back is a name.
 
+`purchasesProvider` — `List<Purchase>` keyed on what counts as short (ADR 16), searched once at 
+`budgets.last` so the screen reads one size off the one answer. `autoDispose`, and watched only 
+while the shopping screen is the destination on show: the shell tells each destination whether it 
+is (`ShoppingScreen.showing`), since `IndexedStack` keeps all three alive and a stock tap on the 
+inventory would otherwise fire a search nobody is reading. The answer is let go with the screen and 
+made afresh on return — the search costs ~100ms at NFR-2 scale, which is a moment on arriving at a 
+screen and a stutter on every tap of another.
+
 Performance facts (no over-engineering):
 - Every mutation replaces whole `Model` → all model-derived recompute. Hundreds of recipes: availability 
   pass < 1ms; incremental unneeded (NFR-2).
-- Optimizer is sole expensive computation. Watched only by optimizer screen (never runs elsewhere).
+- Optimizer is sole expensive computation, and the sole reason a screen is told whether it is on show. 
+  Runs on the main thread: it is spent on arriving, on moving the budget and on flipping the switch — 
+  all moments a reader has just acted — where an isolate would buy the time back at the price of 
+  copying the model and a spinner on every edit.
 
 ## Data flows
 

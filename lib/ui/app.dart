@@ -23,31 +23,24 @@ class CocktailsApp extends StatelessWidget {
 }
 
 enum _Destination {
-  recipes(
-    'Recipes',
-    Icons.local_bar_outlined,
-    Icons.local_bar,
-    RecipesScreen(),
-  ),
-  inventory(
-    'Inventory',
-    Icons.inventory_2_outlined,
-    Icons.inventory_2,
-    InventoryScreen(),
-  ),
-  shopping(
-    'Shopping',
-    Icons.shopping_cart_outlined,
-    Icons.shopping_cart,
-    ShoppingScreen(),
-  );
+  recipes('Recipes', Icons.local_bar_outlined, Icons.local_bar),
+  inventory('Inventory', Icons.inventory_2_outlined, Icons.inventory_2),
+  shopping('Shopping', Icons.shopping_cart_outlined, Icons.shopping_cart);
 
-  const _Destination(this.label, this.icon, this.selectedIcon, this.screen);
+  const _Destination(this.label, this.icon, this.selectedIcon);
 
   final String label;
   final IconData icon;
   final IconData selectedIcon;
-  final Widget screen;
+
+  /// The screen behind it, told whether it is the one on show: all three stay
+  /// alive below, and the optimizer must not search for a screen nobody is
+  /// looking at (ui-design.md#shopping-screen).
+  Widget screen({required bool showing}) => switch (this) {
+    recipes => const RecipesScreen(),
+    inventory => const InventoryScreen(),
+    shopping => ShoppingScreen(showing: showing),
+  };
 }
 
 /// IndexedStack keeps destinations alive for scroll/search state preservation (NFR-1).
@@ -82,7 +75,8 @@ class _AppShellState extends State<AppShell> {
           child: IndexedStack(
             index: _current.index,
             children: [
-              for (final destination in _Destination.values) destination.screen,
+              for (final destination in _Destination.values)
+                destination.screen(showing: destination == _current),
             ],
           ),
         ),

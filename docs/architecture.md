@@ -143,7 +143,9 @@ Rules:
   always a subset, comparing counts settles it. Ranked by recipes unlocked, then fewest bottles, 
   then A→Z. Zero-yield never arises — it cannot beat its own parts. What counts as short is the 
   one thing the reader sets ([ADR 16](adr/16-the-optimizer-buys-what-is-running-low.md)): out of 
-  stock, or anything short of full stock, which is what puts the bottles running low in the pool.
+  stock, or anything short of full stock, which is what puts the bottles running low in the pool. 
+  Keeping the best few *of each size* is also what makes one search answer every budget, since the 
+  bottles a wider one adds close nothing on their own ([components.md](components.md#computations)).
 - **Line parsing**: shared parser/formatter, both routes (form, codec); takes unit vocabulary 
   (decides unit vs. name). Codec reads `units` first.
 - **Display transforms** (FR-REC-7, FR-SET-1): factor multiplies amounts (range ends together); 

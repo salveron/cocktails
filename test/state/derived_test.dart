@@ -68,4 +68,39 @@ void main() {
       });
     });
   });
+
+  group('purchasesProvider', () {
+    /// A bar out of both bottles: the pair unlocks both recipes and gin alone
+    /// unlocks one, so the one answer has to carry two sizes to be complete.
+    final short = Model(
+      ingredients: [Ingredient('gin'), Ingredient('campari')],
+      recipes: stored.recipes,
+    );
+
+    test(
+      'searches at the largest budget, every size in the one answer',
+      () async {
+        final container = await started(short);
+        expect(container.read(purchasesProvider(false)).map((p) => p.bottles), [
+          ['campari', 'gin'],
+          ['gin'],
+        ]);
+      },
+    );
+
+    test('answers each reading of what is short separately (ADR 16)', () async {
+      final container = await started(
+        Model(
+          ingredients: [Ingredient('gin', stock: StockLevel.low)],
+          recipes: [stored.recipes.last],
+        ),
+      );
+      expect(container.read(purchasesProvider(false)), isEmpty);
+      expect(container.read(purchasesProvider(true)).single.bottles, ['gin']);
+    });
+
+    test('holds nothing until the startup load lands', () {
+      expect(containerFor(short).read(purchasesProvider(false)), isEmpty);
+    });
+  });
 }

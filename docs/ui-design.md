@@ -8,7 +8,9 @@ requirements in [requirements.md](requirements.md).
 - **Three destinations** (Recipes, Inventory, Shopping) in Material 3 `NavigationBar` (NFR-1). 
   Settings: app bar gear (ratio, toggle, vocabularies, data exchange).
 - **`IndexedStack`** (keeps scroll/search). Forms/settings pushed via `Navigator`. 
-  Recipe view inside list. `Navigator` 1.0, no nested routers.
+  Recipe view inside list. `Navigator` 1.0, no nested routers. Each destination is told whether it is 
+  the one on show — staying alive is free for two of the three, and not for the 
+  [shopping screen](#shopping-screen).
 - **Theme**: seed colour, platform-picked light/dark. `dimmedInk` (`onSurfaceVariant` at 60%) is 
   the one dim: a hint, so empty ≠ filled; a bottle a group offers that the bar lacks. One home, so 
   the two cannot drift.
@@ -137,6 +139,37 @@ Create/edit: pushed page, Save in app bar. Mirrors file order (name, lines, tags
 - **Filter row** (legend): ingredient tags as chips (horizontal scroll). Picking narrows to 
   bottles with *all* picked tags (combines with name search, FR-INV-3). Add clears picks.
 - **Three faces**: empty, no match, list (third names narrowing source).
+
+## Shopping screen
+
+- **Budget picks exactly N** (FR-DIS-6): `SegmentedButton` 1/2/3, reading the baskets of *that* many 
+  bottles rather than up to that many. The best few of each size come off one search 
+  ([ADR 15](adr/15-the-optimizer-answers-with-the-best-few.md)), so a one-bottle win is never buried 
+  under the three-bottle baskets that almost always unlock more.
+- **One search, not three**: the screen searches once at the largest budget and reads a size off the 
+  answer, moving between sizes costing nothing. Why that is the same answer: 
+  [components.md](components.md#computations).
+- **"Low too" switch** (FR-DIS-7, [ADR 16](adr/16-the-optimizer-buys-what-is-running-low.md)): what 
+  counts as short. Off, only what is out of stock; on, anything short of full stock, so the bottles 
+  running low are bought beside the missing ones. Two words on the switch, the sentence in its tooltip 
+  — the label is what a reader scans, not what teaches them.
+- **Both controls on one row** above the list, and a `Wrap` rather than a `Row`: a phone too narrow, 
+  or a reader's larger text, drops the switch to a second line instead of carrying it off the edge. 
+  Segments sit at 48dp — a touch target's own floor, and `visualDensity` is what reaches them, 
+  `minimumSize` being dropped on the way to a segment.
+- **Cards expand in place**, the [recipes screen](#recipes-screen)'s idiom: title is the bottles joined 
+  by `+`, subtitle the recipes it unlocks (`·`-joined, clipped), trailing the count in 
+  `onSurfaceVariant` — a number is no signal, so no chip. Open, it reads each bottle with its stock 
+  dot and then every recipe in full, so the clipped subtitle finishes rather than moves.
+- **The dots are what the switch is worth reading**: restocking mixes a bottle merely running low 
+  with one there is none of, and the open card is where that is told. Plain, they all read out, which 
+  is the same thing a recipe card says about a line it is short of.
+- **Three empty states**, told apart by why there is nothing: no recipes to be short of; nothing short 
+  at all (worded by the reading in force); or nothing at this size, which is the only one with 
+  somewhere to go — it offers the smallest size that does answer, and moves there.
+- **Off screen it does not search.** The shell tells each destination whether it is the one on show; 
+  this screen watches nothing while it is not. The optimizer is the one computation that must not run 
+  for a reader who is not there ([components.md](components.md#state-contracts)).
 
 ## Tags screen
 
