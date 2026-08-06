@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 
+import 'amounts_screen.dart';
 import 'tags_screen.dart';
 import 'units_screen.dart';
 
-/// Settings pushed from app bar gear (ratio, display, export, tags, units).
+/// Settings pushed from app bar gear (amounts, export, tags, units).
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
 
@@ -23,6 +24,12 @@ class SettingsScreen extends StatelessWidget {
           title: 'Units',
           subtitle: 'What a recipe line is measured in, and its plural',
           page: UnitsScreen(),
+        ),
+        _Entry(
+          icon: Icons.swap_horiz,
+          title: 'Amounts',
+          subtitle: 'The unit amounts read in, and what each is worth',
+          page: AmountsScreen(),
         ),
       ],
     ),

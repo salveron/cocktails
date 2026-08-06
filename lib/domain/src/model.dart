@@ -356,6 +356,24 @@ final class Settings {
     FixedUnit.oz => ozMl,
   };
 
+  /// How many [to] one [from] is — the amounts screen's rows and a converted
+  /// measure alike.
+  double ratio(FixedUnit from, FixedUnit to) => mlPer(from) / mlPer(to);
+
+  /// These settings with one [from] made worth [n] of [to] — [ratio] written
+  /// back. [to]'s size is what moves, so redefining the part leaves the ounce
+  /// where it stood; where [to] is ml it has no size of its own, and [from]'s
+  /// moves instead.
+  Settings withRatio(FixedUnit from, FixedUnit to, double n) =>
+      to == FixedUnit.ml ? _sized(from, n) : _sized(to, mlPer(from) / n);
+
+  /// ml is the anchor — its size is 1 by definition, so there is none to set.
+  Settings _sized(FixedUnit unit, double ml) => switch (unit) {
+    FixedUnit.part => copyWith(partMl: ml),
+    FixedUnit.ml => this,
+    FixedUnit.oz => copyWith(ozMl: ml),
+  };
+
   Settings copyWith({double? partMl, double? ozMl, FixedUnit? display}) =>
       Settings(
         partMl: partMl ?? this.partMl,

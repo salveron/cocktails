@@ -255,10 +255,22 @@ First usable slice; recipes reference both vocabularies, so this precedes Phase 
       with it: `_asWritten` was hard-coded to `part`, which is why the setting had nothing to
       switch, so it becomes the settings' own and FR-REC-7's note flips sense — "(part)" is the
       transform under an ml reader. Shape only; the screen that sets any of it is M23a's.
-- [ ] **M23a Amounts screen** — the pushed screen behind Settings (FR-SET-1): the global unit
-      picked, and the two ratios running *from* it — `part→ml` and `part→oz` under part, `ml→part`
-      and `ml→oz` under ml. Picking another unit recomputes the pair on screen from what is
-      entered, nothing on disk being anchored to the pick.
+- [x] **M23a Amounts screen** — the pushed screen behind Settings (FR-SET-1), designed in
+      [ui-design.md](ui-design.md#amounts): the global unit picked, and the two ratios running from
+      it, each a sentence with the number as its only field. ADR 17's own wording turned out to be
+      the milestone's one real question — the ratios running *from* the global unit read "1 ml =
+      0.0333 part" under ml, a number no one reads or types back, and one whose rounding would move
+      a size on the way in. So ml never leads: under it each row leads with the unit it sizes, which
+      is the pair the file already stores, and every pick keeps its numbers human. Which size a row
+      writes is what the ADR left open, and the layout answers it — the first row is always what a
+      part is worth, the second what an ounce is, so redefining the part leaves the ounce where it
+      stood and the row reading across both follows instead. Rows are readings of the sizes and
+      never the reverse: a pick rewrites both readings and no size, and a row left alone writes
+      nothing back, so switching round the three cannot drift them and four-decimal display costs
+      nothing. `Settings` gains `ratio` and `withRatio`, the one home for reading that relation and
+      writing it, which `displayMeasure` now shares. Validation is the file's own, plus the one
+      thing a size cannot say for itself: a ratio must be above zero, zero having no inverse. The
+      card's ⋮ heading over ×1–×4 becomes "Scale", so "Amounts" means one thing in the app.
 - [ ] **M24 Export** — share a copy of the store file via the share sheet (FR-DAT-1).
 - [ ] **M25 Import** — file picker, validation report, confirmation with automatic
       pre-import export, atomic replace (FR-DAT-3/4); confirmation-flow widget test.

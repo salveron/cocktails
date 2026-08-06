@@ -678,7 +678,7 @@ class _ScaleDialogState extends State<_ScaleDialog> {
           ),
           const SizedBox(height: 20),
           _section(
-            'Amounts',
+            'Scale',
             SegmentedButton<int>(
               segments: [
                 for (final factor in scaleFactors)

@@ -6,7 +6,7 @@ requirements in [requirements.md](requirements.md).
 ## App shell
 
 - **Three destinations** (Recipes, Inventory, Shopping) in Material 3 `NavigationBar` (NFR-1). 
-  Settings: app bar gear (ratio, toggle, vocabularies, data exchange).
+  Settings: app bar gear (amounts, vocabularies, data exchange).
 - **`IndexedStack`** (keeps scroll/search). Forms/settings pushed via `Navigator`. 
   Recipe view inside list. `Navigator` 1.0, no nested routers. Each destination is told whether it is 
   the one on show — staying alive is free for two of the three, and not for the 
@@ -198,6 +198,29 @@ Behind Settings. Form, not `VocabularyList` (no search/sort). Rows editable in p
 - **Delete blocked** while lines use it (names recipes). Unused row goes on save; 
   discard restores.
 - **Validation** same as import: errors under field, Save blocked.
+
+## Amounts
+
+Behind Settings, below [Units](#units) — what those three fixed names are worth (FR-SET-1). The 
+Units screen's shape and its `EditorScaffold`, so Save and the discard prompt read alike on both: 
+one dimmed sentence, the global unit, then two rows. Nothing else.
+
+- **Global unit**: `SegmentedButton` over the fixed three — the recipe card's own picker, since it 
+  is the same choice made globally rather than for one card.
+- **Two rows, a sentence each** — "1 part = [30] ml", the number their only field. The global unit 
+  leads, *except* ml: "1 ml = 0.0333 part" is a number no one reads or types back, so under ml each 
+  row leads with the unit it sizes — which is the pair the file itself stores, making that pick a 
+  plain view of storage. The three parts are columns, not a written width, so the fields stand in 
+  line whatever the units are spelled like and a reader's larger text widens the sentence rather 
+  than wrapping it.
+- **A row owns one size**: the first what a part is worth, the second what an ounce is. So 
+  redefining the part leaves the ounce where it stood ([ADR 17](adr/17-the-fixed-units-interconvert.md) 
+  — a part is a preference, an ounce a constant), and the row reading across both follows instead. 
+  A pick rewrites both readings and no size, so switching round the three cannot drift them.
+- **Readings round to four decimals**, enough to spell a US ounce exactly. Only the reading rounds: 
+  a row left alone writes nothing back, so a stored size keeps every digit it had.
+- **Validation** same as import, plus what a size cannot say for itself: a ratio must be a number 
+  above zero, zero having no inverse to store.
 
 ## Tag and stock colours
 

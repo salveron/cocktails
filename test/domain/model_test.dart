@@ -401,6 +401,58 @@ void main() {
       expect(settings.mlPer(FixedUnit.oz), 30);
     });
 
+    test('ratio derives every pair from the two sizes', () {
+      const settings = Settings(partMl: 30, ozMl: 15);
+      expect(settings.ratio(FixedUnit.part, FixedUnit.ml), 30);
+      expect(settings.ratio(FixedUnit.part, FixedUnit.oz), 2);
+      expect(settings.ratio(FixedUnit.oz, FixedUnit.part), 0.5);
+      expect(settings.ratio(FixedUnit.ml, FixedUnit.oz), 1 / 15);
+      for (final unit in FixedUnit.values) {
+        expect(settings.ratio(unit, unit), 1);
+      }
+    });
+
+    test('withRatio moves the trailing unit, ml having no size', () {
+      const settings = Settings(partMl: 30, ozMl: 15);
+      // Trailing ml: the leading unit is the only one with a size to take it.
+      expect(
+        settings.withRatio(FixedUnit.part, FixedUnit.ml, 45),
+        const Settings(partMl: 45, ozMl: 15),
+      );
+      expect(
+        settings.withRatio(FixedUnit.oz, FixedUnit.ml, 29.5735),
+        const Settings(partMl: 30, ozMl: 29.5735),
+      );
+      // Neither is ml, so the part stands and the ounce moves under it.
+      expect(
+        settings.withRatio(FixedUnit.part, FixedUnit.oz, 1),
+        const Settings(partMl: 30, ozMl: 30),
+      );
+      expect(
+        settings.withRatio(FixedUnit.oz, FixedUnit.part, 0.5),
+        const Settings(partMl: 30, ozMl: 15),
+      );
+    });
+
+    test('withRatio inverts ratio, and the display rides along', () {
+      const settings = Settings(
+        partMl: 27,
+        ozMl: 29.5735,
+        display: FixedUnit.oz,
+      );
+      for (final (from, to) in [
+        (FixedUnit.part, FixedUnit.ml),
+        (FixedUnit.oz, FixedUnit.ml),
+        (FixedUnit.part, FixedUnit.oz),
+        (FixedUnit.oz, FixedUnit.part),
+      ]) {
+        final same = settings.withRatio(from, to, settings.ratio(from, to));
+        expect(same.partMl, closeTo(settings.partMl, 1e-12));
+        expect(same.ozMl, closeTo(settings.ozMl, 1e-12));
+        expect(same.display, FixedUnit.oz);
+      }
+    });
+
     test('equality and hashCode isolate each field', () {
       expect(const Settings(), const Settings());
       expect(const Settings().hashCode, const Settings().hashCode);

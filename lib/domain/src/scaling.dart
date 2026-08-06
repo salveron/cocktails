@@ -20,7 +20,7 @@ String displayMeasure(
   final from = FixedUnit.named(line.unit);
   final converts = from != null && from != settings.display;
   final factor = converts
-      ? scale * settings.mlPer(from) / settings.mlPer(settings.display)
+      ? scale * settings.ratio(from, settings.display)
       : scale.toDouble();
   return formatMeasure(
     _scaled(line.amount, factor),

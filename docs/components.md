@@ -50,7 +50,7 @@ lib/
                                #   and `neutralSwatch`, the ground a chip meaning
                                #   nothing by its colour stands on (ADR 12)
     screens/                   # one file per destination, plus settings, tags, units,
-                               #   recipe form
+                               #   amounts, recipe form
     widgets/                   # empty_state, model_view, search_field, startup_issues,
                                #   color_chip — the pill, chip, dot and dotted name,
                                #     plus `chipRadius`, the corner a chip and the ink
@@ -128,8 +128,10 @@ Two identity conventions:
   is the vocabulary, `RecipeLine.unit` a name into it, and the three the app leans on are `FixedUnit` 
   ([ADR 17](adr/17-the-fixed-units-interconvert.md)) — one enum for the units no one may rename and 
   the readings `Settings.display` chooses among, since they are the same three. `Settings` holds 
-  each one's size in ml (`partMl`, `ozMl`, ml being the anchor at 1), so the ratio between any two 
-  is derived by `mlPer` rather than stored:
+  each one's size in ml (`partMl`, `ozMl`, ml being the anchor at 1), so `ratio` derives any pair 
+  rather than storing it, and `withRatio` writes one back — moving the trailing unit's size, so 
+  redefining the part leaves the ounce where it stood. Both a converted measure and the 
+  [amounts screen](ui-design.md#amounts) read the relation there rather than dividing themselves:
 
 ```dart
 final class Unit {
