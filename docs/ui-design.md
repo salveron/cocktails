@@ -26,6 +26,14 @@ Applies to inventory (FR-INV-1) and recipes (FR-DIS-2) identically. Entries answ
 so a query reaches what it is built from. Hence "answers to", not "is called", when nothing matches. 
 Filter and order alike are widget state, never persisted, never on the model's side.
 
+**A narrowing changed is read from the top** — a search typed, a tag or a base picked, another order 
+chosen. What is on show is then a different list, so it stands at its first row; the collection 
+changing underneath (a rename, a stamp, an entry gone) moves nothing. The two are told apart by what 
+is *picked*, not by what is on show, since only the first is the reader's own act. It re-anchors the 
+scroller besides ([ADR 13](adr/13-lists-scroll-by-index.md)), which is what keeps a narrowed list off 
+the offset the wider one stood at — where it would land mid-results, then jerk straight later, when 
+an unrelated card is expanded.
+
 Orders behind one icon (FR-DIS-8): chip row shows offerings + current (direction). Picking current 
 reverses list. No separate Z→A/missing-first chips. Tie-break: name. Rows stable during edit; 
 list out-of-order until touched after external change. Not persisted.

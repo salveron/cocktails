@@ -147,6 +147,32 @@ final basedModel = Model(
   ],
 );
 
+/// Two bases with rows enough behind each, and a tag on every second one, so
+/// every way of narrowing leaves a list that still scrolls — where a reader is
+/// put is a question with an answer only while there is somewhere else to be.
+const spirits = {'gin': 'Gin', 'vodka': 'Vodka'};
+
+final spiritedModel = Model(
+  ingredients: [
+    for (final spirit in spirits.keys)
+      Ingredient(spirit, stock: StockLevel.in_),
+  ],
+  recipeTags: const [Tag('sour', color: TagColor.sand)],
+  recipes: [
+    for (final spirit in spirits.entries)
+      for (var row = 1; row <= 20; row++)
+        Recipe(
+          '${spirit.value} ${row.toString().padLeft(2, '0')}',
+          tags: row.isEven ? const ['sour'] : const [],
+          lines: [
+            RecipeLine(const Amount(1), 'part', [
+              spirit.key,
+            ], mark: LineMark.base),
+          ],
+        ),
+  ],
+);
+
 /// A tag nothing wears, so the chips alone can empty the list.
 final untriedModel = recipeModel.withTag(
   TagKind.recipe,
@@ -613,6 +639,53 @@ void main() {
         'Negroni',
         'Whiskey Sour',
       ]);
+    });
+  });
+
+  group('a narrowing is read from the top', () {
+    /// The row the list is standing on.
+    String? standingOn(WidgetTester tester) => rowTexts(tester).first;
+
+    /// Puts the reader well away from the first row of whatever is on show.
+    Future<void> scrollDown(WidgetTester tester) async {
+      await tester.drag(find.byType(ListTile).first, const Offset(0, -600));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('a base picked stands the list at its first row', (
+      tester,
+    ) async {
+      await pumpRecipes(tester, spiritedModel);
+      await scrollDown(tester);
+      expect(standingOn(tester), isNot('Gin 01'));
+      await pickBase(tester, 'vodka');
+      expect(standingOn(tester), 'Vodka 01');
+    });
+
+    testWidgets('so do a search, a tag, and another order', (tester) async {
+      await pumpRecipes(tester, spiritedModel);
+      await scrollDown(tester);
+      await search(tester, 'Vodka');
+      expect(standingOn(tester), 'Vodka 01');
+      await scrollDown(tester);
+      await pickTag(tester, 'sour');
+      expect(standingOn(tester), 'Vodka 02');
+      await scrollDown(tester);
+      await sortBy(tester, 'Name');
+      expect(standingOn(tester), 'Vodka 02');
+    });
+
+    testWidgets('the collection changing under the reader moves nothing', (
+      tester,
+    ) async {
+      await pumpRecipes(tester, spiritedModel);
+      await scrollDown(tester);
+      final standing = standingOn(tester)!;
+      // Stamping rewrites the model, so every row is built afresh under a
+      // reader who has narrowed nothing.
+      await tap(tester, find.text(standing));
+      await tap(tester, madeButton);
+      expect(standingOn(tester), standing);
     });
   });
 

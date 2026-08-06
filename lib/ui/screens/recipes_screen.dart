@@ -241,6 +241,13 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
     final spirits = baseSpirits(model);
     if (spirits.isEmpty) return null;
     final chosen = _standingPick(model, spirits);
+    // What it narrows by is exactly what its sentence names, so the pick is
+    // spelled out once and read as both.
+    final narrowing = switch (chosen) {
+      null => null,
+      (spirit: null) => 'no base at all',
+      (spirit: final spirit) => '$spirit as its base',
+    };
     return (
       row: _BaseChip(
         spirits: spirits,
@@ -248,11 +255,8 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
         onPick: (pick) => setState(() => _base = pick),
       ),
       test: (recipe) => chosen == null || marksBase(recipe, chosen.spirit),
-      narrowing: switch (chosen) {
-        null => null,
-        (spirit: null) => 'no base at all',
-        (spirit: final spirit) => '$spirit as its base',
-      },
+      narrowing: narrowing,
+      picks: [?narrowing],
     );
   }
 

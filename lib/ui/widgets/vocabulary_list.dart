@@ -5,6 +5,7 @@ library;
 import 'dart:async';
 
 import 'package:cocktails/domain/domain.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 
@@ -39,11 +40,14 @@ extension ToggleMembership<T> on Set<T> {
   }
 }
 
-/// Controls to narrow list: row widget, test function, human description.
+/// Controls to narrow list: row widget, test function, human description, and
+/// [picks] — what is chosen, spelled out, which is what tells one narrowing
+/// from another where the sentence a reader is shown cannot.
 typedef ListFilter<T> = ({
   Widget row,
   bool Function(T entry) test,
   String? narrowing,
+  List<String> picks,
 });
 
 /// The button over a list that draws one of the rows on show — the recipes'
@@ -102,6 +106,7 @@ ListFilter<T>? tagFilter<T>({
     test: (entry) =>
         (leading?.test(entry) ?? true) && chosen.every(tagsOf(entry).contains),
     narrowing: reasons.isEmpty ? null : reasons.join(' and '),
+    picks: [...?leading?.picks, ...chosen],
   );
 }
 
@@ -233,6 +238,13 @@ class _VocabularyListState<T> extends State<VocabularyList<T>> {
   final _positions = ItemPositionsListener.create();
   String? _reveal;
 
+  /// What the reader last narrowed by, and whether they have narrowed since.
+  /// Narrowed again, what is on show is a different list, and a different list
+  /// is read from the top — where the collection changing under them, a rename
+  /// or an entry gone, leaves them where they were reading.
+  List<String>? _narrowedBy;
+  bool _home = false;
+
   /// The row a draw landed on, washing to say which it is, and how many draws
   /// have landed — the count starting the wash over where one lands on the row
   /// another just left washing.
@@ -272,11 +284,26 @@ class _VocabularyListState<T> extends State<VocabularyList<T>> {
   @override
   Widget build(BuildContext context) {
     final add = widget.onAdd;
+    _notice();
     final matches = widget.entries.isEmpty ? <T>[] : _matches();
     return Scaffold(
       body: widget.entries.isEmpty ? widget.empty : _searchable(add, matches),
       floatingActionButton: _buttons(add, matches),
     );
+  }
+
+  /// Notes what the reader is narrowing by — the search, the order, and the
+  /// filter's own picks — and marks the list for home where that has changed.
+  void _notice() {
+    final by = [
+      _search.text.trim(),
+      _order,
+      '$_backwards',
+      ...?widget.filter?.picks,
+    ];
+    final narrowedBy = _narrowedBy;
+    _home |= narrowedBy != null && !listEquals(narrowedBy, by);
+    _narrowedBy = by;
   }
 
   /// The entries on show: what the search reaches and the filter keeps, where
@@ -334,8 +361,14 @@ class _VocabularyListState<T> extends State<VocabularyList<T>> {
     _reveal = draw.draw(onShow);
   }
 
-  /// Puts the drawn row on screen once the list has measured itself around it,
-  /// then washes it. A draw is asked for while the rows still stand as they
+  /// Puts the list where it is next to stand, once it has measured itself: the
+  /// top, where a narrowing has made a different list of it, or the row a draw
+  /// named. Home first — a draw is made over rows already on show, so the two
+  /// never wait together, and going home re-anchors the package on row one
+  /// besides (ADR 13), which is what leaves a narrowed list reading from its
+  /// start rather than wherever the wider one stood.
+  ///
+  /// The drawn row, then. A draw is asked for while the rows still stand as they
   /// did: the screen opens the one named and shuts whatever stood open, and a
   /// row already in view is reached in pixels rather than by index — so
   /// scrolling any earlier aims at where the row *was*, and a tall card
@@ -343,6 +376,11 @@ class _VocabularyListState<T> extends State<VocabularyList<T>> {
   /// the signal that it is safe. The wash waits for the scroll in turn, having
   /// nothing to say while the row it names is still moving.
   void _reach() {
+    if (_home) {
+      _home = false;
+      if (_scroller.isAttached) _scroller.jumpTo(index: 0);
+      return;
+    }
     final drawn = _reveal;
     if (drawn == null) return;
     _reveal = null;
