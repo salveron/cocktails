@@ -5,7 +5,8 @@ const gin = RecipeLine(Amount(1.5), 'part', ['gin'], mark: LineMark.base);
 const bitters = RecipeLine(Amount(2), 'dash', ['bitters']);
 const rum = RecipeLine(Amount.range(1.5, 2), 'part', ['white rum']);
 
-const inMl = Settings(display: DisplayUnit.ml);
+const inMl = Settings(display: FixedUnit.ml);
+const inOz = Settings(display: FixedUnit.oz);
 
 /// The measure alone — the only half that transforms; a card writes the rest.
 String read(
@@ -38,16 +39,61 @@ void main() {
     test('parts convert at the ratio the settings hold (FR-SET-1)', () {
       expect(read(gin, settings: inMl), '45 ml');
       expect(
-        read(
-          gin,
-          settings: const Settings(partMl: 25, display: DisplayUnit.ml),
-        ),
+        read(gin, settings: const Settings(partMl: 25, display: FixedUnit.ml)),
         '37.5 ml',
       );
     });
 
-    test('what is already measured shows as entered', () {
+    test('what no ratio reaches shows as entered', () {
       expect(read(bitters, settings: inMl), '2 dashes');
+      expect(read(bitters, settings: inOz), '2 dashes');
+    });
+
+    test('every fixed unit reads in the one picked (ADR 17)', () {
+      // 30 ml a part and 30 ml an ounce, so the three land on round numbers
+      // and it is the conversion being read rather than the rounding.
+      const round = Settings(ozMl: 30);
+      const millilitres = RecipeLine(Amount(60), 'ml', ['gin']);
+      const ounces = RecipeLine(Amount(2), 'oz', ['gin']);
+      expect(
+        read(millilitres, settings: round.copyWith(display: FixedUnit.oz)),
+        '2 oz',
+      );
+      expect(
+        read(ounces, settings: round.copyWith(display: FixedUnit.ml)),
+        '60 ml',
+      );
+      expect(read(ounces, settings: round), '2 parts');
+      expect(
+        read(gin, settings: round.copyWith(display: FixedUnit.oz)),
+        '1.5 oz',
+      );
+    });
+
+    test('the unit picked is the one a line already stands in', () {
+      const ounces = RecipeLine(Amount(1.5), 'oz', ['gin']);
+      expect(read(ounces, settings: inOz), '1.5 oz');
+    });
+
+    test('an ounce is what the settings say it is, not what it is', () {
+      const ounces = RecipeLine(Amount(1), 'oz', ['gin']);
+      expect(read(ounces, settings: inMl), '29.57 ml');
+      expect(
+        read(ounces, settings: const Settings(ozMl: 30, display: FixedUnit.ml)),
+        '30 ml',
+      );
+    });
+
+    test('a fixed unit spelled otherwise still converts (ADR 08)', () {
+      const ounces = RecipeLine(Amount(2), 'OZ', ['gin']);
+      expect(
+        read(
+          ounces,
+          settings: const Settings(ozMl: 30, display: FixedUnit.ml),
+          units: const [Unit(partUnit), Unit(mlUnit), Unit('OZ')],
+        ),
+        '60 ml',
+      );
     });
 
     test('a card asking for both gets both', () {

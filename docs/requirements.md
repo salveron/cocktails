@@ -51,8 +51,9 @@ Two tag vocabularies separate; one name may exist in both (different meanings).
 - **FR-VOC-5** Measurement units are a vocabulary of their own ([ADR 09](adr/09-units-are-a-vocabulary.md)),
   managed from Settings: add, rename (propagates to every line), delete (blocked while a line uses
   it), and a plural per unit — left empty where it reads like the name ("ml", "oz"). Seeded with
-  part, ml, oz, dash, barspoon, drop, piece. **part** and **ml** cannot be renamed or deleted: the
-  ratio and the display toggle are anchored to them (FR-SET-1); their plurals are editable.
+  part, ml, oz, dash, barspoon, drop, piece. **part**, **ml** and **oz** cannot be renamed or
+  deleted: the ratios and the global unit are anchored to them (FR-SET-1,
+  [ADR 17](adr/17-the-fixed-units-interconvert.md)); their plurals are editable.
 
 - **FR-VOC-6** Ingredient answers to multiple names ([ADR 10](adr/10-ingredient-aliases.md)): 
   aliases in entry, resolved wherever names resolve (recipe line, search, import). 
@@ -101,9 +102,11 @@ empty so no reference to it can mean two things.
 
 ### Settings
 
-- **FR-SET-1** Global ratio (ml per part). Toggle switches part-based amounts parts↔ml; 
-  others display as entered. One open recipe reads in other unit via toggle (FR-REC-7). 
-  Ratio anchored to fixed part/ml units (FR-VOC-5).
+- **FR-SET-1** One global unit, picked from the fixed three, and a ratio per convertible one 
+  ([ADR 17](adr/17-the-fixed-units-interconvert.md)): a line measured in part, ml or oz reads in 
+  the one picked; anything else displays as entered. What a part and an ounce are worth is the 
+  reader's to set. Display only — nothing converted is written. One open recipe reads otherwise 
+  without moving the global (FR-REC-7).
 
 ### Data exchange
 

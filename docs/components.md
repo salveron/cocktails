@@ -125,7 +125,11 @@ Two identity conventions:
   `TagKind` names the side, and every tag operation takes one rather than existing twice under two 
   names — which is also what keeps the UI from re-deriving the distinction to abstract over it.
 - **A unit is an entry, not an enum** ([ADR 09](adr/09-units-are-a-vocabulary.md)). `Model.units`
-  is the vocabulary, `RecipeLine.unit` a name into it, and the two the app leans on are constants:
+  is the vocabulary, `RecipeLine.unit` a name into it, and the three the app leans on are `FixedUnit` 
+  ([ADR 17](adr/17-the-fixed-units-interconvert.md)) — one enum for the units no one may rename and 
+  the readings `Settings.display` chooses among, since they are the same three. `Settings` holds 
+  each one's size in ml (`partMl`, `ozMl`, ml being the anchor at 1), so the ratio between any two 
+  is derived by `mlPer` rather than stored:
 
 ```dart
 final class Unit {
@@ -136,8 +140,8 @@ final class Unit {
   bool answersTo(String token);     // either spelling, folded (ADR 08)
 }
 const defaultUnits = [Unit(partUnit, plural: 'parts'), Unit(mlUnit), …];
-const partUnit = 'part', mlUnit = 'ml';          // FR-REC-2, FR-SET-1 anchor here
-const reservedUnits = [partUnit, mlUnit];        // neither renameable nor deletable
+const partUnit = 'part', mlUnit = 'ml', ozUnit = 'oz';   // what FixedUnit is anchored to
+bool isReservedUnit(String name);                // FixedUnit.named, so the three have one home
 
 extension UnitLookup on List<Unit> {
   Unit? unitNamed(String token);   // either spelling, or an unwritten plural ("2 cups")
@@ -149,7 +153,7 @@ extension UnitLookup on List<Unit> {
 
 ```dart
 enum StockLevel { in_('in'), low('low'), out('out'); … }   // token differs from the identifier
-enum DisplayUnit { part('part'), ml('ml'); … }
+enum FixedUnit { part('part'), ml('ml'), oz('oz'); … }   // ADR 17: also the reserved units
 enum LineMark { base('base'), optional('optional'); … }    // ADR 06
 enum TagColor { teal('teal'), … slate('slate'); … }        // ADR 07, open to new members
 ```
@@ -376,7 +380,9 @@ whatever the budget was. That is what lets the screen search once and read a siz
 half that transforms, so it is the only half returned — and marking it as the card's own rather than 
 the recipe's is what the split was for. The card writes the body itself, one alternative at a time 
 (ADR 11). A caller wanting a unit the settings do not hold passes `settings.copyWith(display: …)` — 
-the reading is the settings that card is under, not a second notion of one.
+the reading is the settings that card is under, not a second notion of one. A line converts only 
+where `FixedUnit.named` answers for its unit, and only into the one `display` names: the two sizes 
+give the factor, and everything else prints as entered (ADR 17).
 
 (See components.md line-by-line for signatures — formatted for readability in source)
 

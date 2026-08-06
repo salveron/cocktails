@@ -15,7 +15,7 @@ enum ValidationIssueKind {
   duplicateName,
   reservedSuffix,
   separatorInName,
-  partMlNotPositive,
+  unitSizeNotPositive,
   missingUnit,
   unknownUnit,
   unknownIngredient,
@@ -83,14 +83,21 @@ List<ValidationIssue> validateModel({
   List<Recipe> recipes = const [],
 }) {
   final issues = <ValidationIssue>[];
-  if (settings.partMl <= 0) {
-    issues.add(
-      ValidationIssue(
-        ['settings', 'part_ml'],
-        ValidationIssueKind.partMlNotPositive,
-        'part_ml must be positive: ${settings.partMl}',
-      ),
-    );
+  // A size of zero or less would leave a conversion meaningless in both
+  // directions, ml being what the other two are measured against (ADR 17).
+  for (final (key, size) in [
+    ('part_ml', settings.partMl),
+    ('oz_ml', settings.ozMl),
+  ]) {
+    if (size <= 0) {
+      issues.add(
+        ValidationIssue(
+          ['settings', key],
+          ValidationIssueKind.unitSizeNotPositive,
+          '$key must be positive: $size',
+        ),
+      );
+    }
   }
   _checkUnits(issues, units);
   final ingredientTagNames = ingredientTags.map((t) => t.name).toList();
@@ -164,13 +171,13 @@ void _checkUnits(List<ValidationIssue> issues, List<Unit> units) {
       ],
     );
   }
-  for (final reserved in reservedUnits) {
-    if (!units.any((unit) => unit.name.sameName(reserved))) {
+  for (final fixed in FixedUnit.values) {
+    if (!units.any((unit) => unit.name.sameName(fixed.token))) {
       issues.add(
         ValidationIssue(
           const ['units'],
           ValidationIssueKind.missingUnit,
-          'units must include "$reserved"',
+          'units must include "${fixed.token}"',
         ),
       );
     }

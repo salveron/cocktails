@@ -76,8 +76,8 @@ class _UnitsFormState extends ConsumerState<_UnitsForm> {
       children: [
         Text(
           'A plural left empty reads like the name. '
-          '"$partUnit" and "$mlUnit" cannot be renamed or deleted — the '
-          'ratio converts between them.',
+          '"$partUnit", "$mlUnit" and "$ozUnit" cannot be renamed or deleted — '
+          'amounts convert between them.',
           style: TextStyle(
             color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),

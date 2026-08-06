@@ -22,15 +22,27 @@ enum StockLevel {
       _fromToken(values, text, (v) => v.token);
 }
 
-enum DisplayUnit {
-  part('part'),
-  ml('ml');
+/// The fixed units (FR-VOC-5): no rename, no delete, and the only ones a
+/// measure converts between — `Settings.display` names the one they all read in
+/// ([ADR 17](../../../docs/adr/17-the-fixed-units-interconvert.md)).
+enum FixedUnit {
+  part(partUnit),
+  ml(mlUnit),
+  oz(ozUnit);
 
   final String token;
-  const DisplayUnit(this.token);
+  const FixedUnit(this.token);
 
-  static DisplayUnit? fromToken(String text) =>
+  static FixedUnit? fromToken(String text) =>
       _fromToken(values, text, (v) => v.token);
+
+  /// The fixed unit [name] spells, or null where it is one of the reader's own.
+  static FixedUnit? named(String name) {
+    for (final unit in values) {
+      if (unit.token.sameName(name)) return unit;
+    }
+    return null;
+  }
 }
 
 /// A recipe line's mark: base spirit or optional (ADR-06).
@@ -208,20 +220,20 @@ final class Unit {
 const defaultUnits = [
   Unit(partUnit, plural: 'parts'),
   Unit(mlUnit),
-  Unit('oz'),
+  Unit(ozUnit),
   Unit('dash', plural: 'dashes'),
   Unit('barspoon', plural: 'barspoons'),
   Unit('drop', plural: 'drops'),
   Unit('piece', plural: 'pieces'),
 ];
 
-/// Reserved units: omitted unit is a part (FR-REC-2), ratio uses these (FR-SET-1).
+/// The names [FixedUnit] is anchored to: an omitted unit is a part (FR-REC-2),
+/// and the ratios convert between the three (FR-SET-1).
 const partUnit = 'part';
 const mlUnit = 'ml';
-const reservedUnits = [partUnit, mlUnit];
+const ozUnit = 'oz';
 
-bool isReservedUnit(String name) =>
-    reservedUnits.any((reserved) => reserved.sameName(name));
+bool isReservedUnit(String name) => FixedUnit.named(name) != null;
 
 extension UnitLookup on List<Unit> {
   /// The unit [token] names; exact spellings answer first.
@@ -322,24 +334,48 @@ final class MadeHistory {
   String toString() => 'MadeHistory(last: $last, times: $times)';
 }
 
+/// What a part and an ounce are worth, and which fixed unit amounts read in
+/// (FR-SET-1). Sizes are held in ml because ml is the anchor — it needs none of
+/// its own — so the ratios between any two are derived rather than stored
+/// (ADR 17).
 final class Settings {
   final double partMl;
-  final DisplayUnit display;
+  final double ozMl;
+  final FixedUnit display;
 
-  const Settings({this.partMl = 30, this.display = DisplayUnit.part});
+  const Settings({
+    this.partMl = 30,
+    this.ozMl = 29.5735,
+    this.display = FixedUnit.part,
+  });
 
-  Settings copyWith({double? partMl, DisplayUnit? display}) =>
-      Settings(partMl: partMl ?? this.partMl, display: display ?? this.display);
+  /// How many ml one [unit] is.
+  double mlPer(FixedUnit unit) => switch (unit) {
+    FixedUnit.part => partMl,
+    FixedUnit.ml => 1,
+    FixedUnit.oz => ozMl,
+  };
+
+  Settings copyWith({double? partMl, double? ozMl, FixedUnit? display}) =>
+      Settings(
+        partMl: partMl ?? this.partMl,
+        ozMl: ozMl ?? this.ozMl,
+        display: display ?? this.display,
+      );
 
   @override
   bool operator ==(Object other) =>
-      other is Settings && other.partMl == partMl && other.display == display;
+      other is Settings &&
+      other.partMl == partMl &&
+      other.ozMl == ozMl &&
+      other.display == display;
 
   @override
-  int get hashCode => Object.hash(partMl, display);
+  int get hashCode => Object.hash(partMl, ozMl, display);
 
   @override
-  String toString() => 'Settings($partMl ml/part, display: ${display.token})';
+  String toString() =>
+      'Settings($partMl ml/part, $ozMl ml/oz, display: ${display.token})';
 }
 
 final class Recipe {

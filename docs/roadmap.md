@@ -242,7 +242,23 @@ First usable slice; recipes reference both vocabularies, so this precedes Phase 
 
 ## Phase 4 — Settings & data exchange
 
-- [ ] **M23 Settings screen** — part-to-ml ratio editor and display toggle (FR-SET-1).
+- [x] **M23 The fixed units interconvert** — FR-SET-1's global half, never implemented and now
+      widened ([ADR 17](adr/17-the-fixed-units-interconvert.md)): `oz` joins `part` and `ml` among
+      the units no one may rename, and a line measured in any of the three reads in the one the
+      settings name, everything else as entered. The two are one enum — `FixedUnit` is both the
+      reserved names and what `display` chooses among, since asking twice would let them drift —
+      and `Settings` holds a size in ml per convertible unit (`part_ml` as it stood, `oz_ml` new,
+      ml the anchor at 1), so the ratio between any two is derived rather than stored and the
+      screen may show whichever pair it likes. The file change is additive, so every file written
+      before this loads unchanged and `format` stays `1`; a units section without `oz` is now
+      refused, exactly as one without the other two already was. The card's resting reading moves
+      with it: `_asWritten` was hard-coded to `part`, which is why the setting had nothing to
+      switch, so it becomes the settings' own and FR-REC-7's note flips sense — "(part)" is the
+      transform under an ml reader. Shape only; the screen that sets any of it is M23a's.
+- [ ] **M23a Amounts screen** — the pushed screen behind Settings (FR-SET-1): the global unit
+      picked, and the two ratios running *from* it — `part→ml` and `part→oz` under part, `ml→part`
+      and `ml→oz` under ml. Picking another unit recomputes the pair on screen from what is
+      entered, nothing on disk being anchored to the pick.
 - [ ] **M24 Export** — share a copy of the store file via the share sheet (FR-DAT-1).
 - [ ] **M25 Import** — file picker, validation report, confirmation with automatic
       pre-import export, atomic replace (FR-DAT-3/4); confirmation-flow widget test.

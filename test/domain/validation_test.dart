@@ -85,7 +85,7 @@ void main() {
 
     test('a line measured in nothing the vocabulary holds is reported', () {
       final issues = validateModel(
-        units: const [Unit(partUnit), Unit(mlUnit)],
+        units: const [Unit(partUnit), Unit(mlUnit), Unit(ozUnit)],
         ingredients: [Ingredient('bitters')],
         recipes: [
           Recipe(
@@ -101,11 +101,12 @@ void main() {
       expect(issues.single.message, contains('"dash"'));
     });
 
-    test('the two units the app leans on must be there', () {
+    test('the three units the app leans on must be there', () {
       final issues = validateModel(units: const [Unit('dash')]);
       expect(issues.map((i) => i.message), [
         'units must include "part"',
         'units must include "ml"',
+        'units must include "oz"',
       ]);
       expect(issues.first.kind, ValidationIssueKind.missingUnit);
       expect(issues.first.path, ['units']);
@@ -116,11 +117,12 @@ void main() {
         units: const [
           Unit(partUnit, plural: 'parts'),
           Unit(mlUnit),
+          Unit(ozUnit),
           Unit('dash', plural: 'parts'),
         ],
       );
       expect(issues.single.kind, ValidationIssueKind.duplicateName);
-      expect(issues.single.path, ['units', 2, 'plural']);
+      expect(issues.single.path, ['units', 3, 'plural']);
       expect(issues.single.message, contains('"parts"'));
     });
 
@@ -130,6 +132,7 @@ void main() {
           units: const [
             Unit(partUnit),
             Unit(mlUnit, plural: 'ml'),
+            Unit(ozUnit),
           ],
         ),
         isEmpty,
@@ -141,13 +144,14 @@ void main() {
         units: const [
           Unit(partUnit),
           Unit(mlUnit),
-          Unit(' oz'),
+          Unit(ozUnit),
+          Unit(' tsp'),
           Unit('dash', plural: 'dashes '),
         ],
       );
       expect(issues.map((i) => i.path), [
-        ['units', 2],
-        ['units', 3, 'plural'],
+        ['units', 3],
+        ['units', 4, 'plural'],
       ]);
       expect(
         issues.every((i) => i.kind == ValidationIssueKind.whitespaceInName),
@@ -981,8 +985,13 @@ void main() {
     test('settings, name and duplicate rules', () {
       expect(
         validateModel(settings: const Settings(partMl: 0)).single.kind,
-        ValidationIssueKind.partMlNotPositive,
+        ValidationIssueKind.unitSizeNotPositive,
       );
+      // Every size a ratio is derived from is judged the same way (ADR 17).
+      expect(validateModel(settings: const Settings(ozMl: -1)).single.path, [
+        'settings',
+        'oz_ml',
+      ]);
       expect(
         validateModel(ingredients: [Ingredient('')]).single.kind,
         ValidationIssueKind.emptyName,

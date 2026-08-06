@@ -100,8 +100,10 @@ Successful add clears search. Recipes add pushes [recipe form](#recipe-form).
   has stopped, since a list that merely stopped moving does not say what it stopped *for*. Colour 
   alone, and only the fill: a row changing height would fire the very measurement the reveal waits 
   on (ADR 13). It runs once and is let go, so a row scrolled away and back does not say it again.
-- **Scale & unit** behind ⋮ (expanded cards only, FR-REC-7): factor ×1–×4, unit for part-based 
-  (FR-SET-1 this card only). ×1 in parts cancels.
+- **Scale & unit** behind ⋮ (expanded cards only, FR-REC-7): factor ×1–×4, and one of the three 
+  fixed units for this card alone (FR-SET-1). Every card rests at ×1 in the unit the settings name 
+  ([ADR 17](adr/17-the-fixed-units-interconvert.md)), and picking that again cancels — so under an 
+  ml reader it is "(part)" that marks a card as read otherwise.
 - **Display-only transforms**: name row shows "(×2, ml)", measures italic. No persistence; 
   dies with card.
 - **Availability chip** (FR-DIS-1): "Ready"/"Low"/"Missing" (traffic light, no count). 
@@ -191,7 +193,8 @@ Behind Settings. Tab per vocab (Recipe, Ingredient, FR-VOC-4). Tag drawn as chip
 Behind Settings. Form, not `VocabularyList` (no search/sort). Rows editable in place 
 (name, plural). One Save for screen. Rename propagates to lines.
 - **Self-growing**: empty row at bottom; typing adds next; erasing spare removes it.
-- **`part`/`ml` locked** (ratio, display toggle anchored, ADR 09); plurals still editable.
+- **`part`/`ml`/`oz` locked** (the ratios and the global unit anchored, ADR 09/17); plurals still 
+  editable.
 - **Delete blocked** while lines use it (names recipes). Unused row goes on save; 
   discard restores.
 - **Validation** same as import: errors under field, Save blocked.

@@ -1,14 +1,14 @@
 /// Display transforms: scaling (FR-REC-7) and part→ml conversion (FR-SET-1).
 library;
 
-import 'helpers.dart';
 import 'line_format.dart';
 import 'model.dart';
 
 /// The factors a recipe view offers (FR-REC-7), the first as written.
 const scaleFactors = [1, 2, 3, 4];
 
-/// [line]'s measure at [scale]; anchored to reserved units (ADR-09). The
+/// [line]'s measure at [scale]. A line measured in one of the fixed units reads
+/// in the one the settings name; everything else reads as entered (ADR 17). The
 /// measure is all that transforms — a card writes the body itself, one
 /// alternative at a time (docs/ui-design.md#recipes-screen).
 String displayMeasure(
@@ -17,12 +17,14 @@ String displayMeasure(
   List<Unit> units, {
   int scale = 1,
 }) {
-  final inMl =
-      line.unit.sameName(partUnit) && settings.display == DisplayUnit.ml;
-  final factor = inMl ? scale * settings.partMl : scale.toDouble();
+  final from = FixedUnit.named(line.unit);
+  final converts = from != null && from != settings.display;
+  final factor = converts
+      ? scale * settings.mlPer(from) / settings.mlPer(settings.display)
+      : scale.toDouble();
   return formatMeasure(
     _scaled(line.amount, factor),
-    inMl ? mlUnit : line.unit,
+    converts ? settings.display.token : line.unit,
     units,
   );
 }

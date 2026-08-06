@@ -276,6 +276,12 @@ String italicOn(WidgetTester tester, String line) => [
 
 /// Settles that card's own dialog on [factor] and [unit], leaving whatever it
 /// does not name where the dialog opened it.
+/// The same recipes under a reader who pours in ml (FR-SET-1) — a part is
+/// 30 ml, so the Negroni's three lines land on round numbers.
+final inMillilitres = recipeModel.copyWith(
+  settings: const Settings(display: FixedUnit.ml),
+);
+
 Future<void> scale(
   WidgetTester tester,
   String name, {
@@ -1235,6 +1241,42 @@ void main() {
       await scale(tester, 'Negroni', factor: 1, unit: 'part');
 
       expect(find.text('1 part gin (base)'), findsOneWidget);
+      expect(find.textContaining('×'), findsNothing);
+    });
+
+    testWidgets('every card opens in the unit the settings name (ADR 17)', (
+      tester,
+    ) async {
+      await pumpRecipes(tester, inMillilitres);
+      await tap(tester, find.text('Negroni'));
+
+      expect(find.text('30 ml gin (base)'), findsOneWidget);
+      // The app's own reading is no transform, so nothing marks the card.
+      expect(find.text('(ml)'), findsNothing);
+      expect(italicOn(tester, '30 ml gin (base)'), isEmpty);
+    });
+
+    testWidgets('under ml, it is the file\'s own unit that marks a card', (
+      tester,
+    ) async {
+      await pumpRecipes(tester, inMillilitres);
+      await tap(tester, find.text('Negroni'));
+      await scale(tester, 'Negroni', unit: 'part');
+
+      expect(find.text('(part)'), findsOneWidget);
+      expect(italicOn(tester, '1 part gin (base)'), '1 part');
+    });
+
+    testWidgets('the settings\' unit is the way back, whichever it is', (
+      tester,
+    ) async {
+      await pumpRecipes(tester, inMillilitres);
+      await tap(tester, find.text('Negroni'));
+      await scale(tester, 'Negroni', factor: 3, unit: 'oz');
+      await scale(tester, 'Negroni', factor: 1, unit: 'ml');
+
+      expect(find.text('30 ml gin (base)'), findsOneWidget);
+      expect(find.text('(ml)'), findsNothing);
       expect(find.textContaining('×'), findsNothing);
     });
 

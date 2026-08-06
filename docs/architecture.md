@@ -52,11 +52,13 @@ format: 1
 
 settings:
   part_ml: 30          # how many ml one part is (FR-SET-1)
-  display: part        # part | ml
+  oz_ml: 29.5735       # and one ounce; ml is the anchor, so it needs none (ADR 17)
+  display: part        # part | ml | oz — what the three read in
 
 units:                                 # yours to manage (ADR 09)
   - {name: part, plural: parts}
   - {name: ml}                         # plural omitted = reads like the name
+  - {name: oz}                         # fixed, like the two above (ADR 17)
   - {name: dash, plural: dashes}
 
 ingredients:
@@ -92,7 +94,7 @@ Rules:
 - `format`: schema version; unsupported versions rejected (FR-DAT-4).
 - `units`: measurement vocabulary ([ADR 09](adr/09-units-are-a-vocabulary.md)). `plural` 
   omitted where same as name. Absent = shipped seven (`part ml oz dash barspoon drop piece`). 
-  Present = whole vocabulary. All spellings unique under fold; `part`/`ml` required.
+  Present = whole vocabulary. All spellings unique under fold; `part`/`ml`/`oz` required.
 - Ingredient entries: `name` required; `stock` = `in`|`low`|`out` (default); `tags` and 
   `aliases` (optional). Names and aliases: one namespace, unique under fold, no commas. 
   References resolve by any spelling, stored under entry's name.
@@ -149,7 +151,9 @@ Rules:
 - **Line parsing**: shared parser/formatter, both routes (form, codec); takes unit vocabulary 
   (decides unit vs. name). Codec reads `units` first.
 - **Display transforms** (FR-REC-7, FR-SET-1): factor multiplies amounts (range ends together); 
-  part converts at `part_ml` if reading ml. ×1 in parts = canonical line. Rounded to 2 decimals.
+  a line in one fixed unit converts into the one `display` names, through the two ml sizes 
+  ([ADR 17](adr/17-the-fixed-units-interconvert.md)). ×1 in the settings' own unit = the card at 
+  rest. Rounded to 2 decimals.
 
 ## Platform facts
 

@@ -34,7 +34,12 @@ void main() {
         [for (final unit in defaultUnits) unit.name],
         ['part', 'ml', 'oz', 'dash', 'barspoon', 'drop', 'piece'],
       );
-      expect(reservedUnits.every(defaultUnits.spellings.contains), isTrue);
+      expect(
+        FixedUnit.values.every(
+          (fixed) => defaultUnits.spellings.contains(fixed.token),
+        ),
+        isTrue,
+      );
     });
 
     test('an unwritten plural reads like the name', () {
@@ -89,20 +94,27 @@ void main() {
     });
   });
 
-  group('DisplayUnit tokens', () {
+  group('FixedUnit tokens', () {
     test('tokens match the data format', () {
-      expect(DisplayUnit.part.token, 'part');
-      expect(DisplayUnit.ml.token, 'ml');
+      expect(FixedUnit.part.token, 'part');
+      expect(FixedUnit.ml.token, 'ml');
+      expect(FixedUnit.oz.token, 'oz');
+    });
+
+    test('named finds the fixed unit a spelling stands for (ADR 08)', () {
+      expect(FixedUnit.named('oz'), FixedUnit.oz);
+      expect(FixedUnit.named('OZ'), FixedUnit.oz);
+      expect(FixedUnit.named('dash'), isNull);
     });
 
     test('fromToken round-trips every member', () {
-      for (final unit in DisplayUnit.values) {
-        expect(DisplayUnit.fromToken(unit.token), unit);
+      for (final unit in FixedUnit.values) {
+        expect(FixedUnit.fromToken(unit.token), unit);
       }
     });
 
     test('fromToken returns null for an unknown token', () {
-      expect(DisplayUnit.fromToken('litre'), isNull);
+      expect(FixedUnit.fromToken('litre'), isNull);
     });
   });
 
@@ -378,26 +390,39 @@ void main() {
     test('defaults match the data-format example', () {
       const settings = Settings();
       expect(settings.partMl, 30);
-      expect(settings.display, DisplayUnit.part);
+      expect(settings.ozMl, 29.5735);
+      expect(settings.display, FixedUnit.part);
+    });
+
+    test('ml is the anchor the other two are sized against (ADR 17)', () {
+      const settings = Settings(partMl: 25, ozMl: 30);
+      expect(settings.mlPer(FixedUnit.part), 25);
+      expect(settings.mlPer(FixedUnit.ml), 1);
+      expect(settings.mlPer(FixedUnit.oz), 30);
     });
 
     test('equality and hashCode isolate each field', () {
       expect(const Settings(), const Settings());
       expect(const Settings().hashCode, const Settings().hashCode);
       expect(const Settings(), isNot(const Settings(partMl: 22.5)));
-      expect(const Settings(), isNot(const Settings(display: DisplayUnit.ml)));
+      expect(const Settings(), isNot(const Settings(ozMl: 30)));
+      expect(const Settings(), isNot(const Settings(display: FixedUnit.ml)));
     });
 
     test('copyWith replaces one field and carries the rest', () {
-      const settings = Settings(partMl: 25, display: DisplayUnit.ml);
+      const settings = Settings(partMl: 25, ozMl: 30, display: FixedUnit.ml);
       expect(settings.copyWith(), settings);
       expect(
         settings.copyWith(partMl: 30),
-        const Settings(partMl: 30, display: DisplayUnit.ml),
+        const Settings(partMl: 30, ozMl: 30, display: FixedUnit.ml),
       );
       expect(
-        settings.copyWith(display: DisplayUnit.part),
-        const Settings(partMl: 25),
+        settings.copyWith(ozMl: 29.5735),
+        const Settings(partMl: 25, display: FixedUnit.ml),
+      );
+      expect(
+        settings.copyWith(display: FixedUnit.part),
+        const Settings(partMl: 25, ozMl: 30),
       );
     });
   });

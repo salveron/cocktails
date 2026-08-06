@@ -18,6 +18,7 @@ String encodeModel(Model model) {
     'format: $storeFormatVersion',
     'settings:\n'
         '  part_ml: ${formatNumber(settings.partMl)}\n'
+        '  oz_ml: ${formatNumber(settings.ozMl)}\n'
         '  display: ${settings.display.token}',
     _section('units', model.units.map(_unitEntry)),
     _section('ingredients', model.ingredients.map(_ingredientEntry)),

@@ -10,11 +10,13 @@ format: 1
 
 settings:
   part_ml: 30
+  oz_ml: 29.5735
   display: part
 
 units:
   - {name: part, plural: parts}
   - {name: ml}
+  - {name: oz}
   - {name: dash, plural: dashes}
 
 ingredients:
@@ -51,11 +53,13 @@ format: 1
 
 settings:
   part_ml: 30          # how many ml one part is (FR-SET-1)
-  display: part        # part | ml
+  oz_ml: 29.5735       # and one ounce; ml is the anchor, so it needs none (ADR 17)
+  display: part        # part | ml | oz — what the three read in
 
 units:                                 # yours to manage (ADR 09)
   - {name: part, plural: parts}
   - {name: ml}                         # plural omitted = reads like the name
+  - {name: oz}                         # fixed, like the two above (ADR 17)
   - {name: dash, plural: dashes}
 
 ingredients:
@@ -90,6 +94,7 @@ Model docModel() => Model(
   units: const [
     Unit(partUnit, plural: 'parts'),
     Unit(mlUnit),
+    Unit(ozUnit),
     Unit('dash', plural: 'dashes'),
   ],
   ingredients: [
@@ -171,6 +176,7 @@ format: 1
 
 settings:
   part_ml: 30
+  oz_ml: 29.5735
   display: part
 
 units:
@@ -239,11 +245,13 @@ recipes: []
 
     test('writes non-default settings', () {
       final model = Model(
-        settings: const Settings(partMl: 22.5, display: DisplayUnit.ml),
+        settings: const Settings(partMl: 22.5, display: FixedUnit.ml),
       );
       expect(
         codec.encode(model),
-        contains('settings:\n  part_ml: 22.5\n  display: ml\n'),
+        contains(
+          'settings:\n  part_ml: 22.5\n  oz_ml: 29.5735\n  display: ml\n',
+        ),
       );
     });
 
@@ -299,18 +307,24 @@ recipes: []
         'units:\n'
         '  - {name: part, plural: parts}\n'
         '  - {name: ml}\n'
+        '  - {name: oz}\n'
         'ingredients:\n'
         '  - {name: gin}\n'
         'recipes:\n'
         '  - name: Gin Shot\n'
         '    lines: [2 part gin]\n',
       );
-      expect(model.units, const [Unit('part', plural: 'parts'), Unit('ml')]);
+      expect(model.units, const [
+        Unit('part', plural: 'parts'),
+        Unit('ml'),
+        Unit('oz'),
+      ]);
       final issues = rejected(
         'format: 1\n'
         'units:\n'
         '  - {name: part}\n'
         '  - {name: ml}\n'
+        '  - {name: oz}\n'
         'ingredients:\n'
         '  - {name: bitters}\n'
         'recipes:\n'
@@ -323,7 +337,7 @@ recipes: []
         issues.single,
         ValidationIssueKind.unknownIngredient,
         'recipes[0].lines[0]',
-        9,
+        10,
         messagePart: '"dash bitters"',
       );
     });
@@ -334,7 +348,7 @@ recipes: []
         issues.map((i) => i.issue.kind),
         everyElement(ValidationIssueKind.missingUnit),
       );
-      expect(issues, hasLength(2));
+      expect(issues, hasLength(3));
     });
 
     test('an unknown key on a unit entry', () {
@@ -380,11 +394,13 @@ recipes: []
           '\n'
           'settings:\n'
           '  part_ml: 30\n'
+          '  oz_ml: 29.5735\n'
           '  display: part\n'
           '\n'
           'units:\n'
           '  - {name: part, plural: parts}\n'
           '  - {name: ml}\n'
+          '  - {name: oz}\n'
           '  - {name: leaf, plural: leaves}\n'
           '\n'
           'ingredients:\n'
@@ -414,6 +430,22 @@ recipes: []
     test('absent settings keys keep their defaults', () {
       final model = decoded('format: 1\nsettings:\n  part_ml: 25\n');
       expect(model.settings, const Settings(partMl: 25));
+    });
+
+    test('a file written before the ounce had a size still reads (ADR 17)', () {
+      final model = decoded(
+        'format: 1\nsettings:\n  part_ml: 25\n  display: ml\n',
+      );
+      expect(model.settings, const Settings(partMl: 25, display: FixedUnit.ml));
+      expect(model.settings.ozMl, const Settings().ozMl);
+    });
+
+    test('an ounce sized by hand is read and written back', () {
+      final model = decoded(
+        'format: 1\nsettings:\n  oz_ml: 30\n  display: oz\n',
+      );
+      expect(model.settings, const Settings(ozMl: 30, display: FixedUnit.oz));
+      expect(codec.encode(model), contains('  oz_ml: 30\n  display: oz\n'));
     });
 
     test('reads the spellings a bottle answers to (ADR 10)', () {
@@ -835,7 +867,7 @@ recipes: []
         ValidationIssueKind.malformedValue,
         'settings.display',
         4,
-        messagePart: 'display must be part or ml: "liters"',
+        messagePart: 'display must be part, ml or oz: "liters"',
       );
     });
 
@@ -939,12 +971,18 @@ recipes: []
       );
     });
 
-    test('a non-positive part_ml', () {
+    test('a non-positive unit size', () {
       final issues = rejected('format: 1\nsettings:\n  part_ml: -5\n');
       expectIssue(
         issues.single,
-        ValidationIssueKind.partMlNotPositive,
+        ValidationIssueKind.unitSizeNotPositive,
         'settings.part_ml',
+        3,
+      );
+      expectIssue(
+        rejected('format: 1\nsettings:\n  oz_ml: 0\n').single,
+        ValidationIssueKind.unitSizeNotPositive,
+        'settings.oz_ml',
         3,
       );
     });
@@ -1006,7 +1044,7 @@ recipes: []
   group('round trip (FR-DAT-5)', () {
     test('encode → decode → encode is the identity on canonical text', () {
       final model = Model(
-        settings: const Settings(partMl: 22.5, display: DisplayUnit.ml),
+        settings: const Settings(partMl: 22.5, display: FixedUnit.ml),
         ingredients: [
           Ingredient('bourbon', stock: StockLevel.in_),
           Ingredient('true', tags: const ['no']),
@@ -1120,6 +1158,7 @@ format: 1
 
 settings:
   part_ml: 30
+  oz_ml: 29.5735
   display: part
 
 units:

@@ -70,15 +70,16 @@ void main() {
     expect(spare.decoration?.hintText, 'Plural');
   });
 
-  group('the fixed two', () {
+  group('the fixed three', () {
     testWidgets('cannot be renamed or deleted', (tester) async {
       await pumpUnits(tester);
       expect(tester.widget<TextField>(nameField(0)).enabled, isFalse);
       expect(tester.widget<TextField>(nameField(1)).enabled, isFalse);
-      expect(tester.widget<TextField>(nameField(2)).enabled, isTrue);
-      expect(find.byTooltip('Fixed unit'), findsNWidgets(2));
-      // Six rows can go: everything but the two fixed and the empty spare.
-      expect(find.byTooltip('Delete'), findsNWidgets(5));
+      expect(tester.widget<TextField>(nameField(2)).enabled, isFalse);
+      expect(tester.widget<TextField>(nameField(3)).enabled, isTrue);
+      expect(find.byTooltip('Fixed unit'), findsNWidgets(3));
+      // Four rows can go: everything but the three fixed and the empty spare.
+      expect(find.byTooltip('Delete'), findsNWidgets(4));
     });
 
     testWidgets('keep their plurals editable', (tester) async {
@@ -121,10 +122,16 @@ void main() {
 
     testWidgets('two units trade names in one save', (tester) async {
       final store = await pumpUnits(tester);
-      await typeInto(tester, nameField(2), 'dash');
-      await typeInto(tester, nameField(3), 'oz');
+      await typeInto(tester, nameField(3), 'barspoon');
+      await typeInto(tester, nameField(4), 'dash');
       await tap(tester, find.text('Save'));
-      expect(savedUnits(store).take(4), ['part', 'ml', 'dash', 'oz']);
+      expect(savedUnits(store).take(5), [
+        'part',
+        'ml',
+        'oz',
+        'barspoon',
+        'dash',
+      ]);
     });
 
     testWidgets('leaving it as it was writes nothing', (tester) async {
@@ -173,8 +180,8 @@ void main() {
       tester,
     ) async {
       final store = await pumpUnits(tester);
-      // The fifth delete is the last row that has one: piece, worn by a line.
-      await tap(tester, deleteOn(4));
+      // The fourth delete is the last row that has one: piece, worn by a line.
+      await tap(tester, deleteOn(3));
       expect(find.text('Cannot delete "piece"'), findsOneWidget);
       expect(find.text('• Whiskey Sour'), findsOneWidget);
       await tap(tester, find.text('Close'));
@@ -187,7 +194,7 @@ void main() {
       await tap(tester, deleteOn(0));
       expect(unitRows(tester), hasLength(7));
       await tap(tester, find.text('Save'));
-      expect(savedUnits(store), isNot(contains('oz')));
+      expect(savedUnits(store), isNot(contains('dash')));
       expect(store.saved!.recipes, recipeModel.recipes);
     });
   });

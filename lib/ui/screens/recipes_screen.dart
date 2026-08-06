@@ -17,11 +17,15 @@ import '../widgets/vocabulary_list.dart';
 import 'recipe_form_screen.dart';
 
 /// A card's reading of its own amounts: the factor it multiplies them by
-/// (FR-REC-7) and the unit part-based ones show in (FR-SET-1, this card only).
+/// (FR-REC-7) and the fixed unit they show in (FR-SET-1, this card only).
 /// Display alone — nothing here reaches the model or the file.
-typedef _AmountView = ({int scale, DisplayUnit unit});
+typedef _AmountView = ({int scale, FixedUnit unit});
 
-const _asWritten = (scale: 1, unit: DisplayUnit.part);
+/// Where every card rests: unscaled, in the unit the settings name. A card is
+/// transformed by departing from *that*, not from the way the file writes it —
+/// so under an ml setting it is "(part)" that marks a card as read otherwise
+/// (ADR 17).
+_AmountView _resting(Model model) => (scale: 1, unit: model.settings.display);
 
 /// What the list is narrowed to by base spirit (FR-DIS-4, ADR 12) — a record,
 /// so a null *spirit*, the recipes marking no base, is told apart from a null
@@ -35,10 +39,10 @@ const _or = ' or ';
 const _italic = TextStyle(fontStyle: FontStyle.italic);
 
 /// What the name row adds while a card is reading its amounts otherwise.
-String? _viewNote(_AmountView view) {
+String? _viewNote(_AmountView view, _AmountView resting) {
   final notes = [
-    if (view.scale != 1) '×${view.scale}',
-    if (view.unit != _asWritten.unit) view.unit.token,
+    if (view.scale != resting.scale) '×${view.scale}',
+    if (view.unit != resting.unit) view.unit.token,
   ];
   return notes.isEmpty ? null : '(${notes.join(', ')})';
 }
@@ -144,8 +148,9 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
     Availability? availability,
   ) {
     final expanded = _expanded.contains(recipe.name);
-    final view = _views[recipe.name] ?? _asWritten;
-    final note = _viewNote(view);
+    final resting = _resting(model);
+    final view = _views[recipe.name] ?? resting;
+    final note = _viewNote(view, resting);
     final summary = [
       for (final line in recipe.lines) line.ingredients.join(_or),
     ].join(' · ');
@@ -192,7 +197,8 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
           RowMenu({
             // Only where there are amounts to transform: the choice is the
             // open card's, and dies with it.
-            if (expanded) 'Scale & convert': () => unawaited(_scale(recipe)),
+            if (expanded)
+              'Scale & convert': () => unawaited(_scale(recipe, resting)),
             'Edit': () => unawaited(_edit(model.units, recipe)),
             'Delete': () => unawaited(_delete(recipe)),
           }),
@@ -326,18 +332,18 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
 
   /// Reads the open card at another factor, in another unit, or both — for as
   /// long as it stays open (FR-REC-7). Nothing about the recipe changes, so
-  /// the way back is the reading it was written in.
-  Future<void> _scale(Recipe recipe) async {
+  /// the way back is [resting], the reading every other card is under.
+  Future<void> _scale(Recipe recipe, _AmountView resting) async {
     final chosen = await showDialog<_AmountView>(
       context: context,
       builder: (_) => _ScaleDialog(
         recipe: recipe.name,
-        view: _views[recipe.name] ?? _asWritten,
+        view: _views[recipe.name] ?? resting,
       ),
     );
     if (chosen == null || !mounted) return;
     setState(() {
-      if (chosen == _asWritten) {
+      if (chosen == resting) {
         _views.remove(recipe.name);
       } else {
         _views[recipe.name] = chosen;
@@ -463,14 +469,14 @@ class _Details extends StatelessWidget {
     this.onUndo,
   });
 
-  /// Read for the stock behind each line (FR-DIS-1), and for the ratio one
-  /// part converts at (FR-SET-1).
+  /// Read for the stock behind each line (FR-DIS-1), and for the ratios the
+  /// fixed units convert at (FR-SET-1).
   final Model model;
 
   final List<Tag> vocabulary;
   final Recipe recipe;
 
-  /// How this card is reading its amounts, [_asWritten] until asked otherwise.
+  /// How this card is reading its amounts, [_resting] until asked otherwise.
   final _AmountView view;
 
   final VoidCallback onMade;
@@ -483,7 +489,7 @@ class _Details extends StatelessWidget {
   Widget build(BuildContext context) {
     final worn = wornInOrder(vocabulary, recipe.tags);
     final settings = model.settings.copyWith(display: view.unit);
-    final transformed = view != _asWritten;
+    final transformed = view != _resting(model);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -688,9 +694,9 @@ class _ScaleDialogState extends State<_ScaleDialog> {
           const SizedBox(height: 20),
           _section(
             'Show in',
-            SegmentedButton<DisplayUnit>(
+            SegmentedButton<FixedUnit>(
               segments: [
-                for (final unit in DisplayUnit.values)
+                for (final unit in FixedUnit.values)
                   ButtonSegment(value: unit, label: Text(unit.token)),
               ],
               selected: {_view.unit},

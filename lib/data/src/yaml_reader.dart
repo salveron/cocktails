@@ -131,28 +131,27 @@ Settings _readSettings(YamlNode? node, List<ValidationIssue> issues) {
     return defaults;
   }
   const path = ['settings'];
-  _checkKeys(node, const {'part_ml', 'display'}, path, issues);
+  _checkKeys(node, const {'part_ml', 'oz_ml', 'display'}, path, issues);
+  double? size(String key) => _readValue<double>(
+    node,
+    key,
+    path,
+    issues,
+    parse: (value) => value is num && value.isFinite ? value.toDouble() : null,
+    requirement: '$key must be a number',
+  );
   return Settings(
-    partMl:
-        _readValue<double>(
-          node,
-          'part_ml',
-          path,
-          issues,
-          parse: (value) =>
-              value is num && value.isFinite ? value.toDouble() : null,
-          requirement: 'part_ml must be a number',
-        ) ??
-        defaults.partMl,
-    // Its own wording rather than the token list: two readings, named.
+    partMl: size('part_ml') ?? defaults.partMl,
+    ozMl: size('oz_ml') ?? defaults.ozMl,
+    // Its own wording rather than the token list: the readings, named.
     display:
-        _readValue<DisplayUnit>(
+        _readValue<FixedUnit>(
           node,
           'display',
           path,
           issues,
-          parse: (value) => DisplayUnit.fromToken(_asString(value) ?? ''),
-          requirement: 'display must be part or ml',
+          parse: (value) => FixedUnit.fromToken(_asString(value) ?? ''),
+          requirement: 'display must be part, ml or oz',
         ) ??
         defaults.display,
   );
