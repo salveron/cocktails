@@ -442,13 +442,13 @@ void main() {
     test('export hands the store the model on screen (FR-DAT-1)', () async {
       final container = await started();
       expect(await controllerOf(container).export(), isNotEmpty);
-      expect(store.exported, stored);
+      expect(store.snapshots[ExportPurpose.share], stored);
     });
 
     test('an export asked for before the load waits for it', () async {
       final container = containerFor(store, now: today);
       await controllerOf(container).export();
-      expect(store.exported, stored);
+      expect(store.snapshots[ExportPurpose.share], stored);
     });
 
     test('a session recovered from a damaged file exports what it '
@@ -457,7 +457,7 @@ void main() {
         ..outcome = Corrupt([issueAt(4)], recoveredFromBackup: stored);
       final container = await started(damaged);
       await controllerOf(container).export();
-      expect(damaged.exported, stored);
+      expect(damaged.snapshots[ExportPurpose.share], stored);
     });
 
     test('an edit made before the load resolves lands on top of it', () async {
@@ -470,5 +470,97 @@ void main() {
       expect(modelOf(container).ingredientNamed('gin')?.stock, StockLevel.in_);
       expect(modelOf(container).recipes, [negroni]);
     });
+  });
+
+  group('import', () {
+    final incoming = Model(
+      ingredients: [Ingredient('rye', stock: StockLevel.low)],
+      recipes: [
+        Recipe(
+          'Sazerac',
+          lines: const [
+            RecipeLine(Amount(2), 'part', ['rye']),
+          ],
+        ),
+      ],
+    );
+    final incomingFile = const YamlCodec().encode(incoming);
+
+    test('a file that decodes reviews as the collection it holds', () async {
+      final container = await started();
+      final review = controllerOf(container).review(incomingFile);
+      expect(review.model, incoming);
+      expect(review.issues, isEmpty);
+    });
+
+    test('a review touches nothing on its own (FR-DAT-3)', () async {
+      final container = await started();
+      controllerOf(container).review(incomingFile);
+      expect(modelOf(container), stored);
+      expect(store.saveCount, 0);
+      expect(store.snapshots, isEmpty);
+    });
+
+    test('a file that does not decode reviews as issues, placed '
+        '(FR-DAT-4)', () async {
+      final container = await started();
+      final review = controllerOf(container).review('''
+format: 1
+recipes:
+  - name: Sazerac
+    lines: ["2 parts rye"]
+''');
+      expect(review.model, isNull);
+      expect(review.issues, hasLength(1));
+      expect(review.issues.single, contains('rye'));
+      expect(review.issues.single, startsWith('line '));
+    });
+
+    test('a file that is not the format at all is refused, not crashed', () {
+      final review = ModelController().review('not a cocktail in sight');
+      expect(review.model, isNull);
+      expect(review.issues, hasLength(1));
+    });
+
+    test('replacing keeps a copy of what it replaced first '
+        '(FR-DAT-3)', () async {
+      final container = await started();
+      await controllerOf(container).replaceAll(incoming);
+      // The copy is the collection that stood before, never the one arriving.
+      expect(store.snapshots[ExportPurpose.beforeImport], stored);
+      expect(modelOf(container), incoming);
+      expect(store.saved, incoming);
+    });
+
+    test('the copy it keeps is not the one an export shares', () async {
+      final container = await started();
+      await controllerOf(container).export();
+      await controllerOf(container).replaceAll(incoming);
+      // Two copies, two purposes: the export slot still holds what went out to
+      // a reader, so an import cannot write over it.
+      expect(store.snapshots[ExportPurpose.share], stored);
+      expect(store.snapshots[ExportPurpose.beforeImport], stored);
+    });
+
+    test('a replace asked for before the load waits for it', () async {
+      final container = containerFor(store, now: today);
+      await controllerOf(container).replaceAll(incoming);
+      // Not the empty model the copy would hold had it run before the load.
+      expect(store.snapshots[ExportPurpose.beforeImport], stored);
+      expect(modelOf(container), incoming);
+    });
+
+    test(
+      'an exported file imports as the same collection (FR-DAT-5)',
+      () async {
+        final container = await started();
+        final controller = controllerOf(container);
+        await controller.export();
+        final exported = store.snapshots[ExportPurpose.share]!;
+        final review = controller.review(const YamlCodec().encode(exported));
+        expect(review.issues, isEmpty);
+        expect(review.model, stored);
+      },
+    );
   });
 }

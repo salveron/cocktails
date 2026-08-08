@@ -296,8 +296,32 @@ First usable slice; recipes reference both vocabularies, so this precedes Phase 
       of what separates the two kinds.
       Nothing is said on success: the sheet opening is the answer, and a snackbar would land under a
       system modal to be read once stale.
-- [ ] **M25 Import** — file picker, validation report, confirmation with automatic
-      pre-import export, atomic replace (FR-DAT-3/4); confirmation-flow widget test.
+- [x] **M25 Import** — the exchange's other half, on the mechanism
+      [ADR 18](adr/18-data-crosses-the-edge-in-a-system-sheet.md) had already chosen
+      (FR-DAT-3/4): `filePickerProvider` beside `sharerProvider`, `file_selector` named in that
+      one file, and no type filter — YAML has no MIME type Android's table knows, so the decode
+      judges what arrives. The seam answers with the document's *text* rather than an `XFile`,
+      exactly as the share seam takes a location rather than one: the currency crosses the
+      platform edge inside the provider and no layer above learns what a pick is made of, which
+      also makes the whole flow testable without a file. What needed designing was the rest.
+      **The pick earns a screen**, as [ui-design.md](ui-design.md#data) predicted — the same one
+      either way, since one pick with two outcomes should not have two shapes: what the file
+      holds and a Replace button, or the refusal and its placed issues. **The counts are what a
+      reader recognises the file by**, ADR 18's own consequence having ruled out the filename —
+      Android hands over none worth showing — and the collection is what is being agreed to
+      anyway. **The safety copy gets its own file**, `cocktails-before-import.yaml`: sharing the
+      export slot would have let an import cost a reader the copy they had just staged, so
+      `exportSnapshot` takes an `ExportPurpose` and the store maps it to a name, no caller
+      learning where either goes. FR-DAT-3's "recoverable" is honest at that: the file survives
+      indefinitely and travels in Android Auto Backup, and nothing in the app reads it back.
+      **The replace leaves for the collection**, popping Settings with the review — a list of
+      recipes that were not there a moment ago is the answer no sentence improves on — and says
+      what landed as it goes, an import knowing what it did where a share cannot. `review` is
+      pure and touches nothing, so the confirmation and the copy slot between it and `replaceAll`;
+      `_described` becomes the one reading of a `SourcedIssue`, which the startup banner and a
+      picked file now share. `counted` is the other unification the milestone forced: the shopping
+      screen was spelling "N recipes" and "N bottles" two different ways, and a review naming four
+      things would have been the third.
 
 ## Phase 5 — Release
 

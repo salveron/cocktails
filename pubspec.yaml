@@ -9,6 +9,9 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  # The document picker, the share sheet's other half (ADR 18). By caret: a
+  # finished plugin surface published by flutter.dev is stable, not dormant.
+  file_selector: ^1.1.0
   flutter_riverpod: ^2.6.1
   # By caret, unlike the one below: this one still releases, so keeping up is
   # the cheaper reading of its risk (ADR 14).

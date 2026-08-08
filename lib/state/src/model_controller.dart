@@ -3,6 +3,7 @@ library;
 
 import 'package:cocktails/data/data.dart';
 import 'package:cocktails/domain/domain.dart';
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -31,6 +32,22 @@ final sharerProvider = Provider<Future<void> Function(String)>(
 /// to receive it.
 const _exportMimeType = 'text/plain';
 
+/// Pick seam (ADR 18), the share's other half: the document the system's picker
+/// answered with, read as text — null where the reader picked nothing. No type
+/// filter, YAML having no MIME type Android's table knows: a filter would grey
+/// out the very file the reader came for, so the decode judges what arrives
+/// (FR-DAT-4).
+final filePickerProvider = Provider<Future<String?> Function()>(
+  (ref) => () async {
+    final picked = await openFile();
+    return picked?.readAsString();
+  },
+);
+
+/// What a picked file turned out to be: the collection it holds, or what
+/// stopped it being read (FR-DAT-4). Never both.
+typedef ImportReview = ({Model? model, List<String> issues});
+
 final modelProvider = AsyncNotifierProvider<ModelController, Model>(
   ModelController.new,
 );
@@ -55,9 +72,7 @@ final class ModelController extends AsyncNotifier<Model> {
       Empty() => (Model(), const <String>[]),
       Corrupt(:final issues, :final recoveredFromBackup) => (
         recoveredFromBackup ?? Model(),
-        List<String>.unmodifiable([
-          for (final issue in issues) issue.description,
-        ]),
+        _described(issues),
       ),
     };
     _startupIssues = issues;
@@ -123,6 +138,27 @@ final class ModelController extends AsyncNotifier<Model> {
   /// so the screen hands it on rather than reading it (FR-DAT-1).
   Future<String> export() async =>
       ref.read(modelStoreProvider).exportSnapshot(await future);
+
+  /// What [text] holds, judged before anything is touched: the confirmation and
+  /// the copy [replaceAll] keeps both slot in between (FR-DAT-3/4).
+  ImportReview review(String text) => switch (const YamlCodec().decode(text)) {
+    Decoded(:final model) => (model: model, issues: const <String>[]),
+    Rejected(:final issues) => (model: null, issues: _described(issues)),
+  };
+
+  /// Replaces the collection with [model], keeping a copy of the one it
+  /// replaces first (FR-DAT-3).
+  Future<void> replaceAll(Model model) async {
+    await ref
+        .read(modelStoreProvider)
+        .exportSnapshot(await future, purpose: ExportPurpose.beforeImport);
+    await _edit((_) => model);
+  }
+
+  /// FR-DAT-4's issues as a reader meets them — one reading, whether the file
+  /// failed at startup or was just picked.
+  static List<String> _described(List<SourcedIssue> issues) =>
+      List.unmodifiable([for (final issue in issues) issue.description]);
 
   /// Edit route: derive, publish, persist; waits for startup; no-op if unchanged (FR-DAT-4).
   Future<void> _edit(Model Function(Model) edit) async {

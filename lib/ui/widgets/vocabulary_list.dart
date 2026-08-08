@@ -16,6 +16,11 @@ import 'tag_choices.dart';
 /// The tie-break under every order: A→Z, case ignored.
 int byName(String a, String b) => a.toLowerCase().compareTo(b.toLowerCase());
 
+/// How many of a thing there are, in words — "1 bottle", "3 bottles". The
+/// simple plural is the whole of it, every noun a screen counts taking one.
+String counted(int count, String noun) =>
+    '$count $noun${count == 1 ? '' : 's'}';
+
 /// The orders a list can be read in — a label each, and where it ranks an
 /// entry — first the one the list opens in (docs/ui-design.md#searchable-lists).
 /// Ranks come off the domain's own enums, whose declaration order is already

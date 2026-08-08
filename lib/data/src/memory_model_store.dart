@@ -29,12 +29,16 @@ final class MemoryModelStore implements ModelStore {
     outcome = Loaded(model);
   }
 
-  /// The model of the last [exportSnapshot], null until the first one.
-  Model? exported;
+  /// What each purpose was last handed, so a test can tell the copy going out
+  /// to a reader from the one an import keeps back (FR-DAT-1, FR-DAT-3).
+  final snapshots = <ExportPurpose, Model>{};
 
   @override
-  Future<String> exportSnapshot(Model model) async {
-    exported = model;
-    return 'memory:snapshot';
+  Future<String> exportSnapshot(
+    Model model, {
+    ExportPurpose purpose = ExportPurpose.share,
+  }) async {
+    snapshots[purpose] = model;
+    return 'memory:${purpose.name}';
   }
 }

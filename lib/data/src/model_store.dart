@@ -12,11 +12,16 @@ abstract interface class ModelStore {
 
   Future<void> save(Model model);
 
-  /// Writes a shareable copy of [model] and returns its opaque location: the
-  /// store decides what a copy is, and the copy follows the screen rather than
-  /// the file on disk (FR-DAT-1, ADR 18).
-  Future<String> exportSnapshot(Model model);
+  /// Writes a copy of [model] for [purpose] and returns its opaque location:
+  /// the store decides what a copy is and where it goes, and it follows the
+  /// screen rather than the file on disk (FR-DAT-1, FR-DAT-3, ADR 18).
+  Future<String> exportSnapshot(
+    Model model, {
+    ExportPurpose purpose = ExportPurpose.share,
+  });
 }
+
+enum ExportPurpose { share, beforeImport }
 
 sealed class LoadOutcome {
   const LoadOutcome();

@@ -224,10 +224,10 @@ one dimmed sentence, the global unit, then two rows. Nothing else.
 
 ## Data
 
-Rows on the Settings list itself, below [Amounts](#amounts) — the file leaving and, in M25, coming 
+Rows on the Settings list itself, below [Amounts](#amounts) — the file leaving and the file coming 
 back, one exchange read twice ([ADR 18](adr/18-data-crosses-the-edge-in-a-system-sheet.md)). Not a 
 screen of their own: two rows are not a room, and a menu that exists to be passed through should not 
-gain a stop whose only content is the two rows behind it. What actually needs room in M25 — the 
+gain a stop whose only content is the two rows behind it. What actually needs room — the 
 confirmation, the FR-DAT-4 report — arrives *after* a file is picked, so it is the pick that earns a 
 screen, not the row that starts it.
 
@@ -242,7 +242,27 @@ screen, not the row that starts it.
   collection is plain text is what the screen carried that the rows do not; folded into the subtitle 
   it survives at the size the fact is worth, which is smaller than the paragraph made it look.
 - **An empty collection exports anyway.** A file carrying `format: 1` and empty sections is a 
-  template, not an error, and the screen has no reason to know which it is.
+  template, not an error, and the screen has no reason to know which it is. It imports on the same 
+  terms, reading as the nothing it holds.
+- **Import** (FR-DAT-3) opens the system's picker and pushes what came back. One screen carries both 
+  outcomes: a pick has two of them, and giving each its own shape would make one act look like two.
+- **What the file holds stands in for its name.** Recipes, bottles, tags and units, recipes first — 
+  a reader tells one file from another by its recipes long before by its units, and the two tag 
+  vocabularies count as one line, four being as many as a recognition aid can carry. Android hands 
+  over no filename worth showing ([ADR 18](adr/18-data-crosses-the-edge-in-a-system-sheet.md)), and 
+  the collection is what is being agreed to in any case. Under it, what stands to be replaced in the 
+  same terms, and that a copy of it is kept first (FR-DAT-3).
+- **A refused file offers nothing to agree to.** The issues as the startup banner words them, 
+  `line N:` and all (FR-DAT-4), under the one sentence that matters — nothing has changed. A file the 
+  app cannot read holds nothing to import, so there is no button to grey out.
+- **The replace leaves for the collection**, popping Settings along with the review: what was 
+  imported is two screens back, and a list of recipes that were not there a moment ago says more than 
+  any sentence. It says what landed as it goes, which is where an import parts from an export — a 
+  share cannot know its outcome, an import knows exactly.
+- **Only a failure speaks otherwise.** A picker that will not open, a file that cannot be read, a 
+  replace that cannot be written; a reader who picks nothing has done nothing, and a refused file has 
+  the screen to say so on. A failed replace stays on the review, leaving for a collection that never 
+  reached the disk being a lie about what happened.
 
 ## Tag and stock colours
 

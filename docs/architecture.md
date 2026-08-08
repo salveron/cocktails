@@ -158,10 +158,14 @@ Rules:
 ## Platform facts
 
 - Store/backups: app-private directory. `cocktails.yaml` (store), `cocktails.backup-1/2/3.yaml`, 
-  `cocktails-export.yaml` (shareable copy, encoded from the model on screen). Writes via `.tmp` + rename.
+  `cocktails-export.yaml` (shareable copy, encoded from the model on screen), 
+  `cocktails-before-import.yaml` (what an import replaced, FR-DAT-3). Writes via `.tmp` + rename.
 - The copy leaves through the Android share sheet, over the `FileProvider` `share_plus` ships 
   ([ADR 18](adr/18-data-crosses-the-edge-in-a-system-sheet.md)); the plugin re-copies it into 
   `cacheDir/share_plus/`, so the receiving app sees the basename above. No manifest entry is ours.
+- A file comes back through `ACTION_OPEN_DOCUMENT` on `file_selector`, which copies the picked 
+  document into the app cache first, so no layer here holds a `content://` URI. The pre-import copy 
+  is reachable only through Android Auto Backup: nothing in the app reads it back.
 - Android Auto Backup enabled.
 - Application ID: `dev.salveron.cocktails`.
 - Minimum Android: Flutter default (minSdk 21+).

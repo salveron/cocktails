@@ -15,6 +15,11 @@ const int _backupDepth = 3;
 const String _storeName = 'cocktails.yaml';
 const String _exportName = 'cocktails-export.yaml';
 
+/// The copy an import keeps of the collection it replaced (FR-DAT-3). Its own
+/// file, so an export never writes over the net and the net never writes over
+/// a copy on its way out to a reader.
+const String _beforeImportName = 'cocktails-before-import.yaml';
+
 String _backupName(int index) => 'cocktails.backup-$index.yaml';
 
 final class FileModelStore implements ModelStore {
@@ -41,7 +46,10 @@ final class FileModelStore implements ModelStore {
   }
 
   @override
-  Future<String> exportSnapshot(Model model) => _enqueue(() => _export(model));
+  Future<String> exportSnapshot(
+    Model model, {
+    ExportPurpose purpose = ExportPurpose.share,
+  }) => _enqueue(() => _export(model, purpose));
 
   Future<LoadOutcome> _load() async {
     if (!await _storeFile.exists()) return const Empty();
@@ -88,8 +96,11 @@ final class FileModelStore implements ModelStore {
     await temp.rename(_storeFile.path);
   }
 
-  Future<String> _export(Model model) async {
-    final copy = _fileNamed(_exportName);
+  Future<String> _export(Model model, ExportPurpose purpose) async {
+    final copy = _fileNamed(switch (purpose) {
+      ExportPurpose.share => _exportName,
+      ExportPurpose.beforeImport => _beforeImportName,
+    });
     await _write(copy, _codec.encode(model));
     return copy.path;
   }

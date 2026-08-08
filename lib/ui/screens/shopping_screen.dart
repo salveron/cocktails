@@ -14,7 +14,7 @@ import '../widgets/vocabulary_list.dart';
 String _titleOf(Purchase purchase) => purchase.bottles.join(' + ');
 
 String _countOf(Purchase purchase) =>
-    '${purchase.unlocks.length} recipe${purchase.unlocks.length == 1 ? '' : 's'}';
+    counted(purchase.unlocks.length, 'recipe');
 
 /// What the switch widens the search to, spelt out where two words on it
 /// cannot (FR-DIS-7, ADR 16).
@@ -144,13 +144,11 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
                 'inside it.',
       action: FilledButton.tonal(
         onPressed: () => setState(() => _budget = elsewhere),
-        child: Text('Try ${_bottles(elsewhere)}'),
+        child: Text('Try ${counted(elsewhere, 'bottle')}'),
       ),
     );
   }
 }
-
-String _bottles(int count) => count == 1 ? '1 bottle' : '$count bottles';
 
 /// The budget and what counts as short, on the one row above the list — the
 /// two things a reader sets, and the whole of what the answer below depends on.
@@ -194,7 +192,7 @@ class _Controls extends StatelessWidget {
                     ButtonSegment(
                       value: size,
                       label: Text('$size'),
-                      tooltip: _bottles(size),
+                      tooltip: counted(size, 'bottle'),
                     ),
                 ],
                 selected: {budget},

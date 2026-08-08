@@ -50,9 +50,10 @@ lib/
                                #   and `neutralSwatch`, the ground a chip meaning
                                #   nothing by its colour stands on (ADR 12)
     screens/                   # one file per destination, plus settings, tags, units,
-                               #   amounts, recipe form. settings_screen holds the
-                               #   data page behind it too, so the row both wear has
-                               #   one home
+                               #   amounts, recipe form. settings_screen holds both
+                               #   halves of the data exchange and the import review
+                               #   its pick pushes, so one file keeps them from
+                               #   drifting apart (ADR 18)
     widgets/                   # empty_state, model_view, search_field, startup_issues,
                                #   color_chip — the pill, chip, dot and dotted name,
                                #     plus `chipRadius`, the corner a chip and the ink
@@ -61,9 +62,10 @@ lib/
                                #   vocabulary_list — the searchable list all four screens are,
                                #     plus the orders it reads in, the spellings it searches
                                #     by, the tag filter two of them narrow by, the draw one
-                               #     of them offers over the rows on show, byName and
-                               #     Set.toggle. The one file that knows a list scrolls
-                               #     (ADR 13)
+                               #     of them offers over the rows on show, byName,
+                               #     Set.toggle and counted — how many of a thing there
+                               #     are, in words. The one file that knows a list
+                               #     scrolls (ADR 13)
                                #   vocabulary_dialogs — entry (name, aliases, colour, tags),
                                #     delete, discard, plus VocabularyEntry and the one
                                #     reading of issue paths into fields every form shares
@@ -394,12 +396,18 @@ give the factor, and everything else prints as entered (ADR 17).
 
 Data layer owns: YAML, files, atomicity, backups.
 
-`exportSnapshot(Model)` returns location (not file) so store decides what's shareable. UI passes to 
-platform share API, never learns it's a path ([architecture.md](architecture.md#storage-isolation)). 
-It takes the model rather than copying the store file: a session started from `Corrupt` runs on a 
-recovered backup, and the copy must be the collection on screen, not the file that failed to decode 
+`exportSnapshot(Model, {ExportPurpose})` returns location (not file) so store decides what's 
+shareable. UI passes to platform share API, never learns it's a path 
+([architecture.md](architecture.md#storage-isolation)). It takes the model rather than copying the 
+store file: a session started from `Corrupt` runs on a recovered backup, and the copy must be the 
+collection on screen, not the file that failed to decode 
 ([ADR 18](adr/18-data-crosses-the-edge-in-a-system-sheet.md)). Byte-identical to the store file 
 regardless, the emitter being canonical.
+
+`ExportPurpose` is why a copy is written, not where it goes: `share` is FR-DAT-1's, `beforeImport` 
+the net FR-DAT-3 asks for. The store maps each to its own file 
+([platform facts](architecture.md#platform-facts)), so an import can never cost a reader the copy 
+they just staged, nor an export the net — and no caller learns either name.
 
 Import is `YamlCodec.decode` + `save`, not a store method. Separate so confirmation and 
 pre-import export can slot between (FR-DAT-3).
@@ -435,8 +443,26 @@ seam). `clockProvider` is seam for made-it date (FR-REC-6) (state layer only rea
 pure). `sharerProvider` is the third of that kind and the one file naming `share_plus`: it takes the 
 opaque location `export()` answered with and hands it to the system's sheet, so a widget test 
 overrides it with a recorder and no screen learns what a share is made of 
-([ADR 18](adr/18-data-crosses-the-edge-in-a-system-sheet.md)). M25's `filePickerProvider` copies its 
-shape.
+([ADR 18](adr/18-data-crosses-the-edge-in-a-system-sheet.md)).
+
+`filePickerProvider` is its mirror and the one file naming `file_selector`: `Future<String?>` — the 
+picked document's *text*, null where the reader picked nothing. Text rather than the `XFile` ADR 18 
+made the currency, for the same reason the sharer takes a location: the platform type crosses the 
+edge inside the provider body, so a widget test hands the flow a string and no file is needed to 
+exercise it. No type filter, YAML having no MIME type Android's table knows — a filter would grey out 
+the file the reader came for, and FR-DAT-4's decode is the judge either way.
+
+```dart
+typedef ImportReview = ({Model? model, List<String> issues});   // never both
+
+ImportReview review(String text);        // pure: decode, described, nothing touched
+Future<void> replaceAll(Model model);    // the copy, then the replace (FR-DAT-3)
+```
+
+`review` is deliberately pure so the confirmation and the pre-import copy slot after it, and it is 
+the controller's rather than the screen's because `ui/` never imports `data/`. Both its outcomes read 
+as a reader meets them: `_described` is the one rendering of a `SourcedIssue`, shared with the 
+startup banner, so a file that fails at load and one that fails at import are worded alike.
 
 `ModelController.build()` performs startup load, only writable provider. `Corrupt` load starts on 
 recovered backup (empty if nothing decoded); issues reach UI via `startupIssuesProvider` as 
@@ -498,8 +524,10 @@ Performance facts (no over-engineering):
 4. **Export** (FR-DAT-1): `notifier.export()` hands the model on screen to `exportSnapshot` and 
    returns its location; the Settings screen passes that to `sharerProvider` and says nothing unless 
    it throws.
-5. **Import** (FR-DAT-3/4): `YamlCodec.decode` validates → `Rejected` shows issues, `Decoded` confirms 
-   and atomically saves.
+5. **Import** (FR-DAT-3/4): `filePickerProvider` answers with a document's text → `notifier.review` 
+   decodes it → the pushed review shows the issues, or what the file holds and the button that agrees 
+   to it → `notifier.replaceAll` keeps the `beforeImport` copy, publishes, saves → the screen leaves 
+   for the collection (ui-design.md#data).
 
 Controller is UI's only route to data layer; screens never hold `ModelStore` or `YamlCodec`.
 

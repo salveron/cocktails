@@ -99,25 +99,34 @@ MemoryModelStore corruptStore() => MemoryModelStore()
 
 /// [widget] under the provider overrides the composition root makes, so a
 /// widget test reaches the real state layer over an in-memory store — over a
-/// clock stopped on [today] where the screen stamps a date, and over [sharer]
-/// where it hands a copy to the system's sheet (ADR 18).
+/// clock stopped on [today] where the screen stamps a date, and over the two
+/// seams data crosses the edge by: [sharer] where a copy goes out to the
+/// system's sheet, [picker] where a file comes back off it (ADR 18).
 Widget scoped(
   Widget widget, {
   ModelStore? store,
   DateTime? today,
   Future<void> Function(String)? sharer,
+  Future<String?> Function()? picker,
 }) => ProviderScope(
   overrides: [
     modelStoreProvider.overrideWithValue(store ?? MemoryModelStore()),
     if (today != null) clockProvider.overrideWithValue(() => today),
     if (sharer != null) sharerProvider.overrideWithValue(sharer),
+    if (picker != null) filePickerProvider.overrideWithValue(picker),
   ],
   child: widget,
 );
 
 /// The whole app, pumped past its startup load.
-Future<void> pumpApp(WidgetTester tester, {ModelStore? store}) async {
-  await tester.pumpWidget(scoped(const CocktailsApp(), store: store));
+Future<void> pumpApp(
+  WidgetTester tester, {
+  ModelStore? store,
+  Future<String?> Function()? picker,
+}) async {
+  await tester.pumpWidget(
+    scoped(const CocktailsApp(), store: store, picker: picker),
+  );
   await tester.pumpAndSettle();
 }
 
@@ -129,6 +138,7 @@ Future<void> pumpScreen(
   ModelStore? store,
   DateTime? today,
   Future<void> Function(String)? sharer,
+  Future<String?> Function()? picker,
 }) async {
   await tester.pumpWidget(
     scoped(
@@ -139,6 +149,7 @@ Future<void> pumpScreen(
       store: store,
       today: today,
       sharer: sharer,
+      picker: picker,
     ),
   );
   await tester.pumpAndSettle();

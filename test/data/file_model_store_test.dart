@@ -13,6 +13,7 @@ const codec = YamlCodec();
 /// rename in the adapter cannot pass unnoticed.
 const storeName = 'cocktails.yaml';
 const exportName = 'cocktails-export.yaml';
+const beforeImportName = 'cocktails-before-import.yaml';
 
 String backupName(int index) => 'cocktails.backup-$index.yaml';
 
@@ -184,6 +185,18 @@ void main() {
       final location = await store.exportSnapshot(model);
       final result = codec.decode(File(location).readAsStringSync());
       expect((result as Decoded).model, model);
+    });
+
+    test('the copy an import keeps has its own file (FR-DAT-3)', () async {
+      await store.exportSnapshot(modelOf('gin'));
+      await store.exportSnapshot(
+        modelOf('rum'),
+        purpose: ExportPurpose.beforeImport,
+      );
+      // Neither writes over the other: an import cannot cost a reader the copy
+      // they exported, and an export cannot cost them the net.
+      expect(readFile(exportName), codec.encode(modelOf('gin')));
+      expect(readFile(beforeImportName), codec.encode(modelOf('rum')));
     });
   });
 }
