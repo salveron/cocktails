@@ -29,6 +29,12 @@ final class MemoryModelStore implements ModelStore {
     outcome = Loaded(model);
   }
 
+  /// The model of the last [exportSnapshot], null until the first one.
+  Model? exported;
+
   @override
-  Future<String> exportSnapshot() async => 'memory:snapshot';
+  Future<String> exportSnapshot(Model model) async {
+    exported = model;
+    return 'memory:snapshot';
+  }
 }

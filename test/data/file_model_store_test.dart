@@ -148,29 +148,40 @@ void main() {
   });
 
   group('exportSnapshot', () {
-    test('copies the store beside it and returns its location', () async {
+    test('writes the model beside the store, and answers where', () async {
       await store.save(modelOf('gin'));
-      final location = await store.exportSnapshot();
+      final location = await store.exportSnapshot(modelOf('gin'));
       expect(location, fileNamed(exportName).path);
+      // Byte-identical to the store file: one canonical emitter (ADR 02).
       expect(readFile(exportName), readFile(storeName));
     });
 
+    test('exports what it is given, not what the file on disk holds', () async {
+      // The recovered-from-corrupt session in miniature: the collection on
+      // screen is not what the store file says, and the copy follows the
+      // screen (ADR 18).
+      await store.save(modelOf('gin'));
+      await store.exportSnapshot(modelOf('rum'));
+      expect(readFile(exportName), codec.encode(modelOf('rum')));
+      expect(readFile(storeName), codec.encode(modelOf('gin')));
+    });
+
     test('exports an empty database when nothing was saved yet', () async {
-      await store.exportSnapshot();
+      await store.exportSnapshot(Model());
       expect(readFile(exportName), codec.encode(Model()));
       expect(fileNamed(storeName).existsSync(), isFalse);
     });
 
-    test('waits for a save already under way', () async {
+    test('a save already under way is not disturbed', () async {
       unawaited(store.save(modelOf('gin')));
-      final location = await store.exportSnapshot();
-      expect(File(location).readAsStringSync(), codec.encode(modelOf('gin')));
+      await store.exportSnapshot(modelOf('rum'));
+      expect(readFile(storeName), codec.encode(modelOf('gin')));
+      expect(readFile(exportName), codec.encode(modelOf('rum')));
     });
 
     test('the exported copy re-imports as the same model', () async {
       final model = modelOf('gin');
-      await store.save(model);
-      final location = await store.exportSnapshot();
+      final location = await store.exportSnapshot(model);
       final result = codec.decode(File(location).readAsStringSync());
       expect((result as Decoded).model, model);
     });

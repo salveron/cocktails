@@ -271,7 +271,31 @@ First usable slice; recipes reference both vocabularies, so this precedes Phase 
       writing it, which `displayMeasure` now shares. Validation is the file's own, plus the one
       thing a size cannot say for itself: a ratio must be above zero, zero having no inverse. The
       card's ⋮ heading over ×1–×4 becomes "Scale", so "Amounts" means one thing in the app.
-- [ ] **M24 Export** — share a copy of the store file via the share sheet (FR-DAT-1).
+- [x] **M24 Export** — a copy of everything, out through the system's share sheet (FR-DAT-1),
+      designed in [ui-design.md](ui-design.md#data). The milestone's real work was deciding *how*, and
+      [ADR 18](adr/18-data-crosses-the-edge-in-a-system-sheet.md) covers M25 as well, because export
+      and import are one exchange read twice and settling half of it would let the two drift.
+      `file_picker` alone was chosen at one point and reversed: its `saveFile` mirrors its
+      `pickFiles` exactly — the same sheet both ways, for nine resolved packages against 25 — but it
+      does not truncate an overwrite on Android
+      ([#1885](https://github.com/miguelpruivo/flutter_file_picker/issues/1885), closed as not
+      planned), so a smaller export over a larger one keeps the tail of the old, and a silently
+      damaged copy discovered at *import* is the wrong end to find it. `share_plus` out and
+      `file_selector` in (M25's half) instead: two org-published packages trading in one `XFile`, and
+      a write path where nothing is ever overwritten in place. `sharerProvider` is the seam, beside
+      `clockProvider` — the one file naming the package, and what a widget test overrides. The MIME
+      type is stated rather than looked up, no `.yaml` mapping existing to look up, and `text/plain`
+      rather than RFC 9512's `application/yaml`, which almost nothing on Android declares.
+      `exportSnapshot` takes the model, which fixes a defect this milestone made reachable: copying
+      the store *file* would have exported the undecodable text after a `Corrupt` startup rather than
+      the collection the reader is looking at. Export sits **on the Settings list**, with M25's
+      import to land beside it: a **Data** screen behind one row was built first and flattened away,
+      two rows not being enough to furnish a room, and what M25 needs room for — the confirmation,
+      the FR-DAT-4 report — arriving after the pick rather than before it. `_Entry` gains a second
+      constructor so a row that acts wears no chevron and one that travels does, which is the whole
+      of what separates the two kinds.
+      Nothing is said on success: the sheet opening is the answer, and a snackbar would land under a
+      system modal to be read once stale.
 - [ ] **M25 Import** — file picker, validation report, confirmation with automatic
       pre-import export, atomic replace (FR-DAT-3/4); confirmation-flow widget test.
 

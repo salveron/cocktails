@@ -4,6 +4,7 @@ library;
 import 'package:cocktails/data/data.dart';
 import 'package:cocktails/domain/domain.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:share_plus/share_plus.dart';
 
 /// Store seam: file in prod, memory in tests.
 final modelStoreProvider = Provider<ModelStore>(
@@ -12,6 +13,23 @@ final modelStoreProvider = Provider<ModelStore>(
 
 /// Clock provider for FR-REC-6; testable for fixed dates.
 final clockProvider = Provider<DateTime Function()>((ref) => DateTime.now);
+
+/// Share seam (ADR 18): hands an exported copy to the system's sheet. The one
+/// file naming the package, and what a widget test overrides to read the
+/// location [ModelController.export] answered with.
+final sharerProvider = Provider<Future<void> Function(String)>(
+  (ref) =>
+      (location) => SharePlus.instance.share(
+        ShareParams(files: [XFile(location, mimeType: _exportMimeType)]),
+      ),
+);
+
+/// Plain text, not the `application/yaml` registered by RFC 9512: almost
+/// nothing on Android declares that type, so the chooser would stand near
+/// empty, and the file is text by FR-DAT-2 anyway. Stated rather than looked
+/// up because no `.yaml` mapping exists to look up — untyped, fewer apps offer
+/// to receive it.
+const _exportMimeType = 'text/plain';
 
 final modelProvider = AsyncNotifierProvider<ModelController, Model>(
   ModelController.new,
@@ -100,6 +118,11 @@ final class ModelController extends AsyncNotifier<Model> {
   /// Restores or clears recipe history.
   Future<void> setMade(String name, MadeHistory? made) =>
       _edit((model) => model.withRecipeHistory(name, made));
+
+  /// A shareable copy of the collection on screen, and where it went — opaque,
+  /// so the screen hands it on rather than reading it (FR-DAT-1).
+  Future<String> export() async =>
+      ref.read(modelStoreProvider).exportSnapshot(await future);
 
   /// Edit route: derive, publish, persist; waits for startup; no-op if unchanged (FR-DAT-4).
   Future<void> _edit(Model Function(Model) edit) async {

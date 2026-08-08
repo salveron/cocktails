@@ -15,7 +15,7 @@ final class _FailingStore implements ModelStore {
   Future<void> save(Model model) async {}
 
   @override
-  Future<String> exportSnapshot() async => '';
+  Future<String> exportSnapshot(Model model) async => '';
 }
 
 void main() {

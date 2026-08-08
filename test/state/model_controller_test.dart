@@ -439,6 +439,27 @@ void main() {
       expect(modelOf(container), same(stored));
     });
 
+    test('export hands the store the model on screen (FR-DAT-1)', () async {
+      final container = await started();
+      expect(await controllerOf(container).export(), isNotEmpty);
+      expect(store.exported, stored);
+    });
+
+    test('an export asked for before the load waits for it', () async {
+      final container = containerFor(store, now: today);
+      await controllerOf(container).export();
+      expect(store.exported, stored);
+    });
+
+    test('a session recovered from a damaged file exports what it '
+        'recovered, not that file (ADR 18)', () async {
+      final damaged = MemoryModelStore()
+        ..outcome = Corrupt([issueAt(4)], recoveredFromBackup: stored);
+      final container = await started(damaged);
+      await controllerOf(container).export();
+      expect(damaged.exported, stored);
+    });
+
     test('an edit made before the load resolves lands on top of it', () async {
       final container = containerFor(store, now: today);
       await controllerOf(container).setStock('campari', StockLevel.in_);

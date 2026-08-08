@@ -12,9 +12,10 @@ abstract interface class ModelStore {
 
   Future<void> save(Model model);
 
-  /// Writes a shareable copy and returns its opaque location: the store, not
-  /// the UI, decides what a copy is (FR-DAT-1, FR-DAT-3).
-  Future<String> exportSnapshot();
+  /// Writes a shareable copy of [model] and returns its opaque location: the
+  /// store decides what a copy is, and the copy follows the screen rather than
+  /// the file on disk (FR-DAT-1, ADR 18).
+  Future<String> exportSnapshot(Model model);
 }
 
 sealed class LoadOutcome {

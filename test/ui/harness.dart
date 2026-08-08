@@ -98,16 +98,22 @@ MemoryModelStore corruptStore() => MemoryModelStore()
   ], recoveredFromBackup: fixtureModel);
 
 /// [widget] under the provider overrides the composition root makes, so a
-/// widget test reaches the real state layer over an in-memory store — and
-/// over a clock stopped on [today], where the screen stamps a date.
-Widget scoped(Widget widget, {ModelStore? store, DateTime? today}) =>
-    ProviderScope(
-      overrides: [
-        modelStoreProvider.overrideWithValue(store ?? MemoryModelStore()),
-        if (today != null) clockProvider.overrideWithValue(() => today),
-      ],
-      child: widget,
-    );
+/// widget test reaches the real state layer over an in-memory store — over a
+/// clock stopped on [today] where the screen stamps a date, and over [sharer]
+/// where it hands a copy to the system's sheet (ADR 18).
+Widget scoped(
+  Widget widget, {
+  ModelStore? store,
+  DateTime? today,
+  Future<void> Function(String)? sharer,
+}) => ProviderScope(
+  overrides: [
+    modelStoreProvider.overrideWithValue(store ?? MemoryModelStore()),
+    if (today != null) clockProvider.overrideWithValue(() => today),
+    if (sharer != null) sharerProvider.overrideWithValue(sharer),
+  ],
+  child: widget,
+);
 
 /// The whole app, pumped past its startup load.
 Future<void> pumpApp(WidgetTester tester, {ModelStore? store}) async {
@@ -122,6 +128,7 @@ Future<void> pumpScreen(
   Widget screen, {
   ModelStore? store,
   DateTime? today,
+  Future<void> Function(String)? sharer,
 }) async {
   await tester.pumpWidget(
     scoped(
@@ -131,6 +138,7 @@ Future<void> pumpScreen(
       ),
       store: store,
       today: today,
+      sharer: sharer,
     ),
   );
   await tester.pumpAndSettle();

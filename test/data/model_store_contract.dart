@@ -34,6 +34,6 @@ void modelStoreContract(ModelStore Function() storeOf) {
   test('exportSnapshot answers with a location', () async {
     final store = storeOf();
     await store.save(model);
-    expect(await store.exportSnapshot(), isNotEmpty);
+    expect(await store.exportSnapshot(model), isNotEmpty);
   });
 }

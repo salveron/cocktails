@@ -50,7 +50,9 @@ lib/
                                #   and `neutralSwatch`, the ground a chip meaning
                                #   nothing by its colour stands on (ADR 12)
     screens/                   # one file per destination, plus settings, tags, units,
-                               #   amounts, recipe form
+                               #   amounts, recipe form. settings_screen holds the
+                               #   data page behind it too, so the row both wear has
+                               #   one home
     widgets/                   # empty_state, model_view, search_field, startup_issues,
                                #   color_chip — the pill, chip, dot and dotted name,
                                #     plus `chipRadius`, the corner a chip and the ink
@@ -392,8 +394,12 @@ give the factor, and everything else prints as entered (ADR 17).
 
 Data layer owns: YAML, files, atomicity, backups.
 
-`exportSnapshot` returns location (not file) so store decides what's shareable. UI passes to 
-platform share API, never learns it's a path ([architecture.md](architecture.md#storage-isolation)).
+`exportSnapshot(Model)` returns location (not file) so store decides what's shareable. UI passes to 
+platform share API, never learns it's a path ([architecture.md](architecture.md#storage-isolation)). 
+It takes the model rather than copying the store file: a session started from `Corrupt` runs on a 
+recovered backup, and the copy must be the collection on screen, not the file that failed to decode 
+([ADR 18](adr/18-data-crosses-the-edge-in-a-system-sheet.md)). Byte-identical to the store file 
+regardless, the emitter being canonical.
 
 Import is `YamlCodec.decode` + `save`, not a store method. Separate so confirmation and 
 pre-import export can slot between (FR-DAT-3).
@@ -426,7 +432,11 @@ adapter testable. File names, backup depth: [platform facts](architecture.md#pla
 
 `modelStoreProvider` overridden in `main.dart` with file store, tests with memory store (device-free 
 seam). `clockProvider` is seam for made-it date (FR-REC-6) (state layer only reads clock; domain stays 
-pure).
+pure). `sharerProvider` is the third of that kind and the one file naming `share_plus`: it takes the 
+opaque location `export()` answered with and hands it to the system's sheet, so a widget test 
+overrides it with a recorder and no screen learns what a share is made of 
+([ADR 18](adr/18-data-crosses-the-edge-in-a-system-sheet.md)). M25's `filePickerProvider` copies its 
+shape.
 
 `ModelController.build()` performs startup load, only writable provider. `Corrupt` load starts on 
 recovered backup (empty if nothing decoded); issues reach UI via `startupIssuesProvider` as 
@@ -485,7 +495,9 @@ Performance facts (no over-engineering):
 3. **Recipe form** (M14): `tryParseRecipeLine` on each field (live feedback) → `validateRecipe` on 
    save (`lines[i]` paths map to fields; else snackbar) → recipe + new ingredients + rename name 
    reach `notifier.upsertRecipe` as one edit (ui-design.md#recipe-form).
-4. **Export** (FR-DAT-1): `notifier.export()` (M24) returns location for share sheet; store file is export.
+4. **Export** (FR-DAT-1): `notifier.export()` hands the model on screen to `exportSnapshot` and 
+   returns its location; the Settings screen passes that to `sharerProvider` and says nothing unless 
+   it throws.
 5. **Import** (FR-DAT-3/4): `YamlCodec.decode` validates → `Rejected` shows issues, `Decoded` confirms 
    and atomically saves.
 

@@ -41,7 +41,7 @@ final class FileModelStore implements ModelStore {
   }
 
   @override
-  Future<String> exportSnapshot() => _enqueue(_export);
+  Future<String> exportSnapshot(Model model) => _enqueue(() => _export(model));
 
   Future<LoadOutcome> _load() async {
     if (!await _storeFile.exists()) return const Empty();
@@ -88,14 +88,9 @@ final class FileModelStore implements ModelStore {
     await temp.rename(_storeFile.path);
   }
 
-  Future<String> _export() async {
+  Future<String> _export(Model model) async {
     final copy = _fileNamed(_exportName);
-    await _write(
-      copy,
-      await _storeFile.exists()
-          ? await _storeFile.readAsString()
-          : _codec.encode(Model()),
-    );
+    await _write(copy, _codec.encode(model));
     return copy.path;
   }
 

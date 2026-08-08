@@ -222,6 +222,28 @@ one dimmed sentence, the global unit, then two rows. Nothing else.
 - **Validation** same as import, plus what a size cannot say for itself: a ratio must be a number 
   above zero, zero having no inverse to store.
 
+## Data
+
+Rows on the Settings list itself, below [Amounts](#amounts) — the file leaving and, in M25, coming 
+back, one exchange read twice ([ADR 18](adr/18-data-crosses-the-edge-in-a-system-sheet.md)). Not a 
+screen of their own: two rows are not a room, and a menu that exists to be passed through should not 
+gain a stop whose only content is the two rows behind it. What actually needs room in M25 — the 
+confirmation, the FR-DAT-4 report — arrives *after* a file is picked, so it is the pick that earns a 
+screen, not the row that starts it.
+
+- **A row that acts carries no chevron**, where one that travels does — the whole of the telling, and 
+  why the two kinds may share the Settings list at all. `_Entry` has the two constructors rather than 
+  a flag, so a row's shape is fixed where it is written.
+- **Export** (FR-DAT-1) opens the system's share sheet on a copy of everything. **Nothing is said on 
+  success**: the sheet opening is the answer, and a snackbar would land under a system modal and be 
+  read once stale. A failed write or a sheet that will not open speaks, and nothing else does — a 
+  reader who dismisses the chooser has done nothing, which is not a failure.
+- **"as one text file" is the subtitle doing a paragraph's job.** A dimmed sentence saying the 
+  collection is plain text is what the screen carried that the rows do not; folded into the subtitle 
+  it survives at the size the fact is worth, which is smaller than the paragraph made it look.
+- **An empty collection exports anyway.** A file carrying `format: 1` and empty sections is a 
+  template, not an error, and the screen has no reason to know which it is.
+
 ## Tag and stock colours
 
 Each token: fill + ink pair (one per theme) in `palette.dart`. One traffic light (stock, 

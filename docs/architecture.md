@@ -157,8 +157,11 @@ Rules:
 
 ## Platform facts
 
-- Store/backups: app-private directory via Android share sheet. `cocktails.yaml` (store), 
-  `cocktails.backup-1/2/3.yaml`, `cocktails-export.yaml` (shareable copy). Writes via `.tmp` + rename.
+- Store/backups: app-private directory. `cocktails.yaml` (store), `cocktails.backup-1/2/3.yaml`, 
+  `cocktails-export.yaml` (shareable copy, encoded from the model on screen). Writes via `.tmp` + rename.
+- The copy leaves through the Android share sheet, over the `FileProvider` `share_plus` ships 
+  ([ADR 18](adr/18-data-crosses-the-edge-in-a-system-sheet.md)); the plugin re-copies it into 
+  `cacheDir/share_plus/`, so the receiving app sees the basename above. No manifest entry is ours.
 - Android Auto Backup enabled.
 - Application ID: `dev.salveron.cocktails`.
 - Minimum Android: Flutter default (minSdk 21+).
