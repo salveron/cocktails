@@ -166,6 +166,56 @@ class VocabularyRow extends StatelessWidget {
   }
 }
 
+/// A bulleted name and what stands at the end of its line — a stock dot on a
+/// bottle, nothing on a plain name.
+typedef Bullet = ({String name, Widget? trailing});
+
+/// One stretch of bullets under a heading, the heading being null wherever the
+/// run stands alone and needs none.
+typedef BulletRun = ({String? label, List<Bullet> bullets});
+
+/// A run of plain names, nothing standing at the end of any line — which most
+/// of them are, a mark being the exception a caller spells out.
+BulletRun bulletRun(Iterable<String> names, {String? label}) => (
+  label: label,
+  bullets: [for (final name in names) (name: name, trailing: null)],
+);
+
+/// Every name a [VocabularyRow]'s body counts, bulleted under the run it falls
+/// in — the import review's vocabularies (ADR 07) and a basket's two halves
+/// alike. An empty run is left out rather than standing as a heading over
+/// nothing.
+class BulletRuns extends StatelessWidget {
+  const BulletRuns(this.runs, {super.key});
+
+  final List<BulletRun> runs;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      for (final run in runs.where((run) => run.bullets.isNotEmpty)) ...[
+        if (run.label case final label?)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Text(label, style: Theme.of(context).textTheme.labelLarge),
+          ),
+        for (final bullet in run.bullets)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Row(
+              children: [
+                Flexible(child: Text('• ${bullet.name}')),
+                if (bullet.trailing case final mark?)
+                  Padding(padding: const EdgeInsets.only(left: 6), child: mark),
+              ],
+            ),
+          ),
+      ],
+    ],
+  );
+}
+
 /// Per-row menu (⋮); carries callbacks directly (no enum boilerplate).
 class RowMenu extends StatelessWidget {
   const RowMenu(this.actions, {super.key});

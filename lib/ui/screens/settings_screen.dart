@@ -201,11 +201,7 @@ class _Refused extends StatelessWidget {
           style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
         ),
         const SizedBox(height: 16),
-        for (final issue in issues)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 4),
-            child: Text('• $issue'),
-          ),
+        BulletRuns([bulletRun(issues)]),
       ],
     );
   }
@@ -258,46 +254,11 @@ class _HoldingsState extends State<_Holdings> {
       trailing: empty
           ? null
           : Icon(open ? Icons.expand_less : Icons.expand_more),
-      body: open ? _Names(holding.runs) : null,
+      body: open ? BulletRuns(holding.runs) : null,
       onTap: empty ? null : () => setState(() => _open.toggle(holding.noun)),
     );
   }
 }
-
-/// The names themselves. A run is labelled only where one count covers two
-/// vocabularies (ADR 07), and an empty one is left out rather than standing as a
-/// heading over nothing.
-class _Names extends StatelessWidget {
-  const _Names(this.runs);
-
-  final List<_Run> runs;
-
-  @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      for (final run in runs.where((run) => run.names.isNotEmpty)) ...[
-        if (run.label != null)
-          Padding(
-            padding: const EdgeInsets.only(top: 4, bottom: 4),
-            child: Text(
-              run.label!,
-              style: Theme.of(context).textTheme.labelLarge,
-            ),
-          ),
-        for (final name in run.names)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 4),
-            child: Text('• $name'),
-          ),
-      ],
-    ],
-  );
-}
-
-/// One stretch of names under a heading, the heading being null wherever the
-/// kind is a single vocabulary and needs none.
-typedef _Run = ({String? label, List<String> names});
 
 /// One kind the file carries: what the app calls it, and the names behind it.
 final class _Holding {
@@ -307,15 +268,18 @@ final class _Holding {
 
   /// One run but for the tags, whose single count covers two vocabularies a
   /// body has to keep apart (ADR 07).
-  final List<_Run> runs;
+  final List<BulletRun> runs;
 
-  int get count => runs.fold(0, (total, run) => total + run.names.length);
+  int get count => runs.fold(0, (total, run) => total + run.bullets.length);
 
   /// Runs end to end, as the line under the title reads them — and only as far
   /// as the ellipsis can outrun, the body being where the rest is owed. Joining
   /// two thousand names lays out a paragraph to show one line of it.
-  String get line =>
-      runs.expand((run) => run.names).take(_lineNames).join(', ');
+  String get line => runs
+      .expand((run) => run.bullets)
+      .take(_lineNames)
+      .map((bullet) => bullet.name)
+      .join(', ');
 }
 
 /// More names than a phone's width fits, so the ellipsis lands on the line
@@ -343,8 +307,8 @@ List<_Holding> _holdingsOf(Model model) => [
 /// finds a name where every other list in the app would put it — but for the
 /// units, whose vocabulary order carries the fixed three first and which
 /// `units_screen.dart` leaves standing (ADR 17).
-_Run _run(Iterable<String> names, {String? label, bool sorted = true}) =>
-    (label: label, names: sorted ? ([...names]..sort(byName)) : [...names]);
+BulletRun _run(Iterable<String> names, {String? label, bool sorted = true}) =>
+    bulletRun(sorted ? ([...names]..sort(byName)) : names, label: label);
 
 /// One row of the menu: what it is, and what a tap does with it. A row that
 /// travels wears the chevron saying so; a row that acts where it stands

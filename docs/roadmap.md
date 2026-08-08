@@ -348,7 +348,44 @@ First usable slice; recipes reference both vocabularies, so this precedes Phase 
       theirs reading as a discrepancy rather than a reassurance. Where M25 counted "bottles" the
       cards count `ingredients`, the noun `inventory_screen.dart` already used for them.
 
-## Phase 5 — Release
+## Phase 5 — The basket, and reaching across screens
 
-- [ ] **M26 Release packaging** — signing configuration (keystore outside the repo),
+- [x] **M26 The basket card re-reads** — the shopping card stops saying things twice
+      ([ui-design.md](ui-design.md#shopping-screen)): the title becomes `Shopping Cart #N`, the bottles
+      it used to join with `+` moving to the subtitle where they clip when the card is shut and are
+      gone when it is open, and the body's two runs becoming the labelled bullet lists the import
+      review reads in — one `BulletRuns` widget now, in `vocabulary_list.dart` beside the row whose
+      body it fills, the import review's own copy folded into it. Every name then appears exactly once,
+      where the title and the open body each listed the bottles; and the count trailing in neutral ink
+      is what a basket is ranked by, so the headline reads as the ranking rather than as a composite
+      name no two of which are the same length. The rank being the budget's to hand out, an open card
+      is remembered under its bottles instead. UI only — `Purchase` does not move.
+- [ ] **M27 Each bottle says what it carries** — an open basket says which bottle brings which recipe
+      (FR-DIS-6 widened): each recipe in the body names the bottles it needed, joined with `+` where it
+      took several together and `or` where any one of them would do, which is M18a's reading of `/`.
+      Grouping the recipes under the bottles was designed and refused — `_unlockedBy` collects what any
+      *subset* of a basket closes, so a recipe short of two bottles belongs under both, which is the
+      duplication M26 just removed, and one closed by either of two alternatives belongs under neither.
+      A per-bottle count would have been well defined (`_earnsIts` guarantees at least one recipe lost
+      without any bottle) but says nothing about *which*. So `Purchase` carries the ways each recipe is
+      closed rather than a flat list of names, the caption being one reading of them; a single-bottle
+      basket writes none, every caption on it saying the same thing.
+- [ ] **M28 A destination sends the reader to another** — long-pressing a recipe on a basket opens it
+      on the Recipes tab (FR-DIS-9, [ADR 19](adr/19-a-destination-sends-the-reader-to-another.md)):
+      `lib/ui/destinations.dart` takes the enum out of `app.dart` and holds beside it one provider
+      carrying a destination and a name, the shell watching it only to switch and the serving list
+      clearing every narrowing before revealing the row alone. The shell keeps a trail of what a jump
+      left, so back undoes a jump and a chain of them unwinds one at a time, while a bottom-bar tap
+      clears it — back never undoing a move the reader chose. `VocabularyList` gains the name to reveal
+      beside the `draw` that already produces one, and the two can now be pending in the same frame,
+      which [ADR 13](adr/13-lists-scroll-by-index.md) had assumed impossible.
+
+**Deferred**, numbered when scheduled: **Bought it** — a basket's bottles set in stock from the card,
+which is the shopping screen's first write to the model and so needs a requirement of its own; and
+**ADR 19's second pair** — a recipe card's line reaching its bottle on the Inventory, one more call
+site and the inventory screen learning to serve.
+
+## Phase 6 — Release
+
+- [ ] **M29 Release packaging** — signing configuration (keystore outside the repo),
       Android Auto Backup enabled, launcher icon and label, version 1.0.0.

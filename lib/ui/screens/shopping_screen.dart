@@ -8,10 +8,10 @@ import '../widgets/empty_state.dart';
 import '../widgets/model_view.dart';
 import '../widgets/vocabulary_list.dart';
 
-/// How a basket reads across the screen, and the one thing telling two apart —
-/// its bottles are what it is (FR-DIS-6), so the title doubles as the key its
-/// open card is remembered under.
-String _titleOf(Purchase purchase) => purchase.bottles.join(' + ');
+/// The bottles as the shut card reads them, and the key its open card is
+/// remembered under: they are what a basket *is* (FR-DIS-6), where the title is
+/// only where it ranks — which the next budget hands to another basket.
+String _bottlesOf(Purchase purchase) => purchase.bottles.join(' + ');
 
 String _countOf(Purchase purchase) =>
     counted(purchase.unlocks.length, 'recipe');
@@ -45,8 +45,8 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
   /// Whether a bottle running low counts as short (ADR 16).
   bool _restocking = false;
 
-  /// Which cards are reading open, by title. Here rather than per-card, the
-  /// list disposing what scrolls out of it.
+  /// Which cards are reading open, by their bottles. Here rather than per-card,
+  /// the list disposing what scrolls out of it.
   final _expanded = <String>{};
 
   @override
@@ -76,7 +76,7 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
                     padding: const EdgeInsets.only(bottom: 16),
                     itemCount: onShow.length,
                     itemBuilder: (context, index) =>
-                        _card(model, onShow[index]),
+                        _card(model, onShow[index], index + 1),
                   ),
           ),
         ],
@@ -84,21 +84,18 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
     });
   }
 
-  /// One basket: the bottles, a taste of what they unlock, and how much. Open,
-  /// it reads the bottles at the level each stands at and every recipe in full.
-  Widget _card(Model model, Purchase purchase) {
-    final title = _titleOf(purchase);
-    final expanded = _expanded.contains(title);
+  /// One basket, [rank] of the baskets on show: where it stands, the bottles
+  /// under that, and how much they are worth. Open, the bottles move into the
+  /// body to read at the level each stands at, beside every recipe in full.
+  Widget _card(Model model, Purchase purchase, int rank) {
+    final bottles = _bottlesOf(purchase);
+    final expanded = _expanded.contains(bottles);
     final theme = Theme.of(context);
     return VocabularyRow(
-      title: Text(title, overflow: TextOverflow.ellipsis),
+      title: Text('Shopping Cart #$rank'),
       subtitle: expanded
           ? null
-          : Text(
-              purchase.unlocks.join(' · '),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
+          : Text(bottles, maxLines: 1, overflow: TextOverflow.ellipsis),
       trailing: Text(
         _countOf(purchase),
         style: theme.textTheme.labelMedium?.copyWith(
@@ -106,7 +103,7 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
         ),
       ),
       body: expanded ? _Basket(model: model, purchase: purchase) : null,
-      onTap: () => setState(() => _expanded.toggle(title)),
+      onTap: () => setState(() => _expanded.toggle(bottles)),
     );
   }
 
@@ -228,9 +225,10 @@ class _Controls extends StatelessWidget {
   }
 }
 
-/// The open card: each bottle at the level it stands at, then every recipe the
-/// basket unlocks. The dots are what the switch is worth reading — with it on,
-/// a basket mixes bottles merely running low with ones there are none of.
+/// The open card: what to buy, each bottle at the level it stands at, then
+/// every recipe the basket unlocks. The dots are what the switch is worth
+/// reading — with it on, a basket mixes bottles merely running low with ones
+/// there are none of.
 class _Basket extends StatelessWidget {
   const _Basket({required this.model, required this.purchase});
 
@@ -238,24 +236,14 @@ class _Basket extends StatelessWidget {
   final Purchase purchase;
 
   @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      for (final bottle in purchase.bottles)
-        Padding(
-          padding: const EdgeInsets.only(bottom: 4),
-          child: Row(
-            children: [
-              Flexible(child: Text(bottle)),
-              Padding(
-                padding: const EdgeInsets.only(left: 6),
-                child: StockDot(stockOf(model, bottle)),
-              ),
-            ],
-          ),
-        ),
-      const SizedBox(height: 8),
-      Text(purchase.unlocks.join(' · ')),
-    ],
-  );
+  Widget build(BuildContext context) => BulletRuns([
+    (
+      label: 'Ingredients',
+      bullets: [
+        for (final bottle in purchase.bottles)
+          (name: bottle, trailing: StockDot(stockOf(model, bottle))),
+      ],
+    ),
+    bulletRun(purchase.unlocks, label: 'Unlocks'),
+  ]);
 }

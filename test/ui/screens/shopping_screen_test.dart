@@ -47,6 +47,21 @@ final pairedModel = Model(
   ],
 );
 
+/// Three recipes short of a bottle each, so three baskets tie at one recipe
+/// apiece and the list has ranks to read.
+final spreadModel = Model(
+  ingredients: [
+    Ingredient('white rum'),
+    Ingredient('vodka'),
+    Ingredient('tequila'),
+  ],
+  recipes: [
+    _recipe('Rum Neat', ['white rum']),
+    _recipe('Vodka Neat', ['vodka']),
+    _recipe('Tequila Neat', ['tequila']),
+  ],
+);
+
 Future<MemoryModelStore> pumpShopping(WidgetTester tester, [Model? model]) =>
     pumpOver(
       tester,
@@ -58,6 +73,9 @@ Future<void> pickBudget(WidgetTester tester, int budget) =>
     tap(tester, find.text('$budget'));
 
 Future<void> toggleLow(WidgetTester tester) => tap(tester, find.byType(Switch));
+
+Future<void> openCard(WidgetTester tester, [int rank = 1]) =>
+    tap(tester, find.text('Shopping Cart #$rank'));
 
 /// Every bottle named on the open card, told apart from the recipes beside them
 /// by the dot each carries.
@@ -77,7 +95,7 @@ void main() {
   group('shopping screen', () {
     testWidgets('opens on the single bottles worth buying', (tester) async {
       await pumpShopping(tester);
-      expect(rowTexts(tester), ['white rum', 'Daiquiri', '1 recipe']);
+      expect(rowTexts(tester), ['Shopping Cart #1', 'white rum', '1 recipe']);
     });
 
     testWidgets('a wider budget answers with a basket of exactly that many', (
@@ -86,14 +104,14 @@ void main() {
       await pumpShopping(tester);
       await pickBudget(tester, 2);
       expect(rowTexts(tester), [
+        'Shopping Cart #1',
         'campari + sweet vermouth',
-        'Americano · Negroni',
         '2 recipes',
       ]);
       await pickBudget(tester, 3);
       expect(rowTexts(tester), [
+        'Shopping Cart #1',
         'campari + sweet vermouth + white rum',
-        'Americano · Daiquiri · Negroni',
         '3 recipes',
       ]);
     });
@@ -103,7 +121,16 @@ void main() {
     ) async {
       await pumpShopping(tester);
       await toggleLow(tester);
-      expect(rowTexts(tester), ['lime juice', 'Gimlet', '1 recipe']);
+      expect(rowTexts(tester), ['Shopping Cart #1', 'lime juice', '1 recipe']);
+    });
+
+    testWidgets('baskets are numbered by where they rank', (tester) async {
+      await pumpShopping(tester, spreadModel);
+      expect(rowTexts(tester).where((text) => text!.startsWith('Shopping')), [
+        'Shopping Cart #1',
+        'Shopping Cart #2',
+        'Shopping Cart #3',
+      ]);
     });
 
     testWidgets('a card opens onto its bottles and every recipe', (
@@ -111,12 +138,41 @@ void main() {
     ) async {
       await pumpShopping(tester);
       await pickBudget(tester, 3);
-      await tap(tester, find.text('campari + sweet vermouth + white rum'));
-      expect(bottlesOnCard(tester), ['campari', 'sweet vermouth', 'white rum']);
+      await openCard(tester);
+      expect(bottlesOnCard(tester), [
+        '• campari',
+        '• sweet vermouth',
+        '• white rum',
+      ]);
+      for (final recipe in ['• Americano', '• Daiquiri', '• Negroni']) {
+        expect(find.text(recipe), findsOneWidget);
+      }
+      expect(find.text('Ingredients'), findsOneWidget);
+      expect(find.text('Unlocks'), findsOneWidget);
       expect(
-        find.text('Americano · Daiquiri · Negroni'),
+        find.text('campari + sweet vermouth + white rum'),
+        findsNothing,
+        reason: 'the bottles read in the body rather than twice over',
+      );
+    });
+
+    testWidgets('an open card is remembered by its bottles, not its rank', (
+      tester,
+    ) async {
+      await pumpShopping(tester);
+      await pickBudget(tester, 2);
+      await openCard(tester);
+      await pickBudget(tester, 3);
+      expect(
+        find.text('Ingredients'),
+        findsNothing,
+        reason: '#1 is another basket now, and it was never opened',
+      );
+      await pickBudget(tester, 2);
+      expect(
+        find.text('Ingredients'),
         findsOneWidget,
-        reason: 'the clipped subtitle reads in full',
+        reason: 'the basket that was opened is still open where it stands',
       );
     });
 
@@ -126,6 +182,8 @@ void main() {
       await pumpShopping(tester);
       await toggleLow(tester);
       await pickBudget(tester, 2);
+      // By its bottles rather than its rank: this is the one basket of the
+      // several at this size that holds both readings of short.
       await tap(tester, find.text('lime juice + white rum'));
       expect(
         tester.widgetList<StockDot>(find.byType(StockDot)).map((d) => d.stock),
@@ -142,8 +200,8 @@ void main() {
       expect(find.text('Nothing worth buying in 1'), findsOneWidget);
       await tap(tester, find.text('Try 2 bottles'));
       expect(rowTexts(tester), [
+        'Shopping Cart #1',
         'campari + sweet vermouth',
-        'Americano · Negroni',
         '2 recipes',
       ]);
     });
@@ -167,7 +225,7 @@ void main() {
         findsOneWidget,
       );
       await toggleLow(tester);
-      expect(rowTexts(tester), ['gin', 'Gin Shot', '1 recipe']);
+      expect(rowTexts(tester), ['Shopping Cart #1', 'gin', '1 recipe']);
     });
 
     testWidgets('says what would put baskets there while it is empty', (

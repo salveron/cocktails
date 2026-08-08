@@ -167,10 +167,19 @@ Create/edit: pushed page, Save in app bar. Mirrors file order (name, lines, tags
   or a reader's larger text, drops the switch to a second line instead of carrying it off the edge. 
   Segments sit at 48dp — a touch target's own floor, and `visualDensity` is what reaches them, 
   `minimumSize` being dropped on the way to a segment.
-- **Cards expand in place**, the [recipes screen](#recipes-screen)'s idiom: title is the bottles joined 
-  by `+`, subtitle the recipes it unlocks (`·`-joined, clipped), trailing the count in 
-  `onSurfaceVariant` — a number is no signal, so no chip. Open, it reads each bottle with its stock 
-  dot and then every recipe in full, so the clipped subtitle finishes rather than moves.
+- **Cards expand in place**, the [recipes screen](#recipes-screen)'s idiom: the title is 
+  `Shopping Cart #N` — where the basket ranks, `#1` being the best at the size in force — the bottles 
+  the subtitle, `+`-joined and clipped, trailing the count in `onSurfaceVariant`. A number is no 
+  signal, so no chip; and the headline being the rank, the count beside it is read as the ranking 
+  rather than as a name no two of which are the same length.
+- **A basket is its bottles** (FR-DIS-6) **and the rank is only where it stands**, so an open card is 
+  remembered under the bottles: the budget moved away and back finds it open where it was, and `#1` at 
+  another size is another basket, shut.
+- **Nothing is named twice.** Open, the subtitle goes and the bottles read in the body instead — 
+  labelled `Ingredients`, each at the level it stands at — beside `Unlocks` and every recipe in full. 
+  Two labelled runs of bullets, which is how a card body names things on the [import review](#data) 
+  and the same `BulletRuns` widget. `Buy` was weighed as the first label and refused: the controls row 
+  above already spends that word on the budget.
 - **The dots are what the switch is worth reading**: restocking mixes a bottle merely running low 
   with one there is none of, and the open card is where that is told. Plain, they all read out, which 
   is the same thing a recipe card says about a line it is short of.
