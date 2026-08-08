@@ -323,6 +323,31 @@ First usable slice; recipes reference both vocabularies, so this precedes Phase 
       screen was spelling "N recipes" and "N bottles" two different ways, and a review naming four
       things would have been the third.
 
+- [x] **M25a The counts open, and the diacritics survive** — one defect and one redesign, both in
+      the file coming back. `XFile.readAsString` **drops the `encoding` asked of it** for the
+      bytes-backed file `file_selector_android` answers with, decoding byte per character: an export
+      imported straight back turned `Orange Curaçao` into `Orange CuraÃ§ao` and then saved it. The
+      codec was never at fault — its round-trip test already carried `crème de violette` — nor was
+      the store, whose `dart:io` reads and writes are UTF-8 both ways. What no test reached was the
+      seam's own body, the picker having always been overridden with a plain `String`. The bytes are
+      now decoded in a named `pickedText` whose test builds the `XFile` the way the plugin does, so
+      the shape the bug lived in is the shape under test; malformed input is refused rather than
+      substituted, a U+FFFD being the same loss made quieter. Recorded in
+      [architecture.md](architecture.md#platform-facts), where the pick's other platform facts sit.
+      **The counts open.** One card a kind, its count the title and the names themselves the line
+      under it, cut off at one line; tapped, the card gives every name it counted, and **nothing is
+      cut short** — a list that stopped at fifty is exactly where the entry a reader came looking for
+      would have been. Each kind is named and ordered as the screen that manages it does, so a card
+      is the list it stands for read early; the two tag vocabularies share one count but keep their
+      own labelled runs, one name being allowed to stand in both
+      ([ADR 07](adr/07-tag-colour.md)). **Accept moves to the app bar**, where every other commit in
+      the app sits: what the act is worth is carried by a body spelling out everything arriving, not
+      by the size of the button agreeing to it, and a button pinned under a list meant to be read
+      first argues with the reading. The sentence above the cards keeps what they cannot say —
+      everything held now goes, a copy of it kept first — and drops its numbers, a second set beside
+      theirs reading as a discrepancy rather than a reassurance. Where M25 counted "bottles" the
+      cards count `ingredients`, the noun `inventory_screen.dart` already used for them.
+
 ## Phase 5 — Release
 
 - [ ] **M26 Release packaging** — signing configuration (keystore outside the repo),

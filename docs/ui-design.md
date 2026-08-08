@@ -246,12 +246,26 @@ screen, not the row that starts it.
   terms, reading as the nothing it holds.
 - **Import** (FR-DAT-3) opens the system's picker and pushes what came back. One screen carries both 
   outcomes: a pick has two of them, and giving each its own shape would make one act look like two.
-- **What the file holds stands in for its name.** Recipes, bottles, tags and units, recipes first — 
-  a reader tells one file from another by its recipes long before by its units, and the two tag 
-  vocabularies count as one line, four being as many as a recognition aid can carry. Android hands 
-  over no filename worth showing ([ADR 18](adr/18-data-crosses-the-edge-in-a-system-sheet.md)), and 
-  the collection is what is being agreed to in any case. Under it, what stands to be replaced in the 
-  same terms, and that a copy of it is kept first (FR-DAT-3).
+- **What the file holds stands in for its name**, and opens. Recipes, ingredients, tags and units, 
+  recipes first — a reader tells one file from another by its recipes long before by its units. 
+  Android hands over no filename worth showing 
+  ([ADR 18](adr/18-data-crosses-the-edge-in-a-system-sheet.md)), and the collection is what is being 
+  agreed to in any case. One card a kind, its count the title, the names themselves the line under 
+  it, cut off at one line; tapped, the card gives every name it counted. **Nothing is cut short**: a 
+  list that stopped at fifty is exactly where the entry a reader came looking for would have been.
+- **Each kind is named and ordered as the screen that manages it names and orders it** — the nouns 
+  and the A→Z of `inventory_screen.dart` and `tags_screen.dart`, and the declared order 
+  `units_screen.dart` leaves standing, the fixed three coming first 
+  ([ADR 17](adr/17-the-fixed-units-interconvert.md)). A card is then the list it stands for, read 
+  early. The two tag vocabularies share one count but keep their own runs in the body, labelled, 
+  since one name may stand in both ([ADR 07](adr/07-tag-colour.md)); an empty run is left out rather 
+  than heading nothing, and a kind the file holds none of offers no chevron and answers no tap.
+- **Accept rides the app bar**, where every other commit in the app sits (`editor_form.dart`). What 
+  the act is worth is carried by a body spelling out everything arriving, not by the size of the 
+  button agreeing to it — and a button pinned under a list a reader is meant to read first argues 
+  with the reading. Above the cards, the one thing the counts cannot say: everything held now goes, 
+  and a copy of it is kept first (FR-DAT-3). No numbers there — the cards have them, and a second 
+  set beside them reads as a discrepancy rather than a reassurance.
 - **A refused file offers nothing to agree to.** The issues as the startup banner words them, 
   `line N:` and all (FR-DAT-4), under the one sentence that matters — nothing has changed. A file the 
   app cannot read holds nothing to import, so there is no button to grey out.

@@ -1,6 +1,8 @@
 /// The writable provider: startup load, mutations, and saves.
 library;
 
+import 'dart:convert';
+
 import 'package:cocktails/data/data.dart';
 import 'package:cocktails/domain/domain.dart';
 import 'package:file_selector/file_selector.dart';
@@ -25,24 +27,28 @@ final sharerProvider = Provider<Future<void> Function(String)>(
       ),
 );
 
-/// Plain text, not the `application/yaml` registered by RFC 9512: almost
-/// nothing on Android declares that type, so the chooser would stand near
-/// empty, and the file is text by FR-DAT-2 anyway. Stated rather than looked
-/// up because no `.yaml` mapping exists to look up — untyped, fewer apps offer
-/// to receive it.
+/// Plain text, not RFC 9512's `application/yaml`: almost nothing on Android
+/// declares that type, so the chooser would stand near empty — and the file is
+/// text by FR-DAT-2 anyway. Stated, no `.yaml` mapping existing to look up.
 const _exportMimeType = 'text/plain';
 
-/// Pick seam (ADR 18), the share's other half: the document the system's picker
-/// answered with, read as text — null where the reader picked nothing. No type
-/// filter, YAML having no MIME type Android's table knows: a filter would grey
-/// out the very file the reader came for, so the decode judges what arrives
-/// (FR-DAT-4).
+/// Pick seam (ADR 18), the share's other half: the document the picker answered
+/// with, as text — null where the reader picked nothing. No type filter, YAML
+/// having no MIME type Android knows: it would grey out the very file the reader
+/// came for, so the decode judges what arrives (FR-DAT-4).
 final filePickerProvider = Provider<Future<String?> Function()>(
   (ref) => () async {
     final picked = await openFile();
-    return picked?.readAsString();
+    return picked == null ? null : pickedText(picked);
   },
 );
+
+/// Bytes decoded here, never `XFile.readAsString`, which drops its own
+/// `encoding` for the bytes-backed file Android hands over and reads byte per
+/// character — turning `Curaçao` into `CuraÃ§ao`. Malformed input throws over
+/// substituting U+FFFD, that being the same loss made quieter.
+Future<String> pickedText(XFile picked) async =>
+    utf8.decode(await picked.readAsBytes());
 
 /// What a picked file turned out to be: the collection it holds, or what
 /// stopped it being read (FR-DAT-4). Never both.

@@ -9,7 +9,7 @@ the resulting design at system level, [components.md](components.md) at module l
 - **Flutter (Dart)** targeting Android; desktop later ([ADR 01](adr/01-technology-stack.md)).
 - **Riverpod** for state management ([ADR 03](adr/03-app-structure-and-state.md)).
 - Development: Linux + physical Android phone over USB.
-- Minimal dependencies: `flutter_riverpod`, `yaml`, `path_provider`, `share_plus`, `file_picker`. 
+- Minimal dependencies: `flutter_riverpod`, `yaml`, `path_provider`, `share_plus`, `file_selector`. 
   Riverpod at 2.x (3.x adds unused packages). `scrollable_positioned_list` is the first taken for 
   ergonomics rather than structure ([ADR 13](adr/13-lists-scroll-by-index.md)), and the bar it sets 
   for the next: confined to one file, with the way out written down. `font_awesome_flutter` is the 
@@ -163,9 +163,13 @@ Rules:
 - The copy leaves through the Android share sheet, over the `FileProvider` `share_plus` ships 
   ([ADR 18](adr/18-data-crosses-the-edge-in-a-system-sheet.md)); the plugin re-copies it into 
   `cacheDir/share_plus/`, so the receiving app sees the basename above. No manifest entry is ours.
-- A file comes back through `ACTION_OPEN_DOCUMENT` on `file_selector`, which copies the picked 
-  document into the app cache first, so no layer here holds a `content://` URI. The pre-import copy 
-  is reachable only through Android Auto Backup: nothing in the app reads it back.
+- A file comes back through `ACTION_OPEN_DOCUMENT` on `file_selector`, so no layer here holds a 
+  `content://` URI. The Android plugin answers with an `XFile.fromData` — the bytes, not a path to 
+  them — and `XFile.readAsString` **drops the encoding asked of it** on that branch, decoding byte 
+  per character; `Orange Curaçao` came back `Orange CuraÃ§ao`. The pick seam reads the bytes and 
+  decodes UTF-8 itself, and malformed input is refused rather than substituted, a U+FFFD being the 
+  same loss made quieter. The pre-import copy is reachable only through Android Auto Backup: nothing 
+  in the app reads it back.
 - Android Auto Backup enabled.
 - Application ID: `dev.salveron.cocktails`.
 - Minimum Android: Flutter default (minSdk 21+).

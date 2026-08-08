@@ -107,9 +107,9 @@ void main() {
   });
 
   group('import', () {
-    /// A file holding three recipes and nine bottles, against the one recipe
-    /// and two bottles the screen opens over — so every count on the review
-    /// tells the file's collection from the reader's.
+    /// A file holding three recipes and nine ingredients, against the one recipe
+    /// and two ingredients the screen opens over — so a count on the review
+    /// cannot be read off the store and pass for the file's.
     final pickedFile = const YamlCodec().encode(recipeModel);
 
     /// A file the codec can read but the rules refuse: nothing declares "rye".
@@ -141,24 +141,105 @@ recipes:
         'moves (FR-DAT-3)', (tester) async {
       final store = await importOver(tester, () async => pickedFile);
       expect(find.widgetWithText(AppBar, 'Import'), findsOneWidget);
-      expect(find.text('This file holds'), findsOneWidget);
+      // One card a kind, counted in the noun the screen managing it uses.
       expect(find.text('3 recipes'), findsOneWidget);
-      expect(find.text('9 bottles'), findsOneWidget);
+      expect(find.text('9 ingredients'), findsOneWidget);
       expect(find.text('2 tags'), findsOneWidget);
       expect(find.text('7 units'), findsOneWidget);
-      // What it stands to replace, in the same terms.
       expect(
-        find.textContaining('Replaces the 1 recipe and 2 bottles'),
+        find.textContaining('Replaces everything you have now'),
         findsOneWidget,
       );
       expect(store.saveCount, 0);
       expect(store.snapshots, isEmpty);
     });
 
+    testWidgets('a card names what it counts before it is opened', (
+      tester,
+    ) async {
+      await importOver(tester, () async => pickedFile);
+      // A→Z, as the recipe list itself reads, and cut off rather than wrapped.
+      final line = tester.widget<Text>(
+        find.text('Daiquiri, Negroni, Whiskey Sour'),
+      );
+      expect(line.maxLines, 1);
+      expect(line.overflow, TextOverflow.ellipsis);
+    });
+
+    testWidgets('an opened card gives every name it counted', (tester) async {
+      await importOver(tester, () async => pickedFile);
+      await tap(tester, find.text('9 ingredients'));
+      for (final ingredient in recipeModel.ingredients) {
+        expect(find.text('• ${ingredient.name}'), findsOneWidget);
+      }
+      // The line under the title has said all it can; the body says the rest.
+      expect(find.textContaining('bourbon, campari,'), findsNothing);
+    });
+
+    testWidgets('a card holding thousands still gives them all', (
+      tester,
+    ) async {
+      final many = Model(
+        ingredients: [Ingredient('gin')],
+        recipes: [
+          for (var index = 0; index < 2000; index++)
+            Recipe(
+              'Recipe ${index.toString().padLeft(4, '0')}',
+              lines: const [
+                RecipeLine(Amount(1), 'part', ['gin']),
+              ],
+            ),
+        ],
+      );
+      await importOver(tester, () async => const YamlCodec().encode(many));
+      await tap(tester, find.text('2000 recipes'));
+      // The last one as surely as the first: a list cut short is exactly where
+      // the entry a reader came looking for would have been.
+      expect(find.text('• Recipe 0000'), findsOneWidget);
+      expect(find.text('• Recipe 1999'), findsOneWidget);
+    });
+
+    testWidgets('the two tag vocabularies stay apart when opened (ADR 07)', (
+      tester,
+    ) async {
+      final both = Model(
+        ingredients: [
+          Ingredient('gin', tags: const ['juniper']),
+        ],
+        ingredientTags: const [Tag('juniper', color: TagColor.sand)],
+        recipeTags: const [Tag('classic', color: TagColor.rose)],
+      );
+      await importOver(tester, () async => const YamlCodec().encode(both));
+      // One count over both, the body keeping the lists it came from.
+      await tap(tester, find.text('2 tags'));
+      expect(find.text('Recipe'), findsOneWidget);
+      expect(find.text('• classic'), findsOneWidget);
+      expect(find.text('Ingredient'), findsOneWidget);
+      expect(find.text('• juniper'), findsOneWidget);
+    });
+
+    testWidgets('a vocabulary the file has none of is not labelled', (
+      tester,
+    ) async {
+      // recipeModel carries recipe tags and no ingredient tags.
+      await importOver(tester, () async => pickedFile);
+      await tap(tester, find.text('2 tags'));
+      expect(find.text('Recipe'), findsOneWidget);
+      expect(find.text('Ingredient'), findsNothing);
+    });
+
+    testWidgets('a kind the file holds none of does not open', (tester) async {
+      await importOver(tester, () async => const YamlCodec().encode(Model()));
+      expect(find.text('0 recipes'), findsOneWidget);
+      await tap(tester, find.text('0 recipes'));
+      // Nothing to open, so no chevron offered and the tap answered with none.
+      expect(find.byIcon(Icons.expand_less), findsNothing);
+    });
+
     testWidgets('the replace lands, keeping a copy of what it replaced '
         '(FR-DAT-3)', (tester) async {
       final store = await importOver(tester, () async => pickedFile);
-      await tap(tester, find.text('Replace everything'));
+      await tap(tester, find.text('Accept'));
       expect(store.saved, recipeModel);
       expect(store.snapshots[ExportPurpose.beforeImport], fixtureModel);
       expect(find.text('3 recipes imported.'), findsOneWidget);
@@ -171,7 +252,7 @@ recipes:
       expect(find.textContaining('rye'), findsOneWidget);
       expect(find.textContaining('line '), findsOneWidget);
       // Nothing to agree to, and nothing agreed to.
-      expect(find.text('Replace everything'), findsNothing);
+      expect(find.text('Accept'), findsNothing);
       expect(store.saveCount, 0);
       expect(store.snapshots, isEmpty);
     });
@@ -181,7 +262,7 @@ recipes:
     ) async {
       await importOver(tester, () async => 'not a cocktail in sight');
       expect(find.text('This file cannot be imported'), findsOneWidget);
-      expect(find.text('Replace everything'), findsNothing);
+      expect(find.text('Accept'), findsNothing);
     });
 
     testWidgets('a reader who picks nothing has done nothing', (tester) async {
@@ -212,7 +293,7 @@ recipes:
         picker: () async => pickedFile,
       );
       await tap(tester, find.text('Import'));
-      await tap(tester, find.text('Replace everything'));
+      await tap(tester, find.text('Accept'));
       expect(find.textContaining('Could not import'), findsOneWidget);
       // Still on the review: leaving for a collection that never reached the
       // disk would read as a replace that worked.
@@ -229,7 +310,7 @@ recipes:
       );
       await tap(tester, find.byTooltip('Settings'));
       await tap(tester, find.text('Import'));
-      await tap(tester, find.text('Replace everything'));
+      await tap(tester, find.text('Accept'));
       // Two screens back, where what was imported is: a list of recipes that
       // were not there a moment ago is the answer no sentence improves on.
       expect(find.widgetWithText(AppBar, 'Import'), findsNothing);

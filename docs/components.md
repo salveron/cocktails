@@ -452,6 +452,12 @@ edge inside the provider body, so a widget test hands the flow a string and no f
 exercise it. No type filter, YAML having no MIME type Android's table knows — a filter would grey out 
 the file the reader came for, and FR-DAT-4's decode is the judge either way.
 
+The bytes→text step is `pickedText`, named rather than inlined because it is the one rule the seam 
+carries and overriding the provider with a plain string never reaches it: `XFile.readAsString` 
+ignores its own `encoding` for the bytes-backed file Android answers with, which cost the diacritics 
+of every name on the way in ([architecture.md](architecture.md#platform-facts)). Its test builds the 
+`XFile` the way the plugin does, so the shape the bug lived in is the shape under test.
+
 ```dart
 typedef ImportReview = ({Model? model, List<String> issues});   // never both
 

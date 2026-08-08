@@ -1,5 +1,6 @@
 // Enforces docs/components.md "Boundary rules" (docs/adr/04-module-boundaries.md):
-// reads the dependency directives under lib/ and fails on any violation. Needs
+// reads the dependency directives under lib/ and fails on any violation, and
+// pins the dependency list in docs/architecture.md to pubspec.yaml. Needs
 // nothing beyond dart:io and the test harness (an explicit ADR 04 decision).
 //
 // `export` is checked alongside `import`, and more strictly: under the barrel
@@ -153,6 +154,45 @@ List<_Directive> _exports(List<String> targets) => [
   for (final target in targets) (kind: 'export', target: target),
 ];
 
+/// Runtime dependency names in a pubspec [source], `flutter` excluded: the SDK
+/// is the platform the app runs on, not a package taken for it.
+Set<String> _pubspecDependencies(String source) {
+  final entry = RegExp(r'^  ([a-z][a-z0-9_]*):');
+  final names = <String>{};
+  var inBlock = false;
+  for (final line in source.split('\n')) {
+    if (!inBlock) {
+      inBlock = line.startsWith('dependencies:');
+      continue;
+    }
+    if (line.trim().isEmpty) continue;
+    if (!line.startsWith(' ')) break;
+    final match = entry.firstMatch(line);
+    if (match != null) names.add(match.group(1)!);
+  }
+  return names..remove('flutter');
+}
+
+/// Package names the "Minimal dependencies" bullet of an architecture [source]
+/// names. The whole bullet counts, not only its leading list: the two packages
+/// its later sentences name are runtime dependencies just as much, and that
+/// bullet is the only home the rationale for taking them has.
+Set<String> _documentedDependencies(String source) {
+  final lines = source.split('\n');
+  final start = lines.indexWhere(
+    (l) => l.startsWith('- Minimal dependencies:'),
+  );
+  if (start < 0) return {};
+  final bullet = [lines[start]];
+  for (final line in lines.skip(start + 1)) {
+    if (line.trim().isEmpty || !line.startsWith(' ')) break;
+    bullet.add(line);
+  }
+  return RegExp(
+    r'`([a-z][a-z0-9_]*)`',
+  ).allMatches(bullet.join('\n')).map((m) => m.group(1)!).toSet();
+}
+
 void main() {
   group('lib/ layer boundaries', () {
     test('every file under lib/ honors docs/components.md boundary rules', () {
@@ -203,6 +243,34 @@ void main() {
         ),
         isNotEmpty,
       );
+    });
+  });
+
+  // docs/architecture.md names the dependencies, pubspec.yaml is where they
+  // are: the doc said `file_picker` for a whole milestone while the manifest
+  // depended on `file_selector`, with nothing reading both to notice.
+  group('docs/architecture.md dependency list', () {
+    test('names exactly the runtime dependencies of pubspec.yaml', () {
+      final declared = _pubspecDependencies(
+        File('pubspec.yaml').readAsStringSync(),
+      );
+      final documented = _documentedDependencies(
+        File('docs/architecture.md').readAsStringSync(),
+      );
+      // Guards against a green run over a bullet that was renamed away.
+      expect(
+        documented,
+        isNotEmpty,
+        reason: 'no "Minimal dependencies" bullet',
+      );
+
+      final violations = [
+        for (final name in declared.difference(documented))
+          'docs/architecture.md omits $name, a pubspec.yaml dependency',
+        for (final name in documented.difference(declared))
+          'docs/architecture.md names $name, not a pubspec.yaml dependency',
+      ];
+      expect(violations, isEmpty, reason: violations.join('\n'));
     });
   });
 
@@ -396,6 +464,42 @@ void main() {
       );
       expect(violations.single, contains('domain/src/model.dart'));
       expect(violations.single, contains('package:flutter/material.dart'));
+    });
+  });
+
+  group('dependency list parser sanity checks (fake inputs)', () {
+    test('the manifest parser takes dependencies, not the SDK or dev ones', () {
+      expect(
+        _pubspecDependencies('''
+name: fake
+
+dependencies:
+  flutter:
+    sdk: flutter
+  # Pinned exactly, mentioning not_a_dependency.
+  scrollable_positioned_list: 0.3.8
+  yaml: ^3.1.3
+
+dev_dependencies:
+  flutter_lints: ^6.0.0
+'''),
+        {'scrollable_positioned_list', 'yaml'},
+      );
+    });
+
+    test('the doc parser reads the whole bullet, and stops at its end', () {
+      expect(
+        _documentedDependencies('''
+- Minimal dependencies: `first`, `second`.
+  Prose taking `third` for ergonomics, over `pubspec.yaml` and a `Widget`.
+- The next bullet, about `fourth`.
+'''),
+        {'first', 'second', 'third'},
+      );
+    });
+
+    test('the doc parser reports nothing when the bullet is gone', () {
+      expect(_documentedDependencies('- Dependencies: `first`.'), isEmpty);
     });
   });
 }

@@ -1,6 +1,10 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:cocktails/data/data.dart';
 import 'package:cocktails/domain/domain.dart';
 import 'package:cocktails/state/state.dart';
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -562,5 +566,30 @@ recipes:
         expect(review.model, stored);
       },
     );
+  });
+
+  /// The seam's own reading, over a file shaped the way `file_selector_android`
+  /// answers: `XFile.fromData`, whose `readAsString` ignores the encoding asked
+  /// of it. Overriding the picker with a plain `String` never reached this.
+  group('a picked file reads as UTF-8', () {
+    test('a name outside ASCII arrives as it left', () async {
+      final picked = XFile.fromData(utf8.encode('Orange Curaçao'));
+      expect(await pickedText(picked), 'Orange Curaçao');
+    });
+
+    test('an export picked back keeps the spelling it went out with', () async {
+      final exported = Model(ingredients: [Ingredient('Orange Curaçao')]);
+      final onDisk = const YamlCodec().encode(exported);
+      final container = await started();
+
+      final text = await pickedText(XFile.fromData(utf8.encode(onDisk)));
+
+      expect(controllerOf(container).review(text).model, exported);
+    });
+
+    test('bytes that are not UTF-8 are refused, not guessed at', () async {
+      final picked = XFile.fromData(Uint8List.fromList([0x61, 0xFF, 0x62]));
+      await expectLater(pickedText(picked), throwsFormatException);
+    });
   });
 }
