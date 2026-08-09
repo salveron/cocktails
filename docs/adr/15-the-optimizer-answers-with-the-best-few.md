@@ -66,6 +66,10 @@ before ranking took 6.8 s.
 - The optimizer no longer promises *every* purchase worth making, only the best few of each size.
   Anything that needs the whole space — a "surprise me" over purchases, say — must raise `most`
   and pay for it.
+- The best few are all a screen can narrow. The shopping tag filter (FR-DIS-10) sifts this list rather
+  than the search behind it, so a basket cut here for ranking poorly overall is offered under no tag it
+  would have led — a niche category can read empty while a good basket for it exists. `most` is the
+  relief, and re-running the search over the tagged recipes alone is the answer if it ever is not.
 - Cost still grows with the cube of the pool of out-of-stock bottles, not with the recipe count. A
   collection short of far more bottles than this one will cost more, and the budget selector is the
   relief: N=1 is linear and N=2 quadratic.

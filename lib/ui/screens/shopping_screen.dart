@@ -21,8 +21,9 @@ String _countOf(Purchase purchase) =>
 const _lowMeans =
     'Buy the bottles running low alongside the ones you are out of.';
 
-/// What to buy next (FR-DIS-6, FR-DIS-7): the baskets of exactly the budget's
-/// worth of bottles, best first, each opening onto what it unlocks. Designed in
+/// What to buy next (FR-DIS-6, FR-DIS-7, FR-DIS-10): the baskets of exactly the
+/// budget's worth of bottles, best first, narrowed to the categories picked,
+/// each opening onto what it unlocks. Designed in
 /// docs/ui-design.md#shopping-screen.
 class ShoppingScreen extends ConsumerStatefulWidget {
   const ShoppingScreen({required this.showing, super.key});
@@ -49,6 +50,10 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
   /// the list disposing what scrolls out of it.
   final _expanded = <String>{};
 
+  /// The recipe tags narrowing the baskets (FR-DIS-10) — screen state like the
+  /// budget and the switch, so nothing about a way of looking reaches the file.
+  final _picked = <String>{};
+
   @override
   Widget build(BuildContext context) {
     // Nothing is watched while another destination is on show, so the search
@@ -56,9 +61,23 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
     if (!widget.showing) return const SizedBox.shrink();
     return ModelView((model) {
       final purchases = ref.watch(purchasesProvider(_restocking));
+      final vocabulary = sortedByName(model.recipeTags);
+      final worn = {
+        for (final recipe in model.recipes) recipe.name: recipe.tags,
+      };
+      final filter = _tagFilter(vocabulary, worn);
+      // The picks as the vocabulary spells them — `tagFilter` reads them by the
+      // same rule, so nothing is dotted by a pick that stopped narrowing.
+      final lit = wornInOrder(vocabulary, _picked);
+      // Ranked among every basket of the size, then narrowed — the rank is
+      // bound before the tags drop any, so the numbering on show gaps.
       final onShow = [
-        for (final purchase in purchases)
-          if (purchase.bottles.length == _budget) purchase,
+        for (final (rank, purchase)
+            in purchases
+                .where((purchase) => purchase.bottles.length == _budget)
+                .indexed)
+          if (filter?.test(purchase) ?? true)
+            (rank: rank + 1, basket: purchase),
       ];
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -69,14 +88,20 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
             onBudget: (budget) => setState(() => _budget = budget),
             onRestocking: (on) => setState(() => _restocking = on),
           ),
+          ?filter?.row,
           Expanded(
             child: onShow.isEmpty
-                ? _emptyFor(model, purchases)
+                ? _emptyFor(model, purchases, filter)
                 : ListView.builder(
                     padding: const EdgeInsets.only(bottom: 16),
                     itemCount: onShow.length,
-                    itemBuilder: (context, index) =>
-                        _card(model, onShow[index], index + 1),
+                    itemBuilder: (context, index) => _card(
+                      model,
+                      onShow[index].basket,
+                      onShow[index].rank,
+                      lit: lit,
+                      worn: worn,
+                    ),
                   ),
           ),
         ],
@@ -84,10 +109,34 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
     });
   }
 
+  /// The chip row and what it keeps (FR-DIS-10), on the recipes' own terms: a
+  /// basket answers to the tags of every recipe it unlocks, so the row's own
+  /// test — every picked tag worn — reaches a basket bringing one tiki recipe
+  /// and one sour rather than demanding a recipe that is both. A pick gone
+  /// stale is read against the vocabulary there and stops narrowing, and a
+  /// collection with no recipe tags draws no row at all.
+  ListFilter<Purchase>? _tagFilter(
+    List<Tag> vocabulary,
+    Map<String, List<String>> worn,
+  ) => tagFilter(
+    vocabulary: vocabulary,
+    picked: _picked,
+    onToggle: (tag) => setState(() => _picked.toggle(tag)),
+    tagsOf: (purchase) => [
+      for (final recipe in purchase.unlocks) ...?worn[recipe],
+    ],
+  );
+
   /// One basket, [rank] of the baskets on show: where it stands, the bottles
   /// under that, and how much they are worth. Open, the bottles move into the
   /// body to read at the level each stands at, beside every recipe in full.
-  Widget _card(Model model, Purchase purchase, int rank) {
+  Widget _card(
+    Model model,
+    Purchase purchase,
+    int rank, {
+    required List<Tag> lit,
+    required Map<String, List<String>> worn,
+  }) {
     final bottles = _bottlesOf(purchase);
     final expanded = _expanded.contains(bottles);
     final theme = Theme.of(context);
@@ -102,15 +151,23 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
           color: theme.colorScheme.onSurfaceVariant,
         ),
       ),
-      body: expanded ? _Basket(model: model, purchase: purchase) : null,
+      body: expanded
+          ? _Basket(model: model, purchase: purchase, lit: lit, worn: worn)
+          : null,
       onTap: () => setState(() => _expanded.toggle(bottles)),
     );
   }
 
   /// Why there is nothing to show, which is three different answers: no recipes
-  /// to be short of, nothing short of anything, or nothing at this size worth
-  /// the money. Only the last leaves somewhere to go, and offers it.
-  Widget _emptyFor(Model model, List<Purchase> purchases) {
+  /// to be short of, nothing short of anything, or nothing on show worth the
+  /// money. Only the last leaves somewhere to go — the smallest size answering
+  /// under the tags in force, absent where none does — and it blames the picks
+  /// rather than the size where they are what emptied the screen.
+  Widget _emptyFor(
+    Model model,
+    List<Purchase> purchases,
+    ListFilter<Purchase>? filter,
+  ) {
     if (model.recipes.isEmpty) {
       return const EmptyState(
         icon: Icons.local_bar_outlined,
@@ -129,20 +186,29 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
             : 'Every recipe you have can be made from what is on the shelf.',
       );
     }
-    final elsewhere = purchases
-        .map((purchase) => purchase.bottles.length)
-        .reduce((a, b) => a < b ? a : b);
+    final narrowing = filter?.narrowing;
+    // One bottle is no basket, and both sentences below name one.
+    final basket = _budget == 1 ? 'single bottle' : '$_budget-bottle basket';
+    final sizes = purchases
+        .where((purchase) => filter?.test(purchase) ?? true)
+        .map((purchase) => purchase.bottles.length);
+    final elsewhere = sizes.isEmpty
+        ? null
+        : sizes.reduce((a, b) => a < b ? a : b);
     return EmptyState(
       icon: Icons.shopping_cart_outlined,
       title: 'Nothing worth buying in $_budget',
-      message: _budget == 1
+      message: narrowing != null
+          ? 'No $basket here unlocks a recipe matching $narrowing.'
+          : _budget == 1
           ? 'No single bottle unlocks a recipe on its own here.'
-          : 'Every $_budget-bottle basket does no better than a smaller one '
-                'inside it.',
-      action: FilledButton.tonal(
-        onPressed: () => setState(() => _budget = elsewhere),
-        child: Text('Try ${counted(elsewhere, 'bottle')}'),
-      ),
+          : 'Every $basket does no better than a smaller one inside it.',
+      action: elsewhere == null
+          ? null
+          : FilledButton.tonal(
+              onPressed: () => setState(() => _budget = elsewhere),
+              child: Text('Try ${counted(elsewhere, 'bottle')}'),
+            ),
     );
   }
 }
@@ -226,14 +292,27 @@ class _Controls extends StatelessWidget {
 }
 
 /// The open card: what to buy, each bottle at the level it stands at, then
-/// every recipe the basket unlocks. The dots are what the switch is worth
-/// reading — with it on, a basket mixes bottles merely running low with ones
-/// there are none of.
+/// every recipe the basket unlocks, each marking the picks it answered
+/// (FR-DIS-10). The stock dots are what the switch is worth reading — with it
+/// on, a basket mixes bottles merely running low with ones there are none of.
 class _Basket extends StatelessWidget {
-  const _Basket({required this.model, required this.purchase});
+  const _Basket({
+    required this.model,
+    required this.purchase,
+    required this.lit,
+    required this.worn,
+  });
 
   final Model model;
   final Purchase purchase;
+
+  /// The tags picked, in vocabulary order — the only ones marked here, so a dot
+  /// answers the one question a narrowed screen raises: which pick reached this
+  /// basket. Empty while nothing narrows, and then no recipe wears anything.
+  final List<Tag> lit;
+
+  /// What each recipe wears, by name: a basket carries names alone.
+  final Map<String, List<String>> worn;
 
   @override
   Widget build(BuildContext context) => BulletRuns([
@@ -244,6 +323,19 @@ class _Basket extends StatelessWidget {
           (name: bottle, trailing: StockDot(stockOf(model, bottle))),
       ],
     ),
-    bulletRun(purchase.unlocks, label: 'Unlocks'),
+    (
+      label: 'Unlocks',
+      bullets: [
+        for (final recipe in purchase.unlocks)
+          (name: recipe, trailing: _dotsOn(recipe)),
+      ],
+    ),
   ]);
+
+  /// The picks [recipe] answers, or nothing at all where it answers none — a
+  /// bullet wearing no dot rode along on the ones that do.
+  Widget? _dotsOn(String recipe) {
+    final dots = wornInOrder(lit, worn[recipe] ?? const []);
+    return dots.isEmpty ? null : TagDots(dots);
+  }
 }

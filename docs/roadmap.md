@@ -360,16 +360,20 @@ First usable slice; recipes reference both vocabularies, so this precedes Phase 
       is what a basket is ranked by, so the headline reads as the ranking rather than as a composite
       name no two of which are the same length. The rank being the budget's to hand out, an open card
       is remembered under its bottles instead. UI only — `Purchase` does not move.
-- [ ] **M27 Each bottle says what it carries** — an open basket says which bottle brings which recipe
-      (FR-DIS-6 widened): each recipe in the body names the bottles it needed, joined with `+` where it
-      took several together and `or` where any one of them would do, which is M18a's reading of `/`.
-      Grouping the recipes under the bottles was designed and refused — `_unlockedBy` collects what any
-      *subset* of a basket closes, so a recipe short of two bottles belongs under both, which is the
-      duplication M26 just removed, and one closed by either of two alternatives belongs under neither.
-      A per-bottle count would have been well defined (`_earnsIts` guarantees at least one recipe lost
-      without any bottle) but says nothing about *which*. So `Purchase` carries the ways each recipe is
-      closed rather than a flat list of names, the caption being one reading of them; a single-bottle
-      basket writes none, every caption on it saying the same thing.
+- [x] **M27 The baskets narrow to a category** — the shopping screen gains the recipes' tag row
+      (FR-DIS-10, [ui-design.md](ui-design.md#shopping-screen)), so *shop for tiki* is one tap: the same
+      `tagFilter`, on its own row under the controls, over a basket that answers to the tags of every
+      recipe it unlocks. Kept where each picked tag is worn by one of them — which is the row's own
+      test applied to that union, not a rule of its own, so two picks reach a basket bringing one
+      tiki recipe and one sour rather than demanding a recipe that is both. A basket is ranked among
+      every basket of its size, so a narrowed screen reads `#1, #4, #7`: the number *is* the ranking
+      (M26), and renumbering what is on show would call the fourth-best basket the best. What is on
+      show can then be empty at a size that has baskets, so the "nothing at this size" state names the
+      picks as the cause the way `_NoMatch` joins its own, and offers only a size that answers *under*
+      them. An open basket then marks which of its recipes answered: each wears the picked tags it
+      carries and none of the rest, so a bullet with no dot rode along and a bare card means nothing
+      narrows. The run of dots comes out of `DottedName` into `TagDots` beside it, the one home both
+      readings now share. UI only — `Purchase` does not move, and the search is not re-run per pick.
 - [ ] **M28 A destination sends the reader to another** — long-pressing a recipe on a basket opens it
       on the Recipes tab (FR-DIS-9, [ADR 19](adr/19-a-destination-sends-the-reader-to-another.md)):
       `lib/ui/destinations.dart` takes the enum out of `app.dart` and holds beside it one provider
@@ -381,9 +385,15 @@ First usable slice; recipes reference both vocabularies, so this precedes Phase 
       which [ADR 13](adr/13-lists-scroll-by-index.md) had assumed impossible.
 
 **Deferred**, numbered when scheduled: **Bought it** — a basket's bottles set in stock from the card,
-which is the shopping screen's first write to the model and so needs a requirement of its own; and
+which is the shopping screen's first write to the model and so needs a requirement of its own;
 **ADR 19's second pair** — a recipe card's line reaching its bottle on the Inventory, one more call
-site and the inventory screen learning to serve.
+site and the inventory screen learning to serve; and **each bottle says what it carries** — an open
+basket captioning each recipe with the bottles that brought it, `+`-joined where several were taken
+together and `or` where any one would do. `Purchase` would carry the ways a recipe is closed rather
+than a flat list of names, since grouping the recipes *under* the bottles is not available: a recipe
+short of two belongs under both, which is the duplication M26 removed, and one closed by either of
+two alternatives belongs under neither. Deferred for want of a reading of the caption that earns
+the room it takes on every card.
 
 ## Phase 6 — Release
 

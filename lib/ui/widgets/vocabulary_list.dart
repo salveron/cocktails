@@ -74,8 +74,12 @@ typedef ListDraw<T> = ({
 /// the rows, and an entry kept only where it wears every one picked. A
 /// vocabulary with nothing in it has no row and narrows nothing.
 ///
-/// [picked] is read against [vocabulary] rather than trusted, so a tag renamed
-/// or deleted elsewhere stops narrowing rather than emptying the list.
+/// [picked] is read against [vocabulary] through `wornInOrder` rather than
+/// trusted, so a tag deleted or renamed elsewhere stops narrowing rather than
+/// emptying the list, while one renamed only in its case goes on narrowing
+/// (ADR 08). That is the one home for reading picks against a vocabulary — the
+/// shopping card marks its recipes with the picks they answer off the same rule,
+/// so nothing is ever dotted by a pick that has stopped narrowing.
 ///
 /// [leading] is a narrowing the screen builds itself — the recipes' base spirit
 /// (ADR 12). Its row stands first among the chips, in the one scroller, and its
@@ -89,10 +93,7 @@ ListFilter<T>? tagFilter<T>({
   ListFilter<T>? leading,
 }) {
   if (vocabulary.isEmpty && leading == null) return null;
-  final chosen = {
-    for (final tag in vocabulary)
-      if (picked.contains(tag.name)) tag.name,
-  };
+  final chosen = {for (final tag in wornInOrder(vocabulary, picked)) tag.name};
   final reasons = [
     ?leading?.narrowing,
     if (chosen.isNotEmpty) 'every tag you picked',

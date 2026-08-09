@@ -55,14 +55,17 @@ lib/
                                #   its pick pushes, so one file keeps them from
                                #   drifting apart (ADR 18)
     widgets/                   # empty_state, model_view, search_field, startup_issues,
-                               #   color_chip — the pill, chip, dot and dotted name,
+                               #   color_chip — the pill, chip, dot, the run of dots
+                               #     a name or a basket's recipe wears, and the
+                               #     dotted name itself,
                                #     plus `chipRadius`, the corner a chip and the ink
                                #     under it both round to
                                #   tag_choices — the row tags are picked from
                                #   vocabulary_list — the searchable list all four screens are,
                                #     plus the orders it reads in, the spellings it searches
-                               #     by, the tag filter two of them narrow by, the draw one
-                               #     of them offers over the rows on show, byName,
+                               #     by, the tag filter three screens narrow by — the
+                               #     shopping one taking the row without the list — the draw
+                               #     one of them offers over the rows on show, byName,
                                #     Set.toggle and counted — how many of a thing there
                                #     are, in words. The one file that knows a list
                                #     scrolls (ADR 13)

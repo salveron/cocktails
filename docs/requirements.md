@@ -99,6 +99,13 @@ empty so no reference to it can mean two things.
 - **FR-DIS-8** Lists (recipes, inventory, tags) readable in multiple orders: by name, by signal 
   (availability, stock, colour). Picking current order reverses it. Default: recipes by availability, 
   inventory by stock, tags by name (not persisted). Rows stable during edit.
+- **FR-DIS-10** Shopping baskets filterable by recipe tag — FR-DIS-3's idiom on the optimizer's 
+  answers, combining with the budget and the reading of short. A basket is kept where each picked tag 
+  is worn by some recipe it unlocks, not necessarily the same one, so picking one shops for a 
+  category. What is narrowed is the answer, not the search behind it: a basket keeps the rank it holds 
+  among all of its size, and the numbering on show gaps. An open basket marks each recipe with the 
+  picks that recipe answers, so which of them reached the basket is read rather than inferred; one 
+  answering none is marked with nothing.
 
 ### Settings
 

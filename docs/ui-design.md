@@ -163,6 +163,20 @@ Create/edit: pushed page, Save in app bar. Mirrors file order (name, lines, tags
   counts as short. Off, only what is out of stock; on, anything short of full stock, so the bottles 
   running low are bought beside the missing ones. Two words on the switch, the sentence in its tooltip 
   — the label is what a reader scans, not what teaches them.
+- **The tags say what to shop for** (FR-DIS-10): the [recipes screen](#recipes-screen)'s chip row, the 
+  same `tagFilter`, on its own row under the controls — a basket answering to the tags of every recipe 
+  it unlocks, so a pick keeps only the baskets shopping for that category. Under the controls rather 
+  than among them: the budget and the switch say how much to buy, the chips what for, and the `Wrap` 
+  holding the two is already what keeps them off the edge. Always on show rather than behind an icon — 
+  a narrowing that gaps the numbering has to be readable beside the gap it makes.
+- **A basket is ranked among all of its size**, so a narrowed screen reads `#1, #4, #7`. The number 
+  *is* the ranking, so renumbering what is on show would call the fourth-best basket the best; the gap 
+  is what says a filter is doing something.
+- **The tags narrow what was found, not what is looked for.** The search is not re-run per pick, it 
+  being the screen's one expensive computation — so a basket the optimizer already cut for ranking 
+  poorly overall never reaches the chips, and a niche tag can come up empty while a good basket for it 
+  exists ([ADR 15](adr/15-the-optimizer-answers-with-the-best-few.md)). Narrowing the *recipes* the 
+  search runs over would answer better, at a search per pick and a renumbering of every basket.
 - **Both controls on one row** above the list, and a `Wrap` rather than a `Row`: a phone too narrow, 
   or a reader's larger text, drops the switch to a second line instead of carrying it off the edge. 
   Segments sit at 48dp — a touch target's own floor, and `visualDensity` is what reaches them, 
@@ -180,12 +194,22 @@ Create/edit: pushed page, Save in app bar. Mirrors file order (name, lines, tags
   Two labelled runs of bullets, which is how a card body names things on the [import review](#data) 
   and the same `BulletRuns` widget. `Buy` was weighed as the first label and refused: the controls row 
   above already spends that word on the budget.
-- **The dots are what the switch is worth reading**: restocking mixes a bottle merely running low 
+- **An open basket marks the picks it answered** (FR-DIS-10): each recipe under `Unlocks` wears, as 
+  dots in vocabulary order, the picked tags it carries — `TagDots`, the same run a list row wears, so 
+  a dot and the chip it answers to are one colour. Only the picked ones: a dot here answers the single 
+  question a narrowed screen raises, so a recipe showing none rode along on the ones that do, and 
+  nothing is marked at all while nothing narrows. Every tag a recipe wears was weighed and refused — 
+  that is the recipe list's reading, where the dots are the row's own subject; on a basket it would 
+  bury the answer among tags that had nothing to do with why the basket is here.
+- **The stock dots are what the switch is worth reading**: restocking mixes a bottle merely running low 
   with one there is none of, and the open card is where that is told. Plain, they all read out, which 
   is the same thing a recipe card says about a line it is short of.
 - **Three empty states**, told apart by why there is nothing: no recipes to be short of; nothing short 
-  at all (worded by the reading in force); or nothing at this size, which is the only one with 
-  somewhere to go — it offers the smallest size that does answer, and moves there.
+  at all (worded by the reading in force); or nothing on show, which is the only one with somewhere to 
+  go — it offers the smallest size that answers *under the tags in force*, and moves there, and offers 
+  nothing where no size does. With a tag picked that last one blames the picks rather than the size, 
+  joining its reasons the way `_NoMatch` does on the other lists: the size is then not what emptied 
+  the screen, and saying so would be false.
 - **Off screen it does not search.** The shell tells each destination whether it is the one on show; 
   this screen watches nothing while it is not. The optimizer is the one computation that must not run 
   for a reader who is not there ([components.md](components.md#state-contracts)).

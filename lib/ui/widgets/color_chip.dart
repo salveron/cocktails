@@ -124,6 +124,22 @@ class AvailabilityChip extends StatelessWidget {
   }, swatch: availabilityColors(availability, Theme.of(context).brightness));
 }
 
+/// Tags as a run of dots, set off from each other; setting the run off from
+/// whatever it follows is the caller's. Every tags-as-dots reading is this one
+/// — a list row's own tags, and the picks a basket's recipe answers.
+class TagDots extends StatelessWidget {
+  const TagDots(this.tags, {super.key});
+
+  final List<Tag> tags;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    mainAxisSize: MainAxisSize.min,
+    spacing: 6,
+    children: [for (final tag in tags) TagDot(tag)],
+  );
+}
+
 /// Name with tag dots (name clips first to avoid misreporting count).
 class DottedName extends StatelessWidget {
   const DottedName(
@@ -138,13 +154,19 @@ class DottedName extends StatelessWidget {
   final List<String> worn;
 
   @override
-  Widget build(BuildContext context) => Row(
-    children: [
-      Flexible(child: Text(name, overflow: TextOverflow.ellipsis)),
-      for (final tag in wornInOrder(vocabulary, worn))
-        Padding(padding: const EdgeInsets.only(left: 6), child: TagDot(tag)),
-    ],
-  );
+  Widget build(BuildContext context) {
+    final dots = wornInOrder(vocabulary, worn);
+    return Row(
+      children: [
+        Flexible(child: Text(name, overflow: TextOverflow.ellipsis)),
+        if (dots.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(left: 6),
+            child: TagDots(dots),
+          ),
+      ],
+    );
+  }
 }
 
 /// Tag as dot (matches chip in legend above); name in tooltip.
