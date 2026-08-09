@@ -4,8 +4,7 @@
 
 ## Context
 
-Two shape questions before screens built: colour persistence, two vocabularies (ingredients 
-vs. recipes). Decided before M12/M13/M14.
+Colour persistence, two vocabularies (ingredients vs. recipes). Decided before M12–M14.
 
 ## Decision
 
@@ -26,16 +25,13 @@ vs. recipes). Decided before M12/M13/M14.
 
 ## Alternatives considered
 
-- One vocabulary with scope: one list, but name means one thing app-wide; every lookup/rename 
-  needs scope.
-- One shared vocabulary: nothing to sync, but recipe picker offers "citrus", ingredient's "classic"; 
-  wrong list either way.
-- Free hex string: palette collapses; nothing prevents illegible dark-mode colours.
-- Hash-derived colour: no schema change/picker, but rename silently repaints; not user's choice.
-- Scheme roles (`primaryContainer`): theme-correct free, but moves with seed; collides with stock chips.
-- Colour outside model (settings map): splits fact across homes; entries orphan on rename/delete.
-- Optional colour defaulting `neutral`: files terse, tags exist before colour chosen. Dropped when 
-  inventory chose bare dots: neutral dot = grey on grey, nothing while taking space.
+- One vocabulary with scope: scope needed everywhere.
+- Shared vocabulary: picker offers wrong list either way.
+- Free hex: illegible in dark mode.
+- Hash-derived: rename silently repaints.
+- Scheme roles: collides with stock chips.
+- Colour outside model: orphans on rename/delete.
+- Optional `neutral` default: grey on grey in inventory.
 
 ## Consequences
 

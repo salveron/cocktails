@@ -15,39 +15,20 @@ height to compute an offset from. The app carries no scroll machinery at all tod
 
 ## Decision
 
-**`VocabularyList` scrolls to a row by index, on `scrollable_positioned_list`.**
+**`VocabularyList` scrolls to row by index, on `scrollable_positioned_list` pinned exactly.**
 
-- `ScrollablePositionedList.builder` replaces `ListView.builder` in the one file, so all four lists
-  scroll alike rather than the recipes carrying a second implementation.
-- A screen asks to reveal a **name**, never an index and never an offset. `_placed` is already the
-  one home for the order rows stand in, so it is what turns a name into an index; the package's
-  types stay inside `vocabulary_list.dart`.
-- The dependency is ergonomic, not structural — the first of its kind, the others being platform
-  (`path_provider`), format (`yaml`), state (`flutter_riverpod`) and lints. ADR 01 fixed the stack,
-  not what may be added to it; the bar this sets is *confined to one file, with the way out
-  written down*.
-- Dormancy is the risk taken: 0.3.8 is three years old and touches sliver internals, though
-  google.dev-published and widely used. Verified against the current Flutter before adoption — a
-  far-off index across variable-height rows, jumped to and animated back. **Pinned exactly**, not
-  by caret: a package this quiet has no stream of releases to keep up with, so the next one — if it
-  comes — is read before it is taken, rather than resolving into a build unnoticed.
-- **The way out is recorded rather than rediscovered.** If the package breaks unfixed, float the
-  revealed row to the front of `_placed` and scroll to nothing: a few lines in `_place`, which
-  already holds rows against the sort. The row then leaves its sorted position — a worse reading,
-  not a broken one — and nothing outside `vocabulary_list.dart` changes.
+- `ScrollablePositionedList.builder` replaces `ListView.builder` in one file; all four lists scroll alike.
+- Screen reveals **name**, not index/offset. `_placed` (sort order) turns name to index; package types stay in `vocabulary_list.dart`.
+- Ergonomic dependency (platform: `path_provider`, format: `yaml`, state: `riverpod`, lints). ADR 01 fixed stack, not additions; bar: *confined to one file, way out written down*.
+- 0.3.8 three years old, touches sliver internals. **Pinned exactly** (not caret): quiet package needs no release stream; next one read before taken.
+- Fallback recorded: if package breaks, float revealed row to front of `_placed`, scroll to nothing — few lines in `_place`, row leaves sorted position (worse reading, not broken), nothing outside `vocabulary_list.dart` changes.
 
 ## Alternatives considered
 
-- **Float the row to the front, no package.** The fallback above, weighed first: it costs nothing
-  and reuses `_place`, but a pick standing out of its sorted position misreports the order the user
-  asked for, every time rather than only after a breakage.
-- **Estimate and settle.** Jump to a guessed offset, check post-frame whether the row built, repeat.
-  No dependency, but a convergence loop inside the widget three screens rest on, worst at the ends
-  of the list and awkward to reason about.
-- **A dialog naming the pick.** No scrolling at all — but the recipe view gains a second home, and
-  closing the dialog leaves the recipe it named nowhere on screen.
-- **Uniform rows (`itemExtent`).** Makes the arithmetic exact for free, and costs the in-place card
-  expansion the recipes screen is built on.
+- **Float to front, no package**: free, reuses `_place`; but pick standing out of sort misreports order every time.
+- **Estimate and settle**: guess offset, check post-frame, repeat. No dependency; convergence loop in shared widget, worst at list ends.
+- **Dialog naming pick**: no scroll, but recipe view gains second home; closing leaves recipe off-screen.
+- **Uniform rows (`itemExtent`)**: exact arithmetic free; breaks in-place card expansion recipes screen built on.
 
 ## Consequences
 

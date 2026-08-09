@@ -12,40 +12,23 @@ decision; how it is written is this one. Decided before M18a.
 
 **A recipe line names one or more bottles; any one of them on hand makes the line.**
 
-- `RecipeLine.ingredients` is a `List<String>`, never empty. No singular accessor: a getter
-  returning the first would silently drop the rest at every caller that has not thought about a
-  group.
-- **The separator is `/`, spaced or not** — `1 part cognac / vodka (base)`. The tail splits
-  lexically, after the unit is decided and after the mark is taken off, so the mark governs the
-  group, one amount and one unit measure it, and what a line means never depends on what the bar
-  holds.
-- **`/` is reserved from every ingredient spelling**, name and alias alike, beside the mark suffixes
-  already barred there. Without it `sweet / dry vermouth` would have two readings.
-- **Cards read "or", the file reads `/`.** The separator is grammar, the card is prose. The form
-  fills its fields from the canonical line, so what is typed is what is re-edited.
-- **Availability takes the best of the group** — `stockOfLine`, the one home the card's dimming
-  reads too. In beats low beats out; a line is missing only when every alternative is.
-- **A card dims what the bar cannot supply, and only while it can supply something.** Where a group
-  has nothing, none dims and the stock dot carries it, as a single bottle does — so the dot never
-  contradicts the availability chip.
-- Every alternative resolves as any name resolves: aliases, case, canonical storage, rename
-  propagation and delete blocking each fan out over the list (ADR 08, ADR 10).
-- Naming one bottle twice on a line is reported, not silently collapsed.
+- `RecipeLine.ingredients` is `List<String>`, never empty; no singular accessor.
+- Separator is `/` — `1 part cognac / vodka (base)`. Split after unit and mark decided; mark governs group.
+- `/` reserved from all ingredient spellings (name, alias) to prevent ambiguity.
+- Cards display "or", file holds `/`.
+- Availability: `stockOfLine` (best of group). Line missing only if all alternatives missing.
+- Card dims unavailable alternatives only while some exist; stock dot consistent.
+- Every alternative resolves like any name: aliases, case-fold, canonical storage, rename, delete blocking (ADR 08, 10).
+- Duplicate alternatives reported.
 - `format` stays `1`.
 
 ## Alternatives considered
 
-- ` or ` as the separator: reads best in the file, but reserves an English word from every bottle
-  name — a far heavier rule than one punctuation mark, for a file only a card reads aloud.
-- Splitting only where the whole tail names no bottle: adding a bottle would silently change what
-  existing recipes mean, and the parser would need the ingredient vocabulary it deliberately does
-  not take.
-- A `substitutes:` list on the ingredient entry: makes the choice global, when "cognac or vodka" is
-  true of one recipe and wrong for the next — the reason base moved onto the line (ADR 06).
-- An amount per alternative (`1 part cognac / 2 parts vodka`): a second measure to scale, convert
-  and validate, for a case the notes field already covers.
-- `List.unmodifiable` on the field, as `Ingredient.aliases` has: it would cost the `const`
-  constructor the line grammar and its tests lean on throughout.
+- ` or ` separator: reserved English word from every bottle name (heavier than punctuation).
+- Conditional split (tail names no bottle): adding bottles silently changes meaning; needs vocabulary.
+- `substitutes:` on ingredient: global choice, wrong per-recipe (ADR 06 moved base to line).
+- Amount per alternative: second measure to scale/convert; notes field covers this.
+- `List.unmodifiable`: breaks `const` constructor and grammar tests.
 
 ## Consequences
 

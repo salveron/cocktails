@@ -1,12 +1,7 @@
 # Roadmap — pilot
 
-Implementation milestones in dependency order, one commit each. Scope and acceptance
-criteria live in [requirements.md](requirements.md), the design in
-[architecture.md](architecture.md); milestones reference both instead of restating them.
-Development-machine setup is out of scope — every milestone is repo content only.
-
-**Conventions:** One milestone = one commit with tests. Green on `flutter analyze`, test suite.
-Domain: pure Dart + unit tests. Widget tests per [strategy](architecture.md#testing).
+Milestones in dependency order, one commit + tests each. Scope in [requirements.md](requirements.md), 
+design in [architecture.md](architecture.md). Domain: unit tests; UI: widget tests per strategy.
 
 ## Phase 0 — Foundation
 
@@ -21,20 +16,15 @@ Horizontal groundwork every feature depends on; strictly ordered.
       single shared home later used by the codec (M6) and the recipe form (M14).
 - [x] **M5 Model validation** — referential integrity, duplicate names, malformed values:
       the rule set behind FR-DAT-4 and the recipe form.
-- [x] **M5a Domain packaging** — the [module boundaries](components.md#boundary-rules) and the
-      [validation contract](adr/05-validation-contract.md) before anything depends on them:
-      domain files under `src/` behind a barrel, shared internals in `helpers.dart`, declared
-      wire tokens on the enums, `tryParseRecipeLine`, `ValidationIssueKind` and value equality
-      on `ValidationIssue`, one validation entry point per editable entity, and the
-      architecture test. The only behaviour change: `validateModel` reports issues in the
-      documented order.
+- [x] **M5a Domain packaging** — [module boundaries](components.md#boundary-rules), 
+      [validation contract](adr/05-validation-contract.md), barrel + `src/` internals, 
+      `helpers.dart`, wire tokens on enums, architecture test, validation order documented.
 - [x] **M6 YAML codec** — parse + validate with line-position errors, canonical emitter,
       format-version gate, lossless round-trip test. (FR-DAT-2/4/5 core)
 - [x] **M7 Storage adapter** — storage interface + file adapter: load at start, atomic
       save, backup rotation, corrupt/missing-file handling; temp-dir integration tests.
-- [x] **M7a Model edit API** — [`ModelEdits`](components.md#editing-the-model): `copyWith` on
-      the entities, pure edit derivations including rename propagation and "made it", memoised
-      name lookups, and the reference queries behind FR-VOC-1 delete blocking.
+- [x] **M7a Model edit API** — [`ModelEdits`](components.md#editing-the-model): `copyWith`, 
+      pure derivations (rename, "made it"), memoised lookups, FR-VOC-1 delete blocking.
 - [x] **M8 State wiring** — Riverpod model provider, mutations persisting through M7,
       startup load.
 - [x] **M9 App shell** — navigation between placeholder screens, theme, empty states.
@@ -45,10 +35,9 @@ First usable slice; recipes reference both vocabularies, so this precedes Phase 
 
 - [x] **M10 Inventory screen** — ingredient list, name search, single-tap stock toggle
       (FR-INV-1/2); stock-toggle widget test.
-- [x] **M10a Base spirit on the line** — base-ness moved from the ingredient to the recipe
-      line ([ADR 06](adr/06-base-spirit-on-the-line.md)): one `LineMark?` per line, so base
-      and optional cannot combine (FR-REC-8), a ` (base)` suffix in the line grammar, and the
-      requirement edits it forced (FR-VOC-2 retired, FR-DIS-4, FR-DAT-1).
+- [x] **M10a Base spirit on the line** — [ADR 06](adr/06-base-spirit-on-the-line.md): one 
+      `LineMark?` per line (base and optional mutually exclusive, FR-REC-8), ` (base)` suffix, 
+      FR-VOC-2 retired, FR-DIS-4, FR-DAT-1.
 - [x] **M11 Ingredient management** — add, rename with propagation, reference-blocked
       delete (FR-VOC-1) on the inventory screen, through the two shared
       [vocabulary dialogs](ui-design.md#vocabulary-editing) M12 reuses.
@@ -89,314 +78,95 @@ First usable slice; recipes reference both vocabularies, so this precedes Phase 
       line that is low or out (FR-DIS-1). FR-REC-2 gains the rule the verdict rests on — a recipe
       carries at least one line that is not optional — enforced by `validateRecipe`, so the form and
       an imported file refuse it alike.
-- [x] **M16a Names ignore case, entry made forgiving** — quality of life across the recipe form and
-      the domain under it: names compare through one fold, so "gin" typed against "Gin" is that
-      bottle and no vocabulary can hold both ([ADR 08](adr/08-names-ignore-case.md)); the line
-      grammar takes an omitted unit as `part` and a plural one as itself (FR-REC-2), while the
-      writer still emits the full singular form; the form keeps one empty line rather than two,
-      opens notes one line tall, and the theme dims every hint so a placeholder never reads as
-      content.
-- [x] **M17 Scaling & unit display** — `displayRecipeLine` over a line, a factor and the
-      settings: every amount multiplies, both ends of a range together, and a part-based one
-      converts at `part_ml` where the reading asks for ml (FR-REC-7; display half of FR-SET-1).
-      Behind the recipe card's ⋮, one dialog settles both for that card alone and for as long
-      as it stays open — the name row says "(×2, ml)", each line's measure turns italic, and
-      the recipe, the file and the global setting stand untouched. `formatRecipeLine` splits
-      into the two halves both paths now compose, so ×1 in parts is the canonical line again.
+- [x] **M16a Names ignore case, entry made forgiving** — [ADR 08](adr/08-names-ignore-case.md): 
+      folded comparison (no duplicate "gin"/"Gin"), grammar takes omitted unit as `part`, 
+      plural accepted, form keeps one empty line, notes open one line, dimmed hints.
+- [x] **M17 Scaling & unit display** — `displayRecipeLine`: amounts multiply (range ends together), 
+      part converts at `part_ml` (FR-REC-7, FR-SET-1). Dialog per card only; recipe/file/settings 
+      unchanged. Name row shows "(×2, ml)", measures italic. `formatRecipeLine` canonical form.
 
 ## Phase 3 — Discovery
 
-- [x] **M17a Sorting** — every list reads in more than one order (FR-DIS-8): the recipes by
-      availability, the inventory by stock, both tag vocabularies by colour, each against the
-      A→Z that is also every order's tie-break. `VocabularyList` takes them as a label → rank
-      map, first the one the list opens in, and picking the one in force turns the whole list
-      round — so "missing first" and Z→A need no chips of their own. One icon beside the search
-      opens the chips and shuts them again; the order it settled stands either way. A list is
-      re-placed only where the rows on show change or another order is picked, so a bottle never
-      moves under the tap emptying it. Screen state, like the filters — nothing reaches the file.
-- [x] **M17b Unit vocabulary** — units move out of the code and into the file
-      ([ADR 09](adr/09-units-are-a-vocabulary.md)): a `units:` section seeded with the seven the app
-      shipped, `Unit` an entry carrying a plural, `RecipeLine.unit` a name resolved against it as an
-      ingredient name is, and `part`/`ml` fixed members the ratio and the display toggle stay
-      anchored to (FR-VOC-5). The grammar takes the vocabulary — it decides what counts as a unit —
-      and writes the plural for any amount but exactly 1, so `2 dash` normalises to `2 dashes` where
-      it once went the other way. `withUnits` takes the vocabulary whole, propagating renames into
-      every line. Shape only — the screen is M17c's.
-- [x] **M17c Units screen** — Settings → Units: the rows edited in place, one Save for the screen and
-      a discard prompt behind it, an empty bottom row that grows, deletion refused while a line uses
-      the unit, `part` and `ml` locked (FR-VOC-5, [ui-design.md](ui-design.md#units)). The rows are
-      judged by `validateModel` itself, so the screen refuses exactly what an import would, and
-      `setUnits` carries the lot — renames included — to the disk in one write.
-- [x] **M17d Ingredient aliases** — a bottle answers to more than one name
-      ([ADR 10](adr/10-ingredient-aliases.md), FR-VOC-6): `Ingredient.aliases` behind one
-      comma-separated field in the entry dialog, resolved wherever a name resolves — the recipe
-      form, the inventory search, a hand-edited file — and always stored under the bottle's own
-      name. Uniqueness widens to every spelling, `ingredientNamed` indexes them all, and
-      `withCanonicalIngredientNames` is the one derivation putting a line under the bottle it
-      names, so the codec and `upsertRecipe` share it and the form resolves nothing itself.
-- [x] **M18 Filters** — the recipe list narrows the way the inventory does: a scrolling chip row of
-      recipe tags under the search, keeping what wears every one picked and combining with the query
-      (FR-DIS-3). The row two screens now share is `tagFilter`, which also reads the picks against the
-      live vocabulary, so a tag renamed or deleted elsewhere stops narrowing on both. Ingredients are
-      reached through the search rather than filtered: a recipe answers to every spelling of every
-      bottle it is built from, aliases included (FR-DIS-2 widened, ADR 10) — hence "answers to" where
-      a list says nothing matches. Availability is dropped as a filter, its order (FR-DIS-8) being
-      what puts the makeable first; a grammar for compound queries is out of pilot scope.
-- [x] **M18a Ingredient substitutions** — a line offers alternatives, and any one of them on hand
-      makes it ([ADR 11](adr/11-substitutions-on-the-line.md), FR-REC-9): `RecipeLine.ingredients`
-      is a never-empty list with no singular accessor, so the nine readers each decide what a group
-      means rather than quietly taking the first. The grammar splits the tail on `/`, spaced or not,
-      after the unit and after the mark — so one amount, one unit and one mark govern the group and
-      no reading depends on the bar; `/` joins the mark suffixes barred from every ingredient
-      spelling, since `sweet / dry vermouth` would otherwise have two readings. `stockOfLine` takes
-      the best of a group and is the one home the verdict and the card both read, so a card can dim
-      what the bar lacks — but only while it holds something, leaving an all-short group undimmed
-      under the dot that already says so. Cards read "or" where the file reads `/`; the form keeps
-      the separator, being where a line is re-edited. `displayRecipeLine` becomes `displayMeasure`,
-      the body it returned having transformed nothing.
-- [x] **M19 Base spirit narrows** — the browsing FR-DIS-4 asked to be grouped becomes a filter
-      instead ([ADR 12](adr/12-base-spirit-narrows.md)): base is a predicate, not a placement, so
-      ADR 11's deferred question dissolves — a marked group answers under every bottle it names,
-      where a section could have filed its recipe under only one. Grouping is refused for what it
-      would cost: a second list layout over search, tags, six orders and per-card expansion, and
-      availability — the order the list opens in — demoted to *within* a section. `discovery.dart`
-      lands `basesOf`, `baseSpirits` and `marksBase`; `groupByBaseSpirit` is never written. One
-      chip leads the filter row, reading `Base: Any` / `Base: Gin` / `Base: None` and opening the
-      spirits the collection is actually built on — `tagFilter` takes it as a leading filter, so
-      the two narrowings share one scroller and one no-match message, and a vocabulary with no tags
-      still gets the chip. It wears `neutralSwatch`, the one scheme-derived ground in `palette.dart`,
-      since a bottle's name is neither a tag nor a signal. A pick gone stale stops narrowing rather
-      than emptying the list, as a tag pick does.
-- [x] **M20 Random pick** — one suggestion of what to make now (FR-DIS-5): a dice above the add
-      button, drawing a recipe the bar can make from whatever the list is showing. The draw is the
-      *list's*, not the screen's, so every narrowing already holds and the search never has to leave
-      `VocabularyList` — the hoist [components.md](components.md) predicted this milestone would
-      force turned out unnecessary. `canMake` lands in `availability.dart` as the one reading of
-      what the bar can manage (low counts, unjudged does not), which the optimizer will ask too;
-      `randomCanMake` draws over candidates handed to it rather than over the model, and skips the
-      recipe already standing so a second roll always moves. The pick opens alone — every other card
-      shuts, a roll being one answer rather than a pile — and the list scrolls to it by index on
-      `scrollable_positioned_list` ([ADR 13](adr/13-lists-scroll-by-index.md)), waiting on the
-      measurement the draw's own reshuffle forces, since a row already in view is reached in pixels
-      rather than by index and would otherwise be aimed at where it stood. Once it lands, the card
-      washes from `secondaryContainer` back to rest — colour alone, since a row changing height
-      would fire that same measurement — because a list that stopped moving has not yet said what it
-      stopped *for*. The first dependency taken for ergonomics rather than structure: confined to
-      `vocabulary_list.dart`, pinned exactly against its own dormancy, with the float-to-front
-      fallback recorded so a dead package is a costed edit rather than a redesign. Nothing makeable
-      says so instead of doing nothing. The dice itself is Font Awesome's pair
-      ([ADR 14](adr/14-the-dice-comes-off-font-awesome.md)), the shipped font carrying only single
-      dice that read as domino tiles at button size; `ListDraw` carries the glyph as a widget, so
-      the font is named on the recipes screen and nowhere else.
-- [x] **M21 Optimizer domain** — combination search and ranking (FR-DIS-6): `purchasesWithin` over
-      `Purchase`, the basket of bottles and the recipes it unlocks. ADR 11's flagged consequence
-      turns out to reshape the search rather than adjust it — a missing recipe's gap is not one set
-      of bottles but a *choice* between several, any one alternative closing its line, so the ways
-      of making it are the cross product over the lines it is short of. The bottles worth weighing
-      are exactly those gaps', which is what keeps a pool of out-of-stock bottles from being every
-      bottle. What [architecture.md](architecture.md#domain-computations) described — sets collected
-      per recipe — would also have missed the combined buy, two unrelated single-bottle gaps being
-      no recipe's own set; that line is rewritten. A basket has to beat each of its own smaller
-      selves or it is one of them carrying a passenger, which subsumes the zero-yield rule rather
-      than sitting beside it. The performance test is the milestone's other half and earned its
-      keep: the first working version took 6.8s at NFR-2 scale, and the profile said the search was
-      43ms while *naming* thirty-five thousand baskets was the rest — hence
-      [ADR 15](adr/15-the-optimizer-answers-with-the-best-few.md), the best few of each size, and
-      ~140ms. `Model.bottleNamed` lands as the one home for "this name, under the entry's own",
-      which `baseSpiritNamed` and two copies in `model_edits.dart` were each spelling separately.
-- [x] **M22a Restocking widens the search** — what counts as short becomes the reader's to set
-      ([ADR 16](adr/16-the-optimizer-buys-what-is-running-low.md), FR-DIS-6/7 rewritten):
-      `purchasesWithin` takes `restocking`, off leaving M21's answer exactly as it stood, on taking
-      a line short of *full* stock — so the bottles running low join the pool and the goal becomes
-      ready rather than merely makeable. Widening the pool alone would not have done it: a low
-      bottle unlocks nothing under `canMake`, a recipe standing at Low being already can-make, so
-      every basket holding one would have been dropped as a passenger by ADR 15's rule. It is the
-      *goal* that had to move. One flag, one place — the test in `_gapsOf` — since the whole search
-      below it already read "short" rather than "out"; `canMake` itself does not move, the traffic
-      light and the random pick going on as they were. FR-DIS-7 stops asking for a restock list of
-      its own: being shoppable is how a low bottle is reminded of. M21's tests stand as the
-      flag-off case, and the performance test now times both readings over the one collection —
-      58ms plain against 100ms restocking, the pool being bounded by the gaps' own bottles rather
-      than by the shelf.
-- [x] **M22 Optimizer screen** — budget selector, ranked combinations (FR-DIS-6/7), designed in
-      [ui-design.md](ui-design.md#shopping-screen). The budget picks *exactly* N bottles rather than
-      up to N, which is what ADR 15's shelf-per-size was for; and since the best few of each size
-      come off one search, the screen searches once at the largest budget and reads a size off the
-      answer. That the two agree is not obvious enough to comment — a wider budget widens the pool,
-      but only with bottles no recipe is short of on their own, which are dropped as passengers
-      either way — so it is pinned by test instead. The card is the recipes screen's, reused whole:
-      bottles as the title, what they unlock clipped beneath, the count trailing in neutral ink
-      (a number is no signal, so no chip). Open, each bottle carries its stock dot, which is where
-      the switch earns its reading: restocking mixes a bottle merely low with one there is none of.
-      Three empty states, and only the third — nothing at *this* size — has somewhere to go, so it
-      offers the smallest size that answers. `IndexedStack` turned out to be the milestone's real
-      constraint: every destination stays alive, so an ungated watch would have fired a ~100ms
-      search on every stock tap over on the inventory, the most frequent action in the app. The
-      shell now tells each destination whether it is the one on show and `purchasesProvider` is
-      `autoDispose`, so the search stops and its answer is let go with the screen. The one-row
-      header does not fit a 360dp phone as `SegmentedButton` sizes itself: `minimumSize` is dropped
-      on the way to a segment (`segmentStyleFor`), `visualDensity` is what reaches it, and 48dp a
-      segment is the floor. It fits with three pixels to spare, so the row is a `Wrap` — a narrower
-      phone or larger text drops the switch to a second line rather than off the edge, and both
-      readings are held by tests at 320 and 360.
+- [x] **M17a Sorting** — multiple orders per list (FR-DIS-8): recipes by availability, 
+      inventory by stock, tags by colour; A→Z tie-break. `VocabularyList` label → rank map; 
+      picking current reverses. Icon toggles chip row. Screen state only (not persisted).
+- [x] **M17b Unit vocabulary** — [ADR 09](adr/09-units-are-a-vocabulary.md): `units:` section 
+      with plural per entry, `RecipeLine.unit` resolved as name, `part`/`ml` fixed (FR-VOC-5). 
+      Grammar respects vocabulary; plural for amounts ≠ 1. `withUnits` propagates renames. Shape only.
+- [x] **M17c Units screen** — Settings → Units: edit in place, one Save, delete blocked while used, 
+      `part`/`ml` locked (FR-VOC-5). Validated by `validateModel` (import rules match). 
+      `setUnits` whole vocabulary, renames included, one write.
+- [x] **M17d Ingredient aliases** — [ADR 10](adr/10-ingredient-aliases.md), FR-VOC-6: 
+      `Ingredient.aliases`, comma-separated, resolved form/search/file, stored under entry's name. 
+      Uniqueness: all spellings. `ingredientNamed` indexes all; `withCanonicalIngredientNames` 
+      resolves (codec, `upsertRecipe` share it).
+- [x] **M18 Filters** — recipe list chip row (FR-DIS-3): tag filter like inventory. `tagFilter` 
+      shared, reads live vocabulary (renames/deletes update). Ingredients via search not filter 
+      (recipe answers to bottle spellings, FR-DIS-2); availability via order not filter (FR-DIS-8).
+- [x] **M18a Ingredient substitutions** — [ADR 11](adr/11-substitutions-on-the-line.md), FR-REC-9: 
+      `RecipeLine.ingredients` never-empty list (no singular). Grammar splits on `/` after unit/mark; 
+      one amount/unit/mark govern group. `stockOfLine` reads best; card dims what lacks while holding 
+      one. Cards read "or", file reads `/`, form keeps separator. `displayMeasure` replaces split body.
+- [x] **M19 Base spirit narrows** — [ADR 12](adr/12-base-spirit-narrows.md): filter not grouping 
+      (base predicate, not placement; ADR 11 dissolves). `discovery.dart`: `basesOf`, `baseSpirits`, 
+      `marksBase`. Chip reads `Base: Any`/`Gin`/`None`; leads filter row with `tagFilter`. 
+      `neutralSwatch` for non-signal meaning. Stale pick stops narrowing.
+- [x] **M20 Random pick** — one draw of makeable recipe (FR-DIS-5): dice button, draws from 
+      list on show. `canMake` lands in `availability.dart` (low counts). `randomCanMake` over 
+      candidates, skips current. `scrollable_positioned_list` by index [ADR 13](adr/13-lists-scroll-by-index.md). 
+      Card washes (colour alone). Dice is Font Awesome pair [ADR 14](adr/14-the-dice-comes-off-font-awesome.md). 
+      Empty case: "nothing makeable" message.
+- [x] **M21 Optimizer domain** — [ADR 15](adr/15-the-optimizer-answers-with-the-best-few.md), FR-DIS-6: 
+      `purchasesWithin`, `Purchase` (bottles + unlocked recipes). Gap = choice among alternatives 
+      (ADR 11), cross product over short lines. Best few of each size (6.8s → ~140ms). 
+      `Model.bottleNamed` unified lookup.
+- [x] **M22a Restocking widens the search** — [ADR 16](adr/16-the-optimizer-buys-what-is-running-low.md), 
+      FR-DIS-7: `restocking` flag. Off: out only; on: short of full stock (low joins pool, goal = ready). 
+      One flag, one place (`_gapsOf`). `canMake` unchanged. 58ms vs 100ms.
+- [x] **M22 Optimizer screen** — budget selector, ranked baskets (FR-DIS-6/7, [ui-design.md](ui-design.md#shopping-screen)). 
+      Budget picks exactly N (ADR 15 shelf-per-size). One search at max budget, read size off answer. 
+      Card reused (title, bottles, count). Stock dots. Empty states. `autoDispose` to save computation 
+      (100ms per tap). `Wrap` for wrap at narrow widths (tested 320/360).
 
 ## Phase 4 — Settings & data exchange
 
-- [x] **M23 The fixed units interconvert** — FR-SET-1's global half, never implemented and now
-      widened ([ADR 17](adr/17-the-fixed-units-interconvert.md)): `oz` joins `part` and `ml` among
-      the units no one may rename, and a line measured in any of the three reads in the one the
-      settings name, everything else as entered. The two are one enum — `FixedUnit` is both the
-      reserved names and what `display` chooses among, since asking twice would let them drift —
-      and `Settings` holds a size in ml per convertible unit (`part_ml` as it stood, `oz_ml` new,
-      ml the anchor at 1), so the ratio between any two is derived rather than stored and the
-      screen may show whichever pair it likes. The file change is additive, so every file written
-      before this loads unchanged and `format` stays `1`; a units section without `oz` is now
-      refused, exactly as one without the other two already was. The card's resting reading moves
-      with it: `_asWritten` was hard-coded to `part`, which is why the setting had nothing to
-      switch, so it becomes the settings' own and FR-REC-7's note flips sense — "(part)" is the
-      transform under an ml reader. Shape only; the screen that sets any of it is M23a's.
-- [x] **M23a Amounts screen** — the pushed screen behind Settings (FR-SET-1), designed in
-      [ui-design.md](ui-design.md#amounts): the global unit picked, and the two ratios running from
-      it, each a sentence with the number as its only field. ADR 17's own wording turned out to be
-      the milestone's one real question — the ratios running *from* the global unit read "1 ml =
-      0.0333 part" under ml, a number no one reads or types back, and one whose rounding would move
-      a size on the way in. So ml never leads: under it each row leads with the unit it sizes, which
-      is the pair the file already stores, and every pick keeps its numbers human. Which size a row
-      writes is what the ADR left open, and the layout answers it — the first row is always what a
-      part is worth, the second what an ounce is, so redefining the part leaves the ounce where it
-      stood and the row reading across both follows instead. Rows are readings of the sizes and
-      never the reverse: a pick rewrites both readings and no size, and a row left alone writes
-      nothing back, so switching round the three cannot drift them and four-decimal display costs
-      nothing. `Settings` gains `ratio` and `withRatio`, the one home for reading that relation and
-      writing it, which `displayMeasure` now shares. Validation is the file's own, plus the one
-      thing a size cannot say for itself: a ratio must be above zero, zero having no inverse. The
-      card's ⋮ heading over ×1–×4 becomes "Scale", so "Amounts" means one thing in the app.
-- [x] **M24 Export** — a copy of everything, out through the system's share sheet (FR-DAT-1),
-      designed in [ui-design.md](ui-design.md#data). The milestone's real work was deciding *how*, and
-      [ADR 18](adr/18-data-crosses-the-edge-in-a-system-sheet.md) covers M25 as well, because export
-      and import are one exchange read twice and settling half of it would let the two drift.
-      `file_picker` alone was chosen at one point and reversed: its `saveFile` mirrors its
-      `pickFiles` exactly — the same sheet both ways, for nine resolved packages against 25 — but it
-      does not truncate an overwrite on Android
-      ([#1885](https://github.com/miguelpruivo/flutter_file_picker/issues/1885), closed as not
-      planned), so a smaller export over a larger one keeps the tail of the old, and a silently
-      damaged copy discovered at *import* is the wrong end to find it. `share_plus` out and
-      `file_selector` in (M25's half) instead: two org-published packages trading in one `XFile`, and
-      a write path where nothing is ever overwritten in place. `sharerProvider` is the seam, beside
-      `clockProvider` — the one file naming the package, and what a widget test overrides. The MIME
-      type is stated rather than looked up, no `.yaml` mapping existing to look up, and `text/plain`
-      rather than RFC 9512's `application/yaml`, which almost nothing on Android declares.
-      `exportSnapshot` takes the model, which fixes a defect this milestone made reachable: copying
-      the store *file* would have exported the undecodable text after a `Corrupt` startup rather than
-      the collection the reader is looking at. Export sits **on the Settings list**, with M25's
-      import to land beside it: a **Data** screen behind one row was built first and flattened away,
-      two rows not being enough to furnish a room, and what M25 needs room for — the confirmation,
-      the FR-DAT-4 report — arriving after the pick rather than before it. `_Entry` gains a second
-      constructor so a row that acts wears no chevron and one that travels does, which is the whole
-      of what separates the two kinds.
-      Nothing is said on success: the sheet opening is the answer, and a snackbar would land under a
-      system modal to be read once stale.
-- [x] **M25 Import** — the exchange's other half, on the mechanism
-      [ADR 18](adr/18-data-crosses-the-edge-in-a-system-sheet.md) had already chosen
-      (FR-DAT-3/4): `filePickerProvider` beside `sharerProvider`, `file_selector` named in that
-      one file, and no type filter — YAML has no MIME type Android's table knows, so the decode
-      judges what arrives. The seam answers with the document's *text* rather than an `XFile`,
-      exactly as the share seam takes a location rather than one: the currency crosses the
-      platform edge inside the provider and no layer above learns what a pick is made of, which
-      also makes the whole flow testable without a file. What needed designing was the rest.
-      **The pick earns a screen**, as [ui-design.md](ui-design.md#data) predicted — the same one
-      either way, since one pick with two outcomes should not have two shapes: what the file
-      holds and a Replace button, or the refusal and its placed issues. **The counts are what a
-      reader recognises the file by**, ADR 18's own consequence having ruled out the filename —
-      Android hands over none worth showing — and the collection is what is being agreed to
-      anyway. **The safety copy gets its own file**, `cocktails-before-import.yaml`: sharing the
-      export slot would have let an import cost a reader the copy they had just staged, so
-      `exportSnapshot` takes an `ExportPurpose` and the store maps it to a name, no caller
-      learning where either goes. FR-DAT-3's "recoverable" is honest at that: the file survives
-      indefinitely and travels in Android Auto Backup, and nothing in the app reads it back.
-      **The replace leaves for the collection**, popping Settings with the review — a list of
-      recipes that were not there a moment ago is the answer no sentence improves on — and says
-      what landed as it goes, an import knowing what it did where a share cannot. `review` is
-      pure and touches nothing, so the confirmation and the copy slot between it and `replaceAll`;
-      `_described` becomes the one reading of a `SourcedIssue`, which the startup banner and a
-      picked file now share. `counted` is the other unification the milestone forced: the shopping
-      screen was spelling "N recipes" and "N bottles" two different ways, and a review naming four
-      things would have been the third.
+- [x] **M23 The fixed units interconvert** — [ADR 17](adr/17-the-fixed-units-interconvert.md), FR-SET-1: 
+      `oz` joins `part`/`ml` as reserved. `FixedUnit` for both reserved names and `display` choice. 
+      `Settings` holds ml per unit (`oz_ml` new). Ratio derived. Format stays `1`. Shape only.
+- [x] **M23a Amounts screen** — Settings screen (FR-SET-1, [ui-design.md](ui-design.md#amounts)): 
+      global unit picked, two ratios. Ml never leads (0.0333 problem); each row leads with unit it sizes. 
+      First row = part worth, second = ounce (redefine part, ounce stays). Pick rewrites readings, not 
+      sizes. `Settings.ratio`/`withRatio`. Validation: ratio > 0. "Scale" menu heading.
+- [x] **M24 Export** — system share sheet (FR-DAT-1, [ui-design.md](ui-design.md#data), 
+      [ADR 18](adr/18-data-crosses-the-edge-in-a-system-sheet.md)). `share_plus`/`file_selector` via 
+      `XFile`. `sharerProvider` is seam. MIME: `text/plain`. `exportSnapshot` takes model 
+      (Corrupt-safe). On Settings list. `_Entry` two constructors (action vs travel).
+- [x] **M25 Import** — [ADR 18](adr/18-data-crosses-the-edge-in-a-system-sheet.md), FR-DAT-3/4: 
+      `filePickerProvider`, no type filter, answers with text. Screen shows file contents, Replace button 
+      or issues. Counts = identity (no filename). Safety copy: `cocktails-before-import.yaml` 
+      (`ExportPurpose`). `review` pure. Replace leaves for collection.
 
-- [x] **M25a The counts open, and the diacritics survive** — one defect and one redesign, both in
-      the file coming back. `XFile.readAsString` **drops the `encoding` asked of it** for the
-      bytes-backed file `file_selector_android` answers with, decoding byte per character: an export
-      imported straight back turned `Orange Curaçao` into `Orange CuraÃ§ao` and then saved it. The
-      codec was never at fault — its round-trip test already carried `crème de violette` — nor was
-      the store, whose `dart:io` reads and writes are UTF-8 both ways. What no test reached was the
-      seam's own body, the picker having always been overridden with a plain `String`. The bytes are
-      now decoded in a named `pickedText` whose test builds the `XFile` the way the plugin does, so
-      the shape the bug lived in is the shape under test; malformed input is refused rather than
-      substituted, a U+FFFD being the same loss made quieter. Recorded in
-      [architecture.md](architecture.md#platform-facts), where the pick's other platform facts sit.
-      **The counts open.** One card a kind, its count the title and the names themselves the line
-      under it, cut off at one line; tapped, the card gives every name it counted, and **nothing is
-      cut short** — a list that stopped at fifty is exactly where the entry a reader came looking for
-      would have been. Each kind is named and ordered as the screen that manages it does, so a card
-      is the list it stands for read early; the two tag vocabularies share one count but keep their
-      own labelled runs, one name being allowed to stand in both
-      ([ADR 07](adr/07-tag-colour.md)). **Accept moves to the app bar**, where every other commit in
-      the app sits: what the act is worth is carried by a body spelling out everything arriving, not
-      by the size of the button agreeing to it, and a button pinned under a list meant to be read
-      first argues with the reading. The sentence above the cards keeps what they cannot say —
-      everything held now goes, a copy of it kept first — and drops its numbers, a second set beside
-      theirs reading as a discrepancy rather than a reassurance. Where M25 counted "bottles" the
-      cards count `ingredients`, the noun `inventory_screen.dart` already used for them.
+- [x] **M25a The counts open, and the diacritics survive** — UTF-8 fix: `XFile.readAsString` 
+      drops encoding; `pickedText` decodes bytes (test via plugin-built `XFile`). 
+      [architecture.md](architecture.md#platform-facts) recorded. Counts open per kind; tapped card 
+      shows all names (nothing cut, full list). Kinds named/ordered per managing screen; tag vocabs 
+      share count, own runs ([ADR 07](adr/07-tag-colour.md)). Accept on app bar.
 
 ## Phase 5 — The basket, and reaching across screens
 
-- [x] **M26 The basket card re-reads** — the shopping card stops saying things twice
-      ([ui-design.md](ui-design.md#shopping-screen)): the title becomes `Shopping Cart #N`, the bottles
-      it used to join with `+` moving to the subtitle where they clip when the card is shut and are
-      gone when it is open, and the body's two runs becoming the labelled bullet lists the import
-      review reads in — one `BulletRuns` widget now, in `vocabulary_list.dart` beside the row whose
-      body it fills, the import review's own copy folded into it. Every name then appears exactly once,
-      where the title and the open body each listed the bottles; and the count trailing in neutral ink
-      is what a basket is ranked by, so the headline reads as the ranking rather than as a composite
-      name no two of which are the same length. The rank being the budget's to hand out, an open card
-      is remembered under its bottles instead. UI only — `Purchase` does not move.
-- [x] **M27 The baskets narrow to a category** — the shopping screen gains the recipes' tag row
-      (FR-DIS-10, [ui-design.md](ui-design.md#shopping-screen)), so *shop for tiki* is one tap: the same
-      `tagFilter`, on its own row under the controls, over a basket that answers to the tags of every
-      recipe it unlocks. Kept where each picked tag is worn by one of them — which is the row's own
-      test applied to that union, not a rule of its own, so two picks reach a basket bringing one
-      tiki recipe and one sour rather than demanding a recipe that is both. A basket is ranked among
-      every basket of its size, so a narrowed screen reads `#1, #4, #7`: the number *is* the ranking
-      (M26), and renumbering what is on show would call the fourth-best basket the best. What is on
-      show can then be empty at a size that has baskets, so the "nothing at this size" state names the
-      picks as the cause the way `_NoMatch` joins its own, and offers only a size that answers *under*
-      them. An open basket then marks which of its recipes answered: each wears the picked tags it
-      carries and none of the rest, so a bullet with no dot rode along and a bare card means nothing
-      narrows. The run of dots comes out of `DottedName` into `TagDots` beside it, the one home both
-      readings now share. UI only — `Purchase` does not move, and the search is not re-run per pick.
-- [x] **M28 A destination sends the reader to another** — a name tapped on one screen opens its own row
-      on another (FR-DIS-9, [ADR 19](adr/19-a-destination-sends-the-reader-to-another.md), amended):
-      a basket's recipes reach the Recipes, a basket's bottles and a recipe line's bottles the
-      Inventory. Both of the ADR's pairs at once rather than the first alone — the second turned out to
-      cost one call site and a recognizer, not a milestone. `lib/ui/destinations.dart` takes the enum
-      out of `app.dart` and holds beside it the one provider outside the state layer, carrying a
-      destination and a name; the shell listens only to switch, the serving screen clears the request
-      along with every narrowing and opens the row alone. **The gesture is a plain tap**, where the ADR
-      had written a long press: reaching a name is the commonest thing a reader wants from one, and the
-      rows carrying names lead nowhere else, so the tap was free to take. **Nothing marks a name as a
-      way out** — an arrow per row was refused twice over, the trailing slot already carrying the tag
-      dots (M27) and the stock dots, and a widget repeated down every row being what M18b was reverted
-      for; the ripple is the whole of the feedback, as the made-history reset's own press is. A recipe
-      line reaches *per bottle* rather than per line, a group offering several (ADR 11) where a
-      line-wide target could only have named the first, so each bottle is its own span and the measure,
-      the "or" and the mark stay inert. The shell keeps a trail of what a jump left, so back undoes one
-      and a chain unwinds one at a time, while a bottom-bar tap clears it — back never undoing a move
-      the reader chose. `VocabularyList` gains the name to reveal beside the `draw` that already
-      produces one, and the two are now pending in the same frame, which
-      [ADR 13](adr/13-lists-scroll-by-index.md) had assumed impossible: `_reach` already ordered them,
-      home first and the reveal on the measurement that follows, so the behaviour fell out rather than
-      being added — and is pinned by a test over a list long enough to have to scroll, the three-recipe
-      fixtures being in view either way.
+- [x] **M26 The basket card re-reads** — [ui-design.md](ui-design.md#shopping-screen): title 
+      `Shopping Cart #N`, bottles in subtitle (clipped closed), body becomes `BulletRuns` (import 
+      review idiom). `BulletRuns` in `vocabulary_list.dart`. Count trails in neutral (no chip). 
+      Ranked by count. Open card remembered by bottles. UI only.
+- [x] **M27 The baskets narrow to a category** — FR-DIS-10, [ui-design.md](ui-design.md#shopping-screen): 
+      `tagFilter` row under controls. Basket answers to tags of recipes it unlocks. Ranked among 
+      size (`#1, #4, #7`). Empty state names picks as cause. Open basket marks answered recipes 
+      with picked tags. `TagDots` (from `DottedName`). UI only; search not re-run per pick.
+- [x] **M28 A destination sends the reader to another** — FR-DIS-9, [ADR 19](adr/19-a-destination-sends-the-reader-to-another.md): 
+      basket's recipes → Recipes; basket's/line's bottles → Inventory. `lib/ui/destinations.dart` 
+      holds enum + `revealProvider` (destination + name). Gesture: plain tap (reaches name most 
+      common). No arrow (slot used for tags/stock dots). Line reaches per bottle (ADR 11). Back 
+      undoes jumps one at a time. `VocabularyList` reveal + draw same frame [ADR 13](adr/13-lists-scroll-by-index.md).
 
 **Deferred**, numbered when scheduled: **Bought it** — a basket's bottles set in stock from the card,
 which is the shopping screen's first write to the model and so needs a requirement of its own; and

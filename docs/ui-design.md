@@ -1,7 +1,6 @@
 # UI design
 
-Screen and shell design for `ui/`. Module boundaries, interfaces in [components.md](components.md); 
-requirements in [requirements.md](requirements.md).
+Screen/shell design. Modules [components.md](components.md), requirements [requirements.md](requirements.md).
 
 ## App shell
 

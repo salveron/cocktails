@@ -13,11 +13,8 @@ import 'empty_state.dart';
 import 'search_field.dart';
 import 'tag_choices.dart';
 
-/// The tie-break under every order: A→Z, case ignored.
 int byName(String a, String b) => a.toLowerCase().compareTo(b.toLowerCase());
 
-/// How many of a thing there are, in words — "1 bottle", "3 bottles". The
-/// simple plural is the whole of it, every noun a screen counts taking one.
 String counted(int count, String noun) =>
     '$count $noun${count == 1 ? '' : 's'}';
 
@@ -27,19 +24,14 @@ String counted(int count, String noun) =>
 /// the traffic light and the palette.
 typedef ListOrders<T> = Map<String, int Function(T entry)>;
 
-/// The order every list offers: entries rank alike, so the tie-break is the
-/// whole of it.
 const alphabetical = {'Name': _alike};
 
 int _alike(Object? entry) => 0;
 
-/// [tags] in that order — the order chips are offered in and dots are drawn
-/// in, so two entries wearing the same tags read the same on every screen.
 List<Tag> sortedByName(List<Tag> tags) =>
     [...tags]..sort((a, b) => byName(a.name, b.name));
 
 extension ToggleMembership<T> on Set<T> {
-  /// Toggle membership (add if absent, remove if present).
   void toggle(T value) {
     if (!remove(value)) add(value);
   }
@@ -129,13 +121,9 @@ class VocabularyRow extends StatelessWidget {
 
   final Widget title;
   final Widget? subtitle;
-
-  /// Optional content below title/subtitle (e.g., expanded recipe).
   final Widget? body;
 
   final Widget? trailing;
-
-  /// Row tap action (screen-specific meaning).
   final VoidCallback? onTap;
 
   @override
@@ -167,8 +155,6 @@ class VocabularyRow extends StatelessWidget {
   }
 }
 
-/// A bulleted name and what stands at the end of its line — a stock dot on a
-/// bottle, nothing on a plain name.
 typedef Bullet = ({String name, Widget? trailing});
 
 /// One stretch of bullets under a heading, the heading being null wherever the
@@ -180,8 +166,6 @@ typedef BulletRun = ({
   void Function(String name)? onTap,
 });
 
-/// A run of plain names, nothing at the end of any line and nowhere to reach
-/// from one — which most are, both being the exception a caller spells out.
 BulletRun bulletRun(Iterable<String> names, {String? label}) => (
   label: label,
   bullets: [for (final name in names) (name: name, trailing: null)],
@@ -212,8 +196,6 @@ class BulletRuns extends StatelessWidget {
     ],
   );
 
-  /// One line, reaching the row it names where its run leads anywhere. Nothing
-  /// marks it as a way out — the ripple is the whole of the answer (ADR 19).
   Widget _bullet(BulletRun run, Bullet bullet) {
     final line = Padding(
       padding: const EdgeInsets.only(bottom: 4),
@@ -232,7 +214,6 @@ class BulletRuns extends StatelessWidget {
   }
 }
 
-/// Per-row menu (⋮); carries callbacks directly (no enum boilerplate).
 class RowMenu extends StatelessWidget {
   const RowMenu(this.actions, {super.key});
 
@@ -276,13 +257,9 @@ class VocabularyList<T> extends StatefulWidget {
   /// still found under the one name its row reads under.
   final List<String> Function(T entry)? spellingsOf;
 
-  /// What this list can be read by, over and above its name.
   final ListOrders<T> orders;
 
-  /// Optional narrowing control (null if not applicable).
   final ListFilter<T>? filter;
-
-  /// Optional draw over the rows on show; absent where a list offers none.
   final ListDraw<T>? draw;
 
   /// A row another destination asked this list to put on screen (ADR 19),
@@ -294,11 +271,8 @@ class VocabularyList<T> extends StatefulWidget {
   /// Add callback; query prefills name; returns true if added (don't clear search).
   final Future<bool> Function(String query)? onAdd;
 
-  /// Entry name (singular/plural) for hints and messages.
   final String noun;
   final String plural;
-
-  /// Empty state widget.
   final EmptyState empty;
 
   @override
@@ -335,7 +309,6 @@ class _VocabularyListState<T> extends State<VocabularyList<T>> {
   late String _order = widget.orders.keys.first;
   bool _backwards = false;
 
-  /// Whether the orders are on show. The one in force stands either way.
   bool _picking = false;
 
   /// The names in the order the rows last stood in, and what put them there.

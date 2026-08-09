@@ -4,48 +4,25 @@
 
 ## Context
 
-FR-DIS-4 asked for grouped browsing: every recipe filed under each base spirit, the unmarked ones
-in a tail section. Base moved onto the line to make that possible ([ADR 06](06-base-spirit-on-the-line.md)),
-and [ADR 11](11-substitutions-on-the-line.md) left the question it could not answer — where a recipe
-built on `1 part gin / vodka (base)` files. Decided before M19.
-
-The need underneath the requirement is real, and the search does not cover it: `gin` reaches the gin
-rinse and the quarter-part float alike, where *base* means built on it — the distinction base moved
-onto the line for.
+FR-DIS-4 asked grouped browsing under base spirits (ADR 06). ADR 11's substitutions left unanswered: where does `1 part gin / vodka (base)` file? Search covers gin rinse and float alike; *base* distinguishes "built on it".
 
 ## Decision
 
-**Base spirit is a filter on the recipe list, not a layout of it.** A recipe matches when any
-alternative of any of its base lines names the picked spirit.
+**Base spirit filters the recipe list, not layouts it. Recipe matches when any base line alternative names the picked spirit.**
 
-- One chip in the filter row the tag chips already stand in, opening a menu: **Any base**, **No
-  base**, then every base spirit in the collection, A→Z. It narrows alongside the search, the tag
-  picks and the order, and combines with all three.
-- **No base** is a choice of its own, not the absence of one: the recipes marking no base are a
-  set worth reaching, and an unmarked recipe is otherwise reachable only by scrolling.
-- A group marked `(base)` matches under **every** alternative it names — ADR 11's question
-  dissolves rather than being answered, a predicate having no single place to file a recipe.
-- Spirits are read off the recipes, never a vocabulary of their own: a bottle is a base spirit for
-  as long as a line marks it one. Names carry the vocabulary's own spelling and compare through
-  `nameKey`, as every name does (ADR 08).
-- A pick that goes stale — the spirit renamed, deleted, or its last base mark cleared — stops
-  narrowing rather than emptying the list, the rule the tag row already follows. No base mark
-  anywhere means no chip.
-- Screen state, like the search and the order: nothing about a way of looking reaches the file.
+- Chip in filter row: **Any base**, **No base**, all base spirits A→Z. Narrows with search, tags, order.
+- **No base** is a choice (recipes marking no base); otherwise unreachable by scrolling.
+- Group marked `(base)` matches **every** alternative: predicate with no single file location.
+- Spirits from recipes, never a separate vocabulary. Bottle is base while marked; names use fold (ADR 08).
+- Stale pick (renamed, deleted, or mark cleared): stop narrowing not emptying list (like tags).
+- Screen state only: nothing reaches file.
 
 ## Alternatives considered
 
-- **Grouped browsing as written.** A second list layout on a screen already carrying search, tag
-  filter, six orders and per-card expansion; it demotes availability — the order the list opens in,
-  and the app's premise — to *within* a section; and a group would have to file one recipe under two
-  headers, breaking the name-keyed placement `_place` and `ValueKey(name)` rest on, or pick one
-  alternative arbitrarily.
-- **A base sort order with section headers.** Keeps one layout, but collides with FR-DIS-8: the
-  order is where availability lives, and a recipe with two base marks still has no single rank.
-- **Dropping FR-DIS-4 outright.** The need is real, and `LineMark.base` would then feed nothing but
-  a printed suffix.
-- **Base spirit as a tag.** Costs the user a second bookkeeping job for something the lines already
-  say, and drifts the moment a recipe is edited.
+- **Grouped layout**: second list on search/tag/six-order screen; demotes availability to within section; breaks name-keyed `_place`/`ValueKey(name)` or picks arbitrary alternative.
+- **Base sort with headers**: one layout, but collides with FR-DIS-8 (order is availability); recipe with two bases has no rank.
+- **Drop FR-DIS-4**: need is real; `LineMark.base` becomes unused suffix.
+- **Base as tag**: user bookkeeping for what lines already say; drifts on edit.
 
 ## Consequences
 

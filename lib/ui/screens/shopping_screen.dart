@@ -9,9 +9,6 @@ import '../widgets/empty_state.dart';
 import '../widgets/model_view.dart';
 import '../widgets/vocabulary_list.dart';
 
-/// The bottles as the shut card reads them, and the key its open card is
-/// remembered under: they are what a basket *is* (FR-DIS-6), where the title is
-/// only where it ranks — which the next budget hands to another basket.
 String _bottlesOf(Purchase purchase) => purchase.bottles.join(' + ');
 
 String _countOf(Purchase purchase) =>
@@ -40,15 +37,11 @@ class ShoppingScreen extends ConsumerStatefulWidget {
 }
 
 class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
-  /// How many bottles a basket is allowed — and, the budget picking exactly
-  /// that many, how many it holds.
   int _budget = budgets.first;
 
   /// Whether a bottle running low counts as short (ADR 16).
   bool _restocking = false;
 
-  /// Which cards are reading open, by their bottles. Here rather than per-card,
-  /// the list disposing what scrolls out of it.
   final _expanded = <String>{};
 
   /// The recipe tags narrowing the baskets (FR-DIS-10) — screen state like the
@@ -57,8 +50,6 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Nothing is watched while another destination is on show, so the search
-    // is not made and its answer is let go (see [ShoppingScreen.showing]).
     if (!widget.showing) return const SizedBox.shrink();
     return ModelView((model) {
       final purchases = ref.watch(purchasesProvider(_restocking));
@@ -128,9 +119,6 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
     ],
   );
 
-  /// One basket, [rank] of the baskets on show: where it stands, the bottles
-  /// under that, and how much they are worth. Open, the bottles move into the
-  /// body to read at the level each stands at, beside every recipe in full.
   Widget _card(
     Model model,
     Purchase purchase,
@@ -188,7 +176,6 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
       );
     }
     final narrowing = filter?.narrowing;
-    // One bottle is no basket, and both sentences below name one.
     final basket = _budget == 1 ? 'single bottle' : '$_budget-bottle basket';
     final sizes = purchases
         .where((purchase) => filter?.test(purchase) ?? true)
@@ -232,12 +219,7 @@ class _Controls extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // The size a chip's label reads at, which is what these two are: a word
-    // naming the control beside it, not a heading over it.
     final label = Theme.of(context).textTheme.labelMedium;
-    // Wrapped rather than one fixed row: both controls stand side by side on
-    // any phone that fits them, and fall to two lines on one that does not,
-    // which is the one thing neither may do at all — go off the edge.
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 4, 8),
       child: Wrap(
@@ -261,9 +243,6 @@ class _Controls extends StatelessWidget {
                 ],
                 selected: {budget},
                 showSelectedIcon: false,
-                // Narrowed to 48dp a segment — the floor a touch target has,
-                // and what lets both controls share the one row. Density is
-                // the lever: a minimumSize never reaches a segment.
                 style: const ButtonStyle(
                   visualDensity: VisualDensity(horizontal: -4, vertical: -2),
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -310,13 +289,7 @@ class _Basket extends ConsumerWidget {
 
   final Model model;
   final Purchase purchase;
-
-  /// The tags picked, in vocabulary order — the only ones marked here, so a dot
-  /// answers the one question a narrowed screen raises: which pick reached this
-  /// basket. Empty while nothing narrows, and then no recipe wears anything.
   final List<Tag> lit;
-
-  /// What each recipe wears, by name: a basket carries names alone.
   final Map<String, List<String>> worn;
 
   @override
@@ -343,8 +316,6 @@ class _Basket extends ConsumerWidget {
     ]);
   }
 
-  /// The picks [recipe] answers, or nothing at all where it answers none — a
-  /// bullet wearing no dot rode along on the ones that do.
   Widget? _dotsOn(String recipe) {
     final dots = wornInOrder(lit, worn[recipe] ?? const []);
     return dots.isEmpty ? null : TagDots(dots);

@@ -44,21 +44,11 @@ the one the reader picked.**
 
 ## Alternatives considered
 
-- **Keep the ratio anchored to part.** The smallest change, and literal to FR-SET-1. Rejected: with
-  three fixed units the second ratio would be dead weight under half the readings, and an oz-written
-  recipe would still be unreadable to a reader who pours in ml.
-- **Store the pair the reader sees** — the global unit and its two ratios, as typed. Rejected:
-  switching the unit would rewrite two stored numbers through a division, so a bar round-tripped
-  through the picker would come back subtly different, and the file would record what the reader
-  last looked at rather than what a part is.
-- **ADR 09's full version — an ml equivalence on every unit entry.** Dash and barspoon convert too.
-  Rejected: a dash is a gesture, not a measure anyone wants normalised to 0.92 ml, and it hangs a
-  nullable number on every entry to serve three of them. Still additive later, on the same terms.
-- **A `convertible` flag on the vocabulary entry** rather than three fixed names. Rejected as ADR 09
-  rejected it: a second concept carrying a fact the names already carry.
-- **Two ratios both anchored to part** (`part_ml`, `part_oz`), skipping the ml anchor. Equivalent in
-  degrees of freedom, but it makes the file's shape depend on which unit happened to be special when
-  it was written, and ml→oz would be a quotient of two preferences rather than of two sizes.
+- **Anchor ratio to part**: literal to FR-SET-1, smallest change. Rejected: three fixed units make second ratio dead weight under half readings; oz-written recipe unreadable for ml-pourer.
+- **Store pair reader sees** (unit + two ratios typed): switching rewrites two stored numbers via division; bar round-trips subtly different; file records last look not what part is.
+- **ADR 09 full** (ml equivalence on every entry): dash/barspoon convert too. Rejected: dash is gesture not measure; normalizing to 0.92 ml unwanted; nullable on every entry for 3. Additive later.
+- **`convertible` flag on entry**: second concept for what names carry (ADR 09 rejected).
+- **Two ratios anchored to part** (`part_ml`, `part_oz` skip ml anchor): degrees of freedom equivalent; file shape depends on what was special when written; ml→oz quotient of preferences not sizes.
 
 ## Consequences
 
