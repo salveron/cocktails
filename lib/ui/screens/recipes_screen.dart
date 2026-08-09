@@ -3,10 +3,12 @@ import 'dart:math';
 
 import 'package:cocktails/domain/domain.dart';
 import 'package:cocktails/state/state.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
+import '../destinations.dart';
 import '../palette.dart';
 import '../theme.dart';
 import '../widgets/color_chip.dart';
@@ -82,6 +84,10 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
   /// What the last roll landed on, so the next one moves off it (FR-DIS-5).
   String? _rolled;
 
+  /// The recipe another destination asked for, held for the one build that
+  /// hands it to the list and let go there (ADR 19).
+  String? _revealing;
+
   final _random = Random();
 
   void _toggle(String name) => setState(() {
@@ -94,11 +100,39 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
     _views.remove(name);
   }
 
+  /// Opens [name] and shuts everything else — a roll and a jump are each one
+  /// answer rather than a pile of them (FR-DIS-5, FR-DIS-9).
+  void _openAlone(String name) {
+    for (final open in _expanded) {
+      _forget(open);
+    }
+    _expanded
+      ..clear()
+      ..add(name);
+  }
+
+  /// Every pick the screen holds goes with the request: a reader who named a
+  /// recipe asked to see it, not to be told why they cannot (ADR 19).
+  void _serve(Reveal? request) {
+    final name = takeReveal(ref, request, Destination.recipes);
+    if (name == null) return;
+    setState(() {
+      _picked.clear();
+      _base = null;
+      _openAlone(name);
+      _revealing = name;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final availability = ref.watch(availabilityProvider);
+    ref.listen(revealProvider, (_, request) => _serve(request));
     return ModelView((model) {
       final vocabulary = sortedByName(model.recipeTags);
+      // Read through the build that carries it, so no later one reveals again.
+      final revealing = _revealing;
+      _revealing = null;
       return VocabularyList<Recipe>(
         entries: model.recipes,
         nameOf: (recipe) => recipe.name,
@@ -106,6 +140,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
         rowOf: (recipe) =>
             _row(model, vocabulary, recipe, availability[recipe.name]),
         onAdd: (query) => _add(model.units, query),
+        reveal: revealing,
         noun: 'recipe',
         plural: 'recipes',
         filter: tagFilter(
@@ -137,6 +172,13 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
       );
     });
   }
+
+  /// Sends the reader to the bottle a line names, on the Inventory (FR-DIS-9).
+  /// Under the bottle's own name: a line may spell it any way the vocabulary
+  /// answers to (ADR 10), and a list finds its rows under theirs.
+  void _reach(Model model, String bottle) => ref
+      .read(revealProvider.notifier)
+      .ask(Destination.inventory, model.bottleNamed(bottle));
 
   /// Compact or full when tapped; full hides summary since details appear below.
   /// [availability] is derived from the model this row is built from, so it is
@@ -183,6 +225,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
               vocabulary: vocabulary,
               recipe: recipe,
               view: view,
+              onReach: (bottle) => _reach(model, bottle),
               onMade: () => unawaited(_made(recipe)),
               onReset: () => unawaited(_reset(recipe)),
               onUndo: _undo.containsKey(recipe.name)
@@ -228,12 +271,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
       return null;
     }
     setState(() {
-      for (final name in _expanded) {
-        _forget(name);
-      }
-      _expanded
-        ..clear()
-        ..add(drawn.name);
+      _openAlone(drawn.name);
       _rolled = drawn.name;
     });
     return drawn.name;
@@ -464,6 +502,7 @@ class _Details extends StatelessWidget {
     required this.vocabulary,
     required this.recipe,
     required this.view,
+    required this.onReach,
     required this.onMade,
     required this.onReset,
     this.onUndo,
@@ -478,6 +517,9 @@ class _Details extends StatelessWidget {
 
   /// How this card is reading its amounts, [_resting] until asked otherwise.
   final _AmountView view;
+
+  /// Where a bottle named on a line is kept (FR-DIS-9).
+  final void Function(String bottle) onReach;
 
   final VoidCallback onMade;
   final VoidCallback onReset;
@@ -514,6 +556,7 @@ class _Details extends StatelessWidget {
               ),
               model: model,
               transformed: transformed,
+              onReach: onReach,
             ),
           ),
         if (recipe.notes.isNotEmpty) ...[
@@ -541,21 +584,58 @@ class _Details extends StatelessWidget {
 /// none dims and the dot carries it alone (ADR 11).
 /// A [transformed] card italicises the measure, the only part of the line that
 /// is then not what the recipe says.
-class _Line extends StatelessWidget {
+///
+/// Each bottle it names reaches its row on the Inventory (FR-DIS-9, ADR 19) —
+/// the name alone, so a group offers one target per alternative where a whole
+/// line could only ever offer the first. The measure, the "or" and the mark
+/// stay inert, naming nothing that is kept anywhere.
+class _Line extends StatefulWidget {
   const _Line(
     this.line, {
     required this.measure,
     required this.model,
     required this.transformed,
+    required this.onReach,
   });
 
   final RecipeLine line;
   final String measure;
   final Model model;
   final bool transformed;
+  final void Function(String bottle) onReach;
+
+  @override
+  State<_Line> createState() => _LineState();
+}
+
+class _LineState extends State<_Line> {
+  /// One per bottle the line names. A recognizer outlives the build that spans
+  /// it and has to be let go by hand, so they are kept here rather than made
+  /// afresh each time; a line naming fewer than it did leaves a spare, which
+  /// costs nothing and goes with the card.
+  final _taps = <TapGestureRecognizer>[];
+
+  @override
+  void dispose() {
+    for (final tap in _taps) {
+      tap.dispose();
+    }
+    super.dispose();
+  }
+
+  /// The recognizer for the bottle at [index], aimed afresh: the line it spans
+  /// may have been re-edited under it.
+  TapGestureRecognizer _tap(int index, String bottle) {
+    while (_taps.length <= index) {
+      _taps.add(TapGestureRecognizer());
+    }
+    return _taps[index]..onTap = () => widget.onReach(bottle);
+  }
 
   @override
   Widget build(BuildContext context) {
+    final line = widget.line;
+    final model = widget.model;
     final stock = stockOfLine(model, line);
     final dimmed = TextStyle(color: dimmedInk(Theme.of(context).colorScheme));
     return Row(
@@ -564,7 +644,10 @@ class _Line extends StatelessWidget {
           child: Text.rich(
             TextSpan(
               children: [
-                TextSpan(text: measure, style: transformed ? _italic : null),
+                TextSpan(
+                  text: widget.measure,
+                  style: widget.transformed ? _italic : null,
+                ),
                 for (var i = 0; i < line.ingredients.length; i++) ...[
                   if (i == 0)
                     const TextSpan(text: ' ')
@@ -572,6 +655,7 @@ class _Line extends StatelessWidget {
                     const TextSpan(text: _or, style: _italic),
                   TextSpan(
                     text: line.ingredients[i],
+                    recognizer: _tap(i, line.ingredients[i]),
                     style:
                         stock != StockLevel.out &&
                             stockOf(model, line.ingredients[i]) ==

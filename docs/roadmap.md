@@ -374,26 +374,38 @@ First usable slice; recipes reference both vocabularies, so this precedes Phase 
       carries and none of the rest, so a bullet with no dot rode along and a bare card means nothing
       narrows. The run of dots comes out of `DottedName` into `TagDots` beside it, the one home both
       readings now share. UI only — `Purchase` does not move, and the search is not re-run per pick.
-- [ ] **M28 A destination sends the reader to another** — long-pressing a recipe on a basket opens it
-      on the Recipes tab (FR-DIS-9, [ADR 19](adr/19-a-destination-sends-the-reader-to-another.md)):
-      `lib/ui/destinations.dart` takes the enum out of `app.dart` and holds beside it one provider
-      carrying a destination and a name, the shell watching it only to switch and the serving list
-      clearing every narrowing before revealing the row alone. The shell keeps a trail of what a jump
-      left, so back undoes a jump and a chain of them unwinds one at a time, while a bottom-bar tap
-      clears it — back never undoing a move the reader chose. `VocabularyList` gains the name to reveal
-      beside the `draw` that already produces one, and the two can now be pending in the same frame,
-      which [ADR 13](adr/13-lists-scroll-by-index.md) had assumed impossible.
+- [x] **M28 A destination sends the reader to another** — a name tapped on one screen opens its own row
+      on another (FR-DIS-9, [ADR 19](adr/19-a-destination-sends-the-reader-to-another.md), amended):
+      a basket's recipes reach the Recipes, a basket's bottles and a recipe line's bottles the
+      Inventory. Both of the ADR's pairs at once rather than the first alone — the second turned out to
+      cost one call site and a recognizer, not a milestone. `lib/ui/destinations.dart` takes the enum
+      out of `app.dart` and holds beside it the one provider outside the state layer, carrying a
+      destination and a name; the shell listens only to switch, the serving screen clears the request
+      along with every narrowing and opens the row alone. **The gesture is a plain tap**, where the ADR
+      had written a long press: reaching a name is the commonest thing a reader wants from one, and the
+      rows carrying names lead nowhere else, so the tap was free to take. **Nothing marks a name as a
+      way out** — an arrow per row was refused twice over, the trailing slot already carrying the tag
+      dots (M27) and the stock dots, and a widget repeated down every row being what M18b was reverted
+      for; the ripple is the whole of the feedback, as the made-history reset's own press is. A recipe
+      line reaches *per bottle* rather than per line, a group offering several (ADR 11) where a
+      line-wide target could only have named the first, so each bottle is its own span and the measure,
+      the "or" and the mark stay inert. The shell keeps a trail of what a jump left, so back undoes one
+      and a chain unwinds one at a time, while a bottom-bar tap clears it — back never undoing a move
+      the reader chose. `VocabularyList` gains the name to reveal beside the `draw` that already
+      produces one, and the two are now pending in the same frame, which
+      [ADR 13](adr/13-lists-scroll-by-index.md) had assumed impossible: `_reach` already ordered them,
+      home first and the reveal on the measurement that follows, so the behaviour fell out rather than
+      being added — and is pinned by a test over a list long enough to have to scroll, the three-recipe
+      fixtures being in view either way.
 
 **Deferred**, numbered when scheduled: **Bought it** — a basket's bottles set in stock from the card,
-which is the shopping screen's first write to the model and so needs a requirement of its own;
-**ADR 19's second pair** — a recipe card's line reaching its bottle on the Inventory, one more call
-site and the inventory screen learning to serve; and **each bottle says what it carries** — an open
-basket captioning each recipe with the bottles that brought it, `+`-joined where several were taken
-together and `or` where any one would do. `Purchase` would carry the ways a recipe is closed rather
-than a flat list of names, since grouping the recipes *under* the bottles is not available: a recipe
-short of two belongs under both, which is the duplication M26 removed, and one closed by either of
-two alternatives belongs under neither. Deferred for want of a reading of the caption that earns
-the room it takes on every card.
+which is the shopping screen's first write to the model and so needs a requirement of its own; and
+**each bottle says what it carries** — an open basket captioning each recipe with the bottles that
+brought it, `+`-joined where several were taken together and `or` where any one would do. `Purchase`
+would carry the ways a recipe is closed rather than a flat list of names, since grouping the recipes
+*under* the bottles is not available: a recipe short of two belongs under both, which is the
+duplication M26 removed, and one closed by either of two alternatives belongs under neither. Deferred
+for want of a reading of the caption that earns the room it takes on every card.
 
 ## Phase 6 — Release
 

@@ -314,6 +314,26 @@ Future<void> back(WidgetTester tester) async {
   await tester.pumpAndSettle();
 }
 
+/// The system's own back, which the shell claims while a jump is left to undo
+/// (ADR 19). Unclaimed, it pops the route the whole shell stands on.
+Future<void> systemBack(WidgetTester tester) async {
+  await tester.binding.handlePopRoute();
+  await tester.pumpAndSettle();
+}
+
+/// Which destination the shell is showing, read off the title over it.
+String showing(WidgetTester tester) =>
+    (tester.widget<AppBar>(find.byType(AppBar)).title! as Text).data!;
+
+/// Taps the bottom bar's [label] — a destination the reader chose, never a jump.
+Future<void> goTo(WidgetTester tester, String label) => tap(
+  tester,
+  find.descendant(of: find.byType(NavigationBar), matching: find.text(label)),
+);
+
+/// A bulleted name in a card's body — a basket's bottles and its recipes alike.
+Finder bullet(String name) => find.text('• $name');
+
 /// Opens the orders the list can be read in, or shuts them again.
 Future<void> openSort(WidgetTester tester) =>
     tap(tester, find.byTooltip('Sort'));

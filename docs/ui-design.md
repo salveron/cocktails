@@ -14,6 +14,24 @@ requirements in [requirements.md](requirements.md).
 - **Theme**: seed colour, platform-picked light/dark. `dimmedInk` (`onSurfaceVariant` at 60%) is 
   the one dim: a hint, so empty ≠ filled; a bottle a group offers that the bar lacks. One home, so 
   the two cannot drift.
+- **A name reaches its own row on another destination** (FR-DIS-9, 
+  [ADR 19](adr/19-a-destination-sends-the-reader-to-another.md)): one tap, on a basket's recipes and 
+  bottles and on the bottles a recipe line names. **Nothing marks a name as a way out** — the ripple 
+  under the finger is the whole of it, as the made-history reset's own press is (FR-REC-6). An arrow 
+  per row was weighed and refused: the trailing slot already carries the tag dots and the stock dots, 
+  and a widget repeated down every row is the clutter M18b was reverted over. So a run whose names 
+  lead somewhere reads exactly like one whose names do not — accepted, the two runs on a basket now 
+  both leading somewhere, and the recipe card's inert parts being a measure and a mark rather than a 
+  name.
+- **The reader is put where they asked, not told why they cannot.** The serving screen clears every 
+  narrowing first — its own tag and base picks, and the list's search and order — and opens the row 
+  alone, which is the [random pick](#recipes-screen)'s arrival exactly, wash and all. A jump is thus 
+  the one thing that clears a search, where an edit renaming an entry out of one leaves it standing: 
+  an edit is the reader working *within* the query, a jump is them naming a row outside it.
+- **Back undoes a jump**, one at a time down a chain of them, and leaves the app once there is none 
+  left. A bottom-bar tap clears the way back — a destination the reader chose has nothing to return 
+  *from*. What comes back is their place, not their narrowings: the destinations are all alive, so a 
+  basket is found open where it was, but a search a jump cleared stays cleared.
 - **`ModelView`**: only reader of `modelProvider`'s `AsyncValue`. Screens never see loading/failure.
 - **`EmptyState`**: icon, title, fill hint.
 - **`StartupIssues`**: displays FR-DAT-4 problems above all screens (dismissable).
@@ -110,6 +128,10 @@ Successful add clears search. Recipes add pushes [recipe form](#recipe-form).
   Trailing slot outside expanding body. List opens in this order (FR-DIS-8).
 - **Line marks**: stock dot after line if the line is low/out (tooltip shows level); no dot = in 
   stock. Optional lines dotted too (dot + "(optional)" together).
+- **Each bottle a line names reaches the Inventory** (FR-DIS-9): the name alone is the target, so a 
+  substitution group offers one per alternative where a whole-line tap could only have named the 
+  first. The measure, the "or" and the "(optional)" answer nothing — the one place in the app where 
+  half a line responds, which is what naming a *row* rather than a line costs.
 - **Substitution groups** (FR-REC-9, [ADR 11](adr/11-substitutions-on-the-line.md)): read as prose 
   — "cognac or vodka" — open and shut alike, where the file writes `/`. Bottles the bar lacks fall 
   to `dimmedInk`, but only while it holds one; a group short of everything dims nothing and takes 
@@ -201,6 +223,9 @@ Create/edit: pushed page, Save in app bar. Mirrors file order (name, lines, tags
   nothing is marked at all while nothing narrows. Every tag a recipe wears was weighed and refused — 
   that is the recipe list's reading, where the dots are the row's own subject; on a basket it would 
   bury the answer among tags that had nothing to do with why the basket is here.
+- **Every name on an open basket leads somewhere** (FR-DIS-9): a bottle to the Inventory, a recipe to 
+  the Recipes, one tap either way. The card behind stays open and keeps its budget, so back lands on 
+  the basket the reader left rather than on a screen rebuilt from nothing.
 - **The stock dots are what the switch is worth reading**: restocking mixes a bottle merely running low 
   with one there is none of, and the open card is where that is told. Plain, they all read out, which 
   is the same thing a recipe card says about a line it is short of.

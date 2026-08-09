@@ -99,6 +99,15 @@ empty so no reference to it can mean two things.
 - **FR-DIS-8** Lists (recipes, inventory, tags) readable in multiple orders: by name, by signal 
   (availability, stock, colour). Picking current order reverses it. Default: recipes by availability, 
   inventory by stock, tags by name (not persisted). Rows stable during edit.
+- **FR-DIS-9** A name on one destination reaches its own row on another 
+  ([ADR 19](adr/19-a-destination-sends-the-reader-to-another.md)): a basket's recipes open on the 
+  Recipes, a basket's bottles and a recipe line's bottles on the Inventory. One tap, nothing marking 
+  the name as a way out. The row arrives open and alone where its list expands, revealed the way a 
+  random pick is (FR-DIS-5), and every narrowing in the way — search, tags, base, order — is cleared 
+  first: a reader who named a row asked to see it, not to be told why they cannot. A line naming a 
+  bottle by any of its spellings reaches it under the vocabulary's own (FR-VOC-6), and each 
+  alternative of a substitution group is its own target (FR-REC-9). Back undoes a jump and a chain of 
+  them one at a time; a destination the reader chose themselves clears the way back.
 - **FR-DIS-10** Shopping baskets filterable by recipe tag — FR-DIS-3's idiom on the optimizer's 
   answers, combining with the budget and the reading of short. A basket is kept where each picked tag 
   is worn by some recipe it unlocks, not necessarily the same one, so picking one shops for a 

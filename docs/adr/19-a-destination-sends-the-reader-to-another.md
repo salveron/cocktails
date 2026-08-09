@@ -1,18 +1,17 @@
 # ADR: A destination sends the reader to a named row on another
 
-**Status:** Accepted
+**Status:** Accepted. Amended at M28: the gesture is a plain tap, and both pairs were built at once.
 
 ## Context
 
 A basket on the shopping screen names the recipes it unlocks, and the reader wants to know what else
 one of them is short of. Today that answer is four moves away: remember the name, switch to Recipes,
-type it into the search, open the card. Long-pressing the name on the basket is to make it one
-(FR-DIS-9).
+type it into the search, open the card. Tapping the name on the basket is to make it one (FR-DIS-9).
 
 It is not the only such jump. An expanded recipe card names the bottles each line is built from, and
 the same reader wants that bottle on the Inventory — to see its aliases, its tags, or to set its
 stock. The same move, a different pair of screens. The channel is therefore designed for the pair in
-general and built for the first pair only.
+general.
 
 Nothing in the app crosses destinations. `_Destination` and `_current` are private to `app.dart`, so
 no screen can ask for another; the three live side by side in an `IndexedStack` and never speak.
@@ -45,6 +44,12 @@ screen that serves it.**
   resetting the search and the order is part of serving it, since neither is reachable from outside.
 - **The row is opened alone**, the rest shutting, as a random pick does (FR-DIS-5): a jump is one
   answer rather than a pile of them.
+- **A plain tap sends, and nothing marks a name as a way out.** Amended at M28: a long press was
+  written here first, on the reading that a jump is a secondary act. It is not — reaching a name is
+  the commonest thing a reader wants from one, and the rows that carry names lead nowhere else, so
+  the tap was free to take. The ripple under the finger is the whole of the feedback: a per-row
+  arrow was weighed and refused, the trailing slot already carrying the tag dots (FR-DIS-10) and the
+  stock dots, and a run label saying "hold to open" refused with the long press it explained.
 - **The name crossing is the entry's own.** A recipe line names a bottle by any of its spellings
   ([ADR 10](10-ingredient-aliases.md)), so a sender resolves it — `model.bottleNamed` — before asking.
   A list finds its rows under their own names, and a channel carrying a spelling instead would fail
@@ -101,15 +106,19 @@ screen that serves it.**
   trail does not have to carry: the destinations are all alive, so the shopping screen is found with
   its budget, its switch and its open cards exactly as they were.
 - **The arrival needs no signalling of its own.** The revealed row washes from `secondaryContainer`
-  back to rest as a drawn one does (FR-DIS-5, [ADR 13](13-lists-scroll-by-index.md)), and the long
-  press confirms itself through `InkWell`'s own feedback, which is what the made-history reset already
-  rides on (FR-REC-6). Both come free of the channel.
-- The channel is general and must stay small. A second pair costs one call site and no new type; what
+  back to rest as a drawn one does (FR-DIS-5, [ADR 13](13-lists-scroll-by-index.md)), and the tap
+  confirms itself through `InkWell`'s own feedback. Both come free of the channel.
+- **A recipe line reaches per bottle, not per line.** A group offers several
+  ([ADR 11](11-substitutions-on-the-line.md)), and a line-wide target could only ever have named the
+  first of them. So each bottle is its own span with its own recognizer, and the measure, the "or"
+  and the mark between them stay inert — the one place in the app where part of a line answers and
+  part does not, which is what naming a row rather than a line costs.
+- The channel is general and must stay small. A third pair costs one call site and no new type; what
   it must not become is a router — the request reveals a named row, and carries no arguments, no
   intent and no history.
 
 ## Scope
 
-Built for the shopping screen's recipes first (FR-DIS-9). The recipe card's lines reaching the
-Inventory is the second pair, planned separately: the same provider, one more call site, and the
-inventory screen learning to serve.
+Both pairs built at M28 (FR-DIS-9): a basket's recipes and its bottles, and a recipe line's bottles.
+The Inventory serves as the Recipes does, and the shopping screen only ever sends — nothing yet
+names a basket, a basket being ranked rather than named.

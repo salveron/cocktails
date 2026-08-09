@@ -172,14 +172,20 @@ class VocabularyRow extends StatelessWidget {
 typedef Bullet = ({String name, Widget? trailing});
 
 /// One stretch of bullets under a heading, the heading being null wherever the
-/// run stands alone and needs none.
-typedef BulletRun = ({String? label, List<Bullet> bullets});
+/// run stands alone and needs none. [onTap] is where the run's names are kept —
+/// one destination for the run, a run being the names of a single kind (ADR 19).
+typedef BulletRun = ({
+  String? label,
+  List<Bullet> bullets,
+  void Function(String name)? onTap,
+});
 
-/// A run of plain names, nothing standing at the end of any line — which most
-/// of them are, a mark being the exception a caller spells out.
+/// A run of plain names, nothing at the end of any line and nowhere to reach
+/// from one — which most are, both being the exception a caller spells out.
 BulletRun bulletRun(Iterable<String> names, {String? label}) => (
   label: label,
   bullets: [for (final name in names) (name: name, trailing: null)],
+  onTap: null,
 );
 
 /// Every name a [VocabularyRow]'s body counts, bulleted under the run it falls
@@ -201,20 +207,29 @@ class BulletRuns extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 4),
             child: Text(label, style: Theme.of(context).textTheme.labelLarge),
           ),
-        for (final bullet in run.bullets)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 4),
-            child: Row(
-              children: [
-                Flexible(child: Text('• ${bullet.name}')),
-                if (bullet.trailing case final mark?)
-                  Padding(padding: const EdgeInsets.only(left: 6), child: mark),
-              ],
-            ),
-          ),
+        for (final bullet in run.bullets) _bullet(run, bullet),
       ],
     ],
   );
+
+  /// One line, reaching the row it names where its run leads anywhere. Nothing
+  /// marks it as a way out — the ripple is the whole of the answer (ADR 19).
+  Widget _bullet(BulletRun run, Bullet bullet) {
+    final line = Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        children: [
+          Flexible(child: Text('• ${bullet.name}')),
+          if (bullet.trailing case final mark?)
+            Padding(padding: const EdgeInsets.only(left: 6), child: mark),
+        ],
+      ),
+    );
+    final onTap = run.onTap;
+    return onTap == null
+        ? line
+        : InkWell(onTap: () => onTap(bullet.name), child: line);
+  }
 }
 
 /// Per-row menu (⋮); carries callbacks directly (no enum boilerplate).
@@ -246,6 +261,7 @@ class VocabularyList<T> extends StatefulWidget {
     this.onAdd,
     this.filter,
     this.draw,
+    this.reveal,
     this.orders = alphabetical,
     this.spellingsOf,
     super.key,
@@ -269,6 +285,12 @@ class VocabularyList<T> extends StatefulWidget {
   /// Optional draw over the rows on show; absent where a list offers none.
   final ListDraw<T>? draw;
 
+  /// A row another destination asked this list to put on screen (ADR 19),
+  /// carried on the one build answering a request and null on every other, so
+  /// the same row asked for twice is revealed twice. It feeds the `_reveal` a
+  /// draw fills.
+  final String? reveal;
+
   /// Add callback; query prefills name; returns true if added (don't clear search).
   final Future<bool> Function(String query)? onAdd;
 
@@ -290,7 +312,7 @@ class _VocabularyListState<T> extends State<VocabularyList<T>> {
   /// and so out of reach of anything asking for a built one (ADR 13).
   final _scroller = ItemScrollController();
 
-  /// Where the rows stand, and the one a draw named waiting to be reached.
+  /// Where the rows stand, and the one named waiting to be reached.
   final _positions = ItemPositionsListener.create();
   String? _reveal;
 
@@ -325,8 +347,28 @@ class _VocabularyListState<T> extends State<VocabularyList<T>> {
   @override
   void initState() {
     super.initState();
-    _search.addListener(() => setState(() {}));
+    _search.addListener(_typed);
     _positions.itemPositions.addListener(_reach);
+  }
+
+  void _typed() => setState(() {});
+
+  /// Every narrowing this list owns goes before the row is revealed (ADR 19).
+  /// The search is cleared without announcing itself: the build an update is
+  /// followed by reads the new text anyway, and `_notice` then marks the list
+  /// for home ahead of the reveal.
+  @override
+  void didUpdateWidget(covariant VocabularyList<T> oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.reveal case final name?) {
+      _reveal = name;
+      _order = widget.orders.keys.first;
+      _backwards = false;
+      _search
+        ..removeListener(_typed)
+        ..clear()
+        ..addListener(_typed);
+    }
   }
 
   @override
@@ -418,13 +460,15 @@ class _VocabularyListState<T> extends State<VocabularyList<T>> {
   }
 
   /// Puts the list where it is next to stand, once it has measured itself: the
-  /// top, where a narrowing has made a different list of it, or the row a draw
-  /// named. Home first — a draw is made over rows already on show, so the two
-  /// never wait together, and going home re-anchors the package on row one
-  /// besides (ADR 13), which is what leaves a narrowed list reading from its
-  /// start rather than wherever the wider one stood.
+  /// top, where a narrowing has made a different list of it, or the row that
+  /// was named. Home first, and the two do now wait together — a jump clears
+  /// the narrowings and names a row in the one act (ADR 19), where a draw is
+  /// made over rows already on show. Home returns early, so the reveal is
+  /// served on the measurement that follows; going home re-anchors the package
+  /// on row one besides (ADR 13), which is what leaves a narrowed list reading
+  /// from its start rather than wherever the wider one stood.
   ///
-  /// The drawn row, then. A draw is asked for while the rows still stand as they
+  /// The named row, then. A draw is asked for while the rows still stand as they
   /// did: the screen opens the one named and shuts whatever stood open, and a
   /// row already in view is reached in pixels rather than by index — so
   /// scrolling any earlier aims at where the row *was*, and a tall card

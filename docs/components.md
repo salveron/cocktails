@@ -38,12 +38,16 @@ lib/
       file_model_store.dart    # atomic write, backup rotation
       memory_model_store.dart  # in-memory double for state and widget tests
   state/
-    state.dart                 # barrel — every provider
+    state.dart                 # barrel — every provider over the model
     src/
       model_controller.dart    # the one writable provider
       derived.dart             # availabilityProvider; visible recipes, optimizer
   ui/                          # no barrel — leaves, imported directly; design in ui-design.md
-    app.dart                   # MaterialApp and the shell: destinations, app bar, gear
+    app.dart                   # MaterialApp and the shell: app bar, gear, the stack, and
+                               #   the trail a jump leaves for back to undo (ADR 19)
+    destinations.dart          # what destinations exist and how one screen asks another
+                               #   to reveal a named row — the same subject, so one file
+                               #   (ADR 19). The one provider outside the state layer
     theme.dart                 # the seed colour, the two schemes, `dimmedInk` — the one
                                #   dim, worn by a hint and by a bottle the bar lacks
     palette.dart               # the fixed hues — stock signals and the tag palette —
@@ -65,7 +69,9 @@ lib/
                                #     plus the orders it reads in, the spellings it searches
                                #     by, the tag filter three screens narrow by — the
                                #     shopping one taking the row without the list — the draw
-                               #     one of them offers over the rows on show, byName,
+                               #     one of them offers over the rows on show, the row
+                               #     another destination asks it to reveal (ADR 19), the
+                               #     bulleted runs a card body names things in, byName,
                                #     Set.toggle and counted — how many of a thing there
                                #     are, in words. The one file that knows a list
                                #     scrolls (ADR 13)
@@ -505,6 +511,16 @@ one: the draw is made *by* the list, over the rows it is already showing, so the
 leave `VocabularyList` and no narrowing had to be named twice. What a screen supplies is the draw 
 itself; what it gets back is a name.
 
+`revealProvider` is the one provider outside this layer, and the fourth kind of state in the app: not 
+model, not derived, not screen-local, but one screen's request of another 
+([ADR 19](adr/19-a-destination-sends-the-reader-to-another.md)). It lives in `ui/destinations.dart` 
+beside the enum it names, since what destinations exist and how one is asked for are the same 
+subject, and `state/` has no business knowing either. A `Reveal?` — a destination and a name — 
+nullable and one-shot: the shell listens only to switch, the serving screen clears it. Clearing it 
+inside that listener is safe because Riverpod copies its listener list before dispatch, so the shell 
+still hears the request it is being cleared out of; the shell ignoring a null one is what makes the 
+order between them not matter.
+
 `purchasesProvider` — `List<Purchase>` keyed on what counts as short (ADR 16), searched once at 
 `budgets.last` so the screen reads one size off the one answer. `autoDispose`, and watched only 
 while the shopping screen is the destination on show: the shell tells each destination whether it 
@@ -537,6 +553,12 @@ Performance facts (no over-engineering):
    decodes it → the pushed review shows the issues, or what the file holds and the button that agrees 
    to it → `notifier.replaceAll` keeps the `beforeImport` copy, publishes, saves → the screen leaves 
    for the collection (ui-design.md#data).
+
+6. **Reaching a row** (FR-DIS-9): a name tapped on one destination resolves to the entry's own 
+   (`bottleNamed`) and reaches `revealProvider.ask` → the shell switches and records what it left → 
+   the serving screen clears the request, its own picks and the open cards, and hands the name to 
+   `VocabularyList` for one build → the list clears its search and order, goes home, then scrolls to 
+   the row and washes it (ADR 13, ADR 19).
 
 Controller is UI's only route to data layer; screens never hold `ModelStore` or `YamlCodec`.
 

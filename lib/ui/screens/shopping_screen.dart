@@ -3,6 +3,7 @@ import 'package:cocktails/state/state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../destinations.dart';
 import '../widgets/color_chip.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/model_view.dart';
@@ -295,7 +296,11 @@ class _Controls extends StatelessWidget {
 /// every recipe the basket unlocks, each marking the picks it answered
 /// (FR-DIS-10). The stock dots are what the switch is worth reading — with it
 /// on, a basket mixes bottles merely running low with ones there are none of.
-class _Basket extends StatelessWidget {
+///
+/// Every name here reaches the row it stands for, on the destination that keeps
+/// it (FR-DIS-9, ADR 19): a bottle the Inventory, a recipe the Recipes. A basket
+/// holds entries' own names, so nothing here resolves a spelling.
+class _Basket extends ConsumerWidget {
   const _Basket({
     required this.model,
     required this.purchase,
@@ -315,22 +320,28 @@ class _Basket extends StatelessWidget {
   final Map<String, List<String>> worn;
 
   @override
-  Widget build(BuildContext context) => BulletRuns([
-    (
-      label: 'Ingredients',
-      bullets: [
-        for (final bottle in purchase.bottles)
-          (name: bottle, trailing: StockDot(stockOf(model, bottle))),
-      ],
-    ),
-    (
-      label: 'Unlocks',
-      bullets: [
-        for (final recipe in purchase.unlocks)
-          (name: recipe, trailing: _dotsOn(recipe)),
-      ],
-    ),
-  ]);
+  Widget build(BuildContext context, WidgetRef ref) {
+    void reach(Destination destination, String name) =>
+        ref.read(revealProvider.notifier).ask(destination, name);
+    return BulletRuns([
+      (
+        label: 'Ingredients',
+        bullets: [
+          for (final bottle in purchase.bottles)
+            (name: bottle, trailing: StockDot(stockOf(model, bottle))),
+        ],
+        onTap: (bottle) => reach(Destination.inventory, bottle),
+      ),
+      (
+        label: 'Unlocks',
+        bullets: [
+          for (final recipe in purchase.unlocks)
+            (name: recipe, trailing: _dotsOn(recipe)),
+        ],
+        onTap: (recipe) => reach(Destination.recipes, recipe),
+      ),
+    ]);
+  }
 
   /// The picks [recipe] answers, or nothing at all where it answers none — a
   /// bullet wearing no dot rode along on the ones that do.
