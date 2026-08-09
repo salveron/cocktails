@@ -172,7 +172,7 @@ Rules:
   in the app reads it back.
 - Android Auto Backup enabled.
 - Application ID: `dev.salveron.cocktails`.
-- Minimum Android: Flutter default (minSdk 21+).
+- Minimum Android: Flutter's own default, taken as it moves (minSdk 24 today).
 - UI: English only.
 
 ## Build & distribution

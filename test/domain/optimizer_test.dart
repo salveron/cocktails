@@ -500,7 +500,7 @@ void main() {
       expect(ranked, isNotEmpty);
       expect(ranked.length, lessThanOrEqualTo(75));
       // A guard against an algorithmic regression, not a stopwatch on the
-      // machine: the search this replaced took 6.8s here (M21 notes).
+      // machine: the search this replaced took 6.8s here (ADR 15).
       expect(watch.elapsedMilliseconds, lessThan(750));
     });
 

@@ -6,7 +6,7 @@
 
 FR-DIS-5's random pick has to put the recipe it names under the eye. The shape chosen is that the
 list opens that recipe's card and scrolls to it — the pick read on the same card as any other
-recipe, so the recipe view keeps one home. Decided before M20.
+recipe, so the recipe view keeps one home. Decided before the pick was built.
 
 `ListView.builder` builds lazily: a row outside the viewport has no `BuildContext`, so
 `Scrollable.ensureVisible` cannot reach it, and cards expand in place, so the rows have no uniform

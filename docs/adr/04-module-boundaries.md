@@ -15,8 +15,8 @@ Dart `_` file-scoped only. Shared helpers become app-public. File privacy leaked
   public unexported (layer), exported (app). Shared domain internals in `src/helpers.dart`, not re-exported.
 - Dependencies inward only (`ui → state → data → domain`). Layer's barrel is only import. 
   `test/architecture_test.dart` enforces via imports/exports.
-- Every enum carries token as field (`Unit.part('part')`, `StockLevel.in_('in')`); renaming cannot 
-  change format.
+- Every enum carries token as field (`FixedUnit.part('part')`, `StockLevel.in_('in')`); renaming 
+  cannot change format.
 
 Structure, interfaces in [components.md](../components.md).
 
@@ -30,4 +30,4 @@ Structure, interfaces in [components.md](../components.md).
 
 - No compiler enforcement; architecture test in CI.
 - Add file: two lines (file + export). Export is checkpoint.
-- Tokens declared before codec (M5a); format contract fixed before dependencies.
+- Tokens declared before the codec reads them; format contract fixed before dependencies.

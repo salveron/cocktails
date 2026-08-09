@@ -1,11 +1,13 @@
 # ADR: Units are a vocabulary
 
-**Status:** Accepted
+**Status:** Accepted. Amended by [ADR 17](17-the-fixed-units-interconvert.md): `oz` joins the
+fixed units and `Settings.display` names one of the three, the reasoning below standing otherwise.
 
 ## Context
 
 Units were closed enum (seven members). Plural guessed on input, never written. Cannot add units 
-("tsp", "splash") or irregular plurals ("leaves"). Decided before M17b/M17c.
+("tsp", "splash") or irregular plurals ("leaves"). Decided before the vocabulary and its screen 
+were built.
 
 ## Decision
 

@@ -5,7 +5,8 @@
 ## Context
 
 Names are identity. Case-sensitive comparison forked identity: "gin" vs "Gin" created duplicates. 
-Decided after M16, before M18/M20/M21.
+Decided once the recipe form could create the pair, and before the filters, the random pick and 
+the optimizer were built on name lookups.
 
 ## Decision
 

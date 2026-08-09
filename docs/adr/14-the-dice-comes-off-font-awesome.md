@@ -4,7 +4,7 @@
 
 ## Context
 
-ADR 13 set bar for sixth dependency: *confined to one file, way out written down*. M20 used `Icons.casino_rounded` (single die, looks like domino at 24px in 56px button). Seven icon sets surveyed; only Font Awesome and Lucide carry a pair. Symbols closest is `ifl` (single 3D die); others single 3D dice.
+ADR 13 set bar for sixth dependency: *confined to one file, way out written down*. The random pick shipped on `Icons.casino_rounded` (single die, looks like domino at 24px in 56px button). Seven icon sets surveyed; only Font Awesome and Lucide carry a pair. Symbols closest is `ifl` (single 3D die); others single 3D dice.
 
 ## Decision
 

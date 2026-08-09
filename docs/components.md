@@ -2,8 +2,8 @@
 
 Module-level design: folder structure, layer surfaces, interfaces, data flows. System-level design 
 in [architecture.md](architecture.md); boundaries in [ADR 04](adr/04-module-boundaries.md); screens 
-in [ui-design.md](ui-design.md). Milestone signatures don't exist yet ([roadmap.md](roadmap.md)) 
-— named here so consumers design against fixed shapes.
+in [ui-design.md](ui-design.md). Signatures are named here rather than read off the source, so 
+every consumer designs against one fixed shape.
 
 ## Module map
 
@@ -25,8 +25,9 @@ lib/
       scaling.dart             # ×N scaling, part↔ml display
       discovery.dart           # basesOf, baseSpirits, marksBase, randomCanMake
       optimizer.dart           # Purchase, purchasesWithin — what to buy next
-      helpers.dart             # not exported: nameKey, sameName, compareNames,
-                               #   repeatsName, duplicateNameIndexes, listEquals
+      helpers.dart             # not exported: nameKey, nameKeys, sameName,
+                               #   compareNames, repeatsName, duplicateNameIndexes,
+                               #   listEquals
   data/
     data.dart                  # barrel — the store, the codec, and their result types
     src/
@@ -83,7 +84,9 @@ lib/
 test/                          # mirrors lib/, plus test/architecture_test.dart
 ```
 
-`domain/src/helpers.dart` holds logic shared between domain files (layer-private, not exported). Contains `nameKey`/`sameName` — the one fold behind every name comparison ([ADR 08](adr/08-names-ignore-case.md)) — plus `duplicateNameIndexes` and `listEquals`.
+`domain/src/helpers.dart` holds logic shared between domain files (layer-private, not exported) — 
+`nameKey`/`sameName` among them, the one fold behind every name comparison 
+([ADR 08](adr/08-names-ignore-case.md)).
 
 ## Boundary rules
 
@@ -106,8 +109,10 @@ Dependencies point inward (`ui → state → data → domain`):
 - Within layer: `src/` files import by relative path.
 - Barrel re-exports own layer only (no sibling re-export).
 
-`test/architecture_test.dart` (M5a) enforces via `import`/`export` directives (pure functions, 
-exercised on constructed inputs and real tree).
+`test/architecture_test.dart` enforces via `import`/`export` directives (pure functions, 
+exercised on constructed inputs and real tree). It also pins the dependency list in 
+[architecture.md](architecture.md#technology-stack) to `pubspec.yaml`, so a package taken without 
+a written reason fails the suite.
 
 ## Domain contracts
 
@@ -295,10 +300,11 @@ Contract and rationale: [ADR 05](adr/05-validation-contract.md).
 enum ValidationIssueKind {
   emptyName, whitespaceInName, lineBreakInName, commaInAlias, duplicateName,
   reservedSuffix, separatorInName,                     // grammar's own text, ADR 06/11
-  partMlNotPositive, missingUnit, unknownUnit, unknownIngredient, unknownTag,
+  unitSizeNotPositive,                                 // part_ml, oz_ml — ADR 17
+  missingUnit, unknownUnit, unknownIngredient, unknownTag,
   duplicateTag, duplicateAlternative,                  // ADR 11
   amountNotPositive, rangeOutOfOrder, noRequiredLine, timesBelowOne,
-  unsupportedFormat, malformedLine, malformedValue,    // raised by the codec (M6)
+  unsupportedFormat, malformedLine, malformedValue,    // raised by the codec
 }
 
 final class ValidationIssue {
@@ -320,22 +326,23 @@ Set<String> otherNames(Set<String> names, String? except);   // the other…Name
 ```
 
 Empty result = valid. Issues collected in one pass (no fail-fast), top-to-bottom like file 
-(settings, ingredients, tags, recipes, within each by index). Lets codec render as-is (M6). 
+(settings, units, ingredients, tags, recipes, within each by index). Lets codec render as-is. 
 `ValidationIssue` has value equality.
 
 `path` uses **data-format key names** (`part_ml`, `made.times`), not Dart names. Seam lets 
 codec attach YAML line numbers, form attach field focus, without domain knowing either. 
 Behaviour switches on `kind`; `message` is display-only.
 
-`validateModel`: whole-file entry point for import (M6). Others check single entry a form edits 
-(M11/M12/M14) in one call: paths relative, empty for name. `other…Names` holds every *other* 
-entry's name — every *spelling* for the ingredient vocabulary, whose namespace holds aliases too 
-(ADR 10) — so a rename never collides with itself. All four run same rules, same code.
+`validateModel`: whole-file entry point for import. Others check the single entry a form edits — 
+the ingredient, the tag, the recipe — in one call: paths relative, empty for name. `other…Names` 
+holds every *other* entry's name — every *spelling* for the ingredient vocabulary, whose namespace 
+holds aliases too (ADR 10) — so a rename never collides with itself. All four run same rules, 
+same code.
 
 ### Computations
 
-Named now; implemented in milestones. All pure functions of `Model`. Algorithms in 
-[architecture.md](architecture.md#domain-computations). `randomCanMake` takes `Random` for testability.
+All pure functions of `Model`. Algorithms in [architecture.md](architecture.md#domain-computations). 
+`randomCanMake` takes `Random` for testability.
 
 ```dart
 const scaleFactors = [1, 2, 3, 4];                    // what a recipe view offers (FR-REC-7)
@@ -398,8 +405,6 @@ the recipe's is what the split was for. The card writes the body itself, one alt
 the reading is the settings that card is under, not a second notion of one. A line converts only 
 where `FixedUnit.named` answers for its unit, and only into the one `display` names: the two sizes 
 give the factor, and everything else prints as entered (ADR 17).
-
-(See components.md line-by-line for signatures — formatted for readability in source)
 
 ## Data contracts
 
@@ -543,7 +548,7 @@ Performance facts (no over-engineering):
    loads → `Loaded` seeds state, `Empty` seeds empty, `Corrupt` seeds recovered + surfaces issues.
 2. **Edit**: widget calls `modelProvider.notifier.setStock(…)` → `ModelEdits` returns new `Model` 
    → state updates, UI rebuilds → save enqueued.
-3. **Recipe form** (M14): `tryParseRecipeLine` on each field (live feedback) → `validateRecipe` on 
+3. **Recipe form**: `tryParseRecipeLine` on each field (live feedback) → `validateRecipe` on 
    save (`lines[i]` paths map to fields; else snackbar) → recipe + new ingredients + rename name 
    reach `notifier.upsertRecipe` as one edit (ui-design.md#recipe-form).
 4. **Export** (FR-DAT-1): `notifier.export()` hands the model on screen to `exportSnapshot` and 

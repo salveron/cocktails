@@ -1,10 +1,12 @@
 # ADR: Tags — two vocabularies, colour from a palette
 
-**Status:** Accepted. Amended at M11b: ingredient tags added, the `neutral` default dropped.
+**Status:** Accepted. Amended before either tag screen was built: ingredient tags added as a
+second vocabulary, the `neutral` default dropped.
 
 ## Context
 
-Colour persistence, two vocabularies (ingredients vs. recipes). Decided before M12–M14.
+Colour persistence, two vocabularies (ingredients vs. recipes). Decided before any screen was
+built on either.
 
 ## Decision
 

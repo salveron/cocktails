@@ -4,8 +4,9 @@
 
 ## Context
 
-Six consumers (M6, forms, codec). Diagnostic expensive to change. Previous (path + sentence) 
-insufficient: forms need machine-readable kind (context-specific affordances). Entry points asymmetric.
+Four consumers: the codec over a whole file, and the three forms that edit one entry. Diagnostic 
+expensive to change. Previous (path + sentence) insufficient: forms need machine-readable kind 
+(context-specific affordances). Entry points asymmetric.
 
 ## Decision
 
@@ -18,7 +19,7 @@ insufficient: forms need machine-readable kind (context-specific affordances). E
 - Four entry points: `validateModel` (whole file), `validateRecipe`, `validateIngredient`, `validateTag` 
   (one entry). Single-entry calls take `otherNames` so rename never collides. Paths relative; empty for name.
 - One implementation per rule. Duplicate detection shared with `Model` constructor.
-- Issues in data-format order: settings, ingredients, tags, recipes; within each by index.
+- Issues in data-format order, whatever it comes to hold; within each section by index.
 
 Signatures: [components.md](../components.md#validation).
 

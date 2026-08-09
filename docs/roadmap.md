@@ -1,14 +1,17 @@
 # Roadmap — pilot
 
-Milestones in dependency order, one commit + tests each. Scope in [requirements.md](requirements.md), 
-design in [architecture.md](architecture.md). Domain: unit tests; UI: widget tests per strategy.
+Milestones in dependency order, one commit + tests each. Scope in [requirements.md](requirements.md); 
+design in [architecture.md](architecture.md), [components.md](components.md) and 
+[ui-design.md](ui-design.md), rationale in the [ADRs](adr/). An entry says what a milestone did and 
+where the fact now lives — it is a record of the order the work went in, not a second home for any 
+of it. Domain: unit tests; UI: widget tests per strategy.
 
 ## Phase 0 — Foundation
 
 Horizontal groundwork every feature depends on; strictly ordered.
 
 - [x] **M1 Scaffold** — Flutter project, Android target, application ID, `flutter_lints`,
-      `.gitignore`, directories per the [project layout](architecture.md#project-layout).
+      `.gitignore`, directories per the [module map](components.md#module-map).
 - [x] **M2 CI** — GitHub Actions workflow: format check, `flutter analyze`, tests on push.
 - [x] **M3 Domain model** — entities (ingredient, tag, recipe, settings) and the model
       root with unique-name invariants.
@@ -118,15 +121,16 @@ First usable slice; recipes reference both vocabularies, so this precedes Phase 
       Empty case: "nothing makeable" message.
 - [x] **M21 Optimizer domain** — [ADR 15](adr/15-the-optimizer-answers-with-the-best-few.md), FR-DIS-6: 
       `purchasesWithin`, `Purchase` (bottles + unlocked recipes). Gap = choice among alternatives 
-      (ADR 11), cross product over short lines. Best few of each size (6.8s → ~140ms). 
-      `Model.bottleNamed` unified lookup.
-- [x] **M22a Restocking widens the search** — [ADR 16](adr/16-the-optimizer-buys-what-is-running-low.md), 
+      (ADR 11), cross product over short lines. Best few of each size, the cost pinned by a 
+      performance test. `Model.bottleNamed` unified lookup.
+- [x] **M21a Restocking widens the search** — [ADR 16](adr/16-the-optimizer-buys-what-is-running-low.md), 
       FR-DIS-7: `restocking` flag. Off: out only; on: short of full stock (low joins pool, goal = ready). 
-      One flag, one place (`_gapsOf`). `canMake` unchanged. 58ms vs 100ms.
+      One flag, one place (`_gapsOf`). `canMake` unchanged.
 - [x] **M22 Optimizer screen** — budget selector, ranked baskets (FR-DIS-6/7, [ui-design.md](ui-design.md#shopping-screen)). 
       Budget picks exactly N (ADR 15 shelf-per-size). One search at max budget, read size off answer. 
-      Card reused (title, bottles, count). Stock dots. Empty states. `autoDispose` to save computation 
-      (100ms per tap). `Wrap` for wrap at narrow widths (tested 320/360).
+      Card reused (title, bottles, count). Stock dots. Empty states. `autoDispose` and a screen told 
+      whether it is on show, so the one costly search runs for no one else. `Wrap` for wrap at narrow 
+      widths (tested 320/360).
 
 ## Phase 4 — Settings & data exchange
 
@@ -145,7 +149,6 @@ First usable slice; recipes reference both vocabularies, so this precedes Phase 
       `filePickerProvider`, no type filter, answers with text. Screen shows file contents, Replace button 
       or issues. Counts = identity (no filename). Safety copy: `cocktails-before-import.yaml` 
       (`ExportPurpose`). `review` pure. Replace leaves for collection.
-
 - [x] **M25a The counts open, and the diacritics survive** — UTF-8 fix: `XFile.readAsString` 
       drops encoding; `pickedText` decodes bytes (test via plugin-built `XFile`). 
       [architecture.md](architecture.md#platform-facts) recorded. Counts open per kind; tapped card 
@@ -167,15 +170,6 @@ First usable slice; recipes reference both vocabularies, so this precedes Phase 
       holds enum + `revealProvider` (destination + name). Gesture: plain tap (reaches name most 
       common). No arrow (slot used for tags/stock dots). Line reaches per bottle (ADR 11). Back 
       undoes jumps one at a time. `VocabularyList` reveal + draw same frame [ADR 13](adr/13-lists-scroll-by-index.md).
-
-**Deferred**, numbered when scheduled: **Bought it** — a basket's bottles set in stock from the card,
-which is the shopping screen's first write to the model and so needs a requirement of its own; and
-**each bottle says what it carries** — an open basket captioning each recipe with the bottles that
-brought it, `+`-joined where several were taken together and `or` where any one would do. `Purchase`
-would carry the ways a recipe is closed rather than a flat list of names, since grouping the recipes
-*under* the bottles is not available: a recipe short of two belongs under both, which is the
-duplication M26 removed, and one closed by either of two alternatives belongs under neither. Deferred
-for want of a reading of the caption that earns the room it takes on every card.
 
 ## Phase 6 — Release
 

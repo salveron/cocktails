@@ -728,8 +728,8 @@ class _MadeRow extends StatelessWidget {
 }
 
 /// Both readings settled in one place, applied on Apply and dropped on Cancel
-/// — the card behind stands as it was until then. ×1 in parts is the way back,
-/// so the dialog needs no reset of its own.
+/// — the card behind stands as it was until then. Picking [_resting] again is
+/// the way back, so the dialog needs no reset of its own.
 class _ScaleDialog extends StatefulWidget {
   const _ScaleDialog({required this.recipe, required this.view});
 

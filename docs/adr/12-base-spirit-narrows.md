@@ -29,7 +29,7 @@ FR-DIS-4 asked grouped browsing under base spirits (ADR 06). ADR 11's substituti
 - FR-DIS-4 rewritten from grouping to narrowing; "grouping" leaves the domain's vocabulary.
 - `groupByBaseSpirit` is never written. `discovery.dart` holds `basesOf`, `baseSpirits` and
   `marksBase` instead.
-- ADR 06's "M19 groups" and ADR 11's deferred question both point here.
+- ADR 06's "the list groups on the mark" and ADR 11's deferred question both point here.
 - `tagFilter` takes a leading filter, so the two narrowings share one row and one message; a
   collection with no recipe tags still gets the base chip.
 - Non-base grouping stays out of scope; FR-DIS-5's "active filters" now include the base pick.

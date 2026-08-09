@@ -76,7 +76,7 @@ void main() {
       );
     });
 
-    test('leaves value rules to M5: zero and inverted ranges parse', () {
+    test('leaves value rules to validation: zero, inverted ranges parse', () {
       expect(parseRecipeLine('0 part gin', units).amount, const Amount(0));
       expect(
         parseRecipeLine('2-1.5 part gin', units).amount,

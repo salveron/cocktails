@@ -18,10 +18,10 @@ Screen/shell design. Modules [components.md](components.md), requirements [requi
   bottles and on the bottles a recipe line names. **Nothing marks a name as a way out** — the ripple 
   under the finger is the whole of it, as the made-history reset's own press is (FR-REC-6). An arrow 
   per row was weighed and refused: the trailing slot already carries the tag dots and the stock dots, 
-  and a widget repeated down every row is the clutter M18b was reverted over. So a run whose names 
-  lead somewhere reads exactly like one whose names do not — accepted, the two runs on a basket now 
-  both leading somewhere, and the recipe card's inert parts being a measure and a mark rather than a 
-  name.
+  and a widget repeated down every row is the clutter a per-line control was once reverted over. So 
+  a run whose names lead somewhere reads exactly like one whose names do not — accepted, the two 
+  runs on a basket now both leading somewhere, and the recipe card's inert parts being a measure and 
+  a mark rather than a name.
 - **The reader is put where they asked, not told why they cannot.** The serving screen clears every 
   narrowing first — its own tag and base picks, and the list's search and order — and opens the row 
   alone, which is the [random pick](#recipes-screen)'s arrival exactly, wash and all. A jump is thus 
@@ -117,7 +117,7 @@ Successful add clears search. Recipes add pushes [recipe form](#recipe-form).
   has stopped, since a list that merely stopped moving does not say what it stopped *for*. Colour 
   alone, and only the fill: a row changing height would fire the very measurement the reveal waits 
   on (ADR 13). It runs once and is let go, so a row scrolled away and back does not say it again.
-- **Scale & unit** behind ⋮ (expanded cards only, FR-REC-7): factor ×1–×4, and one of the three 
+- **Scale & convert** behind ⋮ (expanded cards only, FR-REC-7): factor ×1–×4, and one of the three 
   fixed units for this card alone (FR-SET-1). Every card rests at ×1 in the unit the settings name 
   ([ADR 17](adr/17-the-fixed-units-interconvert.md)), and picking that again cancels — so under an 
   ml reader it is "(part)" that marks a card as read otherwise.

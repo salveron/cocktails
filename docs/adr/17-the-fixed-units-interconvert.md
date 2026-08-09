@@ -15,8 +15,8 @@ part moves, and only into ml, so an oz-written recipe stays oz for a reader who 
 
 Two things settle this now rather than after the pilot. The global half of FR-SET-1 has never
 worked — every card hard-codes `part` regardless of the setting, so whatever the toggle is
-implemented as is what ships. And the ratio is what the M23 screen is *for*: the shape it edits is
-the shape readers will have files in.
+implemented as is what ships. And the ratio is what the [amounts screen](../ui-design.md#amounts)
+is *for*: the shape it edits is the shape readers will have files in.
 
 ## Decision
 
