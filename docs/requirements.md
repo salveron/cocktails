@@ -51,11 +51,11 @@ Two tag vocabularies separate; one name may exist in both (different meanings).
   replaces what stood and nothing is merged, save which unit amounts read in — that pick alone is 
   the reader's (FR-SET-1) and no refresh moves it, where the sizes behind it arrive with everything 
   else (FR-BAR-3). What arrives is judged first as an imported file is (FR-DAT-4) — what fails to 
-  pass leaves the bar exactly as it was. When it last refreshed is readable wherever the bar is, and 
-  everything the app says of it, availability included, is as of that moment. A source that cannot 
-  be reached — no network, off the network, or withdrawn (FR-BAR-6) — leaves the bar readable at 
-  that moment and says why it did not refresh. Nothing expires and nothing empties itself: what is 
-  too old is the reader's to judge.
+  pass leaves the bar exactly as it was. When it last refreshed is readable where its bar is listed, 
+  and asking again is offered wherever the bar is read; everything the app says of it, availability 
+  included, is as of the last answer. A source that cannot be reached — no network, off the network, 
+  or withdrawn (FR-BAR-6) — leaves the bar readable at that moment and says why it did not refresh. 
+  Nothing expires and nothing empties itself: what is too old is the reader's to judge.
 - **FR-BAR-6** Each owned bar is shared separately, by any of the three ways below and any 
   combination of them; a bar is shared whole or not at all, and sharing one says nothing about the 
   rest. Whichever way it travels a guest reads the same thing (FR-BAR-3). The owner sees what they 

@@ -4,8 +4,12 @@ Screen/shell design. Modules [components.md](components.md), requirements [requi
 
 ## App shell
 
-- **Three destinations** (Recipes, Inventory, Shopping) in Material 3 `NavigationBar` (NFR-1). 
-  Settings: app bar gear (amounts, vocabularies, data exchange).
+- **Destinations per the bar** in Material 3 `NavigationBar` (NFR-1): Recipes, Inventory and 
+  Shopping on an owned bar, the first two on a guest one (FR-BAR-4). The stack is indexed by 
+  position in the list that bar offers, never by the enum's own index 
+  ([components.md](components.md#state-contracts)). Material wants three to five and gets two here — 
+  accepted, the alternative being a destination that exists to say it is empty. Settings: app bar 
+  gear (amounts, vocabularies, data exchange, [switching bars](#bars)).
 - **`IndexedStack`** (keeps scroll/search). Forms/settings pushed via `Navigator`. 
   Recipe view inside list. `Navigator` 1.0, no nested routers. Each destination is told whether it is 
   the one on show — staying alive is free for two of the three, and not for the 
@@ -16,7 +20,7 @@ Screen/shell design. Modules [components.md](components.md), requirements [requi
 - **A name reaches its own row on another destination** (FR-DIS-9, 
   [ADR 19](adr/19-a-destination-sends-the-reader-to-another.md)): one tap, on a basket's recipes and 
   bottles and on the bottles a recipe line names. **Nothing marks a name as a way out** — the ripple 
-  under the finger is the whole of it, as the made-history reset's own press is (FR-REC-6). An arrow 
+  under the finger is the whole of it, as the inventory row's own tap is (FR-INV-2). An arrow 
   per row was weighed and refused: the trailing slot already carries the tag dots and the stock dots, 
   and a widget repeated down every row is the clutter a per-line control was once reverted over. So 
   a run whose names lead somewhere reads exactly like one whose names do not — accepted, the two 
@@ -34,6 +38,33 @@ Screen/shell design. Modules [components.md](components.md), requirements [requi
 - **`ModelView`**: only reader of `modelProvider`'s `AsyncValue`. Screens never see loading/failure.
 - **`EmptyState`**: icon, title, fill hint.
 - **`StartupIssues`**: displays FR-DAT-4 problems above all screens (dismissable).
+
+## Bars
+
+Behind the gear, **Switch bar…** — a row that travels. Not the app bar's own slot, not a drawer, not 
+a fourth destination: switching is rarer than reaching a recipe and rarer than the gear itself, so it 
+sits where the app already keeps what is not a destination, and the bottom bar goes on meaning what 
+it has always meant.
+
+- **The app opens on the bar it was left in**, `openId` outliving the run 
+  ([ADR 20](adr/20-the-app-holds-many-bars.md)), so a reader who keeps one bar never comes here 
+  twice. **An empty shelf is the one time this screen is home**: there is no bar to open, so the app 
+  opens on the list, and its empty state offers the two ways to a first one — a new bar, or a file 
+  (FR-BAR-2, FR-BAR-7).
+- **One card a bar**, tapped to switch and popped on the way: the name, the mode, and for a guest the 
+  source it came from and when it last answered. Rename, share, refresh and delete sit behind its ⋮, 
+  so the screen that lists bars is the screen that manages them and no second place holds half of it.
+- **The bar's name leads the title** — "Home bar's Recipes", "Anna's Ingredients". The destination 
+  named alone was what the app bar carried while there was one collection; with several it answers 
+  the smaller question. Nothing else marks the bar: no subtitle, no strip, the title standing on 
+  every screen already.
+- **A guest bar is told by the bottom bar's shape**, not by a badge (FR-BAR-4). Two destinations 
+  where an owned bar has three is a difference read at a glance and read from the row the reader 
+  navigates by, which is where they are looking in any case.
+- **Swipe down to refresh** (FR-BAR-5), on a guest bar's lists and nowhere else — the standard 
+  gesture for "ask the source again", and the reason the shell carries no refresh control and no 
+  as-of. How stale a bar is reads on the card that lists it; on the bar itself, being one gesture 
+  from current is worth more than being told how far from it you are.
 
 ## Searchable lists
 
@@ -87,8 +118,7 @@ Successful add clears search. Recipes add pushes [recipe form](#recipe-form).
   Two open side-by-side, scroll stable.
 - **Compact**: name + tags (dots, inventory idiom) + ingredient names (`·`-joined, ellipsized), 
   a group reading as prose within one slot. Amounts on expand.
-- **Expanded**: tags as chips, lines as `formatRecipeLine` writes, notes, made row. 
-  Empty sections absent (except made row carries button).
+- **Expanded**: tags as chips, lines as `formatRecipeLine` writes, notes. Empty sections absent.
 - **Edit/delete** behind ⋮ (menu pairs with availability chip). Delete confirms. 
   Rename keeps card open.
 - **Filter row** under search: the base chip, then recipe tags as chips — the inventory's row 
@@ -138,9 +168,6 @@ Successful add clears search. Recipes add pushes [recipe form](#recipe-form).
   (`stockOfLine`). The "or" is italic on the open card — two letters between two names need it. 
   Italic thus does double duty with the scaled measure below; position tells them apart, and the 
   name row's "(×2, ml)" is what actually announces a transformed card.
-- **Made row**: history text (absent until first stamp), Undo, "Made it" (FR-REC-6). 
-  Undo one-deep. Long-press resets to never-made.
-
 ## Recipe form
 
 Create/edit: pushed page, Save in app bar. Mirrors file order (name, lines, tags, notes).

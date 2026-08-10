@@ -13,7 +13,7 @@ expensive to change. Previous (path + sentence) insufficient: forms need machine
 **One issue type: path, kind, message. One entry point per editable entity.**
 
 - `ValidationIssue`: `(List<Object> path, ValidationIssueKind kind, String message)`. `path` uses 
-  **data-format keys and indexes** (`['recipes', 0, 'lines', 2]`, `part_ml`, `made.times`), never Dart 
+  **data-format keys and indexes** (`['recipes', 0, 'lines', 2]`, `part_ml`, `source.at`), never Dart 
   names. `kind`: machine-readable. `message`: display-ready.
 - `ValidationIssueKind` covers codec findings; data layer reports through this type only.
 - Four entry points: `validateModel` (whole file), `validateRecipe`, `validateIngredient`, `validateTag` 

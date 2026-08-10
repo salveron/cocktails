@@ -1,6 +1,9 @@
 # ADR: Persistence and export format
 
-**Status:** Accepted
+**Status:** Accepted. Amended once the app held many bars ([ADR 20](20-the-app-holds-many-bars.md), 
+[ADR 21](21-the-file-carries-one-bar.md)): one file per bar rather than one for everything, and 
+"guest" below meant a second reader of the file, not FR-BAR-3's guest bar — that one is read-only 
+for its own reasons ([ADR 23](23-nothing-writes-a-guest-bar.md)).
 
 ## Context
 

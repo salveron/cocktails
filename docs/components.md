@@ -12,12 +12,16 @@ everything else under `src/`.
 
 ```
 lib/
-  main.dart                    # ProviderScope, store override, CocktailsApp
+  main.dart                    # ProviderScope, store and channel overrides, CocktailsApp
   domain/
     domain.dart                # barrel — the only domain import other layers use
     src/
-      model.dart               # entities, Model root, name lookups, wornInOrder,
-                               #   the unit vocabulary and its lookup (ADR 09)
+      bar.dart                 # Bar, BarMode, Transport, BarSource, Offer, BarPayload,
+                               #   and Shelf, the root above Model (ADR 20)
+      bar_edits.dart           # extension ShelfEdits on Shelf — pure derivations,
+                               #   the guest-bar refusal among them (ADR 23)
+      model.dart               # entities, Model — one bar's collection — name lookups,
+                               #   wornInOrder, the unit vocabulary and its lookup (ADR 09)
       model_edits.dart         # extension ModelEdits on Model — pure derivations
       line_format.dart         # compact-line grammar
       validation.dart          # ValidationIssue + rule set, otherNames
@@ -29,53 +33,58 @@ lib/
                                #   compareNames, repeatsName, duplicateNameIndexes,
                                #   listEquals
   data/
-    data.dart                  # barrel — the store, the codec, and their result types
+    data.dart                  # barrel — the store, the channels, the codec, their results
     src/
       sourced_issue.dart       # SourcedIssue — shared by the store and the codec
-      model_store.dart         # the storage interface and its outcome types
-      yaml_codec.dart          # decode/encode, format-version gate
+      bar_store.dart           # the storage interface and its outcome types
+      bar_channel.dart         # the sharing seam: fetch, offer, withdraw, find (ADR 22)
+      file_channel.dart        # FR-BAR-7 — the picker's text, decoded
+      lan_channel.dart         # FR-BAR-8 — DNS-SD registration and browse, HTTP both ways
+      yaml_codec.dart          # decode/encode of a bar and of the index, version gate
       yaml_reader.dart         # YAML tree → model parts, with source spans
       yaml_writer.dart         # canonical emitter
-      file_model_store.dart    # atomic write, backup rotation
-      memory_model_store.dart  # in-memory double for state and widget tests
+      file_bar_store.dart      # one file per bar, the index, atomic write, rotation
+      memory_bar_store.dart    # in-memory double for state and widget tests
   state/
-    state.dart                 # barrel — every provider over the model
+    state.dart                 # barrel — every provider over the shelf
     src/
-      model_controller.dart    # the one writable provider
+      shelf_controller.dart    # the one writable provider, and the write surface it
+                               #   hands out for an owned bar only (ADR 23)
+      channels.dart            # the transports resolved, the refreshes in flight and
+                               #   what they failed with, the offers standing (ADR 22)
       derived.dart             # availabilityProvider; visible recipes, optimizer
   ui/                          # no barrel — leaves, imported directly; design in ui-design.md
     app.dart                   # MaterialApp and the shell: app bar, gear, the stack, and
                                #   the trail a jump leaves for back to undo (ADR 19)
-    destinations.dart          # what destinations exist and how one screen asks another
-                               #   to reveal a named row — the same subject, so one file
-                               #   (ADR 19). The one provider outside the state layer
+    destinations.dart          # what destinations a bar offers and how one screen asks
+                               #   another to reveal a named row — the same subject, so one
+                               #   file (ADR 19). The one provider outside the state layer
     theme.dart                 # the seed colour, the two schemes, `dimmedInk` — the one
                                #   dim, worn by a hint and by a bottle the bar lacks
     palette.dart               # the fixed hues — stock signals and the tag palette —
                                #   and `neutralSwatch`, the ground a chip meaning
                                #   nothing by its colour stands on (ADR 12)
     screens/                   # one file per destination, plus settings, tags, units,
-                               #   amounts, recipe form. settings_screen holds both
-                               #   halves of the data exchange and the import review
-                               #   its pick pushes, so one file keeps them from
+                               #   amounts, recipe form, the bar list and the owner's
+                               #   view of what a bar is shared by — the last two shaped
+                               #   by ui-design.md once it is settled. settings_screen
+                               #   holds both halves of the data exchange and the import
+                               #   review its pick pushes, so one file keeps them from
                                #   drifting apart (ADR 18)
     widgets/                   # empty_state, model_view, search_field, startup_issues,
-                               #   color_chip — the pill, chip, dot, the run of dots
-                               #     a name or a basket's recipe wears, and the
-                               #     dotted name itself,
-                               #     plus `chipRadius`, the corner a chip and the ink
-                               #     under it both round to
+                               #   color_chip — the pill, chip, dot, the run of dots a name
+                               #     or a basket's recipe wears, the dotted name itself, and
+                               #     `chipRadius`, the corner a chip and its ink round to
                                #   tag_choices — the row tags are picked from
-                               #   vocabulary_list — the searchable list all four screens are,
-                               #     plus the orders it reads in, the spellings it searches
-                               #     by, the tag filter three screens narrow by — the
-                               #     shopping one taking the row without the list — the draw
-                               #     one of them offers over the rows on show, the row
-                               #     another destination asks it to reveal (ADR 19), the
-                               #     bulleted runs a card body names things in, byName,
-                               #     Set.toggle and counted — how many of a thing there
-                               #     are, in words. The one file that knows a list
-                               #     scrolls (ADR 13)
+                               #   vocabulary_list — the searchable list all four screens are:
+                               #     the orders it reads in, the spellings it searches by, the
+                               #     tag filter three screens narrow by (the shopping one
+                               #     taking the row without the list), the draw one of them
+                               #     offers over the rows on show, the row another destination
+                               #     asks it to reveal (ADR 19), the bulleted runs a card body
+                               #     names things in, byName, Set.toggle, and counted — how
+                               #     many of a thing there are, in words. The one file that
+                               #     knows a list scrolls (ADR 13)
                                #   vocabulary_dialogs — entry (name, aliases, colour, tags),
                                #     delete, discard, plus VocabularyEntry and the one
                                #     reading of issue paths into fields every form shares
@@ -112,16 +121,80 @@ Dependencies point inward (`ui → state → data → domain`):
 `test/architecture_test.dart` enforces via `import`/`export` directives (pure functions, 
 exercised on constructed inputs and real tree). It also pins the dependency list in 
 [architecture.md](architecture.md#technology-stack) to `pubspec.yaml`, so a package taken without 
-a written reason fails the suite.
+a written reason fails the suite, and it keeps `ui/` off `shelfProvider.notifier` — the write 
+surface is `barWriterProvider`'s, which does not exist for a guest bar 
+([ADR 23](adr/23-nothing-writes-a-guest-bar.md)).
 
 ## Domain contracts
 
 Pure Dart, no I/O, no clock, no randomness taken from ambient state — anything time- or
-chance-dependent is passed in, which is what keeps the layer unit-testable.
+chance-dependent is passed in, which is what keeps the layer unit-testable, a refresh time included.
+
+### The shelf and the bar
+
+`Shelf` is the root ([ADR 20](adr/20-the-app-holds-many-bars.md)): every bar the device holds, which 
+one is open, and that one's collection. `Model` keeps its name and its whole shape — it is one bar's 
+collection, and renaming it would rewrite every reference in the app to say what this sentence says.
+
+```dart
+enum BarMode { owner('owner'), guest('guest'); … }
+enum Transport { file('file'), lan('lan'), cloud('cloud'); … }              // FR-BAR-7/8/9
+typedef Offer = ({Transport via, List<String> guests});   // empty where a way cannot name them
+typedef BarPayload = ({String name, FixedUnit display, Model collection});  // what a file holds
+
+final class BarSource {          // where a guest bar refreshes from (FR-BAR-5)
+  final Transport via;
+  final String at;               // the transport's own address; opaque above data/
+  final String from;             // what to call it where a source is read
+}
+
+final class Bar {
+  final String id;               // minted on this device, never written to a bar's file
+  final String name;             // a label: two bars may carry one (FR-BAR-1)
+  final BarMode mode;
+  final FixedUnit display;       // the reader's pick, outliving every refresh (FR-SET-1)
+  final List<Offer> offers;      // an owner's, one per way it is shared (FR-BAR-6)
+  final BarSource? source;       // a guest's, with…
+  final DateTime? refreshed;     // …when that source last answered
+  bool get isOwned;
+}
+
+final class Shelf {
+  final List<Bar> bars;
+  final String? openId;          // null where no bar is open — first run, or the last deleted
+  final Model collection;        // the open bar's, and the only one resident
+  Bar? get open;
+  Bar? barWithId(String id);
+}
+
+extension ShelfEdits on Shelf {         // bar_edits.dart, as ModelEdits is model_edits.dart
+  Shelf withCollection(Model collection);      // throws on a guest bar (ADR 23)
+  Shelf withBar(Bar bar);                      // add or replace by id — rename, offers, source
+  Shelf withoutBar(String id);                 // FR-BAR-2; a deleted open bar leaves openId null
+  Shelf opening(String id, Model collection);  // the switch: record and bytes at once
+  Shelf refreshedWith(String id, BarPayload payload, DateTime at);   // FR-BAR-5, guest only
+}
+```
+
+`Shelf`'s constructor throws `ArgumentError` on a broken shelf, the programmer contract `Model`'s own 
+constructor already keeps: ids unique, `openId` naming a bar that exists, a guest carrying a source 
+and an owner none, an owner's offers one per transport. `collection` is an empty `Model` while no bar 
+is open, and no screen can read it then — the shell offers no destination without a bar 
+([architecture.md](architecture.md#bars)).
+
+**One collection is resident**, which is what makes FR-BAR-1's "nothing crosses" a fact rather than a 
+rule: there is no second `Model` for a search, a draw or a jump to reach into. It also leaves 
+`Model`'s memoised lookups exactly as they were — built for the bar on show and thrown away with it, 
+so tens of bars cost one bar's worth of index.
+
+`refreshedWith` takes the name and the time as well as the collection, a refresh replacing all three 
+([architecture.md](architecture.md#domain-computations)); it moves `collection` only where the 
+refreshed bar is the one open, so refreshing another is a record edit here and a file write in the 
+store. It never touches `display` — the payload's own is read only where a bar is established.
 
 ### Entities and the model root
 
-`Ingredient`, `Tag`, `Amount`, `RecipeLine`, `MadeHistory`, `Settings`, `Recipe`, `Model` are 
+`Ingredient`, `Tag`, `Amount`, `RecipeLine`, `Settings`, `Recipe`, `Model` are 
 immutable `final class` values with structural equality. Collections wrapped `List.unmodifiable` 
 — lists not `const`-constructible.
 
@@ -145,10 +218,12 @@ Two identity conventions:
 - **A unit is an entry, not an enum** ([ADR 09](adr/09-units-are-a-vocabulary.md)). `Model.units`
   is the vocabulary, `RecipeLine.unit` a name into it, and the three the app leans on are `FixedUnit` 
   ([ADR 17](adr/17-the-fixed-units-interconvert.md)) — one enum for the units no one may rename and 
-  the readings `Settings.display` chooses among, since they are the same three. `Settings` holds 
+  the readings `Bar.display` chooses among, since they are the same three. `Settings` holds 
   each one's size in ml (`partMl`, `ozMl`, ml being the anchor at 1), so `ratio` derives any pair 
   rather than storing it, and `withRatio` writes one back — moving the trailing unit's size, so 
-  redefining the part leaves the ounce where it stood. Both a converted measure and the 
+  redefining the part leaves the ounce where it stood. The pick itself is not there: the sizes are 
+  the owner's and travel with the collection, the pick is the reader's and stays with the bar 
+  ([ADR 21](adr/21-the-file-carries-one-bar.md)). Both a converted measure and the 
   [amounts screen](ui-design.md#amounts) read the relation there rather than dividing themselves:
 
 ```dart
@@ -177,6 +252,9 @@ enum FixedUnit { part('part'), ml('ml'), oz('oz'); … }   // ADR 17: also the r
 enum LineMark { base('base'), optional('optional'); … }    // ADR 06
 enum TagColor { teal('teal'), … slate('slate'); … }        // ADR 07, open to new members
 ```
+
+`BarMode` and `Transport` are declared the same way, the index being a file like any other 
+([architecture.md](architecture.md#data-format)).
 
 `RecipeLine.mark` holds that one `LineMark?`, so a base line can never also be optional
 (FR-REC-8); `isBase` and `isOptional` are getters over it, and `marked(LineMark?)` is what
@@ -214,9 +292,11 @@ the one being edited, which must collide with neither its own name nor its own a
 Name uniqueness checked in two places:
 
 - `Model` constructor throws `ArgumentError` on duplicate (programmer contract: existing Model 
-  is well-formed).
+  is well-formed). `Shelf`'s does the same for its own invariants.
 - `validateModel` returns issues, never throws (data contract: untrusted input reported, not crashed). 
-  Works on loose parts before Model construction.
+  Works on loose parts before Model construction. `validateShelf` is its counterpart over the index's 
+  parts, reusing the same kinds — an id twice over is a `duplicateName`, an unreadable token a 
+  `malformedValue`.
 
 Both use single `duplicateNameIndexes` in `helpers.dart`.
 
@@ -238,8 +318,6 @@ Model withTagRenamed(TagKind kind, String from, String to);   // rewrites every 
 Model withoutTag(TagKind kind, String name);
 Model withRecipe(Recipe recipe);                      // add or replace by name
 Model withoutRecipe(String name);
-Model withRecipeMade(String name, DateTime today);    // the clock is a parameter (FR-REC-6)
-Model withRecipeHistory(String name, MadeHistory? made);      // the one writer; null = never made
 
 List<String> recipesUsingIngredient(String name);     // FR-VOC-1 delete blocking
 List<String> recipesUsingUnit(String name);
@@ -264,16 +342,13 @@ Three rules: edit for missing entry returns unchanged (stale name can't crash). 
 existing name throws `ArgumentError` (programmer contract). Removal never cascades (caller asks 
 `recipesUsing…` first for blocking message).
 
-`withRecipeMade` is `withRecipeHistory` with the next count worked out; taking a stamp back is
-putting the history that preceded it back, so undo and reset are that same derivation (FR-REC-6).
+`copyWith` on multi-field values (`Settings`, `Ingredient`, `Tag`, `RecipeLine`, `Recipe`, `Model`, 
+`Bar`); rename and stock built from it. `Amount` is rebuilt whole. One nullable field needs its own 
+hatch, since null is `copyWith`'s "keep what you have": `RecipeLine.marked` clears the mark.
 
-`copyWith` on multi-field values (`Settings`, `Ingredient`, `Tag`, `RecipeLine`, `Recipe`, `Model`); 
-rename/stock/made built from it. `Amount`, `MadeHistory` rebuilt whole. Two nullable fields need 
-their own hatch, since null is `copyWith`'s "keep what you have": `RecipeLine.marked` clears the 
-mark, `Recipe.stamped` clears the history.
-
-Rebuilding `Model` on every edit is deliberate (pilot scale: few thousand pointer writes; keeps all 
-immutable, derived provider invalidation trivial).
+Rebuilding `Model` on every edit is deliberate (a bar's scale: few thousand pointer writes; keeps all 
+immutable, derived provider invalidation trivial). `Shelf` above it rebuilds on the same terms and 
+costs less — a list of records tens long, and the same `Model` pointer carried across.
 
 ### Line grammar
 
@@ -303,7 +378,7 @@ enum ValidationIssueKind {
   unitSizeNotPositive,                                 // part_ml, oz_ml — ADR 17
   missingUnit, unknownUnit, unknownIngredient, unknownTag,
   duplicateTag, duplicateAlternative,                  // ADR 11
-  amountNotPositive, rangeOutOfOrder, noRequiredLine, timesBelowOne,
+  amountNotPositive, rangeOutOfOrder, noRequiredLine,
   unsupportedFormat, malformedLine, malformedValue,    // raised by the codec
 }
 
@@ -322,6 +397,7 @@ List<ValidationIssue> validateRecipe(Recipe recipe,
 List<ValidationIssue> validateIngredient(Ingredient ingredient,
     {required Set<String> knownIngredientTags, Set<String> otherIngredientNames});
 List<ValidationIssue> validateTag(Tag tag, {Set<String> otherTagNames});
+List<ValidationIssue> validateShelf({required List<Bar> bars, String? openId});
 Set<String> otherNames(Set<String> names, String? except);   // the other…Names argument, folded
 ```
 
@@ -329,15 +405,16 @@ Empty result = valid. Issues collected in one pass (no fail-fast), top-to-bottom
 (settings, units, ingredients, tags, recipes, within each by index). Lets codec render as-is. 
 `ValidationIssue` has value equality.
 
-`path` uses **data-format key names** (`part_ml`, `made.times`), not Dart names. Seam lets 
+`path` uses **data-format key names** (`part_ml`, `ingredient_tags`), not Dart names. Seam lets 
 codec attach YAML line numbers, form attach field focus, without domain knowing either. 
 Behaviour switches on `kind`; `message` is display-only.
 
-`validateModel`: whole-file entry point for import. Others check the single entry a form edits — 
-the ingredient, the tag, the recipe — in one call: paths relative, empty for name. `other…Names` 
-holds every *other* entry's name — every *spelling* for the ingredient vocabulary, whose namespace 
-holds aliases too (ADR 10) — so a rename never collides with itself. All four run same rules, 
-same code.
+`validateModel`: whole-file entry point for import, and for what a refresh brings (FR-BAR-5) — one 
+judgement, so a file and a fetch are refused on the same terms and worded alike. Others check the 
+single entry a form edits — the ingredient, the tag, the recipe — in one call: paths relative, empty 
+for name. `other…Names` holds every *other* entry's name — every *spelling* for the ingredient 
+vocabulary, whose namespace holds aliases too (ADR 10) — so a rename never collides with itself. All 
+four run same rules, same code.
 
 ### Computations
 
@@ -346,7 +423,8 @@ All pure functions of `Model`. Algorithms in [architecture.md](architecture.md#d
 
 ```dart
 const scaleFactors = [1, 2, 3, 4];                    // what a recipe view offers (FR-REC-7)
-String displayMeasure(RecipeLine line, Settings settings, List<Unit> units, {int scale = 1});
+String displayMeasure(RecipeLine line, Settings settings, List<Unit> units,
+    {required FixedUnit display, int scale = 1});
 
 Set<String> basesOf(Recipe recipe);                   // discovery.dart — FR-DIS-4, ADR 12
 List<String> baseSpirits(Model model);
@@ -401,37 +479,60 @@ whatever the budget was. That is what lets the screen search once and read a siz
 `displayMeasure` is how a card reads a line's amounts (FR-REC-7, FR-SET-1). The measure is the only 
 half that transforms, so it is the only half returned — and marking it as the card's own rather than 
 the recipe's is what the split was for. The card writes the body itself, one alternative at a time 
-(ADR 11). A caller wanting a unit the settings do not hold passes `settings.copyWith(display: …)` — 
-the reading is the settings that card is under, not a second notion of one. A line converts only 
-where `FixedUnit.named` answers for its unit, and only into the one `display` names: the two sizes 
-give the factor, and everything else prints as entered (ADR 17).
+(ADR 11). `display` is a parameter beside the sizes rather than a field inside them, since the two 
+belong to different owners on a guest bar (ADR 21) — which is also what a card reading in another 
+unit passes (FR-REC-7), the bar's pick standing where it is. A line converts only where 
+`FixedUnit.named` answers for its unit, and only into the one `display` names: the two sizes give 
+the factor, and everything else prints as entered (ADR 17).
 
 ## Data contracts
 
-Data layer owns: YAML, files, atomicity, backups.
+Data layer owns: YAML, files, atomicity, backups, and what crosses to another device.
 
-`exportSnapshot(Model, {ExportPurpose})` returns location (not file) so store decides what's 
-shareable. UI passes to platform share API, never learns it's a path 
-([architecture.md](architecture.md#storage-isolation)). It takes the model rather than copying the 
-store file: a session started from `Corrupt` runs on a recovered backup, and the copy must be the 
-collection on screen, not the file that failed to decode 
-([ADR 18](adr/18-data-crosses-the-edge-in-a-system-sheet.md)). Byte-identical to the store file 
-regardless, the emitter being canonical.
+```dart
+typedef Records = ({List<Bar> bars, String? openId});   // the index, with no collection in it
+
+abstract interface class BarStore {
+  Future<LoadOutcome<Records>> loadShelf();
+  Future<LoadOutcome<BarPayload>> loadBar(String id);   // one bar, or why it could not be read
+  Future<void> saveShelf(Records records);
+  Future<void> saveBar(Bar bar, Model collection);      // one file — the name and pick ride along
+  Future<void> removeBar(String id);                    // its file and its backups (FR-BAR-2)
+  Future<String> exportSnapshot(Bar bar, Model collection, {ExportPurpose purpose});
+}
+```
+
+The interface names no file and answers an export with an opaque location, which is the whole of 
+[storage isolation](architecture.md#storage-isolation). `loadShelf` and `loadBar` are separate 
+because the bar list must open without reading a collection (NFR-2), and `saveBar` takes the record 
+beside the collection because the file carries the bar's name and reading unit as well as its 
+contents ([ADR 21](adr/21-the-file-carries-one-bar.md)). Both answer the sealed trio the store has 
+always answered with, now over what was asked for: `Loaded<T>`, `Empty`, `Corrupt<T>` with its 
+recovery. Name and reading unit therefore stand in two files at once, and the index is the 
+authority: `loadBar`'s copy of them is read only where a bar is being established or a lost index 
+rebuilt, and every `saveBar` writes the record's own back.
+
+`exportSnapshot` takes the model rather than copying the store file: a session started from 
+`Corrupt` runs on a recovered backup, and the copy must be the collection on screen, not the file 
+that failed to decode ([ADR 18](adr/18-data-crosses-the-edge-in-a-system-sheet.md)). Byte-identical 
+to that bar's store file regardless, the emitter being canonical.
 
 `ExportPurpose` is why a copy is written, not where it goes: `share` is FR-DAT-1's, `beforeImport` 
-the net FR-DAT-3 asks for. The store maps each to its own file 
-([platform facts](architecture.md#platform-facts)), so an import can never cost a reader the copy 
-they just staged, nor an export the net — and no caller learns either name.
+and `beforeDelete` the nets FR-DAT-3 and FR-BAR-2 ask for. The store maps each to its own file 
+([platform facts](architecture.md#platform-facts)), so no one act can cost a reader the copy another 
+just staged — and no caller learns a name.
 
-Import is `YamlCodec.decode` + `save`, not a store method. Separate so confirmation and 
-pre-import export can slot between (FR-DAT-3).
+Import is `YamlCodec.decode` + `saveBar`, not a store method. Separate so confirmation and 
+pre-import export can slot between (FR-DAT-3), and so a refresh reaches the same decode by another 
+road (FR-BAR-5).
 
-`SourcedIssue` is own module (both `Corrupt` and `Rejected` carry it). Putting elsewhere creates 
-cross-layer coupling [ADR 02](adr/02-persistence-and-export-format.md) avoids.
+`SourcedIssue` is own module (`Corrupt`, `Rejected` and `Refused` all carry it). Putting elsewhere 
+creates cross-layer coupling [ADR 02](adr/02-persistence-and-export-format.md) avoids.
 
 `decode` pipeline (each stage feeds issue list):
 1. Parse YAML, retain node spans.
-2. Gate on `format`; unsupported version rejected.
+2. Gate on `format`; 1 and 2 pass, anything else is rejected 
+   ([architecture.md](architecture.md#data-format)).
 3. Read tree to model parts; shape errors reported against offending node; compact lines through 
    `tryParseRecipeLine` (problem → issue at line path). `units` is read first — the lines are 
    parsed against it, and an absent section is the shipped vocabulary (ADR 09).
@@ -439,24 +540,72 @@ cross-layer coupling [ADR 02](adr/02-persistence-and-export-format.md) avoids.
    never cascades to spurious reference errors).
 5. Resolve `ValidationIssue.path` against parse tree for line numbers.
 6. Build `Model` (cannot throw; duplicates ruled out), then `withCanonicalIngredientNames` — a
-   hand-edited line naming a bottle by an alias is held under the bottle's own name (ADR 10).
+   hand-edited line naming a bottle by an alias is held under the bottle's own name (ADR 10) — and 
+   answer a `BarPayload`: the collection, the file's `name`, and the `display` read out of 
+   `settings`. Who keeps which of the three is the caller's, and it is where an import and a refresh 
+   differ (ADR 21). A format-1 file carries no name and its `made:` was dropped at step 3.
 
-Step 5 is **only** place data-format keys bind to source positions (domain has no YAML knowledge).
+Step 5 is **only** place data-format keys bind to source positions (domain has no YAML knowledge). 
+`decodeShelf`/`encodeShelf` are the same two halves over the index, judged by `validateShelf` and 
+written by the same emitter — one canonical form, two documents.
 
-`FileModelStore` writes via temp + rename, rotates backups, serialises calls through queue 
-(overlapping saves collapse). Unreadable load falls back to newest decodable backup, returns 
-`Corrupt` with issues and recovery. Load never throws (damaged file = FR-DAT-4 failure). 
-Constructor takes directory (platform path resolved at composition root `main.dart`), keeps 
-adapter testable. File names, backup depth: [platform facts](architecture.md#platform-facts). 
-`MemoryModelStore` for tests.
+`FileBarStore` writes via temp + rename, rotates that file's own backups, and serialises every call 
+through one queue (overlapping saves collapse). One queue rather than one per bar: two bars are 
+never written in the same breath, and a single order is what makes a refresh landing behind an edit 
+predictable. An unreadable bar falls back to its newest decodable backup and answers `Corrupt` with 
+issues and recovery; the bars beside it are not touched, and a lost index is rebuilt from the bar 
+files. Load never throws (damaged file = FR-DAT-4 failure). Constructor takes directory (platform 
+path resolved at composition root `main.dart`), keeps adapter testable. File names, backup depth: 
+[platform facts](architecture.md#platform-facts). `MemoryBarStore` for tests.
+
+### The sharing seam
+
+One interface per side, so a way that cannot do something does not carry a method for it 
+([ADR 22](adr/22-a-bar-travels-behind-one-seam.md)):
+
+```dart
+sealed class FetchOutcome {}
+final class Fetched extends FetchOutcome { final BarPayload payload; }
+final class Refused extends FetchOutcome { final List<SourcedIssue> issues; }   // FR-DAT-4
+final class Unreachable extends FetchOutcome { final UnreachableReason why; }   // FR-BAR-5
+enum UnreachableReason { offline, notFound, withdrawn }
+typedef Found = ({String name, String discriminator, BarSource source});
+
+abstract interface class BarChannel {         // every transport answers this much
+  Transport get transport;
+  Future<FetchOutcome> fetch(BarSource source);         // the add, and every refresh after
+}
+abstract interface class BarOfferings {       // the owner's side, where a way has one
+  Future<BarSource> offer(Bar bar, Model collection);   // answers what a guest would keep
+  Future<void> withdraw(String barId);                  // FR-BAR-6
+}
+abstract interface class BarFinder {          // discovery, where a way has any
+  Stream<List<Found>> nearby();                         // FR-BAR-8
+}
+```
+
+The three endings ([architecture.md](architecture.md#sharing)) are three values a caller must handle 
+rather than an exception it may forget; `UnreachableReason` is closed, so an adapter maps its own 
+errors onto it and the wording stays the UI's. `BarSource` is minted by the side that knows the 
+transport — `offer` answers one for the owner to pass on, `nearby` carries one per entry — so 
+nothing above `data/` ever builds an address, and `Found.discriminator` is there because two bars on 
+one network may carry one name.
+
+The file channel implements `BarChannel` alone: its `fetch` is the picker's text decoded, so a 
+refresh is the reader handing over a newer file and there is nothing to offer or withdraw (FR-BAR-7). 
+The LAN channel implements all three (FR-BAR-8). No cloud channel exists yet and the registry has no 
+entry for that transport, which is how FR-BAR-9 waits without blocking anything.
 
 ## State contracts
 
-`modelStoreProvider` overridden in `main.dart` with file store, tests with memory store (device-free 
-seam). `clockProvider` is seam for made-it date (FR-REC-6) (state layer only reads clock; domain stays 
-pure). `sharerProvider` is the third of that kind and the one file naming `share_plus`: it takes the 
-opaque location `export()` answered with and hands it to the system's sheet, so a widget test 
-overrides it with a recorder and no screen learns what a share is made of 
+`barStoreProvider` overridden in `main.dart` with the file store, tests with the memory one 
+(device-free seam). `channelsProvider` is the same seam for the transports — `Map<Transport, 
+BarChannel>`, built at the composition root and replaced wholesale by fakes, so nothing above it 
+learns what a network is (ADR 22). `clockProvider` is the state layer's one clock, stamping when a 
+refresh landed (FR-BAR-5) and existing so that the domain needs none of its own. 
+`sharerProvider` is the one file naming `share_plus`: it takes the opaque location `export()` 
+answered with and hands it to the system's sheet, so a widget test overrides it with a recorder and 
+no screen learns what a share is made of 
 ([ADR 18](adr/18-data-crosses-the-edge-in-a-system-sheet.md)).
 
 `filePickerProvider` is its mirror and the one file naming `file_selector`: `Future<String?>` — the 
@@ -473,35 +622,52 @@ of every name on the way in ([architecture.md](architecture.md#platform-facts)).
 `XFile` the way the plugin does, so the shape the bug lived in is the shape under test.
 
 ```dart
-typedef ImportReview = ({Model? model, List<String> issues});   // never both
+typedef ImportReview = ({BarPayload? bar, List<String> issues});   // never both
 
 ImportReview review(String text);        // pure: decode, described, nothing touched
-Future<void> replaceAll(Model model);    // the copy, then the replace (FR-DAT-3)
+Future<void> replaceOpen(BarPayload bar);          // the copy, then the replace (FR-DAT-3)
+Future<void> addGuestBar(BarSource source, BarPayload bar);        // FR-BAR-3/7/8/9
+Future<void> refresh(String barId);                // FR-BAR-5; never awaited by a screen
+Future<void> openBar(String id);                   // FR-BAR-1, the switch
+Future<void> removeBar(String id);                 // FR-BAR-2, after its own export
 ```
 
 `review` is deliberately pure so the confirmation and the pre-import copy slot after it, and it is 
-the controller's rather than the screen's because `ui/` never imports `data/`. Both its outcomes read 
-as a reader meets them: `_described` is the one rendering of a `SourcedIssue`, shared with the 
-startup banner, so a file that fails at load and one that fails at import are worded alike.
+the controller's rather than the screen's because `ui/` never imports `data/`. `_described` is the 
+one rendering of a `SourcedIssue`, shared with the startup banner and with a channel's refusal, so a 
+file that fails at load, one that fails at import and a fetch that fails on arrival are worded 
+alike. It answers a whole `BarPayload`, which is what lets one picked file take either road FR-BAR-7 
+offers — replacing an owned bar, the file's `display` landing with the rest, or founding a guest one.
 
-`ModelController.build()` performs startup load, only writable provider. `Corrupt` load starts on 
-recovered backup (empty if nothing decoded); issues reach UI via `startupIssuesProvider` as 
-`"line N: message"` strings (FR-DAT-4; SourcedIssue is data-layer).
+`ShelfController.build()` performs the startup load and is the only writable provider: it reads the 
+index, opens the bar it names, and reports what failed — a `Corrupt` bar starts on its recovered 
+backup, and issues reach the UI through `startupIssuesProvider` as `"line N: message"` strings 
+(FR-DAT-4; `SourcedIssue` is data-layer).
 
-`setUnits` is the one mutation taking a whole vocabulary rather than an entry: the units screen
-edits every row at once, and a rename among them must reach the recipe lines in the same edit
-([ui-design.md](ui-design.md#units)).
+**The write surface is separate from the controller** ([ADR 23](adr/23-nothing-writes-a-guest-bar.md)): 
+`barWriterProvider` answers a `BarWriter?` — every collection mutation, and null on a guest bar, so 
+the null a screen may get back is the same fact that hides the control (FR-BAR-4) and nothing has to 
+remember a rule. `setUnits` is the one mutation on it taking a whole vocabulary rather than an entry: 
+the units screen edits every row at once, and a rename among them must reach the recipe lines in the 
+same edit ([ui-design.md](ui-design.md#units)).
 
-Each mutation is one line over `ModelEdits` derivation. All run through single private path: await 
-startup load, derive, publish, save. The three `upsert…`s with `replacing` compose several derivations 
-(whole form/dialog reaches disk as one model, the rename it leaves behind included). `upsertRecipe` 
-ends on `withCanonicalIngredientNames`, so a line typed in any spelling — another case, an alias — 
-lands under the bottle it names, the bottles that same edit adds included (ADR 08, ADR 10); the 
-recipe form therefore stores what it was given rather than resolving names itself. Awaiting load makes edits during startup land on 
-loaded model, not replace. Edit that leaves model unchanged is not saved (no backup waste). UI never 
-constructs `Model` or touches `ModelStore` ([ADR 03](adr/03-app-structure-and-state.md)).
+Each mutation is one line over a `ModelEdits` derivation. All run through a single private path: 
+await the startup load, derive, publish, save the open bar. The three `upsert…`s with `replacing` 
+compose several derivations (whole form/dialog reaches disk as one model, the rename it leaves 
+behind included). `upsertRecipe` ends on `withCanonicalIngredientNames`, so a line typed in any 
+spelling — another case, an alias — lands under the bottle it names, the bottles that same edit adds 
+included (ADR 08, ADR 10); the recipe form therefore stores what it was given rather than resolving 
+names itself. Awaiting the load makes edits during startup land on the loaded bar rather than 
+replace it. An edit that leaves the model unchanged is not saved (no backup waste). UI never 
+constructs a `Model`, never holds a `BarStore`, and never reaches the notifier 
+([ADR 03](adr/03-app-structure-and-state.md), ADR 23).
 
 Everything else is derived, read-only:
+
+`modelProvider` — the open bar's collection, and the shape every screen already reads. It is derived 
+from `shelfProvider` rather than owned, which is what kept the whole presentation layer still while 
+the root moved above it. `openBarProvider` answers the record beside it: name, mode, reading unit, 
+source, last refresh.
 
 `availabilityProvider` — `Map<String, Availability>` by recipe name, `availabilityOf` over every 
 recipe on each model change; empty until the load lands. One pass serves the list's chips and, later, 
@@ -524,54 +690,103 @@ subject, and `state/` has no business knowing either. A `Reveal?` — a destinat
 nullable and one-shot: the shell listens only to switch, the serving screen clears it. Clearing it 
 inside that listener is safe because Riverpod copies its listener list before dispatch, so the shell 
 still hears the request it is being cleared out of; the shell ignoring a null one is what makes the 
-order between them not matter.
+order between them not matter. What the bar on show changes here is only how many destinations there 
+are (FR-BAR-4): the shell indexes its stack by position in the list that bar offers, never by the 
+enum's own index, which is the one place a variable destination list is felt.
 
 `purchasesProvider` — `List<Purchase>` keyed on what counts as short (ADR 16), searched once at 
 `budgets.last` so the screen reads one size off the one answer. `autoDispose`, and watched only 
 while the shopping screen is the destination on show: the shell tells each destination whether it 
-is (`ShoppingScreen.showing`), since `IndexedStack` keeps all three alive and a stock tap on the 
+is (`ShoppingScreen.showing`), since `IndexedStack` keeps them alive and a stock tap on the 
 inventory would otherwise fire a search nobody is reading. The answer is let go with the screen and 
 made afresh on return — the search costs ~100ms at NFR-2 scale, which is a moment on arriving at a 
-screen and a stutter on every tap of another.
+screen and a stutter on every tap of another. On a guest bar the destination is absent, so nothing 
+watches it at all (FR-BAR-4).
+
+### Work in flight
+
+Refreshing and sharing are the app's first work outliving the gesture that started it, and the 
+**fifth kind of state**: not model, not derived, not screen-local, not one screen's request of 
+another, but a job the reader may walk away from. Both live in `channels.dart`.
+
+`refreshesProvider` — `Map<String, RefreshState>` by bar id: reaching, or what it last failed with 
+and when (FR-BAR-5). No screen awaits a refresh, which is what NFR-2's *a refresh never holds up the 
+bar on show* comes to in practice: the reader goes on reading and editing while one is out, and the 
+screens are told only through this map. A late answer is dropped where its bar is gone or a newer 
+ask has been made (each carries a token, only the newest lands); a guest bar's collection has no 
+other writer, so there is nothing else for one to lose.
+
+`sharingProvider` keeps the offers standing in step with the shelf — starting an adapter's 
+advertisement when a bar gains an offer, stopping it when the bar loses one or goes, running nothing 
+when the shelf offers nothing (NFR-5). Its value is an effect rather than a reading, so the app 
+watches it rather than a screen.
 
 Performance facts (no over-engineering):
-- Every mutation replaces whole `Model` → all model-derived recompute. Hundreds of recipes: availability 
-  pass < 1ms; incremental unneeded (NFR-2).
-- Optimizer is sole expensive computation, and the sole reason a screen is told whether it is on show. 
-  Runs on the main thread: it is spent on arriving, on moving the budget and on flipping the switch — 
-  all moments a reader has just acted — where an isolate would buy the time back at the price of 
-  copying the model and a spinner on every edit.
+- Every mutation replaces the whole `Model` → all model-derived recompute. Hundreds of recipes: 
+  availability pass < 1ms; incremental unneeded (NFR-2).
+- Optimizer is the sole expensive computation, and the sole reason a screen is told whether it is on 
+  show. Runs on the main thread: it is spent on arriving, on moving the budget and on flipping the 
+  switch — all moments a reader has just acted — where an isolate would buy the time back at the 
+  price of copying the model and a spinner on every edit.
+- Opening a bar and landing a refresh both cost one decode, the same work startup has always done on 
+  the main thread. Reaching the source does not: it is async I/O and yields. Should a decode ever be 
+  measured to jank the bar on show, the way out is an isolate around that one call, and nothing 
+  above the store would move.
 
 ## Data flows
 
-1. **Startup**: `main` overrides `modelStoreProvider` with file store → `ModelController.build()` 
-   loads → `Loaded` seeds state, `Empty` seeds empty, `Corrupt` seeds recovered + surfaces issues.
-2. **Edit**: widget calls `modelProvider.notifier.setStock(…)` → `ModelEdits` returns new `Model` 
-   → state updates, UI rebuilds → save enqueued.
+1. **Startup**: `main` overrides `barStoreProvider` and `channelsProvider` → 
+   `ShelfController.build()` reads the index and opens the bar it names → `Loaded` seeds state, 
+   `Corrupt` seeds that bar's recovered backup + surfaces issues, no index at all runs the format-1 
+   migration ([architecture.md](architecture.md#storage-isolation)) or mints one empty owned bar.
+2. **Edit**: widget takes `barWriterProvider` and calls `setStock(…)` → `ModelEdits` returns a new 
+   `Model` → `withCollection` publishes it → UI rebuilds → the open bar's file is enqueued.
 3. **Recipe form**: `tryParseRecipeLine` on each field (live feedback) → `validateRecipe` on 
    save (`lines[i]` paths map to fields; else snackbar) → recipe + new ingredients + rename name 
-   reach `notifier.upsertRecipe` as one edit (ui-design.md#recipe-form).
-4. **Export** (FR-DAT-1): `notifier.export()` hands the model on screen to `exportSnapshot` and 
-   returns its location; the Settings screen passes that to `sharerProvider` and says nothing unless 
-   it throws.
-5. **Import** (FR-DAT-3/4): `filePickerProvider` answers with a document's text → `notifier.review` 
-   decodes it → the pushed review shows the issues, or what the file holds and the button that agrees 
-   to it → `notifier.replaceAll` keeps the `beforeImport` copy, publishes, saves → the screen leaves 
-   for the collection (ui-design.md#data).
-
+   reach `upsertRecipe` as one edit (ui-design.md#recipe-form).
+4. **Export** (FR-DAT-1): `export()` hands the bar on screen and its collection to `exportSnapshot` 
+   and returns the location; the screen passes that to `sharerProvider` and says nothing unless it 
+   throws. A guest bar exports exactly as an owned one does (FR-BAR-4).
+5. **Import** (FR-DAT-3/4): `filePickerProvider` answers with a document's text → `review` decodes 
+   it → the pushed review shows the issues, or what the file holds and the two things that can be 
+   done with it (FR-BAR-7) → `replaceOpen` keeps the `beforeImport` copy, publishes, saves; 
+   `addGuestBar` mints an id and writes a new bar instead → the screen leaves for the collection 
+   (ui-design.md#data).
 6. **Reaching a row** (FR-DIS-9): a name tapped on one destination resolves to the entry's own 
    (`bottleNamed`) and reaches `revealProvider.ask` → the shell switches and records what it left → 
    the serving screen clears the request, its own picks and the open cards, and hands the name to 
    `VocabularyList` for one build → the list clears its search and order, goes home, then scrolls to 
    the row and washes it (ADR 13, ADR 19).
+7. **Switching bars** (FR-BAR-1): the bar list calls `openBar(id)` → the controller loads that bar 
+   and publishes record and collection together, so no frame pairs one bar's record with another's 
+   recipes → the shell's subtree is keyed by the open bar, so every screen is built anew and no 
+   narrowing, open card or jump trail survives the crossing.
+8. **Adding a guest bar** (FR-BAR-3): a source — picked, or found nearby — reaches `channel.fetch` 
+   → `Fetched` becomes a bar with a minted id, the payload's name and display, and the source kept 
+   for next time; `Refused` reads as an import's issues do, `Unreachable` says which of the three.
+9. **Refreshing** (FR-BAR-5): `refresh(id)` marks the bar reaching and returns at once → the fetch 
+   runs off the gesture → `refreshedWith` replaces collection, name and time and the store writes 
+   that bar's file → a failure leaves the bar as it stood, held in `refreshesProvider` to be met.
+10. **Sharing** (FR-BAR-6): an offer on a bar's record starts the adapter and removing it stops the 
+    adapter; `sharingProvider` is the one place the two are kept in step, so nothing is announced 
+    that the shelf does not say is shared (NFR-5).
+11. **Deleting a bar** (FR-BAR-2): confirmed, exported under `beforeDelete`, then record, file and 
+    backups go; a deleted open bar leaves the shelf with none open.
 
-Controller is UI's only route to data layer; screens never hold `ModelStore` or `YamlCodec`.
+The controller is the UI's only route to the data layer; screens never hold a `BarStore`, a 
+`BarChannel` or a `YamlCodec`.
 
 ## Testing
 
-- **Domain**: unit tests, no device. Pure functions; clock/randomness passed in.
-- **Data**: codec unit-tested (round-trip FR-DAT-5, broken-file decode with line numbers). 
-  `FileModelStore` integration-tested (atomic write, backups, recovery).
-- **State**: controller tests vs `MemoryModelStore`; mutation updates state, reaches store.
-- **UI**: widget tests for critical flows. `test/ui/harness.dart` over store override.
-- **Boundaries**: `test/architecture_test.dart` enforces imports.
+- **Domain**: unit tests, no device. Pure functions; clock/randomness passed in. `Shelf`'s 
+  invariants and its refusal to edit a guest bar's collection (ADR 23) are unit tests like any other.
+- **Data**: codec unit-tested (round-trip FR-DAT-5, broken-file decode with line numbers, a 
+  format-1 file read and written back as 2). `FileBarStore` integration-tested (atomic write, 
+  backups, recovery, and one bar's save leaving every other bar's bytes byte-for-byte as they were). 
+  Channels are tested against a fake for the seam and, for the LAN one, its own loopback server.
+- **State**: controller tests vs `MemoryBarStore` and fake channels; a mutation updates state and 
+  reaches the store, a refresh lands or is dropped as stale, a guest bar hands out no writer.
+- **UI**: widget tests for critical flows. `test/ui/harness.dart` over the store and channel 
+  overrides.
+- **Boundaries**: `test/architecture_test.dart` enforces imports, the dependency list, and the one 
+  route to a write.
