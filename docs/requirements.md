@@ -1,24 +1,76 @@
-# Requirements — pilot
+# Requirements
 
-Single-user mobile app (Android); no accounts, sharing. Direction: [vision.md](vision.md).
+Mobile app (Android), one reader per device: bars of their own to keep, others' to read (FR-BAR-1).
+Direction: [vision.md](vision.md).
 
 ## Concepts
 
 | Concept | Definition |
 |---|---|
+| Bar | One collection — vocabularies, stock, recipes, settings — under a name. Names are labels, not identity: two bars may carry one. Nothing crosses from one bar to the next (FR-BAR-1). |
+| Bar mode | **owner**: the reader's, written and shared. **guest**: another owner's, read as of its last refresh (FR-BAR-3). |
 | Ingredient | Generic name ("bourbon", "lemon juice") from user-managed vocabulary (recipes, inventory). Optional ingredient tags. No brands, no hierarchy. Substitution is per line, not per bottle (FR-REC-9). |
 | Base spirit | Spirit recipe is built on — marked on recipe line, not ingredient (bottle is base *in recipe* only, never by itself). Recipe may mark multiple. |
 | Stock level | Per ingredient: **in stock**, **running low**, **out** (default). |
 | Tag | Coloured label from user vocabulary (interest/style/category; replaces Telegram emojis). Two vocabularies: recipe tags, ingredient tags ([ADR 07](adr/07-tag-colour.md)); optional both sides. |
 | Unit | What a line measures in ("part", "dash"), from a user-managed vocabulary carrying a plural each ([ADR 09](adr/09-units-are-a-vocabulary.md)); part and ml are fixed members. |
-| Recipe | Name + lines + tags + notes + made-history (last date, count). |
+| Recipe | Name + lines + tags + notes. |
 | Availability | Per recipe, required lines only: **makeable** (all in), **makeable-low** (none out, ≥1 low), **missing** (≥1 out). A line stands at its best-stocked alternative (FR-REC-9). First two = **can-make**. |
 
-Names unique within kind, ignoring case ([ADR 08](adr/08-names-ignore-case.md)). 
+Names unique within kind in one bar, ignoring case ([ADR 08](adr/08-names-ignore-case.md)). 
 Ingredient vocabulary covers aliases too (FR-VOC-6): every spelling names one bottle. 
 Two tag vocabularies separate; one name may exist in both (different meanings).
 
 ## Functional requirements
+
+### Bars
+
+- **FR-BAR-1** The app holds any number of bars, each a collection of its own. Nothing crosses 
+  between them: a bottle, a tag or a unit in one is unknown to the next, and a search, a filter, a 
+  draw or a jump (FR-DIS-9) reaches no further than the bar it started in. One list holds them all, 
+  owned and guest alike; one bar is on show at a time and every screen reads that one.
+- **FR-BAR-2** An owned bar is the reader's: created empty or from a file, renamed, written to, 
+  shared (FR-BAR-6), and deleted — deletion confirmed and the bar exported beforehand, as replacing 
+  its contents is (FR-DAT-3).
+- **FR-BAR-3** A guest bar is another owner's, added from what they shared (FR-BAR-7/8/9) and read 
+  as it stood at its last refresh. Everything in it is theirs — recipes, stock, tags, units — and 
+  the reader adds nothing of their own: not a stock level, not a note, not a tag. Which unit amounts 
+  read in is the one thing that stays the reader's, theirs to pick on a guest bar as on one of their 
+  own (FR-SET-1): a preference for reading someone else's collection, not a change to it. What a 
+  part and an ounce are worth there stays the owner's — the recipes were written against those. The 
+  bar is removed whenever they like, touching nothing the owner holds. A device may hold guest bars 
+  and own none.
+- **FR-BAR-4** A guest bar offers its recipes and its inventory and nothing else: the shopping 
+  optimizer and all that belongs to it (FR-DIS-6, FR-DIS-7, FR-DIS-10) is absent there rather than 
+  empty. On those two everything that reads works and nothing that writes exists — no creating, 
+  editing or deleting, no stock toggle, no vocabulary change, and none of them offered rather than 
+  refused. Availability, search, the tag and base narrowings, the random pick, the orders, the jumps 
+  between the two (FR-DIS-9) and scaling all work as on an owned bar, over the owner's recipes and 
+  the owner's stock. Export works too (FR-DAT-1) — a guest already holds what the file would carry.
+- **FR-BAR-5** A guest bar refreshes from the source it was added from, wholesale: what arrives 
+  replaces what stood and nothing is merged, save which unit amounts read in — that pick alone is 
+  the reader's (FR-SET-1) and no refresh moves it, where the sizes behind it arrive with everything 
+  else (FR-BAR-3). What arrives is judged first as an imported file is (FR-DAT-4) — what fails to 
+  pass leaves the bar exactly as it was. When it last refreshed is readable wherever the bar is, and 
+  everything the app says of it, availability included, is as of that moment. A source that cannot 
+  be reached — no network, off the network, or withdrawn (FR-BAR-6) — leaves the bar readable at 
+  that moment and says why it did not refresh. Nothing expires and nothing empties itself: what is 
+  too old is the reader's to judge.
+- **FR-BAR-6** Each owned bar is shared separately, by any of the three ways below and any 
+  combination of them; a bar is shared whole or not at all, and sharing one says nothing about the 
+  rest. Whichever way it travels a guest reads the same thing (FR-BAR-3). The owner sees what they 
+  share and, where a way can name its guests, to whom, and may withdraw it — which ends refreshes 
+  and nothing else: what a guest already holds stays theirs until they remove it. Sharing is not a 
+  confidentiality control; a bar shared is a bar given.
+- **FR-BAR-7** By file — the export a bar's owner sends (FR-DAT-1) is added by the guest as a guest 
+  bar rather than imported into one of their own (FR-DAT-3): one file, two destinations, the 
+  reader's to choose. Refreshing is being sent a newer one. Asks nothing of a network and offers no 
+  withdrawal.
+- **FR-BAR-8** Over the LAN — an owner offers a bar to the devices sharing their network; a guest 
+  finds it there, adds it, and refreshes it while both are on that network. Asks nothing of an 
+  account (NFR-3).
+- **FR-BAR-9** Over the cloud — an owner offers a bar to guests they name, who add it and refresh it 
+  from anywhere. The one way asking an identity, of those two sides and of no one else (NFR-3).
 
 ### Recipes
 
@@ -28,10 +80,8 @@ Two tag vocabularies separate; one name may exist in both (different meanings).
   (availability judges something).
 - **FR-REC-3** Line may be optional: displays but excluded from availability and optimizer.
 - **FR-REC-4** A recipe carries any number of tags, chosen from the tag vocabulary.
-- **FR-REC-5** A recipe carries one free-text notes field — in the pilot the home for
-  preparation steps, techniques, glassware, and garnish, all unformalized.
-- **FR-REC-6** "Made it" action stamps date and increments counter (shown on recipe). 
-  Last stamp reversible; history resetable to never-made.
+- **FR-REC-5** A recipe carries one free-text notes field — the home for preparation steps,
+  techniques, glassware, and garnish, all unformalized.
 - **FR-REC-7** Recipe view scales ×2/×3/×4 and reads one open recipe in other unit without 
   global toggle change (FR-SET-1). Display-only; range ends scale together; forgotten on close.
 - **FR-REC-8** Line may mark as base spirit (clearable). Base and optional mutually exclusive.
@@ -39,6 +89,9 @@ Two tag vocabularies separate; one name may exist in both (different meanings).
   ([ADR 11](adr/11-substitutions-on-the-line.md)): one amount, one unit, one mark govern the group. 
   Any one on hand makes the line; only when all are out is it missing. Cards read them as prose, 
   dimming what the bar lacks while it holds something.
+
+FR-REC-6 held "made it" and the history it stamped, both dropped from the product; its number stays
+empty so no reference to it can mean two things.
 
 ### Vocabularies
 
@@ -121,34 +174,47 @@ empty so no reference to it can mean two things.
 - **FR-SET-1** One global unit, picked from the fixed three, and a ratio per convertible one 
   ([ADR 17](adr/17-the-fixed-units-interconvert.md)): a line measured in part, ml or oz reads in 
   the one picked; anything else displays as entered. What a part and an ounce are worth is the 
-  reader's to set. Display only — nothing converted is written. One open recipe reads otherwise 
-  without moving the global (FR-REC-7).
+  reader's to set, and every bar carries both its own (FR-BAR-1). On a guest bar the two part 
+  company: the unit is picked there as on an owned one and outlasts every refresh, where the sizes 
+  are the owner's and arrive with the rest of the bar (FR-BAR-3, FR-BAR-5). Display only — nothing 
+  converted is written. One open recipe reads otherwise without moving the global (FR-REC-7).
 
 ### Data exchange
 
-- **FR-DAT-1** Single action exports all data (vocabularies, stock, recipes, line marks, made-history, 
-  settings) to one text file; shareable via platform file sharing.
+- **FR-DAT-1** Single action exports one bar (vocabularies, stock, recipes, line marks, settings) 
+  to one text file; shareable via platform file sharing. A guest bar exports as an owned one does 
+  (FR-BAR-4).
 - **FR-DAT-2** Export file is human-readable, self-describing (editable without app, by person or AI); 
   carries format version.
-- **FR-DAT-3** Single action imports file, **replacing entire database**. Requires explicit confirmation; 
-  auto-exports current state beforehand (previous state recoverable).
+- **FR-DAT-3** Single action imports a file into an owned bar — establishing a new one, or 
+  **replacing one that exists**, which requires explicit confirmation and auto-exports that bar's 
+  current state beforehand (previous state recoverable). Every other bar is untouched. The same file 
+  may instead be added as a guest bar (FR-BAR-7).
 - **FR-DAT-4** Import validates before applying. On structural/referential error (unknown ingredient, 
   duplicate name, malformed amount, unsupported version): nothing changed; app reports what and where.
 - **FR-DAT-5** Export/import round-trip losslessly (export, import unmodified, export again = identical).
 
 ## Non-functional requirements
 
-- **NFR-1** Phone-only; frequent actions (look up recipe, toggle stock, "made it") ≤ few taps.
-- **NFR-2** Hundreds of recipes: instant (no perceptible lag in lists, search, filters, optimizer at N=3).
-- **NFR-3** Single user, no account/login.
-- **NFR-4** Fully offline.
+- **NFR-1** Phone-only; frequent actions (look up recipe, toggle stock, reach another bar) ≤ few taps.
+- **NFR-2** Hundreds of recipes per bar and tens of bars: instant (no perceptible lag in lists, 
+  search, filters, optimizer at N=3, or in reaching another bar). A refresh never holds up the bar 
+  on show.
+- **NFR-3** One reader per device, and no account for being one: keeping bars, exchanging files and 
+  sharing over the LAN ask for none. Sharing over the cloud is the single exception (FR-BAR-9).
+- **NFR-4** Offline but for refreshes: every bar the device holds stays readable with no network — 
+  owned ones whole, guest ones as of their last refresh (FR-BAR-5). Only reaching a source needs one.
+- **NFR-5** Nothing of a bar leaves the device unless its owner shared that bar; a device sharing 
+  nothing announces nothing.
 
-## Out of pilot scope
+## Out of scope
 
 See [vision.md](vision.md#future-directions):
 
-- Guest access/publishing.
 - PC/desktop app.
+- Judging one bar by another — a guest reads the owner's stock, never their own (FR-BAR-4).
+- The optimizer on a guest bar — shopping answers for the bar its reader stocks (FR-BAR-4).
+- Moving recipes or bottles between bars (nothing crosses, FR-BAR-1).
 - In-app Telegram parsing (migration via FR-DAT-3 outside app).
 - Formalized prep (ordered steps, technique vocab, filtering).
 - Search grammar for compound queries (several ingredients, logical operators).
