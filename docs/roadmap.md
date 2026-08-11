@@ -1,10 +1,11 @@
-# Roadmap — pilot
+# Roadmap
 
 Milestones in dependency order, one commit + tests each. Scope in [requirements.md](requirements.md); 
 design in [architecture.md](architecture.md), [components.md](components.md) and 
 [ui-design.md](ui-design.md), rationale in the [ADRs](adr/). An entry says what a milestone did and 
 where the fact now lives — it is a record of the order the work went in, not a second home for any 
-of it. Domain: unit tests; UI: widget tests per strategy.
+of it. Domain: unit tests; UI: widget tests per strategy. Phases 0–6 are the pilot — one collection, 
+one reader, nothing leaving the device but a file; Phase 7 onward is what FR-BAR-1..9 asks for.
 
 ## Phase 0 — Foundation
 
@@ -171,7 +172,100 @@ First usable slice; recipes reference both vocabularies, so this precedes Phase 
       common). No arrow (slot used for tags/stock dots). Line reaches per bottle (ADR 11). Back 
       undoes jumps one at a time. `VocabularyList` reveal + draw same frame [ADR 13](adr/13-lists-scroll-by-index.md).
 
-## Phase 6 — Release
+## Phase 6 — Cleanup & release
 
+What ships as 1.0.0 should carry nothing the product no longer claims.
+
+- [ ] **M28a Made it comes out** — FR-REC-6 is retired, so the feature leaves rather than hides: the
+      made row and its button, the history text, the Undo and the long-press reset
+      ([ui-design.md](ui-design.md#recipes-screen)), `MadeHistory`, `Recipe.made` and `stamped`,
+      `withRecipeMade` and `withRecipeHistory`, `timesBelowOne`, and the `made:` the writer emits.
+      The reader goes on accepting that key and ignoring it — the rule format 1 keeps for good
+      ([ADR 21](adr/21-the-file-carries-one-bar.md)) — so a collection already on a device loses its
+      stamps and nothing else, and the version waits for the bump that has something to add (M31).
+      `clockProvider` goes with it, the app having nothing left to ask the time of until a refresh
+      does (M36).
 - [ ] **M29 Release packaging** — signing configuration (keystore outside the repo),
       Android Auto Backup enabled, launcher icon and label, version 1.0.0.
+
+## Phase 7 — The app holds many bars
+
+The root moves above `Model` and every layer follows it up. Nothing travels between devices yet: a
+guest bar is built as a shape here and gets its first source in Phase 8.
+
+- [ ] **M30 Shelf domain** — [ADR 20](adr/20-the-app-holds-many-bars.md): `Bar`, `BarMode`,
+      `Transport`, `BarSource`, `Offer`, `BarPayload`, and `Shelf` over them, keeping the
+      constructor contract `Model`'s own already does — ids unique, `openId` naming a bar that
+      exists, a guest carrying a source and an owner none. `ShelfEdits` beside `ModelEdits`, with
+      `withCollection` refusing a guest bar ([ADR 23](adr/23-nothing-writes-a-guest-bar.md)), and
+      `validateShelf` reading the index's parts through the kinds that already exist. Shape only —
+      nothing above the domain knows yet.
+- [ ] **M31 One file per bar** — `BarStore` replaces `ModelStore`: `shelf.yaml` and `bars/<id>.yaml`,
+      atomic writes and rotation per bar, `removeBar`, and `beforeDelete` joining `ExportPurpose`.
+      Format 2 lands whole ([ADR 21](adr/21-the-file-carries-one-bar.md)) — `name:` at the top,
+      format 1 read and written back as 2 — and the device's own `cocktails.yaml` migrates through
+      that same one route to become the first owned bar, its old files left standing as the net
+      ([architecture.md](architecture.md#storage-isolation)). Pinned by integration test: one bar's
+      save leaves every other bar's bytes exactly as they were.
+- [ ] **M32 The shelf in state** — `ShelfController` replaces `ModelController` and `modelProvider`
+      becomes derived rather than owned, which is what keeps the whole presentation layer still
+      while the root moves above it ([components.md](components.md#state-contracts)).
+      `openBarProvider` answers the record, `barWriterProvider` the writes — null on a guest bar,
+      the same null that will hide a control (ADR 23). Export and import become the open bar's
+      (FR-DAT-1/3), every other bar untouched. `test/architecture_test.dart` gains the rule keeping
+      `ui/` off the notifier.
+- [ ] **M33 The bars screen** — [ui-design.md](ui-design.md#bars): the gear's **Switch bar…**, one
+      card a bar, tapped to switch and popped on the way, with rename and delete behind its ⋮ —
+      delete confirmed and exported first (FR-BAR-2). An empty shelf is the one time this screen is
+      home, offering the two ways to a first bar. The app bar reads "Home bar's Recipes", and the
+      shell's subtree is keyed by the open bar, so a crossing takes every search, pick, open card
+      and jump trail with it (FR-BAR-1).
+- [ ] **M34 A guest bar is read-only** — FR-BAR-3/4 built as shape, before any channel can make one:
+      two destinations rather than three, the optimizer absent rather than empty (FR-DIS-6/7/10
+      unreachable, so nothing watches `purchasesProvider` at all), and no form, dialog, toggle or
+      vocabulary edit offered — refusing nothing, because nothing is on offer. Export still works
+      (FR-DAT-1), and Amounts becomes the unit pick alone, the two ml sizes being the owner's and
+      arriving with the collection (FR-SET-1).
+
+## Phase 8 — A bar travels by file
+
+- [ ] **M35 The sharing seam** — [ADR 22](adr/22-a-bar-travels-behind-one-seam.md): `BarChannel` and
+      the value a fetch answers with — what arrived, what failed the import's own judgement, or that
+      the source could not be reached and which of the three. `channelsProvider` resolves the
+      transports at the composition root, and the file channel is the first, honestly one method
+      wide. `refreshesProvider` lands beside it: the app's first work outliving the gesture that
+      started it ([components.md](components.md#work-in-flight)), token and all, so a stale answer
+      is dropped rather than landed. No screen yet.
+- [ ] **M36 One file, two destinations** — FR-BAR-7: `review` answers a whole `BarPayload`, so one
+      picked file either replaces the open owned bar or founds a guest one, the reader choosing
+      ([ui-design.md](ui-design.md#data)). Refreshing is being handed a newer file — the swipe down
+      on a guest bar's lists (FR-BAR-5) opens the picker, and what comes back is judged as an import
+      is before it replaces anything. `clockProvider` returns to stamp when the source answered.
+      `RefreshIndicator` meets `ScrollablePositionedList` here
+      ([ADR 13](adr/13-lists-scroll-by-index.md)): prove the two sit together before the gesture is
+      built on them, and write the way out if they do not.
+
+## Phase 9 — A bar travels over the LAN
+
+- [ ] **M37 An owner offers a bar nearby** — FR-BAR-8, the owner's half: the DNS-SD package chosen
+      between `bonsoir` and `nsd`, taken under the ADR 13 bar and named in
+      [architecture.md](architecture.md#technology-stack) in this same change, since the test pins
+      that list to `pubspec.yaml`. Then the `dart:io` server on an unguessable path, and the
+      internet permission — the app's first manifest entry of its own. `sharingProvider` keeps the
+      advertisement in step with the shelf, so a device sharing nothing announces nothing (NFR-5),
+      and the offer and its withdrawal read on the bar's own card (FR-BAR-6). Integration-tested
+      against its own loopback server.
+- [ ] **M38 A guest finds one** — FR-BAR-8, the guest's half: browsing the service type as a list
+      that fills while devices answer, adding what it finds, and refreshing by GET on the swipe M36
+      already built. Two bars of one name are two service instances, told apart by the discriminator
+      off the owner's bar id (FR-BAR-1). A source withdrawn, off the network, or with no network at
+      all leaves the bar readable as it stood and says which of the three it was (FR-BAR-5).
+
+## Phase 10 — A bar travels over the cloud
+
+- [ ] **M39 The cloud adapter** — FR-BAR-9, with the backend picked when this milestone comes up
+      rather than ahead of it: [ADR 22](adr/22-a-bar-travels-behind-one-seam.md) carries the
+      options, what each costs this project and a recommendation, and is amended with the choice
+      before any code is written. The one identity in the product (NFR-3), the guests an owner names,
+      and a refresh from anywhere. The seam and the shape of an offer already stand, so what this
+      adds is one adapter and one sign-in.

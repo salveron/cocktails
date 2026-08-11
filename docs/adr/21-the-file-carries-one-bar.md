@@ -8,8 +8,9 @@ FR-DAT-1 now exports one bar of many, and FR-BAR-7 makes that same file a way a 
 file, two destinations — imported into an owned bar or added as a guest one. So the file has to say
 enough for a stranger to hold the bar, and no more than a bar's owner would want to give.
 
-FR-REC-6 is retired, so `made:` leaves the format. That alone forces a version bump; what else the
-bump should carry is the question.
+FR-REC-6 is retired, so `made:` leaves the format. Dropping an optional key would not force a bump
+on its own — a file without it was always legal — but a bump is coming for the reasons below, and
+what it should carry all at once is the question.
 
 FR-BAR-3/5 draw a line through `settings:`. On a guest bar the reading unit is the reader's and
 outlives every refresh, while `part_ml` and `oz_ml` are the owner's and arrive with the payload that
