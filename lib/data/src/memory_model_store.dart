@@ -8,37 +8,37 @@ import 'model_store.dart';
 
 final class MemoryModelStore implements ModelStore {
   /// What the next [load] returns; a test seeds [Corrupt] to exercise the
-  /// recovery path. Every [save] replaces it with the saved model.
+  /// recovery path. Every [save] replaces it with the saved collection.
   LoadOutcome outcome;
 
-  /// The model of the last [save], null until the first one.
-  Model? saved;
+  /// The collection of the last [save], null until the first one.
+  Collection? saved;
 
   int saveCount = 0;
 
-  MemoryModelStore([Model? model])
-    : outcome = model == null ? const Empty() : Loaded(model);
+  MemoryModelStore([Collection? collection])
+    : outcome = collection == null ? const Empty() : Loaded(collection);
 
   @override
   Future<LoadOutcome> load() async => outcome;
 
   @override
-  Future<void> save(Model model) async {
-    saved = model;
+  Future<void> save(Collection collection) async {
+    saved = collection;
     saveCount++;
-    outcome = Loaded(model);
+    outcome = Loaded(collection);
   }
 
   /// What each purpose was last handed, so a test can tell the copy going out
   /// to a reader from the one an import keeps back (FR-DAT-1, FR-DAT-3).
-  final snapshots = <ExportPurpose, Model>{};
+  final snapshots = <ExportPurpose, Collection>{};
 
   @override
   Future<String> exportSnapshot(
-    Model model, {
+    Collection collection, {
     ExportPurpose purpose = ExportPurpose.share,
   }) async {
-    snapshots[purpose] = model;
+    snapshots[purpose] = collection;
     return 'memory:${purpose.name}';
   }
 }

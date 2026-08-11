@@ -10,14 +10,15 @@ import '../harness.dart';
 /// leave for a collection that was never written — can be watched.
 final class _UnwritableStore implements ModelStore {
   @override
-  Future<LoadOutcome> load() async => Loaded(fixtureModel);
+  Future<LoadOutcome> load() async => Loaded(fixtureCollection);
 
   @override
-  Future<void> save(Model model) async => throw Exception('disk full');
+  Future<void> save(Collection collection) async =>
+      throw Exception('disk full');
 
   @override
   Future<String> exportSnapshot(
-    Model model, {
+    Collection collection, {
     ExportPurpose purpose = ExportPurpose.share,
   }) async => 'memory:${purpose.name}';
 }
@@ -55,7 +56,7 @@ void main() {
       Future<void> Function(String)? sharer,
     }) async {
       final shared = <String>[];
-      final store = MemoryModelStore(fixtureModel);
+      final store = MemoryModelStore(fixtureCollection);
       await pumpScreen(
         tester,
         const SettingsScreen(),
@@ -72,7 +73,7 @@ void main() {
       final (shared, store) = await exportOver(tester);
       expect(shared, ['memory:share']);
       // What went out is the collection on screen, not a file re-read (ADR 18).
-      expect(store.snapshots[ExportPurpose.share], fixtureModel);
+      expect(store.snapshots[ExportPurpose.share], fixtureCollection);
     });
 
     testWidgets('the row acts where it stands, and does not travel', (
@@ -110,7 +111,7 @@ void main() {
     /// A file holding three recipes and nine ingredients, against the one recipe
     /// and two ingredients the screen opens over — so a count on the review
     /// cannot be read off the store and pass for the file's.
-    final pickedFile = const YamlCodec().encode(recipeModel);
+    final pickedFile = const YamlCodec().encode(recipeCollection);
 
     /// A file the codec can read but the rules refuse: nothing declares "rye".
     const damagedFile = '''
@@ -120,13 +121,13 @@ recipes:
     lines: ["2 parts rye"]
 ''';
 
-    /// The Import row tapped over a store holding [fixtureModel], with the
+    /// The Import row tapped over a store holding [fixtureCollection], with the
     /// system's picker answering [picked] — a file, nothing, or a refusal.
     Future<MemoryModelStore> importOver(
       WidgetTester tester,
       Future<String?> Function() picked,
     ) async {
-      final store = MemoryModelStore(fixtureModel);
+      final store = MemoryModelStore(fixtureCollection);
       await pumpScreen(
         tester,
         const SettingsScreen(),
@@ -169,7 +170,7 @@ recipes:
     testWidgets('an opened card gives every name it counted', (tester) async {
       await importOver(tester, () async => pickedFile);
       await tap(tester, find.text('9 ingredients'));
-      for (final ingredient in recipeModel.ingredients) {
+      for (final ingredient in recipeCollection.ingredients) {
         expect(find.text('• ${ingredient.name}'), findsOneWidget);
       }
       // The line under the title has said all it can; the body says the rest.
@@ -179,7 +180,7 @@ recipes:
     testWidgets('a card holding thousands still gives them all', (
       tester,
     ) async {
-      final many = Model(
+      final many = Collection(
         ingredients: [Ingredient('gin')],
         recipes: [
           for (var index = 0; index < 2000; index++)
@@ -202,7 +203,7 @@ recipes:
     testWidgets('the two tag vocabularies stay apart when opened (ADR 07)', (
       tester,
     ) async {
-      final both = Model(
+      final both = Collection(
         ingredients: [
           Ingredient('gin', tags: const ['juniper']),
         ],
@@ -221,7 +222,7 @@ recipes:
     testWidgets('a vocabulary the file has none of is not labelled', (
       tester,
     ) async {
-      // recipeModel carries recipe tags and no ingredient tags.
+      // recipeCollection carries recipe tags and no ingredient tags.
       await importOver(tester, () async => pickedFile);
       await tap(tester, find.text('2 tags'));
       expect(find.text('Recipe'), findsOneWidget);
@@ -229,7 +230,10 @@ recipes:
     });
 
     testWidgets('a kind the file holds none of does not open', (tester) async {
-      await importOver(tester, () async => const YamlCodec().encode(Model()));
+      await importOver(
+        tester,
+        () async => const YamlCodec().encode(Collection()),
+      );
       expect(find.text('0 recipes'), findsOneWidget);
       await tap(tester, find.text('0 recipes'));
       // Nothing to open, so no chevron offered and the tap answered with none.
@@ -240,8 +244,8 @@ recipes:
         '(FR-DAT-3)', (tester) async {
       final store = await importOver(tester, () async => pickedFile);
       await tap(tester, find.text('Accept'));
-      expect(store.saved, recipeModel);
-      expect(store.snapshots[ExportPurpose.beforeImport], fixtureModel);
+      expect(store.saved, recipeCollection);
+      expect(store.snapshots[ExportPurpose.beforeImport], fixtureCollection);
       expect(find.text('3 recipes imported.'), findsOneWidget);
     });
 
@@ -305,7 +309,7 @@ recipes:
     ) async {
       await pumpApp(
         tester,
-        store: MemoryModelStore(fixtureModel),
+        store: MemoryModelStore(fixtureCollection),
         picker: () async => pickedFile,
       );
       await tap(tester, find.byTooltip('Settings'));

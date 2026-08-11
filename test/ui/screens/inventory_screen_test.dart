@@ -14,7 +14,7 @@ import '../harness.dart';
 
 /// Three tags over four bottles, every combination the filter has to tell
 /// apart: one bottle bare, one wearing a single tag, one wearing two.
-final taggedModel = Model(
+final taggedCollection = Collection(
   ingredientTags: const [
     Tag('citrus', color: TagColor.sand),
     Tag('homemade', color: TagColor.plum),
@@ -30,10 +30,14 @@ final taggedModel = Model(
 
 /// Three bottles over two levels, so an order and its reverse read differently
 /// and the tie between the two empty ones shows the A→Z under both.
-final orderedModel = fixtureModel.withIngredient(Ingredient('absinthe'));
+final orderedCollection = fixtureCollection.withIngredient(
+  Ingredient('absinthe'),
+);
 
-Future<MemoryModelStore> pumpInventory(WidgetTester tester, [Model? model]) =>
-    pumpOver(tester, const InventoryScreen(), model ?? taggedModel);
+Future<MemoryModelStore> pumpInventory(
+  WidgetTester tester, [
+  Collection? collection,
+]) => pumpOver(tester, const InventoryScreen(), collection ?? taggedCollection);
 
 /// Every ingredient name on screen, the stock words dropped.
 Iterable<String?> namesOn(WidgetTester tester) => rowTexts(
@@ -43,7 +47,7 @@ Iterable<String?> namesOn(WidgetTester tester) => rowTexts(
 void main() {
   group('inventory screen', () {
     testWidgets('says what will fill it while it is empty', (tester) async {
-      await pumpInventory(tester, Model());
+      await pumpInventory(tester, Collection());
       expect(find.text('No ingredients yet'), findsOneWidget);
       expect(find.byType(SearchField), findsNothing);
       expect(find.byTooltip('Add ingredient'), findsOneWidget);
@@ -52,7 +56,7 @@ void main() {
     testWidgets('opens on what is in stock, each bottle with its level', (
       tester,
     ) async {
-      await pumpInventory(tester, fixtureModel);
+      await pumpInventory(tester, fixtureCollection);
       expect(rowTexts(tester), ['gin', 'In stock', 'campari', 'Out']);
     });
 
@@ -61,7 +65,7 @@ void main() {
     ) async {
       await pumpInventory(
         tester,
-        fixtureModel.withIngredient(
+        fixtureCollection.withIngredient(
           Ingredient('absinthe', stock: StockLevel.low),
         ),
       );
@@ -82,7 +86,7 @@ void main() {
     testWidgets('a tap moves the bottle one step through its life', (
       tester,
     ) async {
-      final store = await pumpInventory(tester, fixtureModel);
+      final store = await pumpInventory(tester, fixtureCollection);
 
       for (final expected in ['Low', 'Out', 'In stock']) {
         await tester.tap(find.text('gin'));
@@ -96,13 +100,13 @@ void main() {
     testWidgets('search narrows the list by name, ignoring case', (
       tester,
     ) async {
-      await pumpInventory(tester, fixtureModel);
+      await pumpInventory(tester, fixtureCollection);
       await search(tester, 'CAMP');
       expect(rowTexts(tester), ['campari', 'Out']);
     });
 
     testWidgets('ignores space typed around the query', (tester) async {
-      await pumpInventory(tester, fixtureModel);
+      await pumpInventory(tester, fixtureCollection);
       await search(tester, '  camp  ');
       expect(rowTexts(tester), ['campari', 'Out']);
     });
@@ -110,7 +114,7 @@ void main() {
     testWidgets('finds a capitalised name typed in lower case', (tester) async {
       await pumpInventory(
         tester,
-        Model(ingredients: [Ingredient('Green Chartreuse')]),
+        Collection(ingredients: [Ingredient('Green Chartreuse')]),
       );
       await search(tester, 'chartreuse');
       expect(rowTexts(tester), ['Green Chartreuse', 'Out']);
@@ -119,7 +123,7 @@ void main() {
     testWidgets('clearing the search brings the whole list back', (
       tester,
     ) async {
-      await pumpInventory(tester, fixtureModel);
+      await pumpInventory(tester, fixtureCollection);
       await search(tester, 'camp');
       await tester.tap(find.byTooltip('Clear'));
       await tester.pumpAndSettle();
@@ -129,7 +133,7 @@ void main() {
     testWidgets('names the query when nothing matches, keeping the field', (
       tester,
     ) async {
-      await pumpInventory(tester, fixtureModel);
+      await pumpInventory(tester, fixtureCollection);
       await search(tester, 'absinthe');
       expect(find.text('No ingredient here answers to "absinthe".'), findsOne);
       expect(find.byType(SearchField), findsOneWidget);
@@ -138,7 +142,7 @@ void main() {
     testWidgets('the add button puts a new bottle in the list, out of stock', (
       tester,
     ) async {
-      final store = await pumpInventory(tester, fixtureModel);
+      final store = await pumpInventory(tester, fixtureCollection);
       await tap(tester, find.byTooltip('Add ingredient'));
       await type(tester, 'absinthe');
       await tap(tester, find.text('Save'));
@@ -157,7 +161,7 @@ void main() {
     testWidgets('a search that found nothing is one tap from creating it', (
       tester,
     ) async {
-      await pumpInventory(tester, fixtureModel);
+      await pumpInventory(tester, fixtureCollection);
       await search(tester, 'absinthe');
       await tap(tester, find.text('Add "absinthe"'));
       // Saving without typing is what proves the query came along.
@@ -176,7 +180,7 @@ void main() {
     testWidgets('an add backed out of leaves the search where it was', (
       tester,
     ) async {
-      await pumpInventory(tester, fixtureModel);
+      await pumpInventory(tester, fixtureCollection);
       await search(tester, 'camp');
       await tap(tester, find.byTooltip('Add ingredient'));
       await tap(tester, find.text('Cancel'));
@@ -186,7 +190,7 @@ void main() {
     testWidgets('renaming an ingredient follows it into the recipes', (
       tester,
     ) async {
-      final store = await pumpInventory(tester, fixtureModel);
+      final store = await pumpInventory(tester, fixtureCollection);
       await chooseOnRow(tester, 'gin', 'Edit');
       // Its own name is not a duplicate of itself.
       expect(saveEnabled(tester), isTrue);
@@ -203,7 +207,7 @@ void main() {
     });
 
     testWidgets('an ingredient a recipe uses will not go', (tester) async {
-      final store = await pumpInventory(tester, fixtureModel);
+      final store = await pumpInventory(tester, fixtureCollection);
       await chooseOnRow(tester, 'gin', 'Delete');
 
       expect(find.text('Cannot delete "gin"'), findsOneWidget);
@@ -218,7 +222,7 @@ void main() {
     ) async {
       final store = await pumpInventory(
         tester,
-        fixtureModel.withIngredient(Ingredient('absinthe')),
+        fixtureCollection.withIngredient(Ingredient('absinthe')),
       );
       await chooseOnRow(tester, 'absinthe', 'Delete');
 
@@ -231,7 +235,7 @@ void main() {
 
   group('aliases (ADR 10)', () {
     /// One bottle answering to two spellings besides its own.
-    final aliasedModel = fixtureModel.withIngredient(
+    final aliasedCollection = fixtureCollection.withIngredient(
       Ingredient(
         'gin',
         stock: StockLevel.in_,
@@ -242,7 +246,7 @@ void main() {
     testWidgets('a search finds the bottle under any of its spellings', (
       tester,
     ) async {
-      await pumpInventory(tester, aliasedModel);
+      await pumpInventory(tester, aliasedCollection);
       for (final query in ['jenever', 'LONDON', 'gin']) {
         await search(tester, query);
         expect(rowTexts(tester), ['gin', 'In stock'], reason: query);
@@ -252,7 +256,7 @@ void main() {
     testWidgets('and the row it finds still reads under its own name', (
       tester,
     ) async {
-      await pumpInventory(tester, aliasedModel);
+      await pumpInventory(tester, aliasedCollection);
       await search(tester, 'jenever');
       // Aliases are for finding, not for showing: only the search box holds
       // the word that found the row.
@@ -262,7 +266,7 @@ void main() {
     testWidgets('a new bottle can be born answering to more than one', (
       tester,
     ) async {
-      final store = await pumpInventory(tester, fixtureModel);
+      final store = await pumpInventory(tester, fixtureCollection);
       await tap(tester, find.byTooltip('Add ingredient'));
       await type(tester, 'bourbon');
       await typeAliases(tester, 'bourbon whiskey, bourbon whisky');
@@ -278,7 +282,7 @@ void main() {
     testWidgets('an edit settles the name and the spellings at once', (
       tester,
     ) async {
-      final store = await pumpInventory(tester, aliasedModel);
+      final store = await pumpInventory(tester, aliasedCollection);
       await chooseOnRow(tester, 'gin', 'Edit');
       expect(find.text('jenever, london dry'), findsOneWidget);
       await type(tester, 'sloe gin');
@@ -294,7 +298,7 @@ void main() {
     testWidgets('a bottle does not collide with its own spellings', (
       tester,
     ) async {
-      await pumpInventory(tester, aliasedModel);
+      await pumpInventory(tester, aliasedCollection);
       await chooseOnRow(tester, 'gin', 'Edit');
       expect(saveEnabled(tester), isTrue);
     });
@@ -302,7 +306,7 @@ void main() {
     testWidgets('but it does collide with another bottle spelling', (
       tester,
     ) async {
-      await pumpInventory(tester, aliasedModel);
+      await pumpInventory(tester, aliasedCollection);
       await chooseOnRow(tester, 'campari', 'Edit');
       await typeAliases(tester, 'london dry');
       expect(
@@ -317,7 +321,7 @@ void main() {
     ) async {
       await pumpInventory(
         tester,
-        aliasedModel.copyWith(
+        aliasedCollection.copyWith(
           recipes: [
             Recipe(
               'Gin Fizz',
@@ -338,7 +342,7 @@ void main() {
     testWidgets('the orders keep out of sight until they are asked for', (
       tester,
     ) async {
-      await pumpInventory(tester, fixtureModel);
+      await pumpInventory(tester, fixtureCollection);
       expect(find.byType(FilterChip), findsNothing);
 
       await openSort(tester);
@@ -352,14 +356,14 @@ void main() {
     });
 
     testWidgets('it opens on stock, the full bottles first', (tester) async {
-      await pumpInventory(tester, orderedModel);
+      await pumpInventory(tester, orderedCollection);
       await openSort(tester);
       expect(sortedBy(tester), ('Stock', false));
       expect(namesOn(tester), ['gin', 'absinthe', 'campari']);
     });
 
     testWidgets('name reads them A→Z whatever is left in them', (tester) async {
-      await pumpInventory(tester, orderedModel);
+      await pumpInventory(tester, orderedCollection);
       await sortBy(tester, 'Name');
       expect(namesOn(tester), ['absinthe', 'campari', 'gin']);
     });
@@ -367,7 +371,7 @@ void main() {
     testWidgets('picking the order in force turns the whole list round', (
       tester,
     ) async {
-      await pumpInventory(tester, orderedModel);
+      await pumpInventory(tester, orderedCollection);
       await sortBy(tester, 'Stock');
       expect(sortedBy(tester), ('Stock', true));
       // The A→Z between the two empty ones turns round with everything else.
@@ -377,7 +381,7 @@ void main() {
     testWidgets('another order starts the way round it is written', (
       tester,
     ) async {
-      await pumpInventory(tester, orderedModel);
+      await pumpInventory(tester, orderedCollection);
       await sortBy(tester, 'Stock');
       await sortBy(tester, 'Name');
       expect(sortedBy(tester), ('Name', false));
@@ -385,7 +389,7 @@ void main() {
     });
 
     testWidgets('a bottle stays put while the taps empty it', (tester) async {
-      await pumpInventory(tester, orderedModel);
+      await pumpInventory(tester, orderedCollection);
       // gin leads on stock; emptying it would send it past both were the list
       // to re-place itself under the finger doing it (FR-INV-2).
       await tap(tester, find.text('gin'));
@@ -396,7 +400,7 @@ void main() {
     testWidgets('the rows fall back into order once the list changes', (
       tester,
     ) async {
-      await pumpInventory(tester, orderedModel);
+      await pumpInventory(tester, orderedCollection);
       await tap(tester, find.text('gin'));
       await tap(tester, find.text('gin'));
 
@@ -419,7 +423,7 @@ void main() {
     });
 
     testWidgets('reading a list another way writes nothing', (tester) async {
-      final store = await pumpInventory(tester, orderedModel);
+      final store = await pumpInventory(tester, orderedCollection);
       await sortBy(tester, 'Name');
       await sortBy(tester, 'Name');
       expect(store.saveCount, 0);
@@ -461,7 +465,7 @@ void main() {
     testWidgets('the legend waits until the vocabulary has something in it', (
       tester,
     ) async {
-      await pumpInventory(tester, fixtureModel);
+      await pumpInventory(tester, fixtureCollection);
       expect(find.byType(TagChoices), findsNothing);
 
       await pumpInventory(tester);
@@ -538,7 +542,7 @@ void main() {
             tester.element(find.byType(InventoryScreen)),
             listen: false,
           )
-          .read(modelProvider.notifier)
+          .read(collectionProvider.notifier)
           .upsertTag(
             TagKind.ingredient,
             const Tag('sirop', color: TagColor.teal),

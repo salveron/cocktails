@@ -8,7 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../widgets/editor_form.dart';
 import '../widgets/vocabulary_dialogs.dart';
-import '../widgets/model_view.dart';
+import '../widgets/collection_view.dart';
 import '../widgets/tag_choices.dart';
 import '../widgets/vocabulary_list.dart';
 
@@ -44,7 +44,7 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
   );
   late final _notes = TextEditingController(text: widget.original?.notes ?? '');
 
-  /// The vocabulary a line is written against comes from the model, so the
+  /// The vocabulary a line is written against comes from the collection, so the
   /// fields open in the spelling the file holds (ADR 09).
   late final _lines = GrowingRows<TextEditingController>(
     blankRow: _lineController,
@@ -105,18 +105,18 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
   }
 
   /// Names to avoid on rename (excluding current name).
-  Set<String> _otherNames(Model model) =>
-      otherNames(model.recipeNames, widget.original?.name);
+  Set<String> _otherNames(Collection collection) =>
+      otherNames(collection.recipeNames, widget.original?.name);
 
   /// Name alone — kept apart by the empty path a name issue carries, so what
   /// the half-typed rest of the form is still missing waits for Save.
-  List<ValidationIssue> _nameIssues(Model model) => issuesUnder(
+  List<ValidationIssue> _nameIssues(Collection collection) => issuesUnder(
     validateRecipe(
       Recipe(_name.text),
       knownIngredients: const {},
       knownTags: const {},
       knownUnits: const {},
-      otherRecipeNames: _otherNames(model),
+      otherRecipeNames: _otherNames(collection),
     ),
   );
 
@@ -131,8 +131,8 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
 
   /// Parsed recipe and fieldOf map for aligning issues with fields. Lines are
   /// kept as typed: "gin" against "Gin" and an alias against the bottle it
-  /// names both settle on the way to the model (ADR 08, ADR 10), so the form
-  /// judges what it sees and stores what the vocabulary calls it.
+  /// names both settle on the way to the collection (ADR 08, ADR 10), so the
+  /// form judges what it sees and stores what the vocabulary calls it.
   ({Recipe recipe, List<int> fieldOf}) _entered(List<Tag> vocabulary) {
     final lines = <RecipeLine>[];
     final fieldOf = <int>[];
@@ -153,21 +153,21 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
     );
   }
 
-  Future<void> _save(Model model, List<Tag> vocabulary) async {
+  Future<void> _save(Collection collection, List<Tag> vocabulary) async {
     final entered = _entered(vocabulary);
     final issues = validateRecipe(
       entered.recipe,
-      knownIngredients: model.ingredientSpellings(),
-      knownTags: model.tagNames(TagKind.recipe),
-      knownUnits: model.unitSpellings,
-      otherRecipeNames: _otherNames(model),
+      knownIngredients: collection.ingredientSpellings(),
+      knownTags: collection.tagNames(TagKind.recipe),
+      knownUnits: collection.unitSpellings,
+      otherRecipeNames: _otherNames(collection),
     );
     final blocked = issues.any(
       (issue) => issue.kind != ValidationIssueKind.unknownIngredient,
     );
     if (blocked) return _reportProblems(issues, entered.fieldOf);
     if (issues.isEmpty) return _commit(entered.recipe, const []);
-    final missing = _missing(model, entered.recipe);
+    final missing = _missing(collection, entered.recipe);
     if (!await _offerToAdd(missing)) {
       if (mounted) _reportProblems(issues, entered.fieldOf);
       return;
@@ -181,11 +181,11 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
   /// Names no bottle answers to, in line order (deduplicated). Asked of the
   /// vocabulary rather than read back out of the issues: a line may name
   /// several bottles (ADR 11) and its issues all share one path, so which of
-  /// them is missing is a question about the model, not about the report.
-  static List<String> _missing(Model model, Recipe recipe) => {
+  /// them is missing is a question about the collection, not about the report.
+  static List<String> _missing(Collection collection, Recipe recipe) => {
     for (final line in recipe.lines)
       for (final ingredient in line.ingredients)
-        if (model.ingredientNamed(ingredient) == null) ingredient,
+        if (collection.ingredientNamed(ingredient) == null) ingredient,
   }.toList();
 
   /// Line issues under their field; unplaceable issues in snackbar.
@@ -229,7 +229,7 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
   /// Atomic edit: new bottles + recipe + handling old name.
   Future<void> _commit(Recipe recipe, List<Ingredient> adding) async {
     await ref
-        .read(modelProvider.notifier)
+        .read(collectionProvider.notifier)
         .upsertRecipe(
           recipe,
           addingIngredients: adding,
@@ -239,10 +239,10 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => ModelView((model) {
-    final vocabulary = sortedByName(model.recipeTags);
+  Widget build(BuildContext context) => CollectionView((collection) {
+    final vocabulary = sortedByName(collection.recipeTags);
     final original = widget.original;
-    final nameIssues = _nameIssues(model);
+    final nameIssues = _nameIssues(collection);
     final syntax = _syntaxProblems;
     final canSave =
         nameIssues.isEmpty && syntax.every((problem) => problem == null);
@@ -250,7 +250,7 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
       title: original == null ? 'New recipe' : 'Edit "${original.name}"',
       dirty: _dirty,
       discardTitle: 'Discard this recipe?',
-      onSave: canSave ? () => unawaited(_save(model, vocabulary)) : null,
+      onSave: canSave ? () => unawaited(_save(collection, vocabulary)) : null,
       children: [
         TextField(
           controller: _name,

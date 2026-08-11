@@ -1,4 +1,4 @@
-/// Decode/encode between store text and [Model]; format-version gate.
+/// Decode/encode between store text and [Collection]; format-version gate.
 library;
 
 import 'package:cocktails/domain/domain.dart';
@@ -11,9 +11,9 @@ import 'yaml_writer.dart';
 sealed class DecodeResult {}
 
 final class Decoded extends DecodeResult {
-  final Model model;
+  final Collection collection;
 
-  Decoded(this.model);
+  Decoded(this.collection);
 }
 
 final class Rejected extends DecodeResult {
@@ -28,7 +28,7 @@ final class YamlCodec {
   const YamlCodec();
 
   /// Canonical text: fixed key order, fixed indent, no comments.
-  String encode(Model model) => encodeModel(model);
+  String encode(Collection collection) => encodeCollection(collection);
 
   /// Never throws — every failure is a [Rejected] carrying sourced issues.
   DecodeResult decode(String yaml) {
@@ -69,7 +69,7 @@ final class YamlCodec {
     final parts = readModelParts(root);
     final issues = parts.issues.isNotEmpty
         ? parts.issues
-        : validateModel(
+        : validateCollection(
             settings: parts.settings,
             units: parts.units,
             ingredients: parts.ingredients,
@@ -80,10 +80,10 @@ final class YamlCodec {
     if (issues.isNotEmpty) {
       return Rejected([for (final issue in issues) _sourced(root, issue)]);
     }
-    // A hand-edited file may name a bottle by an alias; the model holds the
-    // canonical name, so the next save writes it back that way (ADR 10).
+    // A hand-edited file may name a bottle by an alias; the collection holds
+    // the canonical name, so the next save writes it back that way (ADR 10).
     return Decoded(
-      Model(
+      Collection(
         settings: parts.settings,
         units: parts.units,
         ingredients: parts.ingredients,

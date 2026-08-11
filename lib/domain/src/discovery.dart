@@ -5,8 +5,8 @@ library;
 import 'dart:math';
 
 import 'availability.dart';
-import 'helpers.dart';
-import 'model.dart';
+import 'names.dart';
+import 'collection.dart';
 
 /// Every bottle a base line of [recipe] names — several, base being a mark on
 /// the line (ADR 06) and a line naming more than one (ADR 11); or none at all.
@@ -17,11 +17,11 @@ Set<String> basesOf(Recipe recipe) => {
 
 /// The spirits the collection narrows by, A→Z: one per bottle, named before it
 /// is weighed for repetition, so two spellings of one bottle are one spirit.
-List<String> baseSpirits(Model model) {
+List<String> baseSpirits(Collection collection) {
   final seen = <String>{};
   final named = [
-    for (final recipe in model.recipes)
-      for (final spirit in basesOf(recipe)) model.bottleNamed(spirit),
+    for (final recipe in collection.recipes)
+      for (final spirit in basesOf(recipe)) collection.bottleNamed(spirit),
   ];
   return [
     for (final spirit in named)

@@ -38,7 +38,7 @@ rows rather than tens of collections (NFR-2).
 
 ## Bars
 
-`Shelf` is the root above `Model` ([components.md](components.md#the-shelf-and-the-bar)): the record 
+`Shelf` is the root above `Collection` ([components.md](components.md#the-shelf-and-the-bar)): the record 
 of every bar the device holds, which one is open, and that one's collection. A bar carries an id, a 
 name, a mode, the fixed unit its amounts read in, what its owner offers it by, and — for a guest — 
 the source it refreshes from and when it last did. **Nothing crosses between bars** (FR-BAR-1) 
@@ -54,7 +54,7 @@ the UI off every other route. The mode also decides what the shell offers — th
 is absent on a guest bar rather than empty, so the optimizer is never asked for one.
 
 **The reading unit is the reader's, the sizes are the owner's** (FR-SET-1): `Bar.display` holds the 
-pick, `Model.settings` what a part and an ounce are worth in ml. They part company on a guest bar, 
+pick, `Collection.settings` what a part and an ounce are worth in ml. They part company on a guest bar, 
 where a refresh replaces the collection whole — a pick living in that payload would be thrown away 
 with it ([ADR 21](adr/21-the-file-carries-one-bar.md)).
 

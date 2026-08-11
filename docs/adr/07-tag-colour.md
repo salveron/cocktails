@@ -12,7 +12,7 @@ built on either.
 
 **Two tag vocabularies of one shape; every tag carries a colour.**
 
-- `recipe_tags` and `ingredient_tags` are peer sections behind `Model.recipeTags`/`ingredientTags`. 
+- `recipe_tags` and `ingredient_tags` are peer sections behind `Collection.recipeTags`/`ingredientTags`. 
   One `Tag` type serves both; differ in what they label, not what they are. Names may exist in both 
   (different meanings); uniqueness per vocabulary.
 - Ingredients reference tags like recipes: name list inside one-line entry. References are names 
@@ -32,7 +32,7 @@ built on either.
 - Free hex: illegible in dark mode.
 - Hash-derived: rename silently repaints.
 - Scheme roles: collides with stock chips.
-- Colour outside model: orphans on rename/delete.
+- Colour outside collection: orphans on rename/delete.
 - Optional `neutral` default: grey on grey in inventory.
 
 ## Consequences

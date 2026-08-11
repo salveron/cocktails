@@ -7,7 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../widgets/editor_form.dart';
-import '../widgets/model_view.dart';
+import '../widgets/collection_view.dart';
 import '../widgets/vocabulary_dialogs.dart';
 
 /// The measurement vocabulary (FR-VOC-5), edited in place: a row per unit and
@@ -17,14 +17,14 @@ class UnitsScreen extends StatelessWidget {
   const UnitsScreen({super.key});
 
   @override
-  Widget build(BuildContext context) => ModelView(_UnitsForm.new);
+  Widget build(BuildContext context) => CollectionView(_UnitsForm.new);
 }
 
 class _UnitsForm extends ConsumerStatefulWidget {
-  const _UnitsForm(this.model);
+  const _UnitsForm(this.collection);
 
   /// The vocabulary the rows open on; nothing else edits it while they stand.
-  final Model model;
+  final Collection collection;
 
   @override
   ConsumerState<_UnitsForm> createState() => _UnitsFormState();
@@ -36,7 +36,7 @@ class _UnitsFormState extends ConsumerState<_UnitsForm> {
     isBlank: (row) => row.blank,
     disposeRow: (row) => row.dispose(),
     initial: [
-      for (final unit in widget.model.units) _row(unit, was: unit.name),
+      for (final unit in widget.collection.units) _row(unit, was: unit.name),
     ],
   );
 
@@ -51,14 +51,16 @@ class _UnitsFormState extends ConsumerState<_UnitsForm> {
 
   bool get _dirty => !listEquals([
     for (final row in _rows.entered) row.unit,
-  ], widget.model.units);
+  ], widget.collection.units);
 
   @override
   Widget build(BuildContext context) {
     final entered = _rows.entered;
     // The vocabulary's own rules judge the rows, so a name the file would
     // refuse is a name this screen refuses (ADR 05).
-    final issues = validateModel(units: [for (final row in entered) row.unit]);
+    final issues = validateCollection(
+      units: [for (final row in entered) row.unit],
+    );
     // The bool is the plural column, so both fields of a row key apart.
     final problems = firstIssuePerField(
       issues,
@@ -101,7 +103,7 @@ class _UnitsFormState extends ConsumerState<_UnitsForm> {
   Future<void> _delete(_UnitRow row) async {
     final was = row.was;
     if (was != null) {
-      final blockedBy = widget.model.recipesUsingUnit(was);
+      final blockedBy = widget.collection.recipesUsingUnit(was);
       if (blockedBy.isNotEmpty) {
         await confirmDelete(
           context,
@@ -116,7 +118,7 @@ class _UnitsFormState extends ConsumerState<_UnitsForm> {
   }
 
   Future<void> _save(List<_UnitRow> entered) async {
-    await ref.read(modelProvider.notifier).setUnits([
+    await ref.read(collectionProvider.notifier).setUnits([
       for (final row in entered) (unit: row.unit, was: row.was),
     ]);
     if (mounted) Navigator.of(context).pop();
@@ -124,7 +126,7 @@ class _UnitsFormState extends ConsumerState<_UnitsForm> {
 }
 
 /// One row: the fields it is edited through, and the name it came from — null
-/// where it is new, which is also what a delete asks the model about.
+/// where it is new, which is also what a delete asks the collection about.
 class _UnitRow {
   _UnitRow(Unit unit, {required this.was, required VoidCallback onEdit})
     : name = TextEditingController(text: unit.name),

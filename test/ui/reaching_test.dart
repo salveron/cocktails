@@ -13,7 +13,7 @@ RecipeLine _line(List<String> ingredients, {LineMark? mark}) =>
 /// beside it, and tags on both vocabularies — so a jump has narrowings to clear
 /// whichever way it goes. At a budget of two, `campari + sweet vermouth` is the
 /// one basket worth buying, and it unlocks both of the recipes waiting on it.
-final reachingModel = Model(
+final reachingCollection = Collection(
   ingredients: [
     Ingredient('gin', stock: StockLevel.in_, tags: const ['spirit']),
     Ingredient('campari', tags: const ['bitter']),
@@ -56,7 +56,7 @@ final reachingModel = Model(
 /// standing last in it: the fillers are all makeable, so the availability order
 /// the list opens in puts `Zzz Nightcap` off the bottom of the screen and a
 /// reveal has somewhere to scroll.
-final longModel = Model(
+final longCollection = Collection(
   ingredients: [
     Ingredient('gin', stock: StockLevel.in_),
     Ingredient('campari'),
@@ -78,8 +78,8 @@ final longModel = Model(
   ],
 );
 
-Future<void> pumpShell(WidgetTester tester, [Model? model]) =>
-    pumpApp(tester, store: MemoryModelStore(model ?? reachingModel));
+Future<void> pumpShell(WidgetTester tester, [Collection? collection]) =>
+    pumpApp(tester, store: MemoryModelStore(collection ?? reachingCollection));
 
 /// Opens the one basket worth buying two bottles, whose card then names both
 /// bottles and both recipes.
@@ -203,7 +203,7 @@ void main() {
     testWidgets('a row off the bottom of a long list is scrolled to', (
       tester,
     ) async {
-      await pumpShell(tester, longModel);
+      await pumpShell(tester, longCollection);
       await goTo(tester, 'Recipes');
       expect(find.text('Zzz Nightcap'), findsNothing);
       await goTo(tester, 'Shopping');
@@ -215,7 +215,7 @@ void main() {
     testWidgets('a narrowed list goes home first, then lands on the row', (
       tester,
     ) async {
-      await pumpShell(tester, longModel);
+      await pumpShell(tester, longCollection);
       await goTo(tester, 'Recipes');
       // Narrowed, the list is marked for home; the reveal waits on the
       // measurement that re-anchoring forces (ADR 13, ADR 19).

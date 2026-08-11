@@ -3,8 +3,8 @@ library;
 
 export 'src/availability.dart';
 export 'src/discovery.dart';
-export 'src/model.dart';
-export 'src/model_edits.dart';
+export 'src/collection.dart';
+export 'src/collection_edits.dart';
 export 'src/optimizer.dart';
 export 'src/line_format.dart' hide reservedSuffixes, formatMeasure;
 export 'src/scaling.dart';

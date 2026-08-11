@@ -17,7 +17,7 @@ void main() {
       RecipeLine(Amount(1), 'part', ['campari']),
     ],
   );
-  final stored = Model(
+  final stored = Collection(
     ingredients: [
       Ingredient('gin', stock: StockLevel.in_),
       Ingredient('campari', tags: const ['italian']),
@@ -44,15 +44,15 @@ void main() {
   /// A container whose startup load has already resolved.
   Future<ProviderContainer> started([MemoryModelStore? seeded]) async {
     final container = containerFor(seeded ?? store);
-    await container.read(modelProvider.future);
+    await container.read(collectionProvider.future);
     return container;
   }
 
-  Model modelOf(ProviderContainer container) =>
-      container.read(modelProvider).requireValue;
+  Collection collectionOf(ProviderContainer container) =>
+      container.read(collectionProvider).requireValue;
 
   ModelController controllerOf(ProviderContainer container) =>
-      container.read(modelProvider.notifier);
+      container.read(collectionProvider.notifier);
 
   SourcedIssue issueAt(int? line) => SourcedIssue(
     ValidationIssue(
@@ -64,22 +64,22 @@ void main() {
   );
 
   group('startup load', () {
-    test('an empty store starts the app on an empty model', () async {
+    test('an empty store starts the app on an empty collection', () async {
       final container = await started(MemoryModelStore());
-      expect(modelOf(container), Model());
+      expect(collectionOf(container), Collection());
       expect(container.read(startupIssuesProvider), isEmpty);
     });
 
-    test('a stored model is loaded as it stands', () async {
+    test('a stored collection is loaded as it stands', () async {
       final container = await started();
-      expect(modelOf(container), stored);
+      expect(collectionOf(container), stored);
       expect(container.read(startupIssuesProvider), isEmpty);
     });
 
     test('a corrupt store starts on the recovered backup', () async {
       store.outcome = Corrupt([issueAt(4)], recoveredFromBackup: stored);
       final container = await started();
-      expect(modelOf(container), stored);
+      expect(collectionOf(container), stored);
       expect(container.read(startupIssuesProvider), [
         'line 4: Unknown ingredient: "rye"',
       ]);
@@ -88,7 +88,7 @@ void main() {
     test('a corrupt store with nothing to recover starts empty', () async {
       store.outcome = Corrupt([issueAt(4)]);
       final container = await started();
-      expect(modelOf(container), Model());
+      expect(collectionOf(container), Collection());
       expect(container.read(startupIssuesProvider), hasLength(1));
     });
 
@@ -104,7 +104,7 @@ void main() {
       store.outcome = Corrupt([issueAt(4)]);
       final container = containerFor(store);
       expect(container.read(startupIssuesProvider), isEmpty);
-      await container.read(modelProvider.future);
+      await container.read(collectionProvider.future);
       expect(container.read(startupIssuesProvider), hasLength(1));
     });
   });
@@ -113,7 +113,7 @@ void main() {
     test('setSettings replaces the settings', () async {
       final container = await started();
       await controllerOf(container).setSettings(const Settings(partMl: 25));
-      expect(modelOf(container).settings, const Settings(partMl: 25));
+      expect(collectionOf(container).settings, const Settings(partMl: 25));
     });
 
     test('upsertIngredient adds and replaces by name', () async {
@@ -121,13 +121,16 @@ void main() {
       await controllerOf(
         container,
       ).upsertIngredient(Ingredient('sweet vermouth'));
-      expect(modelOf(container).ingredientNamed('sweet vermouth'), isNotNull);
+      expect(
+        collectionOf(container).ingredientNamed('sweet vermouth'),
+        isNotNull,
+      );
       await controllerOf(
         container,
       ).upsertIngredient(Ingredient('campari', stock: StockLevel.in_));
-      expect(modelOf(container).ingredients, hasLength(3));
+      expect(collectionOf(container).ingredients, hasLength(3));
       expect(
-        modelOf(container).ingredientNamed('campari')?.stock,
+        collectionOf(container).ingredientNamed('campari')?.stock,
         StockLevel.in_,
       );
     });
@@ -138,11 +141,11 @@ void main() {
         Ingredient('dry gin', stock: StockLevel.in_, tags: const ['juniper']),
         replacing: 'gin',
       );
-      final model = modelOf(container);
-      expect(model.ingredientNamed('gin'), isNull);
-      expect(model.ingredientNamed('dry gin')?.tags, ['juniper']);
+      final collection = collectionOf(container);
+      expect(collection.ingredientNamed('gin'), isNull);
+      expect(collection.ingredientNamed('dry gin')?.tags, ['juniper']);
       expect(
-        model.recipeNamed('Negroni')?.lines.first.ingredients.single,
+        collection.recipeNamed('Negroni')?.lines.first.ingredients.single,
         'dry gin',
       );
       // The whole entry is one edit, so one backup rotation covers it.
@@ -157,8 +160,10 @@ void main() {
           Ingredient('gin', tags: const ['juniper']),
           replacing: 'gin',
         );
-        expect(modelOf(container).ingredients, hasLength(2));
-        expect(modelOf(container).ingredientNamed('gin')?.tags, ['juniper']);
+        expect(collectionOf(container).ingredients, hasLength(2));
+        expect(collectionOf(container).ingredientNamed('gin')?.tags, [
+          'juniper',
+        ]);
       },
     );
 
@@ -167,22 +172,22 @@ void main() {
       final controller = controllerOf(container);
       final gin = Ingredient('gin', stock: StockLevel.in_);
       await controller.upsertIngredient(gin.copyWith(tags: const ['juniper']));
-      expect(modelOf(container).ingredientNamed('gin')?.tags, ['juniper']);
+      expect(collectionOf(container).ingredientNamed('gin')?.tags, ['juniper']);
       await controller.upsertIngredient(gin);
-      expect(modelOf(container).ingredientNamed('gin')?.tags, isEmpty);
+      expect(collectionOf(container).ingredientNamed('gin')?.tags, isEmpty);
     });
 
     test('removeIngredient drops the entry', () async {
       final container = await started();
       await controllerOf(container).removeIngredient('campari');
-      expect(modelOf(container).ingredientNamed('campari'), isNull);
+      expect(collectionOf(container).ingredientNamed('campari'), isNull);
     });
 
     test('setStock changes only the stock level', () async {
       final container = await started();
       await controllerOf(container).setStock('gin', StockLevel.low);
       expect(
-        modelOf(container).ingredientNamed('gin'),
+        collectionOf(container).ingredientNamed('gin'),
         Ingredient('gin', stock: StockLevel.low),
       );
     });
@@ -191,8 +196,11 @@ void main() {
       final container = await started();
       const bitter = Tag('bitter', color: TagColor.plum);
       await controllerOf(container).upsertTag(TagKind.recipe, bitter);
-      expect(modelOf(container).hasTag(TagKind.recipe, 'bitter'), isTrue);
-      expect(modelOf(container).hasTag(TagKind.ingredient, 'bitter'), isFalse);
+      expect(collectionOf(container).hasTag(TagKind.recipe, 'bitter'), isTrue);
+      expect(
+        collectionOf(container).hasTag(TagKind.ingredient, 'bitter'),
+        isFalse,
+      );
     });
 
     test('upsertTag replacing a name propagates in one edit', () async {
@@ -202,9 +210,9 @@ void main() {
         const Tag('classics', color: TagColor.plum),
         replacing: 'classic',
       );
-      final model = modelOf(container);
-      expect(model.hasTag(TagKind.recipe, 'classic'), isFalse);
-      expect(model.recipeNamed('Negroni')?.tags, ['classics']);
+      final collection = collectionOf(container);
+      expect(collection.hasTag(TagKind.recipe, 'classic'), isFalse);
+      expect(collection.recipeNamed('Negroni')?.tags, ['classics']);
       // The whole entry is one edit, so one backup rotation covers it.
       expect(store.saveCount, 1);
     });
@@ -216,9 +224,9 @@ void main() {
         const Tag('italiano', color: TagColor.teal),
         replacing: 'italian',
       );
-      final model = modelOf(container);
-      expect(model.hasTag(TagKind.ingredient, 'italiano'), isTrue);
-      expect(model.ingredientNamed('campari')?.tags, ['italiano']);
+      final collection = collectionOf(container);
+      expect(collection.hasTag(TagKind.ingredient, 'italiano'), isTrue);
+      expect(collection.ingredientNamed('campari')?.tags, ['italiano']);
     });
 
     test('upsertTag replacing the name it keeps drops nothing', () async {
@@ -228,15 +236,18 @@ void main() {
         const Tag('juniper', color: TagColor.plum),
         replacing: 'juniper',
       );
-      final model = modelOf(container);
-      expect(model.ingredientTags, hasLength(2));
-      expect(model.tagsOf(TagKind.ingredient).last.color, TagColor.plum);
+      final collection = collectionOf(container);
+      expect(collection.ingredientTags, hasLength(2));
+      expect(collection.tagsOf(TagKind.ingredient).last.color, TagColor.plum);
     });
 
     test('removeTag drops the entry', () async {
       final container = await started();
       await controllerOf(container).removeTag(TagKind.ingredient, 'juniper');
-      expect(modelOf(container).hasTag(TagKind.ingredient, 'juniper'), isFalse);
+      expect(
+        collectionOf(container).hasTag(TagKind.ingredient, 'juniper'),
+        isFalse,
+      );
     });
 
     test('upsertIngredient renames onto an alias it lets go of', () async {
@@ -254,11 +265,11 @@ void main() {
       await controllerOf(
         container,
       ).upsertIngredient(Ingredient('jenever'), replacing: 'gin');
-      final model = modelOf(container);
-      expect(model.ingredientNamed('gin'), isNull);
-      expect(model.ingredientNamed('jenever')?.aliases, isEmpty);
+      final collection = collectionOf(container);
+      expect(collection.ingredientNamed('gin'), isNull);
+      expect(collection.ingredientNamed('jenever')?.aliases, isEmpty);
       expect(
-        model.recipeNamed('Negroni')?.lines.first.ingredients.single,
+        collection.recipeNamed('Negroni')?.lines.first.ingredients.single,
         'jenever',
       );
     });
@@ -266,12 +277,15 @@ void main() {
     test('upsertRecipe adds and replaces by name', () async {
       final container = await started();
       await controllerOf(container).upsertRecipe(Recipe('Americano'));
-      expect(modelOf(container).recipes, hasLength(2));
+      expect(collectionOf(container).recipes, hasLength(2));
       await controllerOf(
         container,
       ).upsertRecipe(Recipe('Negroni', notes: 'stir with ice'));
-      expect(modelOf(container).recipes, hasLength(2));
-      expect(modelOf(container).recipeNamed('Negroni')?.notes, 'stir with ice');
+      expect(collectionOf(container).recipes, hasLength(2));
+      expect(
+        collectionOf(container).recipeNamed('Negroni')?.notes,
+        'stir with ice',
+      );
     });
 
     test('upsertRecipe carries the ingredients it introduced', () async {
@@ -285,11 +299,11 @@ void main() {
         ),
         addingIngredients: [Ingredient('rye'), Ingredient('absinthe')],
       );
-      final model = modelOf(container);
-      expect(model.ingredientNamed('rye'), Ingredient('rye'));
-      expect(model.ingredientNamed('absinthe'), Ingredient('absinthe'));
-      expect(model.recipeNamed('Sazerac'), isNotNull);
-      // The whole entry is one edit, so one model reaches the disk and one
+      final collection = collectionOf(container);
+      expect(collection.ingredientNamed('rye'), Ingredient('rye'));
+      expect(collection.ingredientNamed('absinthe'), Ingredient('absinthe'));
+      expect(collection.recipeNamed('Sazerac'), isNotNull);
+      // The whole entry is one edit, so one collection reaches the disk and one
       // backup rotation covers the action.
       expect(store.saveCount, 1);
     });
@@ -316,7 +330,7 @@ void main() {
         ),
       );
       expect(
-        modelOf(
+        collectionOf(
           container,
         ).recipeNamed('Gin Fizz')!.lines.map((line) => line.ingredients.single),
         ['gin', 'campari'],
@@ -335,7 +349,7 @@ void main() {
         addingIngredients: [Ingredient('rye')],
       );
       expect(
-        modelOf(
+        collectionOf(
           container,
         ).recipeNamed('Sazerac')!.lines.single.ingredients.single,
         'rye',
@@ -349,9 +363,9 @@ void main() {
         negroni.copyWith(name: 'Boulevardier'),
         replacing: 'Negroni',
       );
-      final model = modelOf(container);
-      expect(model.recipeNamed('Negroni'), isNull);
-      expect(model.recipeNamed('Boulevardier'), isNotNull);
+      final collection = collectionOf(container);
+      expect(collection.recipeNamed('Negroni'), isNull);
+      expect(collection.recipeNamed('Boulevardier'), isNotNull);
       expect(store.saveCount, 1);
     });
 
@@ -361,24 +375,30 @@ void main() {
         negroni.copyWith(notes: 'stir with ice'),
         replacing: 'Negroni',
       );
-      expect(modelOf(container).recipes, hasLength(1));
-      expect(modelOf(container).recipeNamed('Negroni')?.notes, 'stir with ice');
+      expect(collectionOf(container).recipes, hasLength(1));
+      expect(
+        collectionOf(container).recipeNamed('Negroni')?.notes,
+        'stir with ice',
+      );
     });
 
     test('removeRecipe drops the recipe', () async {
       final container = await started();
       await controllerOf(container).removeRecipe('Negroni');
-      expect(modelOf(container).recipes, isEmpty);
+      expect(collectionOf(container).recipes, isEmpty);
     });
   });
 
   group('persistence', () {
-    test('an edit reaches the store as the model the app now holds', () async {
-      final container = await started();
-      await controllerOf(container).setStock('campari', StockLevel.in_);
-      expect(store.saved, modelOf(container));
-      expect(store.saveCount, 1);
-    });
+    test(
+      'an edit reaches the store as the collection the app now holds',
+      () async {
+        final container = await started();
+        await controllerOf(container).setStock('campari', StockLevel.in_);
+        expect(store.saved, collectionOf(container));
+        expect(store.saveCount, 1);
+      },
+    );
 
     test('every edit is written, in the order it was made', () async {
       final container = await started();
@@ -390,7 +410,7 @@ void main() {
       await controller.setStock('campari', StockLevel.low);
       await controller.removeRecipe('Negroni');
       expect(store.saveCount, 3);
-      expect(store.saved, modelOf(container));
+      expect(store.saved, collectionOf(container));
     });
 
     test('an edit that changes nothing is not written', () async {
@@ -404,14 +424,17 @@ void main() {
       );
       await controller.removeRecipe('Sazerac');
       expect(store.saveCount, 0);
-      expect(modelOf(container), same(stored));
+      expect(collectionOf(container), same(stored));
     });
 
-    test('export hands the store the model on screen (FR-DAT-1)', () async {
-      final container = await started();
-      expect(await controllerOf(container).export(), isNotEmpty);
-      expect(store.snapshots[ExportPurpose.share], stored);
-    });
+    test(
+      'export hands the store the collection on screen (FR-DAT-1)',
+      () async {
+        final container = await started();
+        expect(await controllerOf(container).export(), isNotEmpty);
+        expect(store.snapshots[ExportPurpose.share], stored);
+      },
+    );
 
     test('an export asked for before the load waits for it', () async {
       final container = containerFor(store);
@@ -432,16 +455,19 @@ void main() {
       final container = containerFor(store);
       await controllerOf(container).setStock('campari', StockLevel.in_);
       expect(
-        modelOf(container).ingredientNamed('campari')?.stock,
+        collectionOf(container).ingredientNamed('campari')?.stock,
         StockLevel.in_,
       );
-      expect(modelOf(container).ingredientNamed('gin')?.stock, StockLevel.in_);
-      expect(modelOf(container).recipes, [negroni]);
+      expect(
+        collectionOf(container).ingredientNamed('gin')?.stock,
+        StockLevel.in_,
+      );
+      expect(collectionOf(container).recipes, [negroni]);
     });
   });
 
   group('import', () {
-    final incoming = Model(
+    final incoming = Collection(
       ingredients: [Ingredient('rye', stock: StockLevel.low)],
       recipes: [
         Recipe(
@@ -457,14 +483,14 @@ void main() {
     test('a file that decodes reviews as the collection it holds', () async {
       final container = await started();
       final review = controllerOf(container).review(incomingFile);
-      expect(review.model, incoming);
+      expect(review.collection, incoming);
       expect(review.issues, isEmpty);
     });
 
     test('a review touches nothing on its own (FR-DAT-3)', () async {
       final container = await started();
       controllerOf(container).review(incomingFile);
-      expect(modelOf(container), stored);
+      expect(collectionOf(container), stored);
       expect(store.saveCount, 0);
       expect(store.snapshots, isEmpty);
     });
@@ -478,7 +504,7 @@ recipes:
   - name: Sazerac
     lines: ["2 parts rye"]
 ''');
-      expect(review.model, isNull);
+      expect(review.collection, isNull);
       expect(review.issues, hasLength(1));
       expect(review.issues.single, contains('rye'));
       expect(review.issues.single, startsWith('line '));
@@ -486,7 +512,7 @@ recipes:
 
     test('a file that is not the format at all is refused, not crashed', () {
       final review = ModelController().review('not a cocktail in sight');
-      expect(review.model, isNull);
+      expect(review.collection, isNull);
       expect(review.issues, hasLength(1));
     });
 
@@ -496,7 +522,7 @@ recipes:
       await controllerOf(container).replaceAll(incoming);
       // The copy is the collection that stood before, never the one arriving.
       expect(store.snapshots[ExportPurpose.beforeImport], stored);
-      expect(modelOf(container), incoming);
+      expect(collectionOf(container), incoming);
       expect(store.saved, incoming);
     });
 
@@ -513,9 +539,10 @@ recipes:
     test('a replace asked for before the load waits for it', () async {
       final container = containerFor(store);
       await controllerOf(container).replaceAll(incoming);
-      // Not the empty model the copy would hold had it run before the load.
+      // Not the empty collection the copy would hold had it run before the
+      // load.
       expect(store.snapshots[ExportPurpose.beforeImport], stored);
-      expect(modelOf(container), incoming);
+      expect(collectionOf(container), incoming);
     });
 
     test(
@@ -527,7 +554,7 @@ recipes:
         final exported = store.snapshots[ExportPurpose.share]!;
         final review = controller.review(const YamlCodec().encode(exported));
         expect(review.issues, isEmpty);
-        expect(review.model, stored);
+        expect(review.collection, stored);
       },
     );
   });
@@ -542,13 +569,13 @@ recipes:
     });
 
     test('an export picked back keeps the spelling it went out with', () async {
-      final exported = Model(ingredients: [Ingredient('Orange Curaçao')]);
+      final exported = Collection(ingredients: [Ingredient('Orange Curaçao')]);
       final onDisk = const YamlCodec().encode(exported);
       final container = await started();
 
       final text = await pickedText(XFile.fromData(utf8.encode(onDisk)));
 
-      expect(controllerOf(container).review(text).model, exported);
+      expect(controllerOf(container).review(text).collection, exported);
     });
 
     test('bytes that are not UTF-8 are refused, not guessed at', () async {

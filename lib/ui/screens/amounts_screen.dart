@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../widgets/editor_form.dart';
-import '../widgets/model_view.dart';
+import '../widgets/collection_view.dart';
 import '../widgets/vocabulary_dialogs.dart';
 
 /// The unit amounts read in and what each of the others is worth (FR-SET-1),
@@ -15,14 +15,14 @@ class AmountsScreen extends StatelessWidget {
   const AmountsScreen({super.key});
 
   @override
-  Widget build(BuildContext context) => ModelView(_AmountsForm.new);
+  Widget build(BuildContext context) => CollectionView(_AmountsForm.new);
 }
 
 class _AmountsForm extends ConsumerStatefulWidget {
-  const _AmountsForm(this.model);
+  const _AmountsForm(this.collection);
 
   /// The settings the screen opens on; nothing else edits them while it stands.
-  final Model model;
+  final Collection collection;
 
   @override
   ConsumerState<_AmountsForm> createState() => _AmountsFormState();
@@ -38,7 +38,7 @@ class _AmountsFormState extends ConsumerState<_AmountsForm> {
   /// What a Save would write. The rows are readings of it, never the other way
   /// round: a size the reader has not typed at keeps the number it had, so
   /// picking another unit cannot drift it.
-  late Settings _entered = widget.model.settings;
+  late Settings _entered = widget.collection.settings;
 
   late final _fields = {
     for (final sized in _sizedUnits)
@@ -100,7 +100,7 @@ class _AmountsFormState extends ConsumerState<_AmountsForm> {
   Widget build(BuildContext context) {
     // The settings' own rules judge the rows, so a ratio the file would refuse
     // is a ratio this screen refuses (ADR 05).
-    final issues = validateModel(settings: _entered);
+    final issues = validateCollection(settings: _entered);
     final refused = firstIssuePerField(
       issues,
       (issue) => switch (issue.path) {
@@ -115,7 +115,7 @@ class _AmountsFormState extends ConsumerState<_AmountsForm> {
     };
     return EditorScaffold(
       title: 'Amounts',
-      dirty: _entered != widget.model.settings,
+      dirty: _entered != widget.collection.settings,
       discardTitle: 'Discard these amounts?',
       onSave: issues.isEmpty && unread.isEmpty
           ? () => unawaited(_save())
@@ -166,7 +166,7 @@ class _AmountsFormState extends ConsumerState<_AmountsForm> {
   }
 
   Future<void> _save() async {
-    await ref.read(modelProvider.notifier).setSettings(_entered);
+    await ref.read(collectionProvider.notifier).setSettings(_entered);
     if (mounted) Navigator.of(context).pop();
   }
 }

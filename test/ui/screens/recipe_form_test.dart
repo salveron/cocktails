@@ -6,8 +6,10 @@ import 'package:flutter_test/flutter_test.dart';
 
 import '../harness.dart';
 
-Future<MemoryModelStore> pumpList(WidgetTester tester, [Model? model]) =>
-    pumpOver(tester, const RecipesScreen(), model ?? recipeModel);
+Future<MemoryModelStore> pumpList(
+  WidgetTester tester, [
+  Collection? collection,
+]) => pumpOver(tester, const RecipesScreen(), collection ?? recipeCollection);
 
 /// The error under the line field at [index], or null while it carries none.
 String? lineError(WidgetTester tester, int index) =>
@@ -41,7 +43,7 @@ void main() {
     });
 
     testWidgets('a vocabulary with no tags offers no picker', (tester) async {
-      await pumpList(tester, Model(ingredients: [Ingredient('gin')]));
+      await pumpList(tester, Collection(ingredients: [Ingredient('gin')]));
       await openAdd(tester);
       expect(find.text('Tags'), findsNothing);
       expect(find.text('Notes'), findsOneWidget);
@@ -113,7 +115,7 @@ void main() {
     ) async {
       final store = await pumpList(
         tester,
-        recipeModel.withIngredient(
+        recipeCollection.withIngredient(
           Ingredient('gin', aliases: const ['jenever']),
         ),
       );
@@ -332,7 +334,7 @@ void main() {
       tester,
     ) async {
       final store = await pumpList(tester);
-      final before = recipeModel.recipeNamed('Negroni')!;
+      final before = recipeCollection.recipeNamed('Negroni')!;
       await chooseOnRow(tester, 'Negroni', 'Edit');
       await typeInto(tester, nameField, 'Boulevardier');
       await tap(tester, find.text('Save'));

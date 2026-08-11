@@ -13,11 +13,13 @@ import '../harness.dart';
 
 const names = ['Daiquiri', 'Negroni', 'Whiskey Sour'];
 
-Future<MemoryModelStore> pumpRecipes(WidgetTester tester, [Model? model]) =>
-    pumpOver(tester, const RecipesScreen(), model ?? recipeModel);
+Future<MemoryModelStore> pumpRecipes(
+  WidgetTester tester, [
+  Collection? collection,
+]) => pumpOver(tester, const RecipesScreen(), collection ?? recipeCollection);
 
-/// The recipe names on screen, in list order — [roster] naming which model's,
-/// so a summary line is never mistaken for a row.
+/// The recipe names on screen, in list order — [roster] naming which
+/// collection's, so a summary line is never mistaken for a row.
 Iterable<String?> namesOn(WidgetTester tester, [List<String> roster = names]) =>
     rowTexts(tester).where(roster.contains);
 
@@ -26,7 +28,7 @@ Iterable<String?> namesOn(WidgetTester tester, [List<String> roster = names]) =>
 /// availability, so the two orders can never be read for each other.
 const stocked = ['Campari Shot', 'Gin Shot', 'Negroni'];
 
-final stockedModel = Model(
+final stockedCollection = Collection(
   ingredients: [
     Ingredient('gin', stock: StockLevel.in_),
     Ingredient('campari', stock: StockLevel.low),
@@ -62,7 +64,7 @@ final stockedModel = Model(
 /// A collection long enough that a row can be drawn from beyond the fold: two
 /// worth making at either end of the alphabet, nothing but missing ones between
 /// (ADR 13). Read by name, so availability cannot bring the far one forward.
-final longModel = Model(
+final longCollection = Collection(
   ingredients: [
     Ingredient('gin', stock: StockLevel.in_),
     Ingredient('vodka'),
@@ -97,7 +99,7 @@ final longModel = Model(
 /// the one case a stale measurement throws off (ADR 13).
 const crowded = ['Aviation', 'Bramble'];
 
-final crowdedModel = Model(
+final crowdedCollection = Collection(
   ingredients: [
     Ingredient('gin', stock: StockLevel.in_),
     Ingredient('vodka'),
@@ -123,7 +125,7 @@ final crowdedModel = Model(
 
 /// Two worth making on different bases, so a base pick is seen to govern what
 /// a roll may land on — without it the draw would move between them.
-final basedModel = Model(
+final basedCollection = Collection(
   ingredients: [
     Ingredient('gin', stock: StockLevel.in_),
     Ingredient('white rum', stock: StockLevel.in_),
@@ -149,7 +151,7 @@ final basedModel = Model(
 /// put is a question with an answer only while there is somewhere else to be.
 const spirits = {'gin': 'Gin', 'vodka': 'Vodka'};
 
-final spiritedModel = Model(
+final spiritedCollection = Collection(
   ingredients: [
     for (final spirit in spirits.keys)
       Ingredient(spirit, stock: StockLevel.in_),
@@ -171,14 +173,14 @@ final spiritedModel = Model(
 );
 
 /// A tag nothing wears, so the chips alone can empty the list.
-final untriedModel = recipeModel.withTag(
+final untriedCollection = recipeCollection.withTag(
   TagKind.recipe,
   const Tag('tiki', color: TagColor.teal),
 );
 
 /// A bottle answering to a second name, so a search can reach a recipe by a
 /// spelling no line of it holds (FR-VOC-6).
-final aliasedModel = recipeModel.withIngredient(
+final aliasedCollection = recipeCollection.withIngredient(
   Ingredient('gin', aliases: const ['juniper']),
   replacing: 'gin',
 );
@@ -202,7 +204,7 @@ String verdictOn(WidgetTester tester, String name) => tester
 /// Two recipes of nothing but groups: one line for each way a group can read
 /// — a bottle on hand, only a low one, nothing at all — and one carrying a
 /// mark, so the mark is seen to govern the group rather than a bottle of it.
-final substitutedModel = Model(
+final substitutedCollection = Collection(
   ingredients: [
     Ingredient('campari', stock: StockLevel.low),
     Ingredient('cognac'),
@@ -273,7 +275,7 @@ String italicOn(WidgetTester tester, String line) => [
 
 /// The same recipes under a reader who pours in ml (FR-SET-1) — a part is
 /// 30 ml, so the Negroni's three lines land on round numbers.
-final inMillilitres = recipeModel.copyWith(
+final inMillilitres = recipeCollection.copyWith(
   settings: const Settings(display: FixedUnit.ml),
 );
 
@@ -300,10 +302,12 @@ Future<void> rewriteUnder(WidgetTester tester, String recipe) async {
     tester.element(find.byType(RecipesScreen)),
     listen: false,
   );
-  final model = container.read(modelProvider).requireValue;
+  final collection = container.read(collectionProvider).requireValue;
   await container
-      .read(modelProvider.notifier)
-      .upsertRecipe(model.recipeNamed(recipe)!.copyWith(notes: 'Stirred.'));
+      .read(collectionProvider.notifier)
+      .upsertRecipe(
+        collection.recipeNamed(recipe)!.copyWith(notes: 'Stirred.'),
+      );
   await tester.pumpAndSettle();
 }
 
@@ -373,20 +377,20 @@ void main() {
     testWidgets('it opens on availability, what is ready first', (
       tester,
     ) async {
-      await pumpRecipes(tester, stockedModel);
+      await pumpRecipes(tester, stockedCollection);
       await openSort(tester);
       expect(sortedBy(tester), ('Availability', false));
       expect(namesOn(tester, stocked), ['Gin Shot', 'Campari Shot', 'Negroni']);
     });
 
     testWidgets('name puts them back A→Z', (tester) async {
-      await pumpRecipes(tester, stockedModel);
+      await pumpRecipes(tester, stockedCollection);
       await sortBy(tester, 'Name');
       expect(namesOn(tester, stocked), stocked);
     });
 
     testWidgets('turned round, what is missing leads', (tester) async {
-      await pumpRecipes(tester, stockedModel);
+      await pumpRecipes(tester, stockedCollection);
       await sortBy(tester, 'Availability');
       expect(namesOn(tester, stocked), ['Negroni', 'Campari Shot', 'Gin Shot']);
     });
@@ -396,7 +400,7 @@ void main() {
     testWidgets('the chips are the vocabulary, and absent without one', (
       tester,
     ) async {
-      await pumpRecipes(tester, stockedModel);
+      await pumpRecipes(tester, stockedCollection);
       expect(find.byType(TagChoices), findsNothing);
 
       await pumpRecipes(tester);
@@ -441,7 +445,7 @@ void main() {
     testWidgets('an empty list blames the tags when they emptied it', (
       tester,
     ) async {
-      await pumpRecipes(tester, untriedModel);
+      await pumpRecipes(tester, untriedCollection);
       await pickTag(tester, 'tiki');
       expect(
         find.text('No recipe here matches every tag you picked.'),
@@ -485,7 +489,7 @@ void main() {
     });
 
     testWidgets('there is no chip where nothing is marked', (tester) async {
-      await pumpRecipes(tester, stockedModel);
+      await pumpRecipes(tester, stockedCollection);
       expect(baseChip, findsNothing);
     });
 
@@ -536,13 +540,13 @@ void main() {
     testWidgets('a marked group answers under every bottle it names', (
       tester,
     ) async {
-      await pumpRecipes(tester, substitutedModel);
+      await pumpRecipes(tester, substitutedCollection);
       await pickBase(tester, 'vodka');
       expect(namesOn(tester, ['Gimlet', 'Sidecar']), ['Gimlet']);
     });
 
     testWidgets('"No base" reaches the recipes marking none', (tester) async {
-      await pumpRecipes(tester, substitutedModel);
+      await pumpRecipes(tester, substitutedCollection);
       await pickBase(tester, 'No base');
       expect(basePick(tester), 'Base: None');
       expect(namesOn(tester, ['Gimlet', 'Sidecar']), ['Sidecar']);
@@ -572,7 +576,7 @@ void main() {
     testWidgets('an empty list blames the base along with the tags', (
       tester,
     ) async {
-      await pumpRecipes(tester, untriedModel);
+      await pumpRecipes(tester, untriedCollection);
       await pickBase(tester, 'gin');
       await pickTag(tester, 'tiki');
       expect(
@@ -586,7 +590,7 @@ void main() {
     testWidgets('and says so in its own words where it alone emptied it', (
       tester,
     ) async {
-      await pumpRecipes(tester, recipeModel);
+      await pumpRecipes(tester, recipeCollection);
       await pickBase(tester, 'No base');
       expect(
         find.text('No recipe here matches no base at all.'),
@@ -618,7 +622,7 @@ void main() {
             tester.element(find.byType(RecipesScreen)),
             listen: false,
           )
-          .read(modelProvider.notifier)
+          .read(collectionProvider.notifier)
           .upsertIngredient(Ingredient('Gin'), replacing: 'gin');
       await tester.pumpAndSettle();
 
@@ -661,7 +665,7 @@ void main() {
     testWidgets('a base picked stands the list at its first row', (
       tester,
     ) async {
-      await pumpRecipes(tester, spiritedModel);
+      await pumpRecipes(tester, spiritedCollection);
       await scrollDown(tester);
       expect(standingOn(tester), isNot('Gin 01'));
       await pickBase(tester, 'vodka');
@@ -669,7 +673,7 @@ void main() {
     });
 
     testWidgets('so do a search, a tag, and another order', (tester) async {
-      await pumpRecipes(tester, spiritedModel);
+      await pumpRecipes(tester, spiritedCollection);
       await scrollDown(tester);
       await search(tester, 'Vodka');
       expect(standingOn(tester), 'Vodka 01');
@@ -684,7 +688,7 @@ void main() {
     testWidgets('the collection changing under the reader moves nothing', (
       tester,
     ) async {
-      await pumpRecipes(tester, spiritedModel);
+      await pumpRecipes(tester, spiritedCollection);
       await scrollDown(tester);
       final standing = standingOn(tester)!;
       await rewriteUnder(tester, standing);
@@ -696,7 +700,7 @@ void main() {
     /// Gin Shot is ready, Campari Shot low — the two a roll may land on — and
     /// Negroni is short of a bottle, so the draw has something to refuse.
     Future<void> pumpDrawable(WidgetTester tester) async {
-      await pumpRecipes(tester, stockedModel);
+      await pumpRecipes(tester, stockedCollection);
     }
 
     testWidgets('it opens one you can make, and only it', (tester) async {
@@ -748,7 +752,7 @@ void main() {
     testWidgets('a base pick governs it too, not just the search', (
       tester,
     ) async {
-      await pumpRecipes(tester, basedModel);
+      await pumpRecipes(tester, basedCollection);
       await pickBase(tester, 'white rum');
       // Both can be made, so an ungoverned draw would move between them.
       for (var thrown = 0; thrown < 4; thrown++) {
@@ -787,7 +791,7 @@ void main() {
     testWidgets('the list holds its place through an edit (ADR 13)', (
       tester,
     ) async {
-      await pumpRecipes(tester, longModel);
+      await pumpRecipes(tester, longCollection);
       await sortBy(tester, 'Name');
       // Rolling is how the far end is reached; a second roll moves off the
       // first, and there are only two to land on.
@@ -800,7 +804,7 @@ void main() {
     });
 
     testWidgets('the card it opens is put on screen (ADR 13)', (tester) async {
-      await pumpRecipes(tester, longModel);
+      await pumpRecipes(tester, longCollection);
       await sortBy(tester, 'Name');
       expect(find.text('Zombie'), findsNothing);
       // Two rolls, so the far one is reached whichever the first landed on.
@@ -813,7 +817,7 @@ void main() {
     testWidgets('and one already in view is not carried off the top', (
       tester,
     ) async {
-      await pumpRecipes(tester, crowdedModel);
+      await pumpRecipes(tester, crowdedCollection);
       // Rolls enough to land on the lower of the pair with the taller one
       // open above it — the order in which the card shutting takes the drawn
       // one with it, where the reveal is measured before either has moved.
@@ -886,7 +890,7 @@ void main() {
     });
 
     testWidgets('a bottle answers under its other names too', (tester) async {
-      await pumpRecipes(tester, aliasedModel);
+      await pumpRecipes(tester, aliasedCollection);
       await search(tester, 'juniper');
       expect(namesOn(tester), ['Negroni']);
     });
@@ -896,7 +900,7 @@ void main() {
     testWidgets('a card reads the group as prose, not as the file', (
       tester,
     ) async {
-      await pumpRecipes(tester, substitutedModel);
+      await pumpRecipes(tester, substitutedCollection);
       await tap(tester, find.text('Sidecar'));
       expect(find.text('1 part cognac or vodka'), findsOneWidget);
       expect(find.textContaining('/'), findsNothing);
@@ -905,7 +909,7 @@ void main() {
     testWidgets('the bottle the bar cannot supply dims, the other stands', (
       tester,
     ) async {
-      await pumpRecipes(tester, substitutedModel);
+      await pumpRecipes(tester, substitutedCollection);
       await tap(tester, find.text('Sidecar'));
       expect(dimmedOn(tester, '1 part cognac or vodka'), ['cognac']);
     });
@@ -913,7 +917,7 @@ void main() {
     testWidgets('it dims as far as an unfilled field\'s hint does', (
       tester,
     ) async {
-      await pumpRecipes(tester, substitutedModel);
+      await pumpRecipes(tester, substitutedCollection);
       await tap(tester, find.text('Sidecar'));
       final theme = Theme.of(tester.element(find.text('Sidecar')));
       expect(
@@ -925,19 +929,19 @@ void main() {
     testWidgets('the "or" carrying the group is italic, and it alone', (
       tester,
     ) async {
-      await pumpRecipes(tester, substitutedModel);
+      await pumpRecipes(tester, substitutedCollection);
       await tap(tester, find.text('Sidecar'));
       expect(italicOn(tester, '1 part cognac or vodka'), ' or ');
     });
 
     testWidgets('one bottle on hand leaves the line undotted', (tester) async {
-      await pumpRecipes(tester, substitutedModel);
+      await pumpRecipes(tester, substitutedCollection);
       await tap(tester, find.text('Sidecar'));
       expect(dotOnLine(tester, '1 part cognac or vodka'), isNull);
     });
 
     testWidgets('the dot reports the best the group can do', (tester) async {
-      await pumpRecipes(tester, substitutedModel);
+      await pumpRecipes(tester, substitutedCollection);
       await tap(tester, find.text('Sidecar'));
       expect(dotOnLine(tester, '1 part cognac or campari'), StockLevel.low);
       expect(dimmedOn(tester, '1 part cognac or campari'), ['cognac']);
@@ -946,7 +950,7 @@ void main() {
     testWidgets('a group short of everything dims nothing and says so', (
       tester,
     ) async {
-      await pumpRecipes(tester, substitutedModel);
+      await pumpRecipes(tester, substitutedCollection);
       await tap(tester, find.text('Sidecar'));
       expect(dimmedOn(tester, '1 part cognac or sweet vermouth'), isEmpty);
       expect(
@@ -958,7 +962,7 @@ void main() {
     testWidgets('the mark governs the group, not a bottle of it', (
       tester,
     ) async {
-      await pumpRecipes(tester, substitutedModel);
+      await pumpRecipes(tester, substitutedCollection);
       await tap(tester, find.text('Gimlet'));
       expect(find.text('1 part gin or vodka (base)'), findsOneWidget);
       expect(dimmedOn(tester, '1 part gin or vodka (base)'), isEmpty);
@@ -967,13 +971,13 @@ void main() {
     testWidgets('one bottle on hand makes the recipe (FR-DIS-1)', (
       tester,
     ) async {
-      await pumpRecipes(tester, substitutedModel);
+      await pumpRecipes(tester, substitutedCollection);
       expect(verdictOn(tester, 'Gimlet'), 'Ready');
       expect(verdictOn(tester, 'Sidecar'), 'Missing');
     });
 
     testWidgets('the shut card sums the group as prose too', (tester) async {
-      await pumpRecipes(tester, substitutedModel);
+      await pumpRecipes(tester, substitutedCollection);
       expect(
         find.text(
           'cognac or vodka · cognac or campari · cognac or sweet vermouth',
@@ -985,7 +989,7 @@ void main() {
     testWidgets('a search reaches a recipe by any bottle of a group', (
       tester,
     ) async {
-      await pumpRecipes(tester, substitutedModel);
+      await pumpRecipes(tester, substitutedCollection);
       await search(tester, 'campari');
       expect(namesOn(tester, const ['Gimlet', 'Sidecar']), ['Sidecar']);
       await search(tester, 'vodka');
@@ -1022,14 +1026,14 @@ void main() {
     testWidgets('wears the verdict of its own bottles (FR-DIS-1)', (
       tester,
     ) async {
-      await pumpRecipes(tester, stockedModel);
+      await pumpRecipes(tester, stockedCollection);
       expect(verdictOn(tester, 'Gin Shot'), 'Ready');
       expect(verdictOn(tester, 'Campari Shot'), 'Low');
       expect(verdictOn(tester, 'Negroni'), 'Missing');
     });
 
     testWidgets('the verdict stays put while the card is open', (tester) async {
-      await pumpRecipes(tester, stockedModel);
+      await pumpRecipes(tester, stockedCollection);
       await tap(tester, find.text('Negroni'));
       expect(verdictOn(tester, 'Negroni'), 'Missing');
     });
@@ -1066,7 +1070,7 @@ void main() {
     testWidgets('only the lines with something to report are dotted', (
       tester,
     ) async {
-      await pumpRecipes(tester, stockedModel);
+      await pumpRecipes(tester, stockedCollection);
       await tap(tester, find.text('Negroni'));
       expect(dotOnLine(tester, '1 part gin'), isNull);
       expect(dotOnLine(tester, '1 part campari'), StockLevel.low);
@@ -1076,7 +1080,7 @@ void main() {
     testWidgets('an optional line is marked though it does not count', (
       tester,
     ) async {
-      await pumpRecipes(tester, stockedModel);
+      await pumpRecipes(tester, stockedCollection);
       await tap(tester, find.text('Gin Shot'));
       expect(verdictOn(tester, 'Gin Shot'), 'Ready');
       expect(
@@ -1199,7 +1203,7 @@ void main() {
     testWidgets('a scaled group italicises both, each saying its own thing', (
       tester,
     ) async {
-      await pumpRecipes(tester, substitutedModel);
+      await pumpRecipes(tester, substitutedCollection);
       await tap(tester, find.text('Gimlet'));
       await scale(tester, 'Gimlet', factor: 2);
       expect(italicOn(tester, '2 parts gin or vodka (base)'), '2 parts or ');
@@ -1208,7 +1212,7 @@ void main() {
     testWidgets('a low bottle is still marked on a scaled line', (
       tester,
     ) async {
-      await pumpRecipes(tester, stockedModel);
+      await pumpRecipes(tester, stockedCollection);
       await tap(tester, find.text('Negroni'));
       await scale(tester, 'Negroni', factor: 2);
       expect(dotOnLine(tester, '2 parts campari'), StockLevel.low);

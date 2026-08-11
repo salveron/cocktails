@@ -17,19 +17,19 @@ lib/
     domain.dart                # barrel — the only domain import other layers use
     src/
       bar.dart                 # Bar, BarMode, Transport, BarSource, Offer, BarPayload,
-                               #   and Shelf, the root above Model (ADR 20)
+                               #   and Shelf, the root above Collection (ADR 20)
       bar_edits.dart           # extension ShelfEdits on Shelf — pure derivations,
                                #   the guest-bar refusal among them (ADR 23)
-      model.dart               # entities, Model — one bar's collection — name lookups,
+      collection.dart          # entities, Collection — one bar's contents — name lookups,
                                #   wornInOrder, the unit vocabulary and its lookup (ADR 09)
-      model_edits.dart         # extension ModelEdits on Model — pure derivations
+      collection_edits.dart    # extension CollectionEdits on Collection — pure derivations
       line_format.dart         # compact-line grammar
       validation.dart          # ValidationIssue + rule set, otherNames
       availability.dart        # Availability, availabilityOf, canMake, stockOfLine, stockOf
       scaling.dart             # ×N scaling, part↔ml display
       discovery.dart           # basesOf, baseSpirits, marksBase, randomCanMake
       optimizer.dart           # Purchase, purchasesWithin — what to buy next
-      helpers.dart             # not exported: nameKey, nameKeys, sameName,
+      names.dart               # not exported: nameKey, nameKeys, sameName,
                                #   compareNames, repeatsName, duplicateNameIndexes,
                                #   listEquals
   data/
@@ -41,7 +41,7 @@ lib/
       file_channel.dart        # FR-BAR-7 — the picker's text, decoded
       lan_channel.dart         # FR-BAR-8 — DNS-SD registration and browse, HTTP both ways
       yaml_codec.dart          # decode/encode of a bar and of the index, version gate
-      yaml_reader.dart         # YAML tree → model parts, with source spans
+      yaml_reader.dart         # YAML tree → collection parts, with source spans
       yaml_writer.dart         # canonical emitter
       file_bar_store.dart      # one file per bar, the index, atomic write, rotation
       memory_bar_store.dart    # in-memory double for state and widget tests
@@ -71,7 +71,7 @@ lib/
                                #   holds both halves of the data exchange and the import
                                #   review its pick pushes, so one file keeps them from
                                #   drifting apart (ADR 18)
-    widgets/                   # empty_state, model_view, search_field, startup_issues,
+    widgets/                   # empty_state, collection_view, search_field, startup_issues,
                                #   color_chip — the pill, chip, dot, the run of dots a name
                                #     or a basket's recipe wears, the dotted name itself, and
                                #     `chipRadius`, the corner a chip and its ink round to
@@ -93,8 +93,8 @@ lib/
 test/                          # mirrors lib/, plus test/architecture_test.dart
 ```
 
-`domain/src/helpers.dart` holds logic shared between domain files (layer-private, not exported) — 
-`nameKey`/`sameName` among them, the one fold behind every name comparison 
+`domain/src/names.dart` holds the name rules shared between domain files (layer-private, not 
+exported) — `nameKey`/`sameName` among them, the one fold behind every name comparison 
 ([ADR 08](adr/08-names-ignore-case.md)).
 
 ## Boundary rules
@@ -133,14 +133,14 @@ chance-dependent is passed in, which is what keeps the layer unit-testable, a re
 ### The shelf and the bar
 
 `Shelf` is the root ([ADR 20](adr/20-the-app-holds-many-bars.md)): every bar the device holds, which 
-one is open, and that one's collection. `Model` keeps its name and its whole shape — it is one bar's 
-collection, and renaming it would rewrite every reference in the app to say what this sentence says.
+one is open, and that one's collection. `Collection` keeps its whole shape — it is one bar's 
+contents, and the level above it is added rather than folded in.
 
 ```dart
 enum BarMode { owner('owner'), guest('guest'); … }
 enum Transport { file('file'), lan('lan'), cloud('cloud'); … }              // FR-BAR-7/8/9
 typedef Offer = ({Transport via, List<String> guests});   // empty where a way cannot name them
-typedef BarPayload = ({String name, FixedUnit display, Model collection});  // what a file holds
+typedef BarPayload = ({String name, FixedUnit display, Collection collection});  // what a file holds
 
 final class BarSource {          // where a guest bar refreshes from (FR-BAR-5)
   final Transport via;
@@ -162,29 +162,29 @@ final class Bar {
 final class Shelf {
   final List<Bar> bars;
   final String? openId;          // null where no bar is open — first run, or the last deleted
-  final Model collection;        // the open bar's, and the only one resident
+  final Collection collection;        // the open bar's, and the only one resident
   Bar? get open;
   Bar? barWithId(String id);
 }
 
-extension ShelfEdits on Shelf {         // bar_edits.dart, as ModelEdits is model_edits.dart
-  Shelf withCollection(Model collection);      // throws on a guest bar (ADR 23)
+extension ShelfEdits on Shelf {         // bar_edits.dart, as CollectionEdits is collection_edits.dart
+  Shelf withCollection(Collection collection);      // throws on a guest bar (ADR 23)
   Shelf withBar(Bar bar);                      // add or replace by id — rename, offers, source
   Shelf withoutBar(String id);                 // FR-BAR-2; a deleted open bar leaves openId null
-  Shelf opening(String id, Model collection);  // the switch: record and bytes at once
+  Shelf opening(String id, Collection collection);  // the switch: record and bytes at once
   Shelf refreshedWith(String id, BarPayload payload, DateTime at);   // FR-BAR-5, guest only
 }
 ```
 
-`Shelf`'s constructor throws `ArgumentError` on a broken shelf, the programmer contract `Model`'s own 
+`Shelf`'s constructor throws `ArgumentError` on a broken shelf, the programmer contract `Collection`'s own 
 constructor already keeps: ids unique, `openId` naming a bar that exists, a guest carrying a source 
-and an owner none, an owner's offers one per transport. `collection` is an empty `Model` while no bar 
+and an owner none, an owner's offers one per transport. `collection` is an empty `Collection` while no bar 
 is open, and no screen can read it then — the shell offers no destination without a bar 
 ([architecture.md](architecture.md#bars)).
 
 **One collection is resident**, which is what makes FR-BAR-1's "nothing crosses" a fact rather than a 
-rule: there is no second `Model` for a search, a draw or a jump to reach into. It also leaves 
-`Model`'s memoised lookups exactly as they were — built for the bar on show and thrown away with it, 
+rule: there is no second `Collection` for a search, a draw or a jump to reach into. It also leaves 
+`Collection`'s memoised lookups exactly as they were — built for the bar on show and thrown away with it, 
 so tens of bars cost one bar's worth of index.
 
 `refreshedWith` takes the name and the time as well as the collection, a refresh replacing all three 
@@ -192,15 +192,15 @@ so tens of bars cost one bar's worth of index.
 refreshed bar is the one open, so refreshing another is a record edit here and a file write in the 
 store. It never touches `display` — the payload's own is read only where a bar is established.
 
-### Entities and the model root
+### Entities and the collection root
 
-`Ingredient`, `Tag`, `Amount`, `RecipeLine`, `Settings`, `Recipe`, `Model` are 
+`Ingredient`, `Tag`, `Amount`, `RecipeLine`, `Settings`, `Recipe`, `Collection` are 
 immutable `final class` values with structural equality. Collections wrapped `List.unmodifiable` 
 — lists not `const`-constructible.
 
 Two identity conventions:
 
-- **Vocabulary entries are entities; references are names.** `Model.ingredients` holds 
+- **Vocabulary entries are entities; references are names.** `Collection.ingredients` holds 
   `Ingredient` values; `RecipeLine.ingredients`, `Recipe.tags`, `Ingredient.tags` hold `String` names. 
   No surrogate IDs — rename is a mutation rewriting references ([architecture.md](architecture.md#system-overview)).
 - **One name however it is capitalised** ([ADR 08](adr/08-names-ignore-case.md)). Every comparison — 
@@ -211,11 +211,11 @@ Two identity conventions:
   one namespace, unique under the fold, indexed by `ingredientNamed` so no caller learns an alias 
   exists. A reference is stored under the entry's own name, `withCanonicalIngredientNames` being the 
   one derivation that puts it there, wherever the line came from.
-- **Two tag vocabularies are peers.** `Model.recipeTags` and `Model.ingredientTags` are separate 
+- **Two tag vocabularies are peers.** `Collection.recipeTags` and `Collection.ingredientTags` are separate 
   `Tag` lists, unique within each ([ADR 07](adr/07-tag-colour.md)). A `Tag` carries no scope: 
   `TagKind` names the side, and every tag operation takes one rather than existing twice under two 
   names — which is also what keeps the UI from re-deriving the distinction to abstract over it.
-- **A unit is an entry, not an enum** ([ADR 09](adr/09-units-are-a-vocabulary.md)). `Model.units`
+- **A unit is an entry, not an enum** ([ADR 09](adr/09-units-are-a-vocabulary.md)). `Collection.units`
   is the vocabulary, `RecipeLine.unit` a name into it, and the three the app leans on are `FixedUnit` 
   ([ADR 17](adr/17-the-fixed-units-interconvert.md)) — one enum for the units no one may rename and 
   the readings `Bar.display` chooses among, since they are the same three. `Settings` holds 
@@ -265,7 +265,7 @@ sets and clears it — `copyWith` cannot, since null is its "keep what you have"
 decides for itself what a group means rather than quietly taking the first. It is the one entity
 list left unwrapped: `List.unmodifiable` would cost the `const` constructor the grammar leans on.
 
-`Model` answers reference questions directly, so no consumer builds its own name index:
+`Collection` answers reference questions directly, so no consumer builds its own name index:
 
 ```dart
 Ingredient? ingredientNamed(String name);
@@ -280,7 +280,7 @@ Set<String> tagNames(TagKind kind);
 Set<String> ingredientSpellings({String? except});   // names and aliases, ADR 10
 ```
 
-These are backed by a `late final` map built on first use. `Model` stays immutable and the
+These are backed by a `late final` map built on first use. `Collection` stays immutable and the
 memoisation is invisible; a lookup is O(1) after the first call, which is what the recipe list,
 availability, and the optimizer all need at NFR-2 scale. The name sets are memoised on the same
 terms, so a form judging a name on every keystroke builds one once instead of one per frame.
@@ -291,33 +291,33 @@ the one being edited, which must collide with neither its own name nor its own a
 
 Name uniqueness checked in two places:
 
-- `Model` constructor throws `ArgumentError` on duplicate (programmer contract: existing Model 
+- `Collection` constructor throws `ArgumentError` on duplicate (programmer contract: existing Collection 
   is well-formed). `Shelf`'s does the same for its own invariants.
-- `validateModel` returns issues, never throws (data contract: untrusted input reported, not crashed). 
-  Works on loose parts before Model construction. `validateShelf` is its counterpart over the index's 
+- `validateCollection` returns issues, never throws (data contract: untrusted input reported, not crashed). 
+  Works on loose parts before Collection construction. `validateShelf` is its counterpart over the index's 
   parts, reusing the same kinds — an id twice over is a `duplicateName`, an unreadable token a 
   `malformedValue`.
 
-Both use single `duplicateNameIndexes` in `helpers.dart`.
+Both use single `duplicateNameIndexes` in `names.dart`.
 
-### Editing the model
+### Editing the collection
 
-Every edit is a pure derivation returning a new `Model`, in `extension ModelEdits on Model` 
-so `model.dart` holds shape and invariants:
+Every edit is a pure derivation returning a new `Collection`, in `extension CollectionEdits on Collection` 
+so `collection.dart` holds shape and invariants:
 
 ```dart
-Model withSettings(Settings settings);
+Collection withSettings(Settings settings);
 typedef UnitEdit = ({Unit unit, String? was});        // the row and the name it came from
-Model withUnits(List<UnitEdit> edits);                // the whole vocabulary, renames propagated
-Model withCanonicalIngredientNames();                 // every line under its bottle's own name
-Model withIngredient(Ingredient ingredient, {String? replacing});   // add, replace, rename
-Model withoutIngredient(String name);
-Model withStock(String ingredient, StockLevel stock);
-Model withTag(TagKind kind, Tag tag);                 // add or replace in that vocabulary
-Model withTagRenamed(TagKind kind, String from, String to);   // rewrites every entry wearing it
-Model withoutTag(TagKind kind, String name);
-Model withRecipe(Recipe recipe);                      // add or replace by name
-Model withoutRecipe(String name);
+Collection withUnits(List<UnitEdit> edits);                // the whole vocabulary, renames propagated
+Collection withCanonicalIngredientNames();                 // every line under its bottle's own name
+Collection withIngredient(Ingredient ingredient, {String? replacing});   // add, replace, rename
+Collection withoutIngredient(String name);
+Collection withStock(String ingredient, StockLevel stock);
+Collection withTag(TagKind kind, Tag tag);                 // add or replace in that vocabulary
+Collection withTagRenamed(TagKind kind, String from, String to);   // rewrites every entry wearing it
+Collection withoutTag(TagKind kind, String name);
+Collection withRecipe(Recipe recipe);                      // add or replace by name
+Collection withoutRecipe(String name);
 
 List<String> recipesUsingIngredient(String name);     // FR-VOC-1 delete blocking
 List<String> recipesUsingUnit(String name);
@@ -331,7 +331,7 @@ and the lines take it too (ADR 08).
 
 `withIngredient` takes its `replacing` for the same reason, one step down: the entry dialog settles
 name, aliases and tags together, and a rename that also lets an alias go — or takes the old name on
-as one — has no valid model to stop at halfway (ADR 10). A `replacing` naming no entry falls back to
+as one — has no valid collection to stop at halfway (ADR 10). A `replacing` naming no entry falls back to
 the entry's own name, so a stale name still cannot crash.
 
 A tag edit touches only its own side: renaming a recipe tag never reads an ingredient, and
@@ -342,13 +342,13 @@ Three rules: edit for missing entry returns unchanged (stale name can't crash). 
 existing name throws `ArgumentError` (programmer contract). Removal never cascades (caller asks 
 `recipesUsing…` first for blocking message).
 
-`copyWith` on multi-field values (`Settings`, `Ingredient`, `Tag`, `RecipeLine`, `Recipe`, `Model`, 
+`copyWith` on multi-field values (`Settings`, `Ingredient`, `Tag`, `RecipeLine`, `Recipe`, `Collection`, 
 `Bar`); rename and stock built from it. `Amount` is rebuilt whole. One nullable field needs its own 
 hatch, since null is `copyWith`'s "keep what you have": `RecipeLine.marked` clears the mark.
 
-Rebuilding `Model` on every edit is deliberate (a bar's scale: few thousand pointer writes; keeps all 
+Rebuilding `Collection` on every edit is deliberate (a bar's scale: few thousand pointer writes; keeps all 
 immutable, derived provider invalidation trivial). `Shelf` above it rebuilds on the same terms and 
-costs less — a list of records tens long, and the same `Model` pointer carried across.
+costs less — a list of records tens long, and the same `Collection` pointer carried across.
 
 ### Line grammar
 
@@ -389,7 +389,7 @@ final class ValidationIssue {
   String get location;             // 'recipes[0].lines[2]'
 }
 
-List<ValidationIssue> validateModel({settings, units, ingredients, ingredientTags,
+List<ValidationIssue> validateCollection({settings, units, ingredients, ingredientTags,
     recipeTags, recipes});
 List<ValidationIssue> validateRecipe(Recipe recipe,
     {required Set<String> knownIngredients, required Set<String> knownTags,
@@ -409,7 +409,7 @@ Empty result = valid. Issues collected in one pass (no fail-fast), top-to-bottom
 codec attach YAML line numbers, form attach field focus, without domain knowing either. 
 Behaviour switches on `kind`; `message` is display-only.
 
-`validateModel`: whole-file entry point for import, and for what a refresh brings (FR-BAR-5) — one 
+`validateCollection`: whole-file entry point for import, and for what a refresh brings (FR-BAR-5) — one 
 judgement, so a file and a fetch are refused on the same terms and worded alike. Others check the 
 single entry a form edits — the ingredient, the tag, the recipe — in one call: paths relative, empty 
 for name. `other…Names` holds every *other* entry's name — every *spelling* for the ingredient 
@@ -418,7 +418,7 @@ four run same rules, same code.
 
 ### Computations
 
-All pure functions of `Model`. Algorithms in [architecture.md](architecture.md#domain-computations). 
+All pure functions of `Collection`. Algorithms in [architecture.md](architecture.md#domain-computations). 
 `randomCanMake` takes `Random` for testability.
 
 ```dart
@@ -427,7 +427,7 @@ String displayMeasure(RecipeLine line, Settings settings, List<Unit> units,
     {required FixedUnit display, int scale = 1});
 
 Set<String> basesOf(Recipe recipe);                   // discovery.dart — FR-DIS-4, ADR 12
-List<String> baseSpirits(Model model);
+List<String> baseSpirits(Collection collection);
 bool marksBase(Recipe recipe, String? spirit);        // null asks for the unmarked
 
 bool canMake(Availability? availability);             // availability.dart — low counts
@@ -436,26 +436,26 @@ Recipe? randomCanMake(Iterable<Recipe> candidates, Map<String, Availability> ava
 
 const budgets = [1, 2, 3];                            // what the optimizer offers (FR-DIS-6)
 final class Purchase { List<String> bottles; List<String> unlocks; }   // both A→Z
-List<Purchase> purchasesWithin(Model model, int budget,               // FR-DIS-6
+List<Purchase> purchasesWithin(Collection collection, int budget,               // FR-DIS-6
     {int most = 25, bool restocking = false});                        // FR-DIS-7, ADR 16
 ```
 
 `canMake` is the one reading of what the bar can manage now — low still being a bottle, and a
 recipe the pass has yet to judge reading as missing, the rank the list's order already gives it.
 The optimizer (FR-DIS-6) asks the same question, so it asks it here. `randomCanMake` draws over
-*candidates handed to it* rather than over the model: the caller is the list, and what it hands
+*candidates handed to it* rather than over the collection: the caller is the list, and what it hands
 over has already been narrowed, which is how "respecting active filters" costs nothing. `besides`
 is the recipe already standing — skipped while another can be made, so a second roll always moves,
 and compared by name fold like every name (ADR 08).
 
 Base spirit is a predicate, not a placement ([ADR 12](adr/12-base-spirit-narrows.md)): `basesOf` 
 takes every alternative of every base line, so a marked group answers under each bottle it names, 
-and `baseSpirits` folds those into what the filter offers — resolved through `Model.bottleNamed` 
+and `baseSpirits` folds those into what the filter offers — resolved through `Collection.bottleNamed` 
 *before* being weighed for repetition, so two spellings of one bottle are one spirit; A→Z. 
 `bottleNamed` is also how a screen holding a pick reads it against a changed vocabulary, so a 
 bottle merely recased goes on narrowing; it is the one home for "this name, under the entry's own", 
 which the optimizer, `withCanonicalIngredientNames` and delete blocking all ask for too. Comparison 
-runs through `helpers.dart`, which stays unexported — no screen folds a name itself.
+runs through `names.dart`, which stays unexported — no screen folds a name itself.
 
 `purchasesWithin` answers FR-DIS-6 ([ADR 15](adr/15-the-optimizer-answers-with-the-best-few.md)); 
 the algorithm is in [architecture.md](architecture.md#domain-computations). It returns the best 
@@ -496,9 +496,9 @@ abstract interface class BarStore {
   Future<LoadOutcome<Records>> loadShelf();
   Future<LoadOutcome<BarPayload>> loadBar(String id);   // one bar, or why it could not be read
   Future<void> saveShelf(Records records);
-  Future<void> saveBar(Bar bar, Model collection);      // one file — the name and pick ride along
+  Future<void> saveBar(Bar bar, Collection collection);      // one file — the name and pick ride along
   Future<void> removeBar(String id);                    // its file and its backups (FR-BAR-2)
-  Future<String> exportSnapshot(Bar bar, Model collection, {ExportPurpose purpose});
+  Future<String> exportSnapshot(Bar bar, Collection collection, {ExportPurpose purpose});
 }
 ```
 
@@ -512,7 +512,7 @@ recovery. Name and reading unit therefore stand in two files at once, and the in
 authority: `loadBar`'s copy of them is read only where a bar is being established or a lost index 
 rebuilt, and every `saveBar` writes the record's own back.
 
-`exportSnapshot` takes the model rather than copying the store file: a session started from 
+`exportSnapshot` takes the collection rather than copying the store file: a session started from 
 `Corrupt` runs on a recovered backup, and the copy must be the collection on screen, not the file 
 that failed to decode ([ADR 18](adr/18-data-crosses-the-edge-in-a-system-sheet.md)). Byte-identical 
 to that bar's store file regardless, the emitter being canonical.
@@ -533,13 +533,13 @@ creates cross-layer coupling [ADR 02](adr/02-persistence-and-export-format.md) a
 1. Parse YAML, retain node spans.
 2. Gate on `format`; 1 and 2 pass, anything else is rejected 
    ([architecture.md](architecture.md#data-format)).
-3. Read tree to model parts; shape errors reported against offending node; compact lines through 
+3. Read tree to collection parts; shape errors reported against offending node; compact lines through 
    `tryParseRecipeLine` (problem → issue at line path). `units` is read first — the lines are 
    parsed against it, and an absent section is the shipped vocabulary (ADR 09).
-4. Run `validateModel` on parts (referential, value rules) only if step 3 clean (broken shape 
+4. Run `validateCollection` on parts (referential, value rules) only if step 3 clean (broken shape 
    never cascades to spurious reference errors).
 5. Resolve `ValidationIssue.path` against parse tree for line numbers.
-6. Build `Model` (cannot throw; duplicates ruled out), then `withCanonicalIngredientNames` — a
+6. Build `Collection` (cannot throw; duplicates ruled out), then `withCanonicalIngredientNames` — a
    hand-edited line naming a bottle by an alias is held under the bottle's own name (ADR 10) — and 
    answer a `BarPayload`: the collection, the file's `name`, and the `display` read out of 
    `settings`. Who keeps which of the three is the caller's, and it is where an import and a refresh 
@@ -576,7 +576,7 @@ abstract interface class BarChannel {         // every transport answers this mu
   Future<FetchOutcome> fetch(BarSource source);         // the add, and every refresh after
 }
 abstract interface class BarOfferings {       // the owner's side, where a way has one
-  Future<BarSource> offer(Bar bar, Model collection);   // answers what a guest would keep
+  Future<BarSource> offer(Bar bar, Collection collection);   // answers what a guest would keep
   Future<void> withdraw(String barId);                  // FR-BAR-6
 }
 abstract interface class BarFinder {          // discovery, where a way has any
@@ -651,39 +651,39 @@ remember a rule. `setUnits` is the one mutation on it taking a whole vocabulary 
 the units screen edits every row at once, and a rename among them must reach the recipe lines in the 
 same edit ([ui-design.md](ui-design.md#units)).
 
-Each mutation is one line over a `ModelEdits` derivation. All run through a single private path: 
+Each mutation is one line over a `CollectionEdits` derivation. All run through a single private path: 
 await the startup load, derive, publish, save the open bar. The three `upsert…`s with `replacing` 
-compose several derivations (whole form/dialog reaches disk as one model, the rename it leaves 
+compose several derivations (whole form/dialog reaches disk as one collection, the rename it leaves 
 behind included). `upsertRecipe` ends on `withCanonicalIngredientNames`, so a line typed in any 
 spelling — another case, an alias — lands under the bottle it names, the bottles that same edit adds 
 included (ADR 08, ADR 10); the recipe form therefore stores what it was given rather than resolving 
 names itself. Awaiting the load makes edits during startup land on the loaded bar rather than 
-replace it. An edit that leaves the model unchanged is not saved (no backup waste). UI never 
-constructs a `Model`, never holds a `BarStore`, and never reaches the notifier 
+replace it. An edit that leaves the collection unchanged is not saved (no backup waste). UI never 
+constructs a `Collection`, never holds a `BarStore`, and never reaches the notifier 
 ([ADR 03](adr/03-app-structure-and-state.md), ADR 23).
 
 Everything else is derived, read-only:
 
-`modelProvider` — the open bar's collection, and the shape every screen already reads. It is derived 
+`collectionProvider` — the open bar's collection, and the shape every screen already reads. It is derived 
 from `shelfProvider` rather than owned, which is what kept the whole presentation layer still while 
 the root moved above it. `openBarProvider` answers the record beside it: name, mode, reading unit, 
 source, last refresh.
 
 `availabilityProvider` — `Map<String, Availability>` by recipe name, `availabilityOf` over every 
-recipe on each model change; empty until the load lands. One pass serves the list's chips and, later, 
+recipe on each collection change; empty until the load lands. One pass serves the list's chips and, later, 
 the availability filter, the random pick and the optimizer. Per-line marks read `stockOfLine` 
 directly (the map answers per recipe, the card asks per line), and `stockOf` per bottle beneath it — 
 so a card dims the alternatives it lacks against the same rule the verdict was reached by (ADR 11).
 
 Filter, search and order are presentation: widget state where the list is drawn, never persisted and 
-never a provider — nothing model-derived reads them, so there is nothing to invalidate. A consumer 
+never a provider — nothing collection-derived reads them, so there is nothing to invalidate. A consumer 
 outside the screen is what would hoist them, and the random pick (FR-DIS-5) turned out not to be 
 one: the draw is made *by* the list, over the rows it is already showing, so the search never had to 
 leave `VocabularyList` and no narrowing had to be named twice. What a screen supplies is the draw 
 itself; what it gets back is a name.
 
 `revealProvider` is the one provider outside this layer, and the fourth kind of state in the app: not 
-model, not derived, not screen-local, but one screen's request of another 
+collection, not derived, not screen-local, but one screen's request of another 
 ([ADR 19](adr/19-a-destination-sends-the-reader-to-another.md)). It lives in `ui/destinations.dart` 
 beside the enum it names, since what destinations exist and how one is asked for are the same 
 subject, and `state/` has no business knowing either. A `Reveal?` — a destination and a name — 
@@ -706,7 +706,7 @@ watches it at all (FR-BAR-4).
 ### Work in flight
 
 Refreshing and sharing are the app's first work outliving the gesture that started it, and the 
-**fifth kind of state**: not model, not derived, not screen-local, not one screen's request of 
+**fifth kind of state**: not collection, not derived, not screen-local, not one screen's request of 
 another, but a job the reader may walk away from. Both live in `channels.dart`.
 
 `refreshesProvider` — `Map<String, RefreshState>` by bar id: reaching, or what it last failed with 
@@ -722,12 +722,12 @@ when the shelf offers nothing (NFR-5). Its value is an effect rather than a read
 watches it rather than a screen.
 
 Performance facts (no over-engineering):
-- Every mutation replaces the whole `Model` → all model-derived recompute. Hundreds of recipes: 
+- Every mutation replaces the whole `Collection` → all collection-derived recompute. Hundreds of recipes: 
   availability pass < 1ms; incremental unneeded (NFR-2).
 - Optimizer is the sole expensive computation, and the sole reason a screen is told whether it is on 
   show. Runs on the main thread: it is spent on arriving, on moving the budget and on flipping the 
   switch — all moments a reader has just acted — where an isolate would buy the time back at the 
-  price of copying the model and a spinner on every edit.
+  price of copying the collection and a spinner on every edit.
 - Opening a bar and landing a refresh both cost one decode, the same work startup has always done on 
   the main thread. Reaching the source does not: it is async I/O and yields. Should a decode ever be 
   measured to jank the bar on show, the way out is an isolate around that one call, and nothing 
@@ -739,8 +739,8 @@ Performance facts (no over-engineering):
    `ShelfController.build()` reads the index and opens the bar it names → `Loaded` seeds state, 
    `Corrupt` seeds that bar's recovered backup + surfaces issues, no index at all runs the format-1 
    migration ([architecture.md](architecture.md#storage-isolation)) or mints one empty owned bar.
-2. **Edit**: widget takes `barWriterProvider` and calls `setStock(…)` → `ModelEdits` returns a new 
-   `Model` → `withCollection` publishes it → UI rebuilds → the open bar's file is enqueued.
+2. **Edit**: widget takes `barWriterProvider` and calls `setStock(…)` → `CollectionEdits` returns a new 
+   `Collection` → `withCollection` publishes it → UI rebuilds → the open bar's file is enqueued.
 3. **Recipe form**: `tryParseRecipeLine` on each field (live feedback) → `validateRecipe` on 
    save (`lines[i]` paths map to fields; else snackbar) → recipe + new ingredients + rename name 
    reach `upsertRecipe` as one edit (ui-design.md#recipe-form).
@@ -804,6 +804,6 @@ joins the table.
 
 One rule, one test: where a fact is pinned in two places a change has to visit both, and the second 
 one drifts. A rule holding over several types or vocabularies gets one parametrised body run over 
-each, not a copy each — `tokenVocabulary` and `valueEquality` in `test/domain/model_test.dart`, 
-`vocabulary` in `model_edits_test.dart`, `modelStoreContract` in `test/data/`. Every case in such a 
+each, not a copy each — `tokenVocabulary` and `valueEquality` in `test/domain/collection_test.dart`, 
+`vocabulary` in `collection_edits_test.dart`, `modelStoreContract` in `test/data/`. Every case in such a 
 table carries a `reason` naming it, so a failure says which one.

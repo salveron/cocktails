@@ -36,8 +36,8 @@ void main() {
   });
 
   group('baseSpirits', () {
-    Model collection(List<Recipe> recipes, {List<Ingredient>? bottles}) =>
-        Model(
+    Collection collection(List<Recipe> recipes, {List<Ingredient>? bottles}) =>
+        Collection(
           ingredients: bottles ?? [Ingredient('gin'), Ingredient('white rum')],
           recipes: recipes,
         );

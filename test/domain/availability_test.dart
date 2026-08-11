@@ -2,7 +2,7 @@ import 'package:cocktails/domain/domain.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  final bar = Model(
+  final bar = Collection(
     ingredients: [
       Ingredient('gin', stock: StockLevel.in_),
       Ingredient('campari', stock: StockLevel.low),

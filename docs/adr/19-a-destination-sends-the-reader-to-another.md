@@ -20,7 +20,7 @@ Nothing crosses destinations. `_Destination`, `_current` private to `app.dart`; 
 - **Serving screen resets narrowing to default before reveal**: tag picks, base pick, search text, order. Reader asked to see row, not why cannot. `VocabularyList` gains name-to-reveal input alongside `draw`; both feed `_reveal` field; reset is part of serving.
 - **Row opened alone**, rest shut (like random pick). Jump is one answer not pile.
 - **Plain tap sends, no marking**. Amended on implementation: long press drafted first (jump as secondary). It's not — reaching name is commonest thing reader wants; name-carrying rows lead nowhere else; tap free. Ripple is feedback. Arrow weighed/refused (slot carries tag dots, stock dots); label refused with long press.
-- **Name crossing is entry's own**: line names bottle by any spelling (ADR 10), sender resolves with `model.bottleNamed`. List finds rows by names; channel carrying spelling fails silently on unbuilt pairs.
+- **Name crossing is entry's own**: line names bottle by any spelling (ADR 10), sender resolves with `collection.bottleNamed`. List finds rows by names; channel carrying spelling fails silently on unbuilt pairs.
 - **Shell trail of destinations, back undoes jumps**: chain unwinds one-by-one; three rules: (a) only jump records; bottom-bar tap clears (reader who chose has nothing to return from); (b) destination **at most once, never on-show** (bounds at 2 for 3 destinations, loop cannot accumulate); (c) Settings (above shell) popped by back as always.
 
 ## Alternatives considered

@@ -21,7 +21,7 @@ void main() {
       RecipeLine(Amount(1), 'part', ['gin']),
     ],
   );
-  final model = Model(
+  final collection = Collection(
     settings: const Settings(partMl: 25),
     ingredients: [
       Ingredient('bourbon', stock: StockLevel.in_, tags: const ['oaked']),
@@ -50,26 +50,26 @@ void main() {
       for (final unit in units) (unit: unit, was: unit.name),
     ];
 
-    List<String> unitsOf(Model model) => [
-      for (final unit in model.units) unit.name,
+    List<String> unitsOf(Collection collection) => [
+      for (final unit in collection.units) unit.name,
     ];
 
-    List<String> linesOf(Model model, String recipe) => [
-      for (final line in model.recipeNamed(recipe)!.lines)
-        formatRecipeLine(line, model.units),
+    List<String> linesOf(Collection collection, String recipe) => [
+      for (final line in collection.recipeNamed(recipe)!.lines)
+        formatRecipeLine(line, collection.units),
     ];
 
     test('withUnits replaces the vocabulary', () {
-      final edited = model.withUnits([
+      final edited = collection.withUnits([
         ...rows(defaultUnits),
         (unit: const Unit('tsp'), was: null),
       ]);
-      expect(unitsOf(edited), [...unitsOf(model), 'tsp']);
-      expect(edited.recipes, model.recipes);
+      expect(unitsOf(edited), [...unitsOf(collection), 'tsp']);
+      expect(edited.recipes, collection.recipes);
     });
 
     test('a plural is edited without touching a line', () {
-      final edited = model.withUnits([
+      final edited = collection.withUnits([
         for (final unit in defaultUnits)
           (
             unit: unit.name == 'part'
@@ -87,7 +87,7 @@ void main() {
     });
 
     test('a rename rewrites every line measured in it', () {
-      final edited = model.withUnits([
+      final edited = collection.withUnits([
         for (final unit in defaultUnits)
           (
             unit: unit.name == 'part' ? const Unit('share') : unit,
@@ -100,7 +100,7 @@ void main() {
     });
 
     test('two units trade names in one edit', () {
-      final swapped = model.withUnits([
+      final swapped = collection.withUnits([
         (unit: const Unit('dash'), was: 'part'),
         (unit: const Unit('part'), was: 'dash'),
         (unit: const Unit(mlUnit), was: mlUnit),
@@ -110,7 +110,7 @@ void main() {
     });
 
     test('a recapitalisation is a rename of the same unit', () {
-      final edited = model.withUnits([
+      final edited = collection.withUnits([
         for (final unit in defaultUnits)
           (
             unit: unit.name == 'part' ? const Unit('Part') : unit,
@@ -121,34 +121,34 @@ void main() {
     });
 
     test('a unit dropped from the list is gone, lines untouched', () {
-      final edited = model.withUnits(
+      final edited = collection.withUnits(
         rows([
           for (final unit in defaultUnits)
             if (unit.name != 'oz') unit,
         ]),
       );
       expect(unitsOf(edited), isNot(contains('oz')));
-      expect(edited.recipes, model.recipes);
+      expect(edited.recipes, collection.recipes);
     });
 
     test('recipesUsingUnit names what stands in the way of deleting it', () {
-      expect(model.recipesUsingUnit('part'), ['Whiskey Sour', 'Negroni']);
-      expect(model.recipesUsingUnit('PART'), ['Whiskey Sour', 'Negroni']);
-      expect(model.recipesUsingUnit('oz'), isEmpty);
+      expect(collection.recipesUsingUnit('part'), ['Whiskey Sour', 'Negroni']);
+      expect(collection.recipesUsingUnit('PART'), ['Whiskey Sour', 'Negroni']);
+      expect(collection.recipesUsingUnit('oz'), isEmpty);
     });
   });
 
   group('settings', () {
     test('withSettings replaces the settings and nothing else', () {
-      final edited = model.withSettings(const Settings(partMl: 30));
+      final edited = collection.withSettings(const Settings(partMl: 30));
       expect(edited.settings, const Settings(partMl: 30));
-      expect(edited, model.copyWith(settings: const Settings(partMl: 30)));
+      expect(edited, collection.copyWith(settings: const Settings(partMl: 30)));
     });
   });
 
   group('ingredients', () {
     test('withIngredient adds an entry the vocabulary lacked', () {
-      final edited = model.withIngredient(Ingredient('rye'));
+      final edited = collection.withIngredient(Ingredient('rye'));
       expect(namesOf(edited.ingredients), [
         'bourbon',
         'lemon juice',
@@ -159,51 +159,57 @@ void main() {
     });
 
     test('withIngredient replaces the entry of that name where it stands', () {
-      final edited = model.withIngredient(
+      final edited = collection.withIngredient(
         Ingredient('lemon juice', stock: StockLevel.in_),
       );
-      expect(namesOf(edited.ingredients), namesOf(model.ingredients));
+      expect(namesOf(edited.ingredients), namesOf(collection.ingredients));
       expect(edited.ingredientNamed('lemon juice')?.stock, StockLevel.in_);
     });
 
     test('withoutIngredient removes only that entry', () {
-      final edited = model.withoutIngredient('egg white');
+      final edited = collection.withoutIngredient('egg white');
       expect(namesOf(edited.ingredients), ['bourbon', 'lemon juice', 'gin']);
     });
 
     test('withoutIngredient leaves the recipes that referenced it', () {
-      expect(model.withoutIngredient('bourbon').recipes, model.recipes);
+      expect(
+        collection.withoutIngredient('bourbon').recipes,
+        collection.recipes,
+      );
     });
 
     test('withoutIngredient of an unknown name changes nothing', () {
-      expect(model.withoutIngredient('rye'), model);
+      expect(collection.withoutIngredient('rye'), collection);
     });
 
     test('withStock sets the level and keeps the rest of the entry', () {
-      final edited = model.withStock('bourbon', StockLevel.low);
+      final edited = collection.withStock('bourbon', StockLevel.low);
       expect(
         edited.ingredientNamed('bourbon'),
         Ingredient('bourbon', stock: StockLevel.low, tags: const ['oaked']),
       );
-      expect(namesOf(edited.ingredients), namesOf(model.ingredients));
+      expect(namesOf(edited.ingredients), namesOf(collection.ingredients));
     });
 
     test('withStock on an unknown ingredient changes nothing', () {
-      expect(model.withStock('rye', StockLevel.in_), same(model));
+      expect(collection.withStock('rye', StockLevel.in_), same(collection));
     });
   });
 
   group('ingredient rename', () {
     /// The bourbon entry under a new name, everything else about it kept —
     /// the whole entry as the dialog hands it back.
-    Model renamed(Model model, String to, {String from = 'bourbon'}) =>
-        model.withIngredient(
-          model.ingredientNamed(from)!.copyWith(name: to),
-          replacing: from,
-        );
+    Collection renamed(
+      Collection collection,
+      String to, {
+      String from = 'bourbon',
+    }) => collection.withIngredient(
+      collection.ingredientNamed(from)!.copyWith(name: to),
+      replacing: from,
+    );
 
     test('renames the entry where it stands', () {
-      final edited = renamed(model, 'rye');
+      final edited = renamed(collection, 'rye');
       expect(namesOf(edited.ingredients), [
         'rye',
         'lemon juice',
@@ -216,7 +222,7 @@ void main() {
 
     test('rewrites every referencing line', () {
       final line = renamed(
-        model,
+        collection,
         'rye',
       ).recipeNamed('Whiskey Sour')?.lines.first;
       expect(line?.ingredients.single, 'rye');
@@ -224,7 +230,7 @@ void main() {
     });
 
     test('rewrites optional lines too', () {
-      final edited = renamed(model, 'aquafaba', from: 'egg white');
+      final edited = renamed(collection, 'aquafaba', from: 'egg white');
       expect(
         edited.recipeNamed('Whiskey Sour')?.lines.last.ingredients.single,
         'aquafaba',
@@ -233,11 +239,11 @@ void main() {
     });
 
     test('leaves a recipe that never referenced it untouched', () {
-      expect(renamed(model, 'rye').recipeNamed('Negroni'), same(negroni));
+      expect(renamed(collection, 'rye').recipeNamed('Negroni'), same(negroni));
     });
 
     test('reaches a bottle standing as one alternative of a group', () {
-      final grouped = model.copyWith(
+      final grouped = collection.copyWith(
         recipes: [
           Recipe(
             'Sidecar',
@@ -257,18 +263,21 @@ void main() {
     });
 
     test('an unknown name lands the entry all the same', () {
-      final edited = model.withIngredient(Ingredient('rye'), replacing: 'gone');
+      final edited = collection.withIngredient(
+        Ingredient('rye'),
+        replacing: 'gone',
+      );
       expect(namesOf(edited.ingredients).last, 'rye');
-      expect(edited.recipes, model.recipes);
+      expect(edited.recipes, collection.recipes);
     });
 
     test('renaming onto an existing name is rejected', () {
-      expect(() => renamed(model, 'gin'), throwsArgumentError);
-      expect(() => renamed(model, 'GIN'), throwsArgumentError);
+      expect(() => renamed(collection, 'gin'), throwsArgumentError);
+      expect(() => renamed(collection, 'GIN'), throwsArgumentError);
     });
 
     test('recapitalising is a rename of that entry, not a collision', () {
-      final edited = renamed(model, 'Bourbon');
+      final edited = renamed(collection, 'Bourbon');
       expect(namesOf(edited.ingredients).first, 'Bourbon');
       expect(
         edited.recipeNamed('Whiskey Sour')?.lines.first.ingredients.single,
@@ -278,13 +287,13 @@ void main() {
 
     test('the name it replaces is read however it is written (ADR 08)', () {
       expect(
-        renamed(model, 'rye', from: 'BOURBON').ingredients.first,
+        renamed(collection, 'rye', from: 'BOURBON').ingredients.first,
         Ingredient('rye', stock: StockLevel.in_, tags: const ['oaked']),
       );
     });
 
     test('a rename dropping an alias never builds the half of it', () {
-      final aliased = model.withIngredient(
+      final aliased = collection.withIngredient(
         Ingredient('bourbon', stock: StockLevel.in_, aliases: const ['rye']),
       );
       // The new name is the alias the same edit lets go of, so applying the
@@ -301,7 +310,7 @@ void main() {
     });
 
     test('and neither does one taking the old name as an alias', () {
-      final edited = model.withIngredient(
+      final edited = collection.withIngredient(
         Ingredient('sloe gin', aliases: const ['gin']),
         replacing: 'gin',
       );
@@ -322,52 +331,64 @@ void main() {
     TagKind kind, {
     required String renamedTo,
     required List<String> wearers,
-    required Object Function(Model model) sameSide,
-    required Object Function(Model model) otherSide,
-    required Object? Function(Model model) bystander,
+    required Object Function(Collection collection) sameSide,
+    required Object Function(Collection collection) otherSide,
+    required Object? Function(Collection collection) bystander,
   }) {
     final other = kind == TagKind.recipe ? TagKind.ingredient : TagKind.recipe;
-    final held = model.tagsOf(kind);
+    final held = collection.tagsOf(kind);
     final first = held.first;
     final last = held.last;
 
     group('${kind.name} tags', () {
       test('withTag adds an entry the vocabulary lacked', () {
-        expect(model.withTag(kind, stirred).tagsOf(kind), [...held, stirred]);
+        expect(collection.withTag(kind, stirred).tagsOf(kind), [
+          ...held,
+          stirred,
+        ]);
       });
 
       test('withTag of an existing name leaves one entry', () {
-        expect(model.withTag(kind, first).tagsOf(kind), held);
+        expect(collection.withTag(kind, first).tagsOf(kind), held);
       });
 
       test('withTag repaints the entry where it stands', () {
         final repainted = first.copyWith(color: TagColor.indigo);
-        expect(model.withTag(kind, repainted).tagsOf(kind), [repainted, last]);
+        expect(collection.withTag(kind, repainted).tagsOf(kind), [
+          repainted,
+          last,
+        ]);
       });
 
       test('withoutTag removes only that entry', () {
-        expect(model.withoutTag(kind, first.name).tagsOf(kind), [last]);
+        expect(collection.withoutTag(kind, first.name).tagsOf(kind), [last]);
       });
 
       test('withoutTag leaves the entries that wore it', () {
-        expect(sameSide(model.withoutTag(kind, first.name)), sameSide(model));
+        expect(
+          sameSide(collection.withoutTag(kind, first.name)),
+          sameSide(collection),
+        );
       });
 
       test('withoutTag of an unknown name changes nothing', () {
-        expect(model.withoutTag(kind, 'stirred'), model);
+        expect(collection.withoutTag(kind, 'stirred'), collection);
       });
 
       test('neither edit reaches the other vocabulary', () {
-        expect(model.withTag(kind, stirred).tagsOf(other), model.tagsOf(other));
         expect(
-          model.withoutTag(kind, first.name).tagsOf(other),
-          model.tagsOf(other),
+          collection.withTag(kind, stirred).tagsOf(other),
+          collection.tagsOf(other),
+        );
+        expect(
+          collection.withoutTag(kind, first.name).tagsOf(other),
+          collection.tagsOf(other),
         );
       });
     });
 
     group('${kind.name} tag rename', () {
-      final renamed = model.withTagRenamed(kind, first.name, renamedTo);
+      final renamed = collection.withTagRenamed(kind, first.name, renamedTo);
 
       test('renames the entry where it stands, colour and all', () {
         expect(renamed.tagsOf(kind), [first.copyWith(name: renamedTo), last]);
@@ -375,24 +396,27 @@ void main() {
       });
 
       test('rewrites every entry wearing the tag, in place', () {
-        expect(model.usersOfTag(kind, first.name), wearers);
+        expect(collection.usersOfTag(kind, first.name), wearers);
         expect(renamed.usersOfTag(kind, renamedTo), wearers);
       });
 
       test('leaves an entry that never wore it untouched', () {
-        expect(bystander(renamed), same(bystander(model)));
+        expect(bystander(renamed), same(bystander(collection)));
       });
 
       test('an unknown name changes nothing', () {
-        expect(model.withTagRenamed(kind, 'stirred', renamedTo), same(model));
+        expect(
+          collection.withTagRenamed(kind, 'stirred', renamedTo),
+          same(collection),
+        );
       });
 
       test('the other side is none of its business', () {
-        expect(otherSide(renamed), otherSide(model));
+        expect(otherSide(renamed), otherSide(collection));
       });
 
       test('a same-named tag in the other vocabulary stays where it is', () {
-        final shared = model.withTag(other, first);
+        final shared = collection.withTag(other, first);
         final edited = shared.withTagRenamed(kind, first.name, renamedTo);
         expect(edited.hasTag(other, first.name), isTrue);
         expect(edited.hasTag(kind, first.name), isFalse);
@@ -400,7 +424,7 @@ void main() {
 
       test('renaming onto an existing name is rejected', () {
         expect(
-          () => model.withTagRenamed(kind, first.name, last.name),
+          () => collection.withTagRenamed(kind, first.name, last.name),
           throwsArgumentError,
         );
       });
@@ -411,24 +435,24 @@ void main() {
     TagKind.recipe,
     renamedTo: 'sours',
     wearers: ['Whiskey Sour'],
-    sameSide: (model) => model.recipes,
-    otherSide: (model) => model.ingredients,
-    bystander: (model) => model.recipeNamed('Negroni'),
+    sameSide: (collection) => collection.recipes,
+    otherSide: (collection) => collection.ingredients,
+    bystander: (collection) => collection.recipeNamed('Negroni'),
   );
 
   vocabulary(
     TagKind.ingredient,
     renamedTo: 'citrusy',
     wearers: ['lemon juice'],
-    sameSide: (model) => model.ingredients,
-    otherSide: (model) => model.recipes,
-    bystander: (model) => model.ingredientNamed('gin'),
+    sameSide: (collection) => collection.ingredients,
+    otherSide: (collection) => collection.recipes,
+    bystander: (collection) => collection.ingredientNamed('gin'),
   );
 
   group('recipes', () {
-    test('withRecipe adds a recipe the model lacked', () {
+    test('withRecipe adds a recipe the collection lacked', () {
       final sazerac = Recipe('Sazerac');
-      expect(model.withRecipe(sazerac).recipes, [
+      expect(collection.withRecipe(sazerac).recipes, [
         whiskeySour,
         negroni,
         sazerac,
@@ -436,41 +460,44 @@ void main() {
     });
 
     test('withRecipe replaces the one of that name where it stands', () {
-      final edited = model.withRecipe(Recipe('Whiskey Sour', notes: 'shaken'));
+      final edited = collection.withRecipe(
+        Recipe('Whiskey Sour', notes: 'shaken'),
+      );
       expect(edited.recipes.first.notes, 'shaken');
       expect(edited.recipes.last, negroni);
     });
 
     test('withoutRecipe removes only that recipe', () {
-      expect(model.withoutRecipe('Whiskey Sour').recipes, [negroni]);
+      expect(collection.withoutRecipe('Whiskey Sour').recipes, [negroni]);
     });
 
     test('withoutRecipe of an unknown name changes nothing', () {
-      expect(model.withoutRecipe('Sazerac'), model);
+      expect(collection.withoutRecipe('Sazerac'), collection);
     });
   });
 
   group('withCanonicalIngredientNames (ADR 10)', () {
     /// The vocabulary with one bottle answering to a second spelling.
-    final aliased = model.withIngredient(
+    final aliased = collection.withIngredient(
       Ingredient('bourbon', stock: StockLevel.in_, aliases: const ['whiskey']),
     );
 
-    List<String> ingredientsOf(Model model, String recipe) => [
-      for (final line in model.recipeNamed(recipe)!.lines)
+    List<String> ingredientsOf(Collection collection, String recipe) => [
+      for (final line in collection.recipeNamed(recipe)!.lines)
         line.ingredients.single,
     ];
 
-    Model naming(Model model, String ingredient) => model.copyWith(
-      recipes: [
-        Recipe(
-          'Old Fashioned',
-          lines: [
-            RecipeLine(const Amount(2), 'part', [ingredient]),
+    Collection naming(Collection collection, String ingredient) =>
+        collection.copyWith(
+          recipes: [
+            Recipe(
+              'Old Fashioned',
+              lines: [
+                RecipeLine(const Amount(2), 'part', [ingredient]),
+              ],
+            ),
           ],
-        ),
-      ],
-    );
+        );
 
     test('an alias becomes the bottle it names', () {
       final canonical = naming(
@@ -515,9 +542,9 @@ void main() {
       );
     });
 
-    test('a model already canonical is the very same model', () {
-      final empty = Model();
-      expect(model.withCanonicalIngredientNames(), same(model));
+    test('a collection already canonical is the very same collection', () {
+      final empty = Collection();
+      expect(collection.withCanonicalIngredientNames(), same(collection));
       expect(empty.withCanonicalIngredientNames(), same(empty));
     });
 
@@ -541,8 +568,8 @@ void main() {
   });
 
   group('reference queries', () {
-    test('recipesUsingIngredient names them in model order', () {
-      final shared = model.withRecipe(
+    test('recipesUsingIngredient names them in collection order', () {
+      final shared = collection.withRecipe(
         Recipe(
           'Old Fashioned',
           lines: const [
@@ -557,25 +584,27 @@ void main() {
     });
 
     test('recipesUsingIngredient counts optional lines', () {
-      expect(model.recipesUsingIngredient('egg white'), ['Whiskey Sour']);
+      expect(collection.recipesUsingIngredient('egg white'), ['Whiskey Sour']);
     });
 
     test('recipesUsingIngredient is empty when nothing references it', () {
-      expect(model.recipesUsingIngredient('lemon juice'), ['Whiskey Sour']);
+      expect(collection.recipesUsingIngredient('lemon juice'), [
+        'Whiskey Sour',
+      ]);
       expect(
-        model
+        collection
             .withoutRecipe('Whiskey Sour')
             .recipesUsingIngredient('lemon juice'),
         isEmpty,
       );
     });
 
-    test('usersOfTag names them in model order', () {
-      expect(model.usersOfTag(TagKind.recipe, 'classic'), [
+    test('usersOfTag names them in collection order', () {
+      expect(collection.usersOfTag(TagKind.recipe, 'classic'), [
         'Whiskey Sour',
         'Negroni',
       ]);
-      final shared = model.withIngredient(
+      final shared = collection.withIngredient(
         Ingredient('gin', tags: const ['oaked']),
       );
       expect(shared.usersOfTag(TagKind.ingredient, 'oaked'), [
@@ -587,22 +616,22 @@ void main() {
     test('usersOfTag is empty when nothing wears it', () {
       for (final kind in TagKind.values) {
         expect(
-          model.withTag(kind, stirred).usersOfTag(kind, 'stirred'),
+          collection.withTag(kind, stirred).usersOfTag(kind, 'stirred'),
           isEmpty,
         );
       }
     });
 
     test('a reference in another case still counts (ADR 08)', () {
-      expect(model.recipesUsingIngredient('BOURBON'), ['Whiskey Sour']);
-      expect(model.usersOfTag(TagKind.recipe, 'Classic'), [
+      expect(collection.recipesUsingIngredient('BOURBON'), ['Whiskey Sour']);
+      expect(collection.usersOfTag(TagKind.recipe, 'Classic'), [
         'Whiskey Sour',
         'Negroni',
       ]);
     });
 
     test('so does one made by an alias, either end of it (ADR 10)', () {
-      final aliased = model.withIngredient(
+      final aliased = collection.withIngredient(
         Ingredient('bourbon', aliases: const ['whiskey']),
       );
       expect(aliased.recipesUsingIngredient('whiskey'), ['Whiskey Sour']);
@@ -620,7 +649,7 @@ void main() {
     });
 
     test('standing as one alternative still blocks a delete (ADR 11)', () {
-      final grouped = model.copyWith(
+      final grouped = collection.copyWith(
         recipes: [
           Recipe(
             'Sidecar',
@@ -635,7 +664,7 @@ void main() {
     });
 
     test('each query looks only at its own side', () {
-      final shared = model
+      final shared = collection
           .withTag(TagKind.ingredient, const Tag('sour', color: TagColor.rose))
           .withTag(TagKind.recipe, const Tag('citrus', color: TagColor.sand));
       expect(shared.usersOfTag(TagKind.ingredient, 'sour'), isEmpty);

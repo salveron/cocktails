@@ -12,7 +12,7 @@ lossless. AI bulk-edit access point. Single-user, offline.
 
 ## Decision
 
-**Entire model in memory; persists as single YAML file; export byte-identical to store.**
+**Entire collection in memory; persists as single YAML file; export byte-identical to store.**
 
 - Export = file copy; import = validate, atomically replace.
 - One schema: no internal-vs-external translation.

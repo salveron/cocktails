@@ -6,7 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../destinations.dart';
 import '../widgets/color_chip.dart';
 import '../widgets/empty_state.dart';
-import '../widgets/model_view.dart';
+import '../widgets/collection_view.dart';
 import '../widgets/vocabulary_list.dart';
 
 String _bottlesOf(Purchase purchase) => purchase.bottles.join(' + ');
@@ -51,11 +51,11 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
   @override
   Widget build(BuildContext context) {
     if (!widget.showing) return const SizedBox.shrink();
-    return ModelView((model) {
+    return CollectionView((collection) {
       final purchases = ref.watch(purchasesProvider(_restocking));
-      final vocabulary = sortedByName(model.recipeTags);
+      final vocabulary = sortedByName(collection.recipeTags);
       final worn = {
-        for (final recipe in model.recipes) recipe.name: recipe.tags,
+        for (final recipe in collection.recipes) recipe.name: recipe.tags,
       };
       final filter = _tagFilter(vocabulary, worn);
       // The picks as the vocabulary spells them — `tagFilter` reads them by the
@@ -83,12 +83,12 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
           ?filter?.row,
           Expanded(
             child: onShow.isEmpty
-                ? _emptyFor(model, purchases, filter)
+                ? _emptyFor(collection, purchases, filter)
                 : ListView.builder(
                     padding: const EdgeInsets.only(bottom: 16),
                     itemCount: onShow.length,
                     itemBuilder: (context, index) => _card(
-                      model,
+                      collection,
                       onShow[index].basket,
                       onShow[index].rank,
                       lit: lit,
@@ -120,7 +120,7 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
   );
 
   Widget _card(
-    Model model,
+    Collection collection,
     Purchase purchase,
     int rank, {
     required List<Tag> lit,
@@ -141,7 +141,12 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
         ),
       ),
       body: expanded
-          ? _Basket(model: model, purchase: purchase, lit: lit, worn: worn)
+          ? _Basket(
+              collection: collection,
+              purchase: purchase,
+              lit: lit,
+              worn: worn,
+            )
           : null,
       onTap: () => setState(() => _expanded.toggle(bottles)),
     );
@@ -153,11 +158,11 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
   /// under the tags in force, absent where none does — and it blames the picks
   /// rather than the size where they are what emptied the screen.
   Widget _emptyFor(
-    Model model,
+    Collection collection,
     List<Purchase> purchases,
     ListFilter<Purchase>? filter,
   ) {
-    if (model.recipes.isEmpty) {
+    if (collection.recipes.isEmpty) {
       return const EmptyState(
         icon: Icons.local_bar_outlined,
         title: 'No recipes yet',
@@ -281,13 +286,13 @@ class _Controls extends StatelessWidget {
 /// holds entries' own names, so nothing here resolves a spelling.
 class _Basket extends ConsumerWidget {
   const _Basket({
-    required this.model,
+    required this.collection,
     required this.purchase,
     required this.lit,
     required this.worn,
   });
 
-  final Model model;
+  final Collection collection;
   final Purchase purchase;
   final List<Tag> lit;
   final Map<String, List<String>> worn;
@@ -301,7 +306,7 @@ class _Basket extends ConsumerWidget {
         label: 'Ingredients',
         bullets: [
           for (final bottle in purchase.bottles)
-            (name: bottle, trailing: StockDot(stockOf(model, bottle))),
+            (name: bottle, trailing: StockDot(stockOf(collection, bottle))),
         ],
         onTap: (bottle) => reach(Destination.inventory, bottle),
       ),

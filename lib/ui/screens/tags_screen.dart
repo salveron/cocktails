@@ -7,7 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../widgets/color_chip.dart';
 import '../widgets/empty_state.dart';
-import '../widgets/model_view.dart';
+import '../widgets/collection_view.dart';
 import '../widgets/vocabulary_dialogs.dart';
 import '../widgets/vocabulary_list.dart';
 
@@ -27,9 +27,11 @@ class TagsScreen extends StatelessWidget {
           tabs: [for (final kind in TagKind.values) Tab(text: kind.words.tab)],
         ),
       ),
-      body: ModelView(
-        (model) => TabBarView(
-          children: [for (final kind in TagKind.values) _TagTab(kind, model)],
+      body: CollectionView(
+        (collection) => TabBarView(
+          children: [
+            for (final kind in TagKind.values) _TagTab(kind, collection),
+          ],
         ),
       ),
     ),
@@ -74,16 +76,16 @@ extension on TagKind {
 }
 
 class _TagTab extends ConsumerWidget {
-  const _TagTab(this.kind, this.model);
+  const _TagTab(this.kind, this.collection);
 
   final TagKind kind;
-  final Model model;
+  final Collection collection;
 
   _Words get vocabulary => kind.words;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) => VocabularyList<Tag>(
-    entries: model.tagsOf(kind),
+    entries: collection.tagsOf(kind),
     nameOf: (tag) => tag.name,
     rowOf: (tag) => VocabularyRow(
       // Left-align chip (prevents stretching).
@@ -107,7 +109,7 @@ class _TagTab extends ConsumerWidget {
 
   /// Returns true after adding (clears search).
   Future<bool> _add(BuildContext context, WidgetRef ref, String query) async {
-    final color = _unspentColor(model.tagsOf(kind));
+    final color = _unspentColor(collection.tagsOf(kind));
     final tag = await promptForTag(
       context,
       title: 'New ${vocabulary.noun}',
@@ -117,12 +119,12 @@ class _TagTab extends ConsumerWidget {
       initial: query,
     );
     if (tag == null || !context.mounted) return false;
-    await ref.read(modelProvider.notifier).upsertTag(kind, tag);
+    await ref.read(collectionProvider.notifier).upsertTag(kind, tag);
     return true;
   }
 
-  /// Name and colour come back together, so the whole entry goes to the model
-  /// as one edit — one save, one backup rotation — the rename that carries it
+  /// Name and colour come back together, so the whole entry goes to the
+  /// collection as one edit — one save, one backup rotation — the rename it
   /// into the entries wearing it included (FR-DAT-4).
   Future<void> _edit(BuildContext context, WidgetRef ref, Tag tag) async {
     final edited = await promptForTag(
@@ -135,7 +137,7 @@ class _TagTab extends ConsumerWidget {
     );
     if (edited == null || !context.mounted) return;
     await ref
-        .read(modelProvider.notifier)
+        .read(collectionProvider.notifier)
         .upsertTag(kind, edited, replacing: tag.name);
   }
 
@@ -143,11 +145,11 @@ class _TagTab extends ConsumerWidget {
     final confirmed = await confirmDelete(
       context,
       what: tag.name,
-      blockedBy: model.usersOfTag(kind, tag.name),
+      blockedBy: collection.usersOfTag(kind, tag.name),
       blockedByNoun: vocabulary.blockedByNoun,
     );
     if (!confirmed || !context.mounted) return;
-    await ref.read(modelProvider.notifier).removeTag(kind, tag.name);
+    await ref.read(collectionProvider.notifier).removeTag(kind, tag.name);
   }
 
   /// Name rules (excluding [except] to prevent collision on rename). A tag
@@ -158,7 +160,7 @@ class _TagTab extends ConsumerWidget {
   }) =>
       (entry) => validateTag(
         Tag(entry.name, color: color),
-        otherTagNames: otherNames(model.tagNames(kind), except),
+        otherTagNames: otherNames(collection.tagNames(kind), except),
       );
 }
 

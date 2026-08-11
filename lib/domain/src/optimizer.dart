@@ -3,8 +3,8 @@
 library;
 
 import 'availability.dart';
-import 'helpers.dart';
-import 'model.dart';
+import 'names.dart';
+import 'collection.dart';
 
 /// What a budget can be (FR-DIS-6) — one search at the largest answers them all.
 const budgets = [1, 2, 3];
@@ -46,7 +46,7 @@ final class Purchase {
 /// one short of full stock — which puts the bottles running low in the pool and
 /// makes the goal ready rather than merely makeable.
 List<Purchase> purchasesWithin(
-  Model model,
+  Collection collection,
   int budget, {
   int most = 25,
   bool restocking = false,
@@ -54,8 +54,13 @@ List<Purchase> purchasesWithin(
   if (budget < 1) return const [];
   final gaps = <({Set<String> bottles, String recipe})>[];
   final pool = <String>{};
-  for (final recipe in model.recipes) {
-    for (final gap in _gapsOf(model, recipe, budget, restocking: restocking)) {
+  for (final recipe in collection.recipes) {
+    for (final gap in _gapsOf(
+      collection,
+      recipe,
+      budget,
+      restocking: restocking,
+    )) {
       gaps.add((bottles: gap, recipe: recipe.name));
       pool.addAll(gap);
     }
@@ -145,7 +150,7 @@ bool _earnsIts(List<int> basket, int yield, Map<int, int> yields, int radix) {
 /// every line [restocking] counts as short, any single alternative closing a
 /// group (ADR-11). Empty where it needs nothing, or more than [budget] allows.
 List<Set<String>> _gapsOf(
-  Model model,
+  Collection collection,
   Recipe recipe,
   int budget, {
   required bool restocking,
@@ -154,12 +159,14 @@ List<Set<String>> _gapsOf(
   var short = false;
   for (final line in recipe.lines) {
     if (line.isOptional) continue;
-    final stock = stockOfLine(model, line);
+    final stock = stockOfLine(collection, line);
     if (restocking ? stock == StockLevel.in_ : stock != StockLevel.out) {
       continue;
     }
     short = true;
-    final ways = {for (final name in line.ingredients) model.bottleNamed(name)};
+    final ways = {
+      for (final name in line.ingredients) collection.bottleNamed(name),
+    };
     final grown = <String, Set<String>>{};
     for (final gap in gaps) {
       for (final way in ways) {

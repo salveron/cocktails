@@ -14,22 +14,22 @@ Horizontal groundwork every feature depends on; strictly ordered.
 - [x] **M1 Scaffold** — Flutter project, Android target, application ID, `flutter_lints`,
       `.gitignore`, directories per the [module map](components.md#module-map).
 - [x] **M2 CI** — GitHub Actions workflow: format check, `flutter analyze`, tests on push.
-- [x] **M3 Domain model** — entities (ingredient, tag, recipe, settings) and the model
+- [x] **M3 Domain model** — entities (ingredient, tag, recipe, settings) and the collection
       root with unique-name invariants.
 - [x] **M4 Line parser/formatter** — the compact-line grammar with round-trip tests; the
       single shared home later used by the codec (M6) and the recipe form (M14).
-- [x] **M5 Model validation** — referential integrity, duplicate names, malformed values:
+- [x] **M5 Collection validation** — referential integrity, duplicate names, malformed values:
       the rule set behind FR-DAT-4 and the recipe form.
 - [x] **M5a Domain packaging** — [module boundaries](components.md#boundary-rules), 
       [validation contract](adr/05-validation-contract.md), barrel + `src/` internals, 
-      `helpers.dart`, wire tokens on enums, architecture test, validation order documented.
+      `names.dart`, wire tokens on enums, architecture test, validation order documented.
 - [x] **M6 YAML codec** — parse + validate with line-position errors, canonical emitter,
       format-version gate, lossless round-trip test. (FR-DAT-2/4/5 core)
 - [x] **M7 Storage adapter** — storage interface + file adapter: load at start, atomic
       save, backup rotation, corrupt/missing-file handling; temp-dir integration tests.
-- [x] **M7a Model edit API** — [`ModelEdits`](components.md#editing-the-model): `copyWith`, 
+- [x] **M7a Collection edit API** — [`CollectionEdits`](components.md#editing-the-collection): `copyWith`, 
       pure derivations (rename, "made it"), memoised lookups, FR-VOC-1 delete blocking.
-- [x] **M8 State wiring** — Riverpod model provider, mutations persisting through M7,
+- [x] **M8 State wiring** — Riverpod collection provider, mutations persisting through M7,
       startup load.
 - [x] **M9 App shell** — navigation between placeholder screens, theme, empty states.
 
@@ -51,7 +51,7 @@ First usable slice; recipes reference both vocabularies, so this precedes Phase 
       ingredient entry (FR-VOC-3). Shape only — the picker is M12's.
 - [x] **M11b Ingredient tags** — the second tag vocabulary, decided before any screen was built
       on the first ([ADR 07](adr/07-tag-colour.md), amended): `recipe_tags` and `ingredient_tags`
-      as peer sections behind `Model.recipeTags`/`ingredientTags`, `Ingredient.tags`, a colour
+      as peer sections behind `Collection.recipeTags`/`ingredientTags`, `Ingredient.tags`, a colour
       now required on every tag (`neutral` dropped), per-vocabulary rename propagation and
       delete blocking (FR-VOC-3/4, FR-INV-3). Shape only — both screens are M12's and M12a's.
 - [x] **M12 Tag management** — both vocabularies behind Settings, a tab each: add, rename with
@@ -98,7 +98,7 @@ First usable slice; recipes reference both vocabularies, so this precedes Phase 
       with plural per entry, `RecipeLine.unit` resolved as name, `part`/`ml` fixed (FR-VOC-5). 
       Grammar respects vocabulary; plural for amounts ≠ 1. `withUnits` propagates renames. Shape only.
 - [x] **M17c Units screen** — Settings → Units: edit in place, one Save, delete blocked while used, 
-      `part`/`ml` locked (FR-VOC-5). Validated by `validateModel` (import rules match). 
+      `part`/`ml` locked (FR-VOC-5). Validated by `validateCollection` (import rules match). 
       `setUnits` whole vocabulary, renames included, one write.
 - [x] **M17d Ingredient aliases** — [ADR 10](adr/10-ingredient-aliases.md), FR-VOC-6: 
       `Ingredient.aliases`, comma-separated, resolved form/search/file, stored under entry's name. 
@@ -123,7 +123,7 @@ First usable slice; recipes reference both vocabularies, so this precedes Phase 
 - [x] **M21 Optimizer domain** — [ADR 15](adr/15-the-optimizer-answers-with-the-best-few.md), FR-DIS-6: 
       `purchasesWithin`, `Purchase` (bottles + unlocked recipes). Gap = choice among alternatives 
       (ADR 11), cross product over short lines. Best few of each size, the cost pinned by a 
-      performance test. `Model.bottleNamed` unified lookup.
+      performance test. `Collection.bottleNamed` unified lookup.
 - [x] **M21a Restocking widens the search** — [ADR 16](adr/16-the-optimizer-buys-what-is-running-low.md), 
       FR-DIS-7: `restocking` flag. Off: out only; on: short of full stock (low joins pool, goal = ready). 
       One flag, one place (`_gapsOf`). `canMake` unchanged.
@@ -144,7 +144,7 @@ First usable slice; recipes reference both vocabularies, so this precedes Phase 
       sizes. `Settings.ratio`/`withRatio`. Validation: ratio > 0. "Scale" menu heading.
 - [x] **M24 Export** — system share sheet (FR-DAT-1, [ui-design.md](ui-design.md#data), 
       [ADR 18](adr/18-data-crosses-the-edge-in-a-system-sheet.md)). `share_plus`/`file_selector` via 
-      `XFile`. `sharerProvider` is seam. MIME: `text/plain`. `exportSnapshot` takes model 
+      `XFile`. `sharerProvider` is seam. MIME: `text/plain`. `exportSnapshot` takes collection 
       (Corrupt-safe). On Settings list. `_Entry` two constructors (action vs travel).
 - [x] **M25 Import** — [ADR 18](adr/18-data-crosses-the-edge-in-a-system-sheet.md), FR-DAT-3/4: 
       `filePickerProvider`, no type filter, answers with text. Screen shows file contents, Replace button 
@@ -202,18 +202,35 @@ What ships as 1.0.0 should carry nothing the product no longer claims.
       its mechanics read differently per screen, and moving them off would leave a mis-wired list
       with nothing watching. The suite came out 19 lines shorter — the point was one home per rule,
       not fewer lines, and the parametrised bodies cost about what the copies did.
+- [x] **M28c The type takes the noun the documents use** — `Model` became `Collection`, which is what
+      every document already called it: [requirements](requirements.md)' glossary defines a bar as
+      "one collection", and [components.md](components.md#the-shelf-and-the-bar)'s signatures were
+      written `Model collection` — `BarPayload`, `withCollection`, `opening`, `offer` — before a line
+      of Phase 7 existed. Read down the tiers, `Shelf`, `Bar`, `Model`, `Recipe` named three things
+      in a bar and one thing in an architecture. Carried with it: `collection.dart`,
+      `collection_edits.dart` and `CollectionEdits`, `validateCollection`, `collectionProvider`,
+      `CollectionView`, `Loaded.collection`, the `architecture_test` paths naming the file, and every
+      fixture. `helpers.dart` became `names.dart`, which is all it ever held. Left alone on purpose:
+      `ModelStore`, `ModelController` and `ModelParts`, which M31 and M32 replace outright with
+      `BarStore`, `ShelfController` and `BarPayload` — renaming them here would be a second edit to
+      lines already scheduled for deletion, and the two milestones of `ModelStore` holding a
+      `Collection` are the price. One collision surfaced and was worth having: `optimizer_test`'s
+      builder was `model` where its locals were already `collection`, so it became `collectionOf`,
+      the name the store test had reached for independently. Reverses
+      [ADR 20](adr/20-the-app-holds-many-bars.md), amended in place rather than superseded: cost was
+      the whole of its argument, the cost only grew from here, and nothing had been built on it.
 - [ ] **M29 Release packaging** — signing configuration (keystore outside the repo),
       Android Auto Backup enabled, launcher icon and label, version 1.0.0.
 
 ## Phase 7 — The app holds many bars
 
-The root moves above `Model` and every layer follows it up. Nothing travels between devices yet: a
+The root moves above `Collection` and every layer follows it up. Nothing travels between devices yet: a
 guest bar is built as a shape here and gets its first source in Phase 8.
 
 - [ ] **M30 Shelf domain** — [ADR 20](adr/20-the-app-holds-many-bars.md): `Bar`, `BarMode`,
       `Transport`, `BarSource`, `Offer`, `BarPayload`, and `Shelf` over them, keeping the
-      constructor contract `Model`'s own already does — ids unique, `openId` naming a bar that
-      exists, a guest carrying a source and an owner none. `ShelfEdits` beside `ModelEdits`, with
+      constructor contract `Collection`'s own already does — ids unique, `openId` naming a bar that
+      exists, a guest carrying a source and an owner none. `ShelfEdits` beside `CollectionEdits`, with
       `withCollection` refusing a guest bar ([ADR 23](adr/23-nothing-writes-a-guest-bar.md)), and
       `validateShelf` reading the index's parts through the kinds that already exist. Shape only —
       nothing above the domain knows yet.
@@ -224,7 +241,7 @@ guest bar is built as a shape here and gets its first source in Phase 8.
       that same one route to become the first owned bar, its old files left standing as the net
       ([architecture.md](architecture.md#storage-isolation)). Pinned by integration test: one bar's
       save leaves every other bar's bytes exactly as they were.
-- [ ] **M32 The shelf in state** — `ShelfController` replaces `ModelController` and `modelProvider`
+- [ ] **M32 The shelf in state** — `ShelfController` replaces `ModelController` and `collectionProvider`
       becomes derived rather than owned, which is what keeps the whole presentation layer still
       while the root moves above it ([components.md](components.md#state-contracts)).
       `openBarProvider` answers the record, `barWriterProvider` the writes — null on a guest bar,

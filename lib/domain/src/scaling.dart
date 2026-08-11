@@ -2,7 +2,7 @@
 library;
 
 import 'line_format.dart';
-import 'model.dart';
+import 'collection.dart';
 
 /// The factors a recipe view offers (FR-REC-7), the first as written.
 const scaleFactors = [1, 2, 3, 4];

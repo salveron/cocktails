@@ -1,10 +1,10 @@
-/// Model validation: referential integrity, names, value rules (FR-DAT-4).
+/// Collection validation: referential integrity, names, value rules (FR-DAT-4).
 /// Issues' paths mirror data-format keys for YAML/form mapping.
 library;
 
-import 'helpers.dart';
+import 'names.dart';
 import 'line_format.dart';
-import 'model.dart';
+import 'collection.dart';
 
 /// Issue rules; switch on this instead of the message.
 enum ValidationIssueKind {
@@ -72,8 +72,8 @@ final class ValidationIssue {
 /// A violation before it gains a path.
 typedef _Problem = ({ValidationIssueKind kind, String message});
 
-/// Checks the parts of a would-be [Model]; an empty result means valid.
-List<ValidationIssue> validateModel({
+/// Checks the parts of a would-be [Collection]; an empty result means valid.
+List<ValidationIssue> validateCollection({
   Settings settings = const Settings(),
   List<Unit> units = defaultUnits,
   List<Ingredient> ingredients = const [],

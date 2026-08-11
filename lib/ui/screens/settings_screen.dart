@@ -80,7 +80,7 @@ Future<bool> _wentThrough(
 /// dismisses the sheet has done nothing, which is not one.
 Future<void> _export(BuildContext context, WidgetRef ref) async {
   final sharer = ref.read(sharerProvider);
-  final notifier = ref.read(modelProvider.notifier);
+  final notifier = ref.read(collectionProvider.notifier);
   await _wentThrough(
     ScaffoldMessenger.of(context),
     'Could not export',
@@ -94,7 +94,7 @@ Future<void> _export(BuildContext context, WidgetRef ref) async {
 /// read with issues rather than an exception.
 Future<void> _import(BuildContext context, WidgetRef ref) async {
   final picker = ref.read(filePickerProvider);
-  final notifier = ref.read(modelProvider.notifier);
+  final notifier = ref.read(collectionProvider.notifier);
   final navigator = Navigator.of(context);
   await _wentThrough(
     ScaffoldMessenger.of(context),
@@ -125,7 +125,7 @@ class _ImportReview extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final incoming = review.model;
+    final incoming = review.collection;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Import'),
@@ -149,14 +149,14 @@ class _ImportReview extends ConsumerWidget {
   Future<void> _accept(
     BuildContext context,
     WidgetRef ref,
-    Model incoming,
+    Collection incoming,
   ) async {
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
     final replaced = await _wentThrough(
       messenger,
       'Could not import',
-      () => ref.read(modelProvider.notifier).replaceAll(incoming),
+      () => ref.read(collectionProvider.notifier).replaceAll(incoming),
     );
     if (!replaced) return;
     navigator.popUntil((route) => route.isFirst);
@@ -214,7 +214,7 @@ class _Refused extends StatelessWidget {
 class _Holdings extends StatefulWidget {
   const _Holdings(this.incoming);
 
-  final Model incoming;
+  final Collection incoming;
 
   @override
   State<_Holdings> createState() => _HoldingsState();
@@ -291,16 +291,18 @@ const _lineNames = 24;
 /// is named and ordered as the screen managing it names and orders it, so a card
 /// here reads as the list it stands for (`inventory_screen.dart`,
 /// `tags_screen.dart`, `units_screen.dart`).
-List<_Holding> _holdingsOf(Model model) => [
-  _Holding('recipe', [_run(model.recipes.map((recipe) => recipe.name))]),
+List<_Holding> _holdingsOf(Collection collection) => [
+  _Holding('recipe', [_run(collection.recipes.map((recipe) => recipe.name))]),
   _Holding('ingredient', [
-    _run(model.ingredients.map((ingredient) => ingredient.name)),
+    _run(collection.ingredients.map((ingredient) => ingredient.name)),
   ]),
   _Holding('tag', [
-    _run(model.recipeTags.map((tag) => tag.name), label: 'Recipe'),
-    _run(model.ingredientTags.map((tag) => tag.name), label: 'Ingredient'),
+    _run(collection.recipeTags.map((tag) => tag.name), label: 'Recipe'),
+    _run(collection.ingredientTags.map((tag) => tag.name), label: 'Ingredient'),
   ]),
-  _Holding('unit', [_run(model.units.map((unit) => unit.name), sorted: false)]),
+  _Holding('unit', [
+    _run(collection.units.map((unit) => unit.name), sorted: false),
+  ]),
 ];
 
 /// A→Z on the app's one ordering (ADR 08), so a reader scanning a long card

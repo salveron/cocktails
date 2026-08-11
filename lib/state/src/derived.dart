@@ -1,4 +1,4 @@
-/// The read-only providers over the model (docs/components.md).
+/// The read-only providers over the collection (docs/components.md).
 library;
 
 import 'package:cocktails/domain/domain.dart';
@@ -6,14 +6,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'model_controller.dart';
 
-/// Availability by recipe name, recomputed whole on every model change — the
-/// pass is under a millisecond at NFR-2 scale. Empty until the load lands.
+/// Availability by recipe name, recomputed whole on every collection change —
+/// the pass is under a millisecond at NFR-2 scale. Empty until the load lands.
 final availabilityProvider = Provider<Map<String, Availability>>((ref) {
-  final model = ref.watch(modelProvider).valueOrNull;
+  final collection = ref.watch(collectionProvider).valueOrNull;
   return {
-    if (model != null)
-      for (final recipe in model.recipes)
-        recipe.name: availabilityOf(model, recipe),
+    if (collection != null)
+      for (final recipe in collection.recipes)
+        recipe.name: availabilityOf(collection, recipe),
   };
 });
 
@@ -24,8 +24,8 @@ final purchasesProvider = Provider.autoDispose.family<List<Purchase>, bool>((
   ref,
   restocking,
 ) {
-  final model = ref.watch(modelProvider).valueOrNull;
-  return model == null
+  final collection = ref.watch(collectionProvider).valueOrNull;
+  return collection == null
       ? const []
-      : purchasesWithin(model, budgets.last, restocking: restocking);
+      : purchasesWithin(collection, budgets.last, restocking: restocking);
 });

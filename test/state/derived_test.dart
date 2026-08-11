@@ -5,7 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  final stored = Model(
+  final stored = Collection(
     ingredients: [
       Ingredient('gin', stock: StockLevel.in_),
       Ingredient('campari', stock: StockLevel.in_),
@@ -27,10 +27,10 @@ void main() {
     ],
   );
 
-  ProviderContainer containerFor(Model model) {
+  ProviderContainer containerFor(Collection collection) {
     final container = ProviderContainer(
       overrides: [
-        modelStoreProvider.overrideWithValue(MemoryModelStore(model)),
+        modelStoreProvider.overrideWithValue(MemoryModelStore(collection)),
       ],
     );
     addTearDown(container.dispose);
@@ -38,9 +38,9 @@ void main() {
   }
 
   /// A container whose startup load has already resolved.
-  Future<ProviderContainer> started(Model model) async {
-    final container = containerFor(model);
-    await container.read(modelProvider.future);
+  Future<ProviderContainer> started(Collection collection) async {
+    final container = containerFor(collection);
+    await container.read(collectionProvider.future);
     return container;
   }
 
@@ -60,7 +60,7 @@ void main() {
     test('one stock tap moves every recipe that bottle stands in', () async {
       final container = await started(stored);
       await container
-          .read(modelProvider.notifier)
+          .read(collectionProvider.notifier)
           .setStock('gin', StockLevel.out);
       expect(container.read(availabilityProvider), {
         'Negroni': Availability.missing,
@@ -72,7 +72,7 @@ void main() {
   group('purchasesProvider', () {
     /// A bar out of both bottles: the pair unlocks both recipes and gin alone
     /// unlocks one, so the one answer has to carry two sizes to be complete.
-    final short = Model(
+    final short = Collection(
       ingredients: [Ingredient('gin'), Ingredient('campari')],
       recipes: stored.recipes,
     );
@@ -90,7 +90,7 @@ void main() {
 
     test('answers each reading of what is short separately (ADR 16)', () async {
       final container = await started(
-        Model(
+        Collection(
           ingredients: [Ingredient('gin', stock: StockLevel.low)],
           recipes: [stored.recipes.last],
         ),

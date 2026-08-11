@@ -10,12 +10,12 @@ import '../harness.dart';
 /// to go and the menu entry is exercised with it.
 Future<MemoryModelStore> pumpAmounts(
   WidgetTester tester, [
-  Model? model,
+  Collection? collection,
 ]) async {
   final store = await pumpOver(
     tester,
     const SettingsScreen(),
-    model ?? recipeModel,
+    collection ?? recipeCollection,
   );
   await tap(tester, find.text('Amounts'));
   return store;

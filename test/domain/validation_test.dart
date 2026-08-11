@@ -80,11 +80,11 @@ void main() {
 
   group('units', () {
     test('the shipped vocabulary is valid', () {
-      expect(validateModel(units: defaultUnits), isEmpty);
+      expect(validateCollection(units: defaultUnits), isEmpty);
     });
 
     test('a line measured in nothing the vocabulary holds is reported', () {
-      final issues = validateModel(
+      final issues = validateCollection(
         units: const [Unit(partUnit), Unit(mlUnit), Unit(ozUnit)],
         ingredients: [Ingredient('bitters')],
         recipes: [
@@ -102,7 +102,7 @@ void main() {
     });
 
     test('the three units the app leans on must be there', () {
-      final issues = validateModel(units: const [Unit('dash')]);
+      final issues = validateCollection(units: const [Unit('dash')]);
       expect(issues.map((i) => i.message), [
         'units must include "part"',
         'units must include "ml"',
@@ -113,7 +113,7 @@ void main() {
     });
 
     test('a spelling another unit answers to is a duplicate', () {
-      final issues = validateModel(
+      final issues = validateCollection(
         units: const [
           Unit(partUnit, plural: 'parts'),
           Unit(mlUnit),
@@ -128,7 +128,7 @@ void main() {
 
     test('a plural written out as its own name is no duplicate', () {
       expect(
-        validateModel(
+        validateCollection(
           units: const [
             Unit(partUnit),
             Unit(mlUnit, plural: 'ml'),
@@ -140,7 +140,7 @@ void main() {
     });
 
     test('both spellings answer to the name rules', () {
-      final issues = validateModel(
+      final issues = validateCollection(
         units: const [
           Unit(partUnit),
           Unit(mlUnit),
@@ -160,13 +160,13 @@ void main() {
     });
   });
 
-  group('validateModel', () {
+  group('validateCollection', () {
     test('empty parts are valid', () {
-      expect(validateModel(), isEmpty);
+      expect(validateCollection(), isEmpty);
     });
 
     test('the architecture example is valid', () {
-      final issues = validateModel(
+      final issues = validateCollection(
         ingredients: [
           Ingredient('bourbon', stock: StockLevel.in_),
           Ingredient('lemon juice', stock: StockLevel.low),
@@ -204,7 +204,7 @@ void main() {
         (const Settings(partMl: 0), ['settings', 'part_ml']),
         (const Settings(ozMl: -1), ['settings', 'oz_ml']),
       ]) {
-        final issues = validateModel(settings: settings);
+        final issues = validateCollection(settings: settings);
         expect(issues, hasLength(1), reason: '$path');
         expect(issues.single.path, path);
         expect(issues.single.kind, ValidationIssueKind.unitSizeNotPositive);
@@ -213,7 +213,7 @@ void main() {
     });
 
     test('flags malformed names in every vocabulary', () {
-      final issues = validateModel(
+      final issues = validateCollection(
         ingredients: [Ingredient(''), Ingredient('gin')],
         ingredientTags: [const Tag(' citrus', color: TagColor.sand)],
         recipeTags: [const Tag(' sour', color: TagColor.rose)],
@@ -243,7 +243,7 @@ void main() {
 
     test('flags an ingredient name ending with a reserved suffix', () {
       for (final name in ['silly (optional)', 'silly (base)']) {
-        final issues = validateModel(ingredients: [Ingredient(name)]);
+        final issues = validateCollection(ingredients: [Ingredient(name)]);
         expect(issues, hasLength(1), reason: name);
         expect(issues.single.path, ['ingredients', 0]);
         expect(issues.single.kind, ValidationIssueKind.reservedSuffix);
@@ -252,7 +252,7 @@ void main() {
     });
 
     test('flags a slash in an ingredient name (ADR 11)', () {
-      final issues = validateModel(
+      final issues = validateCollection(
         ingredients: [Ingredient('sweet / dry vermouth')],
       );
       expect(issues, hasLength(1));
@@ -267,7 +267,7 @@ void main() {
 
     test('flags a slash in an alias too, spaced or not', () {
       for (final alias in ['sweet/dry', 'sweet / dry']) {
-        final issues = validateModel(
+        final issues = validateCollection(
           ingredients: [
             Ingredient('vermouth', aliases: [alias]),
           ],
@@ -279,7 +279,7 @@ void main() {
     });
 
     test('the slash rule is ingredient-only: it splits nothing else', () {
-      final issues = validateModel(
+      final issues = validateCollection(
         ingredients: [Ingredient('gin')],
         recipeTags: [const Tag('half/half', color: TagColor.rose)],
         recipes: [
@@ -290,7 +290,7 @@ void main() {
     });
 
     test('the reserved suffix rule is ingredient-only', () {
-      final issues = validateModel(
+      final issues = validateCollection(
         ingredients: [Ingredient('gin')],
         recipeTags: [const Tag('odd (optional)', color: TagColor.rose)],
         recipes: [
@@ -301,7 +301,7 @@ void main() {
     });
 
     test('flags duplicate names at the repeated position', () {
-      final issues = validateModel(
+      final issues = validateCollection(
         ingredients: [Ingredient('gin'), Ingredient('gin')],
         ingredientTags: [
           const Tag('citrus', color: TagColor.sand),
@@ -331,7 +331,7 @@ void main() {
     });
 
     test('two spellings of one name are a duplicate (ADR 08)', () {
-      final issues = validateModel(
+      final issues = validateCollection(
         ingredients: [Ingredient('Gin'), Ingredient('gin')],
       );
       expect(issues.single.path, ['ingredients', 1]);
@@ -340,7 +340,7 @@ void main() {
 
     test('a name in both vocabularies at once is no duplicate', () {
       expect(
-        validateModel(
+        validateCollection(
           ingredientTags: [const Tag('sour', color: TagColor.sand)],
           recipeTags: [const Tag('sour', color: TagColor.rose)],
         ),
@@ -351,7 +351,7 @@ void main() {
     test(
       'an alias is a spelling of the vocabulary, at its own path (ADR 10)',
       () {
-        final issues = validateModel(
+        final issues = validateCollection(
           ingredients: [
             Ingredient('bourbon', aliases: const ['rye']),
             Ingredient('gin', aliases: const ['Rye', 'bourbon']),
@@ -367,7 +367,7 @@ void main() {
     );
 
     test('a name repeating an earlier alias reports on the name', () {
-      final issues = validateModel(
+      final issues = validateCollection(
         ingredients: [
           Ingredient('bourbon', aliases: const ['rye']),
           Ingredient('rye'),
@@ -379,7 +379,7 @@ void main() {
 
     test('a line may name a bottle by an alias', () {
       expect(
-        validateModel(
+        validateCollection(
           ingredients: [
             Ingredient('bourbon', aliases: const ['whiskey']),
           ],
@@ -397,7 +397,7 @@ void main() {
     });
 
     test('flags unknown ingredient and tag references', () {
-      final issues = validateModel(
+      final issues = validateCollection(
         recipes: [
           Recipe(
             'Negroni',
@@ -420,7 +420,7 @@ void main() {
     });
 
     test('flags a tag repeated on one recipe', () {
-      final issues = validateModel(
+      final issues = validateCollection(
         ingredients: [Ingredient('gin')],
         recipeTags: [const Tag('sour', color: TagColor.rose)],
         recipes: [
@@ -440,7 +440,7 @@ void main() {
           RecipeLine(Amount(1), 'part', ['gin'], mark: LineMark.optional),
         ],
       ]) {
-        final issues = validateModel(
+        final issues = validateCollection(
           ingredients: [Ingredient('gin')],
           recipes: [Recipe('Negroni', lines: lines)],
         );
@@ -451,7 +451,7 @@ void main() {
 
     test('a base line is a required line', () {
       expect(
-        validateModel(
+        validateCollection(
           ingredients: [Ingredient('gin')],
           recipes: [
             Recipe(
@@ -467,7 +467,7 @@ void main() {
     });
 
     test('flags non-positive and out-of-order amounts', () {
-      final issues = validateModel(
+      final issues = validateCollection(
         ingredients: [Ingredient('gin')],
         recipes: [
           Recipe(
@@ -491,7 +491,7 @@ void main() {
     });
 
     test('collects every issue in one pass', () {
-      final issues = validateModel(
+      final issues = validateCollection(
         settings: const Settings(partMl: -1),
         ingredients: [Ingredient('gin'), Ingredient('gin')],
         recipes: [
@@ -507,7 +507,7 @@ void main() {
     });
 
     test('ordering: ingredient issue before recipe issue', () {
-      final issues = validateModel(
+      final issues = validateCollection(
         ingredients: [Ingredient('silly (optional)'), Ingredient('gin')],
         recipes: [
           Recipe('Negroni', lines: const [_gin]),
@@ -523,7 +523,7 @@ void main() {
 
     test('ordering follows the file: settings, ingredients, both tag '
         'vocabularies, recipes', () {
-      final issues = validateModel(
+      final issues = validateCollection(
         settings: const Settings(partMl: 0),
         ingredients: [Ingredient('silly (optional)'), Ingredient('gin')],
         ingredientTags: [
@@ -549,7 +549,7 @@ void main() {
     });
 
     test("an ingredient's tag issues follow its own name issues", () {
-      final issues = validateModel(
+      final issues = validateCollection(
         ingredients: [
           Ingredient(' gin', tags: const ['juniper']),
           Ingredient('rum'),
@@ -562,7 +562,7 @@ void main() {
     });
 
     test('ordering: within one vocabulary, by entry index', () {
-      final issues = validateModel(
+      final issues = validateCollection(
         ingredients: [
           Ingredient('absinthe (optional)'),
           Ingredient('gin'),
@@ -577,7 +577,7 @@ void main() {
     });
 
     test('ordering: every rule on one entry stays on that entry', () {
-      final issues = validateModel(
+      final issues = validateCollection(
         ingredients: [Ingredient(' gin (optional)')],
       );
       expect(issues.map((i) => i.path), [
@@ -589,7 +589,7 @@ void main() {
     });
 
     test('ordering: a recipe\'s own issues precede the next recipe\'s', () {
-      final issues = validateModel(
+      final issues = validateCollection(
         ingredients: [Ingredient('gin')],
         recipes: [
           Recipe(
@@ -795,7 +795,7 @@ void main() {
       );
     });
 
-    test('validateModel prefixes the same issues with recipes[index]', () {
+    test('validateCollection prefixes the same issues with recipes[index]', () {
       final recipe = Recipe(
         'Martini',
         tags: const ['unknown'],
@@ -803,20 +803,20 @@ void main() {
           RecipeLine(Amount(0), 'part', ['missing']),
         ],
       );
-      final modelIssues = validateModel(recipes: [recipe]);
+      final collectionIssues = validateCollection(recipes: [recipe]);
       final recipeIssues = validateRecipe(
         recipe,
         knownIngredients: const {},
         knownTags: const {},
         knownUnits: shippedUnits,
       );
-      expect(modelIssues.map((i) => i.path), [
+      expect(collectionIssues.map((i) => i.path), [
         ['recipes', 0, 'tags', 0],
         ['recipes', 0, 'lines', 0],
         ['recipes', 0, 'lines', 0],
       ]);
       expect(
-        modelIssues.map((i) => i.message).toList(),
+        collectionIssues.map((i) => i.message).toList(),
         recipeIssues.map((i) => i.message).toList(),
       );
     });
@@ -879,10 +879,10 @@ void main() {
       expect(issue.path, ['tags', 0]);
     });
 
-    test('reports what validateModel reports for the same entry', () {
+    test('reports what validateCollection reports for the same entry', () {
       final entry = Ingredient(' gin (optional)', tags: const ['juniper']);
       expect(
-        validateModel(ingredients: [entry]).map((i) => i.message).toList(),
+        validateCollection(ingredients: [entry]).map((i) => i.message).toList(),
         check(entry).map((i) => i.message).toList(),
       );
     });
@@ -948,10 +948,10 @@ void main() {
         );
       });
 
-      test('reports what validateModel reports for the same entry', () {
+      test('reports what validateCollection reports for the same entry', () {
         final entry = Ingredient('bourbon', aliases: const ['gin', 'Bourbon']);
         expect(
-          validateModel(
+          validateCollection(
             ingredients: [Ingredient('gin'), entry],
           ).where((i) => i.path.contains('aliases')).map((i) => i.message),
           check(entry, others: {'gin'}).map((i) => i.message),

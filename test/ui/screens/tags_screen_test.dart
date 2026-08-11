@@ -9,7 +9,7 @@ import '../harness.dart';
 
 /// Both vocabularies stocked, each holding one tag something references and one
 /// nothing does — so blocked and free deletes are both a tap away.
-final tagged = Model(
+final tagged = Collection(
   ingredients: [
     Ingredient('gin', stock: StockLevel.in_),
     Ingredient('lemon juice', tags: const ['citrus']),
@@ -34,8 +34,10 @@ final tagged = Model(
 );
 
 /// The screen over its store, opened on the Recipe tab.
-Future<MemoryModelStore> pumpTags(WidgetTester tester, {Model? model}) =>
-    pumpOver(tester, const TagsScreen(), model ?? tagged);
+Future<MemoryModelStore> pumpTags(
+  WidgetTester tester, {
+  Collection? collection,
+}) => pumpOver(tester, const TagsScreen(), collection ?? tagged);
 
 Future<void> openTab(WidgetTester tester, String tab) =>
     tap(tester, find.text(tab));
@@ -85,7 +87,7 @@ void main() {
     testWidgets('says what would fill a vocabulary with nothing in it', (
       tester,
     ) async {
-      await pumpTags(tester, model: Model());
+      await pumpTags(tester, collection: Collection());
       expect(find.text('No recipe tags yet'), findsOneWidget);
       await openTab(tester, 'Ingredient');
       expect(find.text('No ingredient tags yet'), findsOneWidget);

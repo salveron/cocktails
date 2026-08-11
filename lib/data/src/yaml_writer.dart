@@ -12,21 +12,23 @@ const int storeFormatVersion = 1;
 /// Characters that end a plain scalar inside a flow collection.
 final _flowUnsafe = RegExp(r'[,\[\]{}:]');
 
-String encodeModel(Model model) {
-  final settings = model.settings;
+String encodeCollection(Collection collection) {
+  final settings = collection.settings;
   final sections = [
     'format: $storeFormatVersion',
     'settings:\n'
         '  part_ml: ${formatNumber(settings.partMl)}\n'
         '  oz_ml: ${formatNumber(settings.ozMl)}\n'
         '  display: ${settings.display.token}',
-    _section('units', model.units.map(_unitEntry)),
-    _section('ingredients', model.ingredients.map(_ingredientEntry)),
-    _section('ingredient_tags', model.ingredientTags.map(_tagEntry)),
-    _section('recipe_tags', model.recipeTags.map(_tagEntry)),
+    _section('units', collection.units.map(_unitEntry)),
+    _section('ingredients', collection.ingredients.map(_ingredientEntry)),
+    _section('ingredient_tags', collection.ingredientTags.map(_tagEntry)),
+    _section('recipe_tags', collection.recipeTags.map(_tagEntry)),
     _section(
       'recipes',
-      model.recipes.map((recipe) => _recipeEntry(recipe, model.units)),
+      collection.recipes.map(
+        (recipe) => _recipeEntry(recipe, collection.units),
+      ),
     ),
   ];
   return '${sections.join('\n\n')}\n';

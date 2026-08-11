@@ -1,6 +1,6 @@
 import 'package:cocktails/data/data.dart';
 import 'package:cocktails/domain/domain.dart';
-import 'package:cocktails/ui/widgets/model_view.dart';
+import 'package:cocktails/ui/widgets/collection_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -12,19 +12,19 @@ final class _FailingStore implements ModelStore {
   Future<LoadOutcome> load() async => throw StateError('disk on fire');
 
   @override
-  Future<void> save(Model model) async {}
+  Future<void> save(Collection collection) async {}
 
   @override
   Future<String> exportSnapshot(
-    Model model, {
+    Collection collection, {
     ExportPurpose purpose = ExportPurpose.share,
   }) async => '';
 }
 
 void main() {
-  final view = ModelView((model) => const Text('loaded'));
+  final view = CollectionView((collection) => const Text('loaded'));
 
-  group('model view', () {
+  group('collection view', () {
     testWidgets('shows a spinner until the startup load resolves', (
       tester,
     ) async {

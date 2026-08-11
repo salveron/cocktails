@@ -35,7 +35,7 @@ Screen/shell design. Modules [components.md](components.md), requirements [requi
   left. A bottom-bar tap clears the way back — a destination the reader chose has nothing to return 
   *from*. What comes back is their place, not their narrowings: the destinations are all alive, so a 
   basket is found open where it was, but a search a jump cleared stays cleared.
-- **`ModelView`**: only reader of `modelProvider`'s `AsyncValue`. Screens never see loading/failure.
+- **`CollectionView`**: only reader of `collectionProvider`'s `AsyncValue`. Screens never see loading/failure.
 - **`EmptyState`**: icon, title, fill hint.
 - **`StartupIssues`**: displays FR-DAT-4 problems above all screens (dismissable).
 
@@ -72,7 +72,7 @@ it has always meant.
 Applies to inventory (FR-INV-1) and recipes (FR-DIS-2) identically. Entries answering multiple names 
 (FR-VOC-6): match on any, show under entry's name — a recipe answers to its bottles' spellings too, 
 so a query reaches what it is built from. Hence "answers to", not "is called", when nothing matches. 
-Filter and order alike are widget state, never persisted, never on the model's side.
+Filter and order alike are widget state, never persisted, never on the collection's side.
 
 **A narrowing changed is read from the top** — a search typed, a tag or a base picked, another order 
 chosen. What is on show is then a different list, so it stands at its first row; the collection 

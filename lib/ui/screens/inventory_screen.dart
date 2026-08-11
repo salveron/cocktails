@@ -8,7 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../destinations.dart';
 import '../widgets/color_chip.dart';
 import '../widgets/empty_state.dart';
-import '../widgets/model_view.dart';
+import '../widgets/collection_view.dart';
 import '../widgets/vocabulary_dialogs.dart';
 import '../widgets/vocabulary_list.dart';
 
@@ -47,17 +47,17 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
   @override
   Widget build(BuildContext context) {
     ref.listen(revealProvider, (_, request) => _serve(request));
-    return ModelView((model) {
-      final vocabulary = sortedByName(model.ingredientTags);
+    return CollectionView((collection) {
+      final vocabulary = sortedByName(collection.ingredientTags);
       // Read through the build that carries it, so no later one reveals again.
       final revealing = _revealing;
       _revealing = null;
       return VocabularyList<Ingredient>(
-        entries: model.ingredients,
+        entries: collection.ingredients,
         nameOf: (ingredient) => ingredient.name,
         spellingsOf: (ingredient) => ingredient.spellings,
-        rowOf: (ingredient) => _row(model, vocabulary, ingredient),
-        onAdd: (query) => _add(model, vocabulary, query),
+        rowOf: (ingredient) => _row(collection, vocabulary, ingredient),
+        onAdd: (query) => _add(collection, vocabulary, query),
         reveal: revealing,
         noun: 'ingredient',
         plural: 'ingredients',
@@ -84,7 +84,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
 
   /// Row tap toggles stock (in → low → out → in); vocab actions use ⋮.
   VocabularyRow _row(
-    Model model,
+    Collection collection,
     List<Tag> vocabulary,
     Ingredient ingredient,
   ) => VocabularyRow(
@@ -98,31 +98,35 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
       children: [
         StockChip(ingredient.stock),
         RowMenu({
-          'Edit': () => unawaited(_edit(model, vocabulary, ingredient)),
-          'Delete': () => unawaited(_delete(model, ingredient)),
+          'Edit': () => unawaited(_edit(collection, vocabulary, ingredient)),
+          'Delete': () => unawaited(_delete(collection, ingredient)),
         }),
       ],
     ),
     onTap: () => unawaited(
       ref
-          .read(modelProvider.notifier)
+          .read(collectionProvider.notifier)
           .setStock(ingredient.name, ingredient.stock.next),
     ),
   );
 
   /// Returns true after adding; clears picked tags along with search.
-  Future<bool> _add(Model model, List<Tag> vocabulary, String query) async {
+  Future<bool> _add(
+    Collection collection,
+    List<Tag> vocabulary,
+    String query,
+  ) async {
     final added = await promptForIngredient(
       context,
       title: 'New ingredient',
       hintText: 'Ingredient name',
-      validate: _entryRule(model),
+      validate: _entryRule(collection),
       vocabulary: vocabulary,
       initial: query,
     );
     if (added == null || !context.mounted) return false;
     await ref
-        .read(modelProvider.notifier)
+        .read(collectionProvider.notifier)
         .upsertIngredient(
           Ingredient(added.name, aliases: added.aliases, tags: added.tags),
         );
@@ -132,7 +136,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
 
   /// Atomic upsert: name, aliases and tags edited together; stock unchanged.
   Future<void> _edit(
-    Model model,
+    Collection collection,
     List<Tag> vocabulary,
     Ingredient ingredient,
   ) async {
@@ -140,7 +144,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
       context,
       title: 'Edit "${ingredient.name}"',
       hintText: 'Ingredient name',
-      validate: _entryRule(model, except: ingredient.name),
+      validate: _entryRule(collection, except: ingredient.name),
       vocabulary: vocabulary,
       aliases: ingredient.aliases,
       chosen: ingredient.tags,
@@ -148,7 +152,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
     );
     if (edited == null || !context.mounted) return;
     await ref
-        .read(modelProvider.notifier)
+        .read(collectionProvider.notifier)
         .upsertIngredient(
           ingredient.copyWith(
             name: edited.name,
@@ -159,26 +163,28 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
         );
   }
 
-  Future<void> _delete(Model model, Ingredient ingredient) async {
+  Future<void> _delete(Collection collection, Ingredient ingredient) async {
     final confirmed = await confirmDelete(
       context,
       what: ingredient.name,
-      blockedBy: model.recipesUsingIngredient(ingredient.name),
+      blockedBy: collection.recipesUsingIngredient(ingredient.name),
       blockedByNoun: 'recipes',
     );
     if (!confirmed || !context.mounted) return;
-    await ref.read(modelProvider.notifier).removeIngredient(ingredient.name);
+    await ref
+        .read(collectionProvider.notifier)
+        .removeIngredient(ingredient.name);
   }
 }
 
 /// The vocabulary's own rules over the entry as the dialog has it — every
 /// spelling but [except]'s to collide with, so a rename never hits itself.
 List<ValidationIssue> Function(VocabularyEntry) _entryRule(
-  Model model, {
+  Collection collection, {
   String? except,
 }) =>
     (entry) => validateIngredient(
       Ingredient(entry.name, aliases: entry.aliases, tags: entry.tags),
-      knownIngredientTags: model.tagNames(TagKind.ingredient),
-      otherIngredientNames: model.ingredientSpellings(except: except),
+      knownIngredientTags: collection.tagNames(TagKind.ingredient),
+      otherIngredientNames: collection.ingredientSpellings(except: except),
     );

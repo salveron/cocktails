@@ -30,7 +30,7 @@ final class FileModelStore implements ModelStore {
 
   /// Queue serializes ops; [_pending] collapses overlapping saves.
   Future<void> _queue = Future.value();
-  Model? _pending;
+  Collection? _pending;
 
   FileModelStore(this.directory);
 
@@ -40,16 +40,16 @@ final class FileModelStore implements ModelStore {
   Future<LoadOutcome> load() => _enqueue(_load);
 
   @override
-  Future<void> save(Model model) {
-    _pending = model;
+  Future<void> save(Collection collection) {
+    _pending = collection;
     return _enqueue(_writePending);
   }
 
   @override
   Future<String> exportSnapshot(
-    Model model, {
+    Collection collection, {
     ExportPurpose purpose = ExportPurpose.share,
-  }) => _enqueue(() => _export(model, purpose));
+  }) => _enqueue(() => _export(collection, purpose));
 
   Future<LoadOutcome> _load() async {
     if (!await _storeFile.exists()) return const Empty();
@@ -63,7 +63,7 @@ final class FileModelStore implements ModelStore {
     }
     final result = _codec.decode(text);
     return switch (result) {
-      Decoded(:final model) => Loaded(model),
+      Decoded(:final collection) => Loaded(collection),
       Rejected(:final issues) => Corrupt(
         issues,
         recoveredFromBackup: await _recover(),
@@ -72,13 +72,13 @@ final class FileModelStore implements ModelStore {
   }
 
   /// Newest backup that decodes; null if none do.
-  Future<Model?> _recover() async {
+  Future<Collection?> _recover() async {
     for (var index = 1; index <= _backupDepth; index++) {
       final file = _fileNamed(_backupName(index));
       try {
         if (!await file.exists()) continue;
         final result = _codec.decode(await file.readAsString());
-        if (result is Decoded) return result.model;
+        if (result is Decoded) return result.collection;
       } on Exception {
         continue;
       }
@@ -86,22 +86,22 @@ final class FileModelStore implements ModelStore {
     return null;
   }
 
-  /// Writes pending model; no-op if earlier queue entry already wrote it.
+  /// Writes pending collection; no-op if earlier queue entry already wrote it.
   Future<void> _writePending() async {
-    final model = _pending;
-    if (model == null) return;
+    final collection = _pending;
+    if (collection == null) return;
     _pending = null;
-    final temp = await _writeTemp(_storeFile, _codec.encode(model));
+    final temp = await _writeTemp(_storeFile, _codec.encode(collection));
     await _rotateBackups();
     await temp.rename(_storeFile.path);
   }
 
-  Future<String> _export(Model model, ExportPurpose purpose) async {
+  Future<String> _export(Collection collection, ExportPurpose purpose) async {
     final copy = _fileNamed(switch (purpose) {
       ExportPurpose.share => _exportName,
       ExportPurpose.beforeImport => _beforeImportName,
     });
-    await _write(copy, _codec.encode(model));
+    await _write(copy, _codec.encode(collection));
     return copy.path;
   }
 

@@ -8,7 +8,7 @@ FR-BAR-3/4: everything in a guest bar is its owner's, and the reader adds nothin
 a stock level, not a note, not a tag. Nothing that writes is *offered* rather than refused, and the
 shopping optimizer is absent there rather than empty.
 
-Every write in the app today goes through `modelProvider.notifier`, which every screen already
+Every write in the app today goes through `collectionProvider.notifier`, which every screen already
 watches to read. A rule saying "check the mode first" would be a rule sixteen call sites have to
 keep, and the one that forgets is a silent corruption of someone else's collection — invisible until
 their next refresh throws it away.
@@ -21,7 +21,7 @@ The app has no compiler-enforced boundaries (ADR 04): Dart's privacy is file-sco
 **Three enforcements, each cheap, at three different distances from the mistake.**
 
 - **Domain.** `ShelfEdits.withCollection` throws `ArgumentError` on a guest bar — the programmer
-  contract `Model`'s own constructor already keeps for duplicate names. Every collection edit ends
+  contract `Collection`'s own constructor already keeps for duplicate names. Every collection edit ends
   there, so there is no derivation that quietly succeeds.
 - **State.** The write surface is not the controller. `barWriterProvider` answers a `BarWriter?`:
   every mutation, or null on a guest bar. A screen must hold a non-null writer before it can call

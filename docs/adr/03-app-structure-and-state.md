@@ -6,7 +6,7 @@ presentation, and grouping left the domain's vocabulary
 
 ## Context
 
-Many screens, shared model. Derived state (availability, filters, optimizer) updates instant (NFR-2). 
+Many screens, shared collection. Derived state (availability, filters, optimizer) updates instant (NFR-2). 
 Hardest retrofit point.
 
 ## Decision
@@ -18,9 +18,9 @@ Hardest retrofit point.
 - **Data**: storage interface + YAML adapter. See [persistence ADR](02-persistence-and-export-format.md).
 - **Presentation**: Flutter screens/widgets, read through Riverpod providers.
 
-Riverpod holds model in state providers; derived state (availability, optimizer) in computed 
+Riverpod holds collection in state providers; derived state (availability, optimizer) in computed 
 providers that cache and recompute on input change. Search, filter and order narrow a list where 
-it is drawn — widget state, not a provider, nothing model-derived reading them 
+it is drawn — widget state, not a provider, nothing collection-derived reading them 
 ([components.md](../components.md#state-contracts)).
 
 ## Alternatives considered
@@ -33,4 +33,4 @@ it is drawn — widget state, not a provider, nothing model-derived reading them
 
 - Riverpod is new (mitigated by adoption, docs, AI).
 - Pure-Dart domain: hard logic testable offline.
-- UI reads via providers, mutates via model methods.
+- UI reads via providers, mutates via collection methods.

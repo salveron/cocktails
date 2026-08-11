@@ -1,4 +1,4 @@
-import 'package:cocktails/domain/src/helpers.dart';
+import 'package:cocktails/domain/src/names.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

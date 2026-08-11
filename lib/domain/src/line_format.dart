@@ -2,7 +2,7 @@
 /// Both halves use unit vocabulary to determine unit/name boundary (ADR-09).
 library;
 
-import 'model.dart';
+import 'collection.dart';
 
 /// Reserved mark suffixes; ingredient names cannot end with them.
 final reservedSuffixes = List<String>.unmodifiable([

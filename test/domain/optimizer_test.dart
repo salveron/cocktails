@@ -7,10 +7,10 @@ void main() {
   RecipeLine line(List<String> ingredients, {LineMark? mark}) =>
       RecipeLine(const Amount(1), 'part', ingredients, mark: mark);
 
-  Model bar(
+  Collection bar(
     Map<String, StockLevel> stock,
     Map<String, List<RecipeLine>> book,
-  ) => Model(
+  ) => Collection(
     ingredients: [
       for (final entry in stock.entries)
         Ingredient(entry.key, stock: entry.value),
@@ -27,7 +27,7 @@ void main() {
   // [withLow] turns a fifth of the shelf from out to low, one draw per bottle
   // either way — so what restocking adds to the pool is measured against the
   // very collection the plain reading leaves alone.
-  Model collection({
+  Collection collectionOf({
     required int recipes,
     required int bottles,
     int seed = 7,
@@ -35,7 +35,7 @@ void main() {
   }) {
     final random = Random(seed);
     final names = [for (var i = 0; i < bottles; i++) 'bottle $i'];
-    return Model(
+    return Collection(
       ingredients: [
         for (final name in names)
           Ingredient(
@@ -67,7 +67,7 @@ void main() {
 
   group('purchasesWithin', () {
     test('one bottle closing the only gap unlocks its recipe', () {
-      final model = bar(
+      final collection = bar(
         {'gin': inStock, 'campari': out},
         {
           'Negroni': [
@@ -76,13 +76,13 @@ void main() {
           ],
         },
       );
-      expect(purchasesWithin(model, 1), [
+      expect(purchasesWithin(collection, 1), [
         Purchase(['campari'], ['Negroni']),
       ]);
     });
 
     test('a recipe short of more bottles than the budget is out of reach', () {
-      final model = bar(
+      final collection = bar(
         {'rum': out, 'lime juice': out},
         {
           'Daiquiri': [
@@ -91,14 +91,14 @@ void main() {
           ],
         },
       );
-      expect(purchasesWithin(model, 1), isEmpty);
-      expect(purchasesWithin(model, 2), [
+      expect(purchasesWithin(collection, 1), isEmpty);
+      expect(purchasesWithin(collection, 2), [
         Purchase(['lime juice', 'rum'], ['Daiquiri']),
       ]);
     });
 
     test('ranks by recipes unlocked, most first', () {
-      final model = bar(
+      final collection = bar(
         {'gin': inStock, 'lime juice': out, 'campari': out},
         {
           'Gimlet': [
@@ -115,13 +115,13 @@ void main() {
           ],
         },
       );
-      final ranked = purchasesWithin(model, 1);
+      final ranked = purchasesWithin(collection, 1);
       expect(ranked.first, Purchase(['lime juice'], ['Gimlet', 'Southside']));
       expect(ranked.last, Purchase(['campari'], ['Negroni']));
     });
 
     test('gathers gaps from different recipes into one basket', () {
-      final model = bar(
+      final collection = bar(
         {'gin': inStock, 'lime juice': out, 'campari': out},
         {
           'Gimlet': [
@@ -135,7 +135,7 @@ void main() {
         },
       );
       expect(
-        purchasesWithin(model, 2).first,
+        purchasesWithin(collection, 2).first,
         Purchase(['campari', 'lime juice'], ['Gimlet', 'Negroni']),
       );
     });
@@ -143,7 +143,7 @@ void main() {
     // The one bottle sorts *after* the two, so only the rule on size can put
     // it first — alphabetical order alone would not.
     test('a smaller basket wins a tie on recipes unlocked', () {
-      final model = bar(
+      final collection = bar(
         {'gin': inStock, 'sugar': out, 'aperol': out, 'bitters': out},
         {
           'Old Fashioned': [
@@ -156,7 +156,7 @@ void main() {
           ],
         },
       );
-      final ranked = purchasesWithin(model, 3);
+      final ranked = purchasesWithin(collection, 3);
       expect(ranked.first.unlocks, ['Old Fashioned', 'Spritz']);
       final tied = ranked.where((p) => p.unlocks.length == 1).toList();
       expect(tied, [
@@ -166,7 +166,7 @@ void main() {
     });
 
     test('a basket beaten by one of its own parts is dropped', () {
-      final model = bar(
+      final collection = bar(
         {'gin': out, 'vodka': out, 'lime juice': inStock},
         {
           'Sour': [
@@ -175,14 +175,14 @@ void main() {
           ],
         },
       );
-      expect(purchasesWithin(model, 2), [
+      expect(purchasesWithin(collection, 2), [
         Purchase(['gin'], ['Sour']),
         Purchase(['vodka'], ['Sour']),
       ]);
     });
 
     test('keeps only the best few of each size', () {
-      final model = bar(
+      final collection = bar(
         {'gin': inStock, 'lime juice': out, 'campari': out, 'rum': out},
         {
           'Gimlet': [
@@ -199,14 +199,14 @@ void main() {
           ],
         },
       );
-      expect(purchasesWithin(model, 1).length, 3);
-      expect(purchasesWithin(model, 1, most: 1), [
+      expect(purchasesWithin(collection, 1).length, 3);
+      expect(purchasesWithin(collection, 1, most: 1), [
         Purchase(['campari'], ['Negroni']),
       ]);
     });
 
     test('carries no bottle that closes nothing', () {
-      final model = bar(
+      final collection = bar(
         {'gin': inStock, 'lime juice': out, 'campari': out},
         {
           'Gimlet': [
@@ -216,17 +216,17 @@ void main() {
         },
       );
       expect(
-        purchasesWithin(model, 3).every((p) => p.unlocks.isNotEmpty),
+        purchasesWithin(collection, 3).every((p) => p.unlocks.isNotEmpty),
         true,
       );
       expect(
-        purchasesWithin(model, 3).map((p) => p.bottles),
+        purchasesWithin(collection, 3).map((p) => p.bottles),
         everyElement(isNot(contains('campari'))),
       );
     });
 
     test('offers each alternative of a group its own basket (ADR 11)', () {
-      final model = bar(
+      final collection = bar(
         {'lime juice': inStock, 'rum': out, 'vodka': out},
         {
           'Daiquiri': [
@@ -235,14 +235,14 @@ void main() {
           ],
         },
       );
-      expect(purchasesWithin(model, 1), [
+      expect(purchasesWithin(collection, 1), [
         Purchase(['rum'], ['Daiquiri']),
         Purchase(['vodka'], ['Daiquiri']),
       ]);
     });
 
     test('a group already holding one bottle is short of nothing', () {
-      final model = bar(
+      final collection = bar(
         {'lime juice': inStock, 'rum': out, 'vodka': inStock},
         {
           'Daiquiri': [
@@ -251,11 +251,11 @@ void main() {
           ],
         },
       );
-      expect(purchasesWithin(model, 3), isEmpty);
+      expect(purchasesWithin(collection, 3), isEmpty);
     });
 
     test('a low bottle counts as on hand and is not bought (ADR 16)', () {
-      final model = bar(
+      final collection = bar(
         {'gin': low, 'campari': out},
         {
           'Negroni': [
@@ -264,13 +264,13 @@ void main() {
           ],
         },
       );
-      expect(purchasesWithin(model, 2), [
+      expect(purchasesWithin(collection, 2), [
         Purchase(['campari'], ['Negroni']),
       ]);
     });
 
     test('an optional line is never bought for (FR-REC-3)', () {
-      final model = bar(
+      final collection = bar(
         {'gin': inStock, 'absinthe': out},
         {
           'Martini': [
@@ -279,11 +279,11 @@ void main() {
           ],
         },
       );
-      expect(purchasesWithin(model, 2), isEmpty);
+      expect(purchasesWithin(collection, 2), isEmpty);
     });
 
     test('a base line is bought for like any other (ADR 06)', () {
-      final model = bar(
+      final collection = bar(
         {'gin': out, 'lime juice': inStock},
         {
           'Gimlet': [
@@ -292,13 +292,13 @@ void main() {
           ],
         },
       );
-      expect(purchasesWithin(model, 1), [
+      expect(purchasesWithin(collection, 1), [
         Purchase(['gin'], ['Gimlet']),
       ]);
     });
 
     test('a recipe already makeable is never counted as unlocked', () {
-      final model = bar(
+      final collection = bar(
         {'gin': inStock, 'campari': out},
         {
           'Martini': [
@@ -310,13 +310,13 @@ void main() {
           ],
         },
       );
-      expect(purchasesWithin(model, 3), [
+      expect(purchasesWithin(collection, 3), [
         Purchase(['campari'], ['Negroni']),
       ]);
     });
 
     test('buys a bottle under its own name, whatever the line calls it', () {
-      final model = Model(
+      final collection = Collection(
         ingredients: [
           Ingredient('rum', aliases: ['white rum']),
         ],
@@ -329,13 +329,13 @@ void main() {
           ),
         ],
       );
-      expect(purchasesWithin(model, 1), [
+      expect(purchasesWithin(collection, 1), [
         Purchase(['rum'], ['Daiquiri']),
       ]);
     });
 
     test('a budget below one buys nothing', () {
-      final model = bar(
+      final collection = bar(
         {'campari': out},
         {
           'Negroni': [
@@ -343,11 +343,11 @@ void main() {
           ],
         },
       );
-      expect(purchasesWithin(model, 0), isEmpty);
+      expect(purchasesWithin(collection, 0), isEmpty);
     });
 
     test('nothing missing is nothing to buy', () {
-      final model = bar(
+      final collection = bar(
         {'gin': inStock},
         {
           'Martini': [
@@ -355,13 +355,13 @@ void main() {
           ],
         },
       );
-      expect(purchasesWithin(model, 3), isEmpty);
+      expect(purchasesWithin(collection, 3), isEmpty);
     });
   });
 
   group('purchasesWithin, restocking (ADR 16)', () {
     test('reaches a recipe the bar can already make', () {
-      final model = bar(
+      final collection = bar(
         {'gin': low, 'vermouth': inStock},
         {
           'Martini': [
@@ -370,8 +370,8 @@ void main() {
           ],
         },
       );
-      expect(purchasesWithin(model, 1), isEmpty);
-      expect(purchasesWithin(model, 1, restocking: true), [
+      expect(purchasesWithin(collection, 1), isEmpty);
+      expect(purchasesWithin(collection, 1, restocking: true), [
         Purchase(['gin'], ['Martini']),
       ]);
     });
@@ -379,7 +379,7 @@ void main() {
     // The bottle that is merely low counts against the budget like any other,
     // so neither half of the pair answers on its own.
     test('spends the budget on the low bottle beside the missing one', () {
-      final model = bar(
+      final collection = bar(
         {'gin': low, 'campari': out},
         {
           'Negroni': [
@@ -388,13 +388,13 @@ void main() {
           ],
         },
       );
-      expect(purchasesWithin(model, 2, restocking: true), [
+      expect(purchasesWithin(collection, 2, restocking: true), [
         Purchase(['campari', 'gin'], ['Negroni']),
       ]);
     });
 
     test('takes any alternative of a group short of full stock (ADR 11)', () {
-      final model = bar(
+      final collection = bar(
         {'lime juice': inStock, 'rum': low, 'vodka': out},
         {
           'Daiquiri': [
@@ -403,14 +403,14 @@ void main() {
           ],
         },
       );
-      expect(purchasesWithin(model, 1, restocking: true), [
+      expect(purchasesWithin(collection, 1, restocking: true), [
         Purchase(['rum'], ['Daiquiri']),
         Purchase(['vodka'], ['Daiquiri']),
       ]);
     });
 
     test('leaves a fully stocked recipe alone', () {
-      final model = bar(
+      final collection = bar(
         {'gin': inStock},
         {
           'Martini': [
@@ -418,11 +418,11 @@ void main() {
           ],
         },
       );
-      expect(purchasesWithin(model, 3, restocking: true), isEmpty);
+      expect(purchasesWithin(collection, 3, restocking: true), isEmpty);
     });
 
     test('still never buys for an optional line (FR-REC-3)', () {
-      final model = bar(
+      final collection = bar(
         {'gin': inStock, 'absinthe': low},
         {
           'Martini': [
@@ -431,7 +431,7 @@ void main() {
           ],
         },
       );
-      expect(purchasesWithin(model, 2, restocking: true), isEmpty);
+      expect(purchasesWithin(collection, 2, restocking: true), isEmpty);
     });
   });
 
@@ -440,17 +440,17 @@ void main() {
     // budget and reads one size at a time off that answer, rather than
     // searching afresh whenever the budget moves (ui-design.md#shopping-screen).
     test('a smaller budget is what the largest already holds at that size', () {
-      final model = collection(recipes: 120, bottles: 40, withLow: true);
+      final collection = collectionOf(recipes: 120, bottles: 40, withLow: true);
       for (final restocking in [false, true]) {
         final whole = purchasesWithin(
-          model,
+          collection,
           budgets.last,
           restocking: restocking,
         );
         for (final budget in budgets) {
           expect(
             whole.where((p) => p.bottles.length <= budget).toList(),
-            purchasesWithin(model, budget, restocking: restocking),
+            purchasesWithin(collection, budget, restocking: restocking),
             reason: 'budget $budget, restocking $restocking',
           );
         }
@@ -461,7 +461,7 @@ void main() {
     // are ones no recipe is short of on their own — they close nothing alone,
     // and a basket unlocking nothing is dropped whatever the budget was.
     test('the bottles a wider budget adds unlock nothing by themselves', () {
-      final model = bar(
+      final collection = bar(
         {'gin': out, 'lime juice': out, 'campari': out},
         {
           'Gimlet': [
@@ -473,11 +473,14 @@ void main() {
           ],
         },
       );
-      expect(purchasesWithin(model, 1), [
+      expect(purchasesWithin(collection, 1), [
         Purchase(['campari'], ['Campari Shot']),
       ]);
       expect(
-        purchasesWithin(model, 3).where((p) => p.bottles.length == 1).toList(),
+        purchasesWithin(
+          collection,
+          3,
+        ).where((p) => p.bottles.length == 1).toList(),
         [
           Purchase(['campari'], ['Campari Shot']),
         ],
@@ -488,9 +491,9 @@ void main() {
 
   group('at NFR-2 scale', () {
     test('answers a three-bottle budget over hundreds of recipes', () {
-      final model = collection(recipes: 400, bottles: 120);
+      final collection = collectionOf(recipes: 400, bottles: 120);
       final watch = Stopwatch()..start();
-      final ranked = purchasesWithin(model, 3);
+      final ranked = purchasesWithin(collection, 3);
       watch.stop();
       // ignore: avoid_print
       print(
@@ -508,10 +511,14 @@ void main() {
     // pool, and ADR 15's cost grows with the cube of it. Both readings are
     // timed over the one collection, so the print says what the switch costs.
     test('answers either reading of what is short (ADR 16)', () {
-      final model = collection(recipes: 400, bottles: 120, withLow: true);
+      final collection = collectionOf(
+        recipes: 400,
+        bottles: 120,
+        withLow: true,
+      );
       for (final restocking in [false, true]) {
         final watch = Stopwatch()..start();
-        final ranked = purchasesWithin(model, 3, restocking: restocking);
+        final ranked = purchasesWithin(collection, 3, restocking: restocking);
         watch.stop();
         // ignore: avoid_print
         print(
@@ -526,9 +533,9 @@ void main() {
     });
 
     test('the best answers survive the cap on how many are kept', () {
-      final model = collection(recipes: 120, bottles: 40);
-      final all = purchasesWithin(model, 3, most: 100000);
-      final capped = purchasesWithin(model, 3, most: 5);
+      final collection = collectionOf(recipes: 120, bottles: 40);
+      final all = purchasesWithin(collection, 3, most: 100000);
+      final capped = purchasesWithin(collection, 3, most: 5);
       expect(capped.length, lessThan(all.length));
       expect(capped.first, all.first);
       expect(

@@ -13,21 +13,22 @@ import '../palette.dart';
 import '../theme.dart';
 import '../widgets/color_chip.dart';
 import '../widgets/empty_state.dart';
-import '../widgets/model_view.dart';
+import '../widgets/collection_view.dart';
 import '../widgets/vocabulary_dialogs.dart';
 import '../widgets/vocabulary_list.dart';
 import 'recipe_form_screen.dart';
 
 /// A card's reading of its own amounts: the factor it multiplies them by
 /// (FR-REC-7) and the fixed unit they show in (FR-SET-1, this card only).
-/// Display alone — nothing here reaches the model or the file.
+/// Display alone — nothing here reaches the collection or the file.
 typedef _AmountView = ({int scale, FixedUnit unit});
 
 /// Where every card rests: unscaled, in the unit the settings name. A card is
 /// transformed by departing from *that*, not from the way the file writes it —
 /// so under an ml setting it is "(part)" that marks a card as read otherwise
 /// (ADR 17).
-_AmountView _resting(Model model) => (scale: 1, unit: model.settings.display);
+_AmountView _resting(Collection collection) =>
+    (scale: 1, unit: collection.settings.display);
 
 /// What the list is narrowed to by base spirit (FR-DIS-4, ADR 12) — a record,
 /// so a null *spirit*, the recipes marking no base, is told apart from a null
@@ -116,18 +117,18 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
   Widget build(BuildContext context) {
     final availability = ref.watch(availabilityProvider);
     ref.listen(revealProvider, (_, request) => _serve(request));
-    return ModelView((model) {
-      final vocabulary = sortedByName(model.recipeTags);
+    return CollectionView((collection) {
+      final vocabulary = sortedByName(collection.recipeTags);
       // Read through the build that carries it, so no later one reveals again.
       final revealing = _revealing;
       _revealing = null;
       return VocabularyList<Recipe>(
-        entries: model.recipes,
+        entries: collection.recipes,
         nameOf: (recipe) => recipe.name,
-        spellingsOf: (recipe) => _spellings(model, recipe),
+        spellingsOf: (recipe) => _spellings(collection, recipe),
         rowOf: (recipe) =>
-            _row(model, vocabulary, recipe, availability[recipe.name]),
-        onAdd: (query) => _add(model.units, query),
+            _row(collection, vocabulary, recipe, availability[recipe.name]),
+        onAdd: (query) => _add(collection.units, query),
         reveal: revealing,
         noun: 'recipe',
         plural: 'recipes',
@@ -136,7 +137,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
           picked: _picked,
           onToggle: (tag) => setState(() => _picked.toggle(tag)),
           tagsOf: (recipe) => recipe.tags,
-          leading: _baseFilter(model),
+          leading: _baseFilter(collection),
         ),
         draw: (
           icon: const FaIcon(FontAwesomeIcons.dice),
@@ -164,21 +165,21 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
   /// Sends the reader to the bottle a line names, on the Inventory (FR-DIS-9).
   /// Under the bottle's own name: a line may spell it any way the vocabulary
   /// answers to (ADR 10), and a list finds its rows under theirs.
-  void _reach(Model model, String bottle) => ref
+  void _reach(Collection collection, String bottle) => ref
       .read(revealProvider.notifier)
-      .ask(Destination.inventory, model.bottleNamed(bottle));
+      .ask(Destination.inventory, collection.bottleNamed(bottle));
 
   /// Compact or full when tapped; full hides summary since details appear below.
-  /// [availability] is derived from the model this row is built from, so it is
+  /// [availability] is derived from the collection this row is built from, so
   /// there; an absent one draws no chip rather than standing on an assertion.
   VocabularyRow _row(
-    Model model,
+    Collection collection,
     List<Tag> vocabulary,
     Recipe recipe,
     Availability? availability,
   ) {
     final expanded = _expanded.contains(recipe.name);
-    final resting = _resting(model);
+    final resting = _resting(collection);
     final view = _views[recipe.name] ?? resting;
     final note = _viewNote(view, resting);
     final summary = [
@@ -209,11 +210,11 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
           : Text(summary, maxLines: 1, overflow: TextOverflow.ellipsis),
       body: expanded
           ? _Details(
-              model: model,
+              collection: collection,
               vocabulary: vocabulary,
               recipe: recipe,
               view: view,
-              onReach: (bottle) => _reach(model, bottle),
+              onReach: (bottle) => _reach(collection, bottle),
             )
           : null,
       trailing: Row(
@@ -225,7 +226,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
             // open card's, and dies with it.
             if (expanded)
               'Scale & convert': () => unawaited(_scale(recipe, resting)),
-            'Edit': () => unawaited(_edit(model.units, recipe)),
+            'Edit': () => unawaited(_edit(collection.units, recipe)),
             'Delete': () => unawaited(_delete(recipe)),
           }),
         ],
@@ -264,10 +265,10 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
   /// stale — the bottle renamed, deleted, or its last base mark cleared — is
   /// absent from what the collection offers, and so stops narrowing rather than
   /// emptying the list. Nothing marked anywhere leaves nothing to offer.
-  ListFilter<Recipe>? _baseFilter(Model model) {
-    final spirits = baseSpirits(model);
+  ListFilter<Recipe>? _baseFilter(Collection collection) {
+    final spirits = baseSpirits(collection);
     if (spirits.isEmpty) return null;
-    final chosen = _standingPick(model, spirits);
+    final chosen = _standingPick(collection, spirits);
     // What it narrows by is exactly what its sentence names, so the pick is
     // spelled out once and read as both.
     final narrowing = switch (chosen) {
@@ -291,12 +292,12 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
   /// stands among [spirits]. A bottle answers under its own name, so a rename
   /// changing only its case goes on narrowing (ADR 08) and the chip reads the
   /// new spelling; one renamed in earnest stops.
-  _BasePick? _standingPick(Model model, List<String> spirits) {
+  _BasePick? _standingPick(Collection collection, List<String> spirits) {
     final pick = _base;
     if (pick == null) return null;
     final picked = pick.spirit;
     if (picked == null) return pick;
-    final spirit = model.bottleNamed(picked);
+    final spirit = collection.bottleNamed(picked);
     return spirits.contains(spirit) ? (spirit: spirit) : null;
   }
 
@@ -333,11 +334,11 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
   /// bottle it is built from (FR-DIS-2, FR-VOC-6). A line is held under its
   /// bottle's own name (ADR 10), so the vocabulary is what widens it to the
   /// rest — and a line naming no bottle still answers to what it says.
-  static List<String> _spellings(Model model, Recipe recipe) => [
+  static List<String> _spellings(Collection collection, Recipe recipe) => [
     recipe.name,
     for (final line in recipe.lines)
       for (final ingredient in line.ingredients)
-        ...(model.ingredientNamed(ingredient)?.spellings ?? [ingredient]),
+        ...(collection.ingredientNamed(ingredient)?.spellings ?? [ingredient]),
   ];
 
   /// On rename, move expansion state from old name to new name.
@@ -381,7 +382,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
       blockedByNoun: 'recipes',
     );
     if (!confirmed || !mounted) return;
-    await ref.read(modelProvider.notifier).removeRecipe(recipe.name);
+    await ref.read(collectionProvider.notifier).removeRecipe(recipe.name);
     if (mounted) {
       setState(() {
         _expanded.remove(recipe.name);
@@ -452,7 +453,7 @@ class _BaseChip extends StatelessWidget {
 /// Full recipe card: tags, lines, notes; empty sections omitted.
 class _Details extends StatelessWidget {
   const _Details({
-    required this.model,
+    required this.collection,
     required this.vocabulary,
     required this.recipe,
     required this.view,
@@ -461,7 +462,7 @@ class _Details extends StatelessWidget {
 
   /// Read for the stock behind each line (FR-DIS-1), and for the ratios the
   /// fixed units convert at (FR-SET-1).
-  final Model model;
+  final Collection collection;
 
   final List<Tag> vocabulary;
   final Recipe recipe;
@@ -475,8 +476,8 @@ class _Details extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final worn = wornInOrder(vocabulary, recipe.tags);
-    final settings = model.settings.copyWith(display: view.unit);
-    final transformed = view != _resting(model);
+    final settings = collection.settings.copyWith(display: view.unit);
+    final transformed = view != _resting(collection);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -496,10 +497,10 @@ class _Details extends StatelessWidget {
               measure: displayMeasure(
                 line,
                 settings,
-                model.units,
+                collection.units,
                 scale: view.scale,
               ),
-              model: model,
+              collection: collection,
               transformed: transformed,
               onReach: onReach,
             ),
@@ -531,14 +532,14 @@ class _Line extends StatefulWidget {
   const _Line(
     this.line, {
     required this.measure,
-    required this.model,
+    required this.collection,
     required this.transformed,
     required this.onReach,
   });
 
   final RecipeLine line;
   final String measure;
-  final Model model;
+  final Collection collection;
   final bool transformed;
   final void Function(String bottle) onReach;
 
@@ -573,8 +574,8 @@ class _LineState extends State<_Line> {
   @override
   Widget build(BuildContext context) {
     final line = widget.line;
-    final model = widget.model;
-    final stock = stockOfLine(model, line);
+    final collection = widget.collection;
+    final stock = stockOfLine(collection, line);
     final dimmed = TextStyle(color: dimmedInk(Theme.of(context).colorScheme));
     return Row(
       children: [
@@ -596,7 +597,7 @@ class _LineState extends State<_Line> {
                     recognizer: _tap(i, line.ingredients[i]),
                     style:
                         stock != StockLevel.out &&
-                            stockOf(model, line.ingredients[i]) ==
+                            stockOf(collection, line.ingredients[i]) ==
                                 StockLevel.out
                         ? dimmed
                         : null,

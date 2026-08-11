@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 /// What every [ModelStore] promises, whatever it stores into — run by the
 /// file and memory store suites alike (docs/components.md#data-contracts).
 void modelStoreContract(ModelStore Function() storeOf) {
-  final model = Model(
+  final collection = Collection(
     ingredients: [Ingredient('gin', stock: StockLevel.in_)],
     recipeTags: const [Tag('classic', color: TagColor.rose)],
   );
@@ -16,24 +16,24 @@ void modelStoreContract(ModelStore Function() storeOf) {
 
   test('load returns what save was given', () async {
     final store = storeOf();
-    await store.save(model);
+    await store.save(collection);
     final outcome = await store.load();
     expect(outcome, isA<Loaded>());
-    expect((outcome as Loaded).model, model);
+    expect((outcome as Loaded).collection, collection);
   });
 
   test('the last of several saves wins', () async {
     final store = storeOf();
-    await store.save(model);
+    await store.save(collection);
     await store.save(
-      Model(recipeTags: const [Tag('sour', color: TagColor.teal)]),
+      Collection(recipeTags: const [Tag('sour', color: TagColor.teal)]),
     );
-    expect(((await store.load()) as Loaded).model.ingredients, isEmpty);
+    expect(((await store.load()) as Loaded).collection.ingredients, isEmpty);
   });
 
   test('exportSnapshot answers with a location', () async {
     final store = storeOf();
-    await store.save(model);
-    expect(await store.exportSnapshot(model), isNotEmpty);
+    await store.save(collection);
+    expect(await store.exportSnapshot(collection), isNotEmpty);
   });
 }

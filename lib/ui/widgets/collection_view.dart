@@ -5,16 +5,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'empty_state.dart';
 
-/// The three faces of the startup load — spinner, failure, model — in one
-/// place, so no screen writes its own (docs/ui-design.md#app-shell).
-class ModelView extends ConsumerWidget {
-  const ModelView(this.builder, {super.key});
+/// The three faces of the startup load — spinner, failure, collection — in
+/// one place, so no screen writes its own (docs/ui-design.md#app-shell).
+class CollectionView extends ConsumerWidget {
+  const CollectionView(this.builder, {super.key});
 
-  final Widget Function(Model model) builder;
+  final Widget Function(Collection collection) builder;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) =>
-      switch (ref.watch(modelProvider)) {
+      switch (ref.watch(collectionProvider)) {
         AsyncData(:final value) => builder(value),
         AsyncError(:final error) => EmptyState(
           icon: Icons.error_outline,

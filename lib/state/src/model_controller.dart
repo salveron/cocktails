@@ -49,75 +49,78 @@ Future<String> pickedText(XFile picked) async =>
 
 /// What a picked file turned out to be: the collection it holds, or what
 /// stopped it being read (FR-DAT-4). Never both.
-typedef ImportReview = ({Model? model, List<String> issues});
+typedef ImportReview = ({Collection? collection, List<String> issues});
 
-final modelProvider = AsyncNotifierProvider<ModelController, Model>(
+final collectionProvider = AsyncNotifierProvider<ModelController, Collection>(
   ModelController.new,
 );
 
 /// Startup load errors; empty when successful (FR-DAT-4).
 final startupIssuesProvider = Provider<List<String>>((ref) {
-  ref.watch(modelProvider);
-  return ref.watch(modelProvider.notifier).startupIssues;
+  ref.watch(collectionProvider);
+  return ref.watch(collectionProvider.notifier).startupIssues;
 });
 
-final class ModelController extends AsyncNotifier<Model> {
+final class ModelController extends AsyncNotifier<Collection> {
   List<String> _startupIssues = const [];
 
   List<String> get startupIssues => _startupIssues;
 
   /// Corrupt store recovers from newest backup or defaults to empty (FR-DAT-4).
   @override
-  Future<Model> build() async {
+  Future<Collection> build() async {
     final outcome = await ref.watch(modelStoreProvider).load();
-    final (model, issues) = switch (outcome) {
-      Loaded(:final model) => (model, const <String>[]),
-      Empty() => (Model(), const <String>[]),
+    final (collection, issues) = switch (outcome) {
+      Loaded(:final collection) => (collection, const <String>[]),
+      Empty() => (Collection(), const <String>[]),
       Corrupt(:final issues, :final recoveredFromBackup) => (
-        recoveredFromBackup ?? Model(),
+        recoveredFromBackup ?? Collection(),
         _described(issues),
       ),
     };
     _startupIssues = issues;
-    return model;
+    return collection;
   }
 
   Future<void> setSettings(Settings settings) =>
-      _edit((model) => model.withSettings(settings));
+      _edit((collection) => collection.withSettings(settings));
 
   /// Units vocabulary whole; renames reach measured lines in one edit (FR-VOC-5).
   Future<void> setUnits(List<UnitEdit> units) =>
-      _edit((model) => model.withUnits(units));
+      _edit((collection) => collection.withUnits(units));
 
   /// Adds/replaces ingredient; every line that named it follows (FR-VOC-1).
   Future<void> upsertIngredient(Ingredient ingredient, {String? replacing}) =>
-      _edit((model) => model.withIngredient(ingredient, replacing: replacing));
+      _edit(
+        (collection) =>
+            collection.withIngredient(ingredient, replacing: replacing),
+      );
 
   Future<void> removeIngredient(String name) =>
-      _edit((model) => model.withoutIngredient(name));
+      _edit((collection) => collection.withoutIngredient(name));
 
   Future<void> setStock(String ingredient, StockLevel stock) =>
-      _edit((model) => model.withStock(ingredient, stock));
+      _edit((collection) => collection.withStock(ingredient, stock));
 
   /// Upserts tag; [replacing] renames first so all wearers follow.
   Future<void> upsertTag(TagKind kind, Tag tag, {String? replacing}) =>
-      _edit((model) {
+      _edit((collection) {
         final renamed = replacing == null || replacing == tag.name
-            ? model
-            : model.withTagRenamed(kind, replacing, tag.name);
+            ? collection
+            : collection.withTagRenamed(kind, replacing, tag.name);
         return renamed.withTag(kind, tag);
       });
 
   Future<void> removeTag(TagKind kind, String name) =>
-      _edit((model) => model.withoutTag(kind, name));
+      _edit((collection) => collection.withoutTag(kind, name));
 
   /// Adds/replaces recipe; auto-creates missing ingredients; lines canonicalize (ADR-08, ADR-10).
   Future<void> upsertRecipe(
     Recipe recipe, {
     List<Ingredient> addingIngredients = const [],
     String? replacing,
-  }) => _edit((model) {
-    var edited = model;
+  }) => _edit((collection) {
+    var edited = collection;
     for (final ingredient in addingIngredients) {
       edited = edited.withIngredient(ingredient);
     }
@@ -128,7 +131,7 @@ final class ModelController extends AsyncNotifier<Model> {
   });
 
   Future<void> removeRecipe(String name) =>
-      _edit((model) => model.withoutRecipe(name));
+      _edit((collection) => collection.withoutRecipe(name));
 
   /// A shareable copy of the collection on screen, and where it went — opaque,
   /// so the screen hands it on rather than reading it (FR-DAT-1).
@@ -138,17 +141,20 @@ final class ModelController extends AsyncNotifier<Model> {
   /// What [text] holds, judged before anything is touched: the confirmation and
   /// the copy [replaceAll] keeps both slot in between (FR-DAT-3/4).
   ImportReview review(String text) => switch (const YamlCodec().decode(text)) {
-    Decoded(:final model) => (model: model, issues: const <String>[]),
-    Rejected(:final issues) => (model: null, issues: _described(issues)),
+    Decoded(:final collection) => (
+      collection: collection,
+      issues: const <String>[],
+    ),
+    Rejected(:final issues) => (collection: null, issues: _described(issues)),
   };
 
-  /// Replaces the collection with [model], keeping a copy of the one it
+  /// Replaces the collection with [collection], keeping a copy of the one it
   /// replaces first (FR-DAT-3).
-  Future<void> replaceAll(Model model) async {
+  Future<void> replaceAll(Collection collection) async {
     await ref
         .read(modelStoreProvider)
         .exportSnapshot(await future, purpose: ExportPurpose.beforeImport);
-    await _edit((_) => model);
+    await _edit((_) => collection);
   }
 
   /// FR-DAT-4's issues as a reader meets them — one reading, whether the file
@@ -157,10 +163,10 @@ final class ModelController extends AsyncNotifier<Model> {
       List.unmodifiable([for (final issue in issues) issue.description]);
 
   /// Edit route: derive, publish, persist; waits for startup; no-op if unchanged (FR-DAT-4).
-  Future<void> _edit(Model Function(Model) edit) async {
-    final model = await future;
-    final edited = edit(model);
-    if (edited == model) return;
+  Future<void> _edit(Collection Function(Collection) edit) async {
+    final collection = await future;
+    final edited = edit(collection);
+    if (edited == collection) return;
     state = AsyncData(edited);
     await ref.read(modelStoreProvider).save(edited);
   }

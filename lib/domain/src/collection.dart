@@ -1,10 +1,10 @@
-/// Domain entities and the model root. Shapes, defaults, and name-uniqueness
-/// rules follow the data format in docs/architecture.md. Value validation
+/// Domain entities and the collection root. Shapes, defaults, and name
+/// uniqueness follow the data format in docs/architecture.md. Value validation
 /// (malformed amounts, referential integrity) is validation.dart's rule set,
 /// not enforced here.
 library;
 
-import 'helpers.dart';
+import 'names.dart';
 
 enum StockLevel {
   in_('in'),
@@ -419,7 +419,7 @@ final class Recipe {
   String toString() => 'Recipe($name)';
 }
 
-final class Model {
+final class Collection {
   final Settings settings;
 
   /// Units vocabulary; used for files naming none (ADR-09).
@@ -431,7 +431,7 @@ final class Model {
   final List<Tag> ingredientTags;
   final List<Recipe> recipes;
 
-  Model({
+  Collection({
     this.settings = const Settings(),
     List<Unit> units = defaultUnits,
     List<Ingredient> ingredients = const [],
@@ -458,14 +458,14 @@ final class Model {
     _requireUniqueNames('recipe', this.recipes.map((r) => r.name).toList());
   }
 
-  Model copyWith({
+  Collection copyWith({
     Settings? settings,
     List<Unit>? units,
     List<Ingredient>? ingredients,
     List<Tag>? recipeTags,
     List<Tag>? ingredientTags,
     List<Recipe>? recipes,
-  }) => Model(
+  }) => Collection(
     settings: settings ?? this.settings,
     units: units ?? this.units,
     ingredients: ingredients ?? this.ingredients,
@@ -526,7 +526,7 @@ final class Model {
 
   @override
   bool operator ==(Object other) =>
-      other is Model &&
+      other is Collection &&
       other.settings == settings &&
       listEquals(other.units, units) &&
       listEquals(other.ingredients, ingredients) &&
@@ -546,8 +546,9 @@ final class Model {
 
   @override
   String toString() =>
-      'Model(${ingredients.length} ingredients, ${recipeTags.length} recipe '
-      'tags, ${ingredientTags.length} ingredient tags, '
+      'Collection(${ingredients.length} ingredients, '
+      '${recipeTags.length} recipe tags, '
+      '${ingredientTags.length} ingredient tags, '
       '${recipes.length} recipes)';
 }
 

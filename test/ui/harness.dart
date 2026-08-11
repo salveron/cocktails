@@ -12,7 +12,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// Two ingredients under one recipe — enough for every "not empty" screen.
-final fixtureModel = Model(
+final fixtureCollection = Collection(
   ingredients: [
     Ingredient('gin', stock: StockLevel.in_),
     Ingredient('campari'),
@@ -34,7 +34,7 @@ final fixtureModel = Model(
 /// every form field: tags, marks, a range and notes — and each section's
 /// absence too. Shared by the recipe list and the recipe form, so neither can
 /// be exercised against a shape the other never sees.
-final recipeModel = Model(
+final recipeCollection = Collection(
   ingredients: [
     Ingredient('bourbon'),
     Ingredient('campari'),
@@ -83,7 +83,7 @@ final recipeModel = Model(
   ],
 );
 
-/// A store whose file did not decode, recovered onto [fixtureModel].
+/// A store whose file did not decode, recovered onto [fixtureCollection].
 MemoryModelStore corruptStore() => MemoryModelStore()
   ..outcome = Corrupt([
     SourcedIssue(
@@ -94,7 +94,7 @@ MemoryModelStore corruptStore() => MemoryModelStore()
       ),
       4,
     ),
-  ], recoveredFromBackup: fixtureModel);
+  ], recoveredFromBackup: fixtureCollection);
 
 /// [widget] under the provider overrides the composition root makes, so a
 /// widget test reaches the real state layer over an in-memory store — and over
@@ -149,14 +149,14 @@ Future<void> pumpScreen(
   await tester.pumpAndSettle();
 }
 
-/// [screen] over a store seeded with [model], handing that store back so the
-/// test can read what reached it. The one way a screen test starts.
+/// [screen] over a store seeded with [collection], handing that store back so
+/// the test can read what reached it. The one way a screen test starts.
 Future<MemoryModelStore> pumpOver(
   WidgetTester tester,
   Widget screen,
-  Model model,
+  Collection collection,
 ) async {
-  final store = MemoryModelStore(model);
+  final store = MemoryModelStore(collection);
   await pumpScreen(tester, screen, store: store);
   return store;
 }

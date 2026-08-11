@@ -1,4 +1,5 @@
-/// Shared domain logic; public in src/, not exported (ADR-04).
+/// How names fold, match and order — the one home for the rule every
+/// vocabulary keeps (ADR-08). Public in src/, not exported (ADR-04).
 library;
 
 /// One name any case (ADR-08).

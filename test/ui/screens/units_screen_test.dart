@@ -8,11 +8,14 @@ import '../harness.dart';
 
 /// The screen as it is reached — through Settings, so leaving it has somewhere
 /// to go and the menu entry is exercised with it.
-Future<MemoryModelStore> pumpUnits(WidgetTester tester, [Model? model]) async {
+Future<MemoryModelStore> pumpUnits(
+  WidgetTester tester, [
+  Collection? collection,
+]) async {
   final store = await pumpOver(
     tester,
     const SettingsScreen(),
-    model ?? recipeModel,
+    collection ?? recipeCollection,
   );
   await tap(tester, find.text('Units'));
   return store;
@@ -195,7 +198,7 @@ void main() {
       expect(unitRows(tester), hasLength(7));
       await tap(tester, find.text('Save'));
       expect(savedUnits(store), isNot(contains('dash')));
-      expect(store.saved!.recipes, recipeModel.recipes);
+      expect(store.saved!.recipes, recipeCollection.recipes);
     });
   });
 

@@ -1,4 +1,5 @@
-/// YAML tree → model parts; shape errors become issues at data-format paths.
+/// YAML tree → collection parts; shape errors become issues at data-format
+/// paths.
 library;
 
 import 'package:cocktails/domain/domain.dart';

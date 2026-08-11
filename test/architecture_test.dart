@@ -214,7 +214,7 @@ void main() {
     test('the domain barrel keeps layer-private names unexported', () {
       final barrel = File('lib/domain/domain.dart').readAsStringSync();
       final exported = _directivesOf(barrel).map((d) => d.target);
-      expect(exported, isNot(contains('src/helpers.dart')));
+      expect(exported, isNot(contains('src/names.dart')));
       expect(barrel, contains('hide reservedSuffixes'));
     });
 
@@ -280,13 +280,13 @@ void main() {
     test('valid dependencies for every real layer do not violate', () {
       expect(
         _violations(
-          'domain/src/model.dart',
-          _imports(['helpers.dart', 'dart:math']),
+          'domain/src/collection.dart',
+          _imports(['names.dart', 'dart:math']),
         ),
         isEmpty,
       );
       expect(
-        _violations('domain/domain.dart', _exports(['src/model.dart'])),
+        _violations('domain/domain.dart', _exports(['src/collection.dart'])),
         isEmpty,
       );
       expect(
@@ -325,17 +325,17 @@ void main() {
     test('domain importing Flutter or dart:io/dart:ui is caught', () {
       expect(
         _violations(
-          'domain/src/model.dart',
+          'domain/src/collection.dart',
           _imports(['package:flutter/material.dart']),
         ),
         isNotEmpty,
       );
       expect(
-        _violations('domain/src/model.dart', _imports(['dart:io'])),
+        _violations('domain/src/collection.dart', _imports(['dart:io'])),
         isNotEmpty,
       );
       expect(
-        _violations('domain/src/model.dart', _imports(['dart:ui'])),
+        _violations('domain/src/collection.dart', _imports(['dart:ui'])),
         isNotEmpty,
       );
     });
@@ -343,7 +343,7 @@ void main() {
     test('domain importing another layer is caught', () {
       expect(
         _violations(
-          'domain/src/model.dart',
+          'domain/src/collection.dart',
           _imports(['package:cocktails/data/data.dart']),
         ),
         isNotEmpty,
@@ -387,7 +387,7 @@ void main() {
       expect(
         _violations(
           'data/src/yaml_codec.dart',
-          _imports(['package:cocktails/domain/src/model.dart']),
+          _imports(['package:cocktails/domain/src/collection.dart']),
         ),
         isNotEmpty,
       );
@@ -415,7 +415,7 @@ void main() {
       expect(
         _violations(
           'data/data.dart',
-          _exports(['package:cocktails/domain/src/model.dart']),
+          _exports(['package:cocktails/domain/src/collection.dart']),
         ),
         isNotEmpty,
       );
@@ -426,8 +426,8 @@ void main() {
       () {
         expect(
           _violations(
-            'domain/src/model.dart',
-            _imports(['package:cocktails/domain/src/helpers.dart']),
+            'domain/src/collection.dart',
+            _imports(['package:cocktails/domain/src/names.dart']),
           ),
           isNotEmpty,
         );
@@ -451,7 +451,7 @@ void main() {
       expect(
         _violations(
           'ui/screens/foo.dart',
-          _imports(['../../domain/src/model.dart']),
+          _imports(['../../domain/src/collection.dart']),
         ),
         isNotEmpty,
       );
@@ -459,10 +459,10 @@ void main() {
 
     test('a violation message names the offending file and directive', () {
       final violations = _violations(
-        'domain/src/model.dart',
+        'domain/src/collection.dart',
         _imports(['package:flutter/material.dart']),
       );
-      expect(violations.single, contains('domain/src/model.dart'));
+      expect(violations.single, contains('domain/src/collection.dart'));
       expect(violations.single, contains('package:flutter/material.dart'));
     });
   });

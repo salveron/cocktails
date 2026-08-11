@@ -54,7 +54,7 @@ the one the reader picked.**
 
 - FR-SET-1 is rewritten — ratios plural, three units, one rule for what converts. FR-VOC-5 gains
   `oz` among the fixed.
-- `validateModel` refuses a units section without `oz`, exactly as it already does for the other
+- `validateCollection` refuses a units section without `oz`, exactly as it already does for the other
   two: a hand-edited file that dropped it is reported, not repaired.
 - A card's resting reading becomes the settings', not `part`. The recipe card's own scale-and-unit
   view (FR-REC-7) therefore marks itself only where it *departs* from the global reading — "(part)"

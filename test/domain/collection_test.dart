@@ -554,14 +554,14 @@ void main() {
     });
   });
 
-  group('Model', () {
-    Model build({
+  group('Collection', () {
+    Collection build({
       Settings settings = const Settings(partMl: 25),
       List<Ingredient>? ingredients,
       List<Tag> ingredientTags = const [Tag('oaked', color: TagColor.sand)],
       List<Tag> recipeTags = const [Tag('sour', color: TagColor.rose)],
       List<Recipe>? recipes,
-    }) => Model(
+    }) => Collection(
       settings: settings,
       ingredients:
           ingredients ??
@@ -578,19 +578,19 @@ void main() {
     );
 
     test('starts empty with default settings and the shipped units', () {
-      final model = Model();
-      expect(model.units, defaultUnits);
-      expect(model.unitSpellings, contains('dashes'));
-      expect(model.ingredients, isEmpty);
-      expect(model.ingredientTags, isEmpty);
-      expect(model.recipeTags, isEmpty);
-      expect(model.recipes, isEmpty);
-      expect(model.settings, const Settings());
+      final collection = Collection();
+      expect(collection.units, defaultUnits);
+      expect(collection.unitSpellings, contains('dashes'));
+      expect(collection.ingredients, isEmpty);
+      expect(collection.ingredientTags, isEmpty);
+      expect(collection.recipeTags, isEmpty);
+      expect(collection.recipes, isEmpty);
+      expect(collection.settings, const Settings());
     });
 
     test('rejects duplicate names within each kind', () {
       expect(
-        () => Model(ingredients: [Ingredient('gin'), Ingredient('gin')]),
+        () => Collection(ingredients: [Ingredient('gin'), Ingredient('gin')]),
         throwsA(
           isA<ArgumentError>().having(
             (e) => e.message,
@@ -600,7 +600,7 @@ void main() {
         ),
       );
       expect(
-        () => Model(
+        () => Collection(
           recipeTags: const [
             Tag('sour', color: TagColor.rose),
             Tag('sour', color: TagColor.teal),
@@ -615,7 +615,7 @@ void main() {
         ),
       );
       expect(
-        () => Model(
+        () => Collection(
           ingredientTags: const [
             Tag('citrus', color: TagColor.sand),
             Tag('citrus', color: TagColor.teal),
@@ -630,14 +630,14 @@ void main() {
         ),
       );
       expect(
-        () => Model(recipes: [Recipe('Negroni'), Recipe('Negroni')]),
+        () => Collection(recipes: [Recipe('Negroni'), Recipe('Negroni')]),
         throwsArgumentError,
       );
     });
 
     test('rejects a unit spelling another unit already answers to', () {
       expect(
-        () => Model(units: const [Unit('dash'), Unit('dash')]),
+        () => Collection(units: const [Unit('dash'), Unit('dash')]),
         throwsA(
           isA<ArgumentError>().having(
             (e) => e.message,
@@ -647,7 +647,7 @@ void main() {
         ),
       );
       expect(
-        () => Model(
+        () => Collection(
           units: const [
             Unit('dash', plural: 'drop'),
             Unit('drop'),
@@ -659,22 +659,22 @@ void main() {
 
     test('a plural written out as its own name is no collision', () {
       expect(
-        Model(units: const [Unit('ml', plural: 'ml')]).units,
+        Collection(units: const [Unit('ml', plural: 'ml')]).units,
         hasLength(1),
       );
     });
 
     test('rejects names that differ only in case (ADR 08)', () {
       expect(
-        () => Model(ingredients: [Ingredient('Gin'), Ingredient('gin')]),
+        () => Collection(ingredients: [Ingredient('Gin'), Ingredient('gin')]),
         throwsA(isA<ArgumentError>()),
       );
       expect(
-        () => Model(recipes: [Recipe('Negroni'), Recipe('negroni')]),
+        () => Collection(recipes: [Recipe('Negroni'), Recipe('negroni')]),
         throwsA(isA<ArgumentError>()),
       );
       expect(
-        () => Model(
+        () => Collection(
           ingredientTags: const [
             Tag('Citrus', color: TagColor.sand),
             Tag('citrus', color: TagColor.teal),
@@ -685,31 +685,31 @@ void main() {
     });
 
     test('allows the same name across kinds, both vocabularies included', () {
-      final model = Model(
+      final collection = Collection(
         ingredients: [Ingredient('sour')],
         ingredientTags: const [Tag('sour', color: TagColor.sand)],
         recipeTags: const [Tag('sour', color: TagColor.rose)],
         recipes: [Recipe('sour')],
       );
-      expect(model.ingredients.single.name, 'sour');
-      expect(model.ingredientTags.single.color, TagColor.sand);
-      expect(model.recipeTags.single.color, TagColor.rose);
+      expect(collection.ingredients.single.name, 'sour');
+      expect(collection.ingredientTags.single.color, TagColor.sand);
+      expect(collection.recipeTags.single.color, TagColor.rose);
     });
 
     test('collections are unmodifiable', () {
-      final model = Model();
+      final collection = Collection();
       expect(
-        () => model.ingredients.add(Ingredient('gin')),
+        () => collection.ingredients.add(Ingredient('gin')),
         throwsUnsupportedError,
       );
-      for (final tags in [model.ingredientTags, model.recipeTags]) {
+      for (final tags in [collection.ingredientTags, collection.recipeTags]) {
         expect(
           () => tags.add(const Tag('sour', color: TagColor.rose)),
           throwsUnsupportedError,
         );
       }
       expect(
-        () => model.recipes.add(Recipe('Negroni')),
+        () => collection.recipes.add(Recipe('Negroni')),
         throwsUnsupportedError,
       );
     });
@@ -726,30 +726,30 @@ void main() {
     });
 
     test('copyWith replaces one field and carries the rest', () {
-      final model = build();
-      expect(model.copyWith(), model, reason: 'nothing named');
+      final collection = build();
+      expect(collection.copyWith(), collection, reason: 'nothing named');
       expect(
-        model.copyWith(settings: const Settings()),
+        collection.copyWith(settings: const Settings()),
         build(settings: const Settings()),
         reason: 'settings',
       );
       expect(
-        model.copyWith(ingredients: [Ingredient('gin')]),
+        collection.copyWith(ingredients: [Ingredient('gin')]),
         build(ingredients: [Ingredient('gin')]),
         reason: 'ingredients',
       );
       expect(
-        model.copyWith(ingredientTags: peaty),
+        collection.copyWith(ingredientTags: peaty),
         build(ingredientTags: peaty),
         reason: 'ingredientTags',
       );
       expect(
-        model.copyWith(recipeTags: classic),
+        collection.copyWith(recipeTags: classic),
         build(recipeTags: classic),
         reason: 'recipeTags',
       );
       expect(
-        model.copyWith(recipes: [Recipe('Negroni')]),
+        collection.copyWith(recipes: [Recipe('Negroni')]),
         build(recipes: [Recipe('Negroni')]),
         reason: 'recipes',
       );
@@ -766,72 +766,75 @@ void main() {
 
     group('name lookups', () {
       test('answer with the entry of that name', () {
-        final model = build();
+        final collection = build();
         expect(
-          model.ingredientNamed('bourbon'),
+          collection.ingredientNamed('bourbon'),
           Ingredient('bourbon', tags: const ['oaked']),
         );
-        expect(model.recipeNamed('Whiskey Sour')?.tags, ['sour']);
-        expect(model.hasTag(TagKind.recipe, 'sour'), isTrue);
-        expect(model.hasTag(TagKind.ingredient, 'oaked'), isTrue);
+        expect(collection.recipeNamed('Whiskey Sour')?.tags, ['sour']);
+        expect(collection.hasTag(TagKind.recipe, 'sour'), isTrue);
+        expect(collection.hasTag(TagKind.ingredient, 'oaked'), isTrue);
       });
 
       test('answer for an unknown name without throwing', () {
-        final model = build();
-        expect(model.ingredientNamed('gin'), isNull);
-        expect(model.recipeNamed('Negroni'), isNull);
-        expect(model.hasTag(TagKind.recipe, 'classic'), isFalse);
-        expect(model.hasTag(TagKind.ingredient, 'peaty'), isFalse);
+        final collection = build();
+        expect(collection.ingredientNamed('gin'), isNull);
+        expect(collection.recipeNamed('Negroni'), isNull);
+        expect(collection.hasTag(TagKind.recipe, 'classic'), isFalse);
+        expect(collection.hasTag(TagKind.ingredient, 'peaty'), isFalse);
       });
 
       test('one vocabulary never answers for the other', () {
-        final model = build();
-        expect(model.hasTag(TagKind.recipe, 'oaked'), isFalse);
-        expect(model.hasTag(TagKind.ingredient, 'sour'), isFalse);
+        final collection = build();
+        expect(collection.hasTag(TagKind.recipe, 'oaked'), isFalse);
+        expect(collection.hasTag(TagKind.ingredient, 'sour'), isFalse);
       });
 
-      test('an empty model answers nothing', () {
-        final model = Model();
-        expect(model.ingredientNamed('bourbon'), isNull);
-        expect(model.recipeNamed('Whiskey Sour'), isNull);
-        expect(model.hasTag(TagKind.recipe, 'sour'), isFalse);
-        expect(model.hasTag(TagKind.ingredient, 'oaked'), isFalse);
+      test('an empty collection answers nothing', () {
+        final collection = Collection();
+        expect(collection.ingredientNamed('bourbon'), isNull);
+        expect(collection.recipeNamed('Whiskey Sour'), isNull);
+        expect(collection.hasTag(TagKind.recipe, 'sour'), isFalse);
+        expect(collection.hasTag(TagKind.ingredient, 'oaked'), isFalse);
       });
 
       test('repeated lookups keep answering, index and all', () {
-        final model = build();
-        expect(model.ingredientNamed('bourbon')?.name, 'bourbon');
-        expect(model.ingredientNamed('bourbon')?.name, 'bourbon');
-        expect(model.ingredientNamed('gin'), isNull);
+        final collection = build();
+        expect(collection.ingredientNamed('bourbon')?.name, 'bourbon');
+        expect(collection.ingredientNamed('bourbon')?.name, 'bourbon');
+        expect(collection.ingredientNamed('gin'), isNull);
       });
 
       test('answer however the name is capitalised (ADR 08)', () {
-        final model = build();
-        expect(model.ingredientNamed('BOURBON')?.name, 'bourbon');
-        expect(model.recipeNamed('whiskey sour')?.name, 'Whiskey Sour');
-        expect(model.hasTag(TagKind.recipe, 'Sour'), isTrue);
-        expect(model.hasTag(TagKind.ingredient, 'Oaked'), isTrue);
+        final collection = build();
+        expect(collection.ingredientNamed('BOURBON')?.name, 'bourbon');
+        expect(collection.recipeNamed('whiskey sour')?.name, 'Whiskey Sour');
+        expect(collection.hasTag(TagKind.recipe, 'Sour'), isTrue);
+        expect(collection.hasTag(TagKind.ingredient, 'Oaked'), isTrue);
       });
 
       test('a vocabulary answers to its kind', () {
-        final model = build();
-        expect(model.tagsOf(TagKind.recipe), model.recipeTags);
-        expect(model.tagsOf(TagKind.ingredient), model.ingredientTags);
+        final collection = build();
+        expect(collection.tagsOf(TagKind.recipe), collection.recipeTags);
+        expect(
+          collection.tagsOf(TagKind.ingredient),
+          collection.ingredientTags,
+        );
       });
 
       test('the name sets are the lists, ready for validation', () {
-        final model = build();
-        expect(model.recipeNames, {'Whiskey Sour'});
-        expect(model.tagNames(TagKind.recipe), {'sour'});
-        expect(model.tagNames(TagKind.ingredient), {'oaked'});
+        final collection = build();
+        expect(collection.recipeNames, {'Whiskey Sour'});
+        expect(collection.tagNames(TagKind.recipe), {'sour'});
+        expect(collection.tagNames(TagKind.ingredient), {'oaked'});
         expect(
-          () => model.tagNames(TagKind.recipe).add('tiki'),
+          () => collection.tagNames(TagKind.recipe).add('tiki'),
           throwsUnsupportedError,
         );
       });
 
       test('an alias answers for the bottle it belongs to (ADR 10)', () {
-        final model = Model(
+        final collection = Collection(
           ingredients: [
             Ingredient(
               'bourbon',
@@ -840,14 +843,14 @@ void main() {
             ),
           ],
         );
-        expect(model.ingredientNamed('bourbon whiskey')?.name, 'bourbon');
-        expect(model.ingredientNamed('BOURBON WHISKEY')?.name, 'bourbon');
-        expect(model.ingredientNamed('whiskey'), isNull);
+        expect(collection.ingredientNamed('bourbon whiskey')?.name, 'bourbon');
+        expect(collection.ingredientNamed('BOURBON WHISKEY')?.name, 'bourbon');
+        expect(collection.ingredientNamed('whiskey'), isNull);
       });
     });
 
     group('ingredientSpellings', () {
-      final model = Model(
+      final collection = Collection(
         ingredients: [
           Ingredient('bourbon', aliases: const ['bourbon whiskey']),
           Ingredient('gin'),
@@ -855,18 +858,18 @@ void main() {
       );
 
       test('gathers names and aliases into one namespace', () {
-        expect(model.ingredientSpellings(), {
+        expect(collection.ingredientSpellings(), {
           'bourbon',
           'bourbon whiskey',
           'gin',
         });
-        expect(Model().ingredientSpellings(), isEmpty);
+        expect(Collection().ingredientSpellings(), isEmpty);
       });
 
       test('drops the whole entry it is told to leave out', () {
-        expect(model.ingredientSpellings(except: 'bourbon'), {'gin'});
-        expect(model.ingredientSpellings(except: 'BOURBON'), {'gin'});
-        expect(model.ingredientSpellings(except: 'bourbon whiskey'), {
+        expect(collection.ingredientSpellings(except: 'bourbon'), {'gin'});
+        expect(collection.ingredientSpellings(except: 'BOURBON'), {'gin'});
+        expect(collection.ingredientSpellings(except: 'bourbon whiskey'), {
           'bourbon',
           'bourbon whiskey',
           'gin',
@@ -877,7 +880,7 @@ void main() {
     group('one namespace for every spelling (ADR 10)', () {
       test('an alias may not repeat another bottle name', () {
         expect(
-          () => Model(
+          () => Collection(
             ingredients: [
               Ingredient('bourbon', aliases: const ['Rye']),
               Ingredient('rye'),
@@ -889,7 +892,7 @@ void main() {
 
       test('nor another bottle alias', () {
         expect(
-          () => Model(
+          () => Collection(
             ingredients: [
               Ingredient('bourbon', aliases: const ['whiskey']),
               Ingredient('rye', aliases: const ['whiskey']),
@@ -901,7 +904,7 @@ void main() {
 
       test('nor its own entry name', () {
         expect(
-          () => Model(
+          () => Collection(
             ingredients: [
               Ingredient('bourbon', aliases: const ['Bourbon']),
             ],
@@ -911,14 +914,14 @@ void main() {
       });
 
       test('but two bottles may alias the same name in other vocabularies', () {
-        final model = Model(
+        final collection = Collection(
           ingredients: [
             Ingredient('bourbon', aliases: const ['sour']),
           ],
           ingredientTags: const [Tag('sour', color: TagColor.sand)],
           recipes: [Recipe('sour')],
         );
-        expect(model.ingredientNamed('sour')?.name, 'bourbon');
+        expect(collection.ingredientNamed('sour')?.name, 'bourbon');
       });
     });
   });

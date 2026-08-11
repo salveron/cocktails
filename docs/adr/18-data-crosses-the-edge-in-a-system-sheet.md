@@ -17,7 +17,7 @@ ADR 13 set dependency bar: *confined to one file, way out written down*. ADR 14 
 - **Out (export)**: `share_plus 13.3.0` (`fluttercommunity.dev`, BSD-3-Clause). Wraps `ACTION_SEND`, ships own `ShareFileProvider` at `${applicationId}.flutter.share_provider`. Manifest merge auto-includes; no Kotlin, manifest edit, or resource in repo.
 - **In (import)**: `file_selector 1.1.0` (`flutter.dev`, BSD-3-Clause). Wraps `ACTION_OPEN_DOCUMENT`, copies picked document to cache, returns real path; no `content://` URI or `ContentResolver` in app.
 - **Currency: `XFile`**. Both directions; one type, one feel, reviewable.
-- **`exportSnapshot(Model)`**: store encodes what given, writes copy, returns opaque location. Same call for FR-DAT-3 pre-import export (state before replace).
+- **`exportSnapshot(Collection)`**: store encodes what given, writes copy, returns opaque location. Same call for FR-DAT-3 pre-import export (state before replace).
 - **No type filter in**: SAF filters MIME; `application/yaml` only registered 2024, `mime` package has no mapping. Filter would grey out reader's file. App's contract (FR-DAT-4): decode judges validity.
 - **MIME stated out**: left to lookup, copy goes unknown type, fewer apps receive it.
 - **Platform seams in `state/`**: `sharerProvider` going out, `filePickerProvider` coming in; functions named once per file, overridden by widget test recorder.

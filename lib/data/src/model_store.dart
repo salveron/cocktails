@@ -10,13 +10,13 @@ import 'sourced_issue.dart';
 abstract interface class ModelStore {
   Future<LoadOutcome> load();
 
-  Future<void> save(Model model);
+  Future<void> save(Collection collection);
 
-  /// Writes a copy of [model] for [purpose] and returns its opaque location:
-  /// the store decides what a copy is and where it goes, and it follows the
+  /// Writes a copy of [collection] for [purpose] and returns its opaque
+  /// location: the store decides what a copy is and where it goes, and follows
   /// screen rather than the file on disk (FR-DAT-1, FR-DAT-3, ADR 18).
   Future<String> exportSnapshot(
-    Model model, {
+    Collection collection, {
     ExportPurpose purpose = ExportPurpose.share,
   });
 }
@@ -28,9 +28,9 @@ sealed class LoadOutcome {
 }
 
 final class Loaded extends LoadOutcome {
-  final Model model;
+  final Collection collection;
 
-  const Loaded(this.model);
+  const Loaded(this.collection);
 }
 
 /// No store file yet — first run.
@@ -43,7 +43,7 @@ final class Corrupt extends LoadOutcome {
   final List<SourcedIssue> issues;
 
   /// The newest backup that still decoded, null when none did.
-  final Model? recoveredFromBackup;
+  final Collection? recoveredFromBackup;
 
   Corrupt(List<SourcedIssue> issues, {this.recoveredFromBackup})
     : issues = List.unmodifiable(issues);

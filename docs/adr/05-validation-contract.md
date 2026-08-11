@@ -16,9 +16,9 @@ expensive to change. Previous (path + sentence) insufficient: forms need machine
   **data-format keys and indexes** (`['recipes', 0, 'lines', 2]`, `part_ml`, `source.at`), never Dart 
   names. `kind`: machine-readable. `message`: display-ready.
 - `ValidationIssueKind` covers codec findings; data layer reports through this type only.
-- Four entry points: `validateModel` (whole file), `validateRecipe`, `validateIngredient`, `validateTag` 
+- Four entry points: `validateCollection` (whole file), `validateRecipe`, `validateIngredient`, `validateTag` 
   (one entry). Single-entry calls take `otherNames` so rename never collides. Paths relative; empty for name.
-- One implementation per rule. Duplicate detection shared with `Model` constructor.
+- One implementation per rule. Duplicate detection shared with `Collection` constructor.
 - Issues in data-format order, whatever it comes to hold; within each section by index.
 
 Signatures: [components.md](../components.md#validation).
@@ -28,7 +28,7 @@ Signatures: [components.md](../components.md#validation).
 - Sealed hierarchy (one subclass per rule): expressive, i18n-ready. Rejected: eleven classes, 
   four consumers format own text for one sentence.
 - Prose only: cheap now, expensive later.
-- Whole-model validation only: No new API, rename-versus-self free. But every form assembles full model, 
+- Whole-collection validation only: No new API, rename-versus-self free. But every form assembles full collection, 
   translates paths.
 
 ## Consequences

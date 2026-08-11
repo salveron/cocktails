@@ -1,18 +1,19 @@
-/// Model edits as pure derivations; kept separate so model.dart holds shape only.
-/// Edits naming absent entries return unchanged model; collisions throw ArgumentError.
+/// Collection edits as pure derivations; kept separate so collection.dart
+/// holds shape only. Edits naming absent entries return the collection
+/// unchanged; collisions throw ArgumentError.
 library;
 
-import 'helpers.dart';
-import 'model.dart';
+import 'names.dart';
+import 'collection.dart';
 
 /// Unit edit result: current state and prior name (null if new).
 typedef UnitEdit = ({Unit unit, String? was});
 
-extension ModelEdits on Model {
-  Model withSettings(Settings settings) => copyWith(settings: settings);
+extension CollectionEdits on Collection {
+  Collection withSettings(Settings settings) => copyWith(settings: settings);
 
   /// Whole unit vocabulary at once; renames rewrite lines measured in them (ADR-09).
-  Model withUnits(List<UnitEdit> edits) {
+  Collection withUnits(List<UnitEdit> edits) {
     final renamed = <String, String>{};
     for (final (:unit, :was) in edits) {
       // Exact comparison: recapitalization is same unit, lines follow (ADR-08).
@@ -36,7 +37,7 @@ extension ModelEdits on Model {
   }
 
   /// Every recipe line under bottle's own name; aliases/cases resolve (ADR-10).
-  Model withCanonicalIngredientNames() {
+  Collection withCanonicalIngredientNames() {
     final canonical = <Recipe>[];
     var moved = false;
     for (final recipe in recipes) {
@@ -53,7 +54,7 @@ extension ModelEdits on Model {
   }
 
   /// Adds or replaces ingredient; every line that named it follows (FR-VOC-1, ADR-10).
-  Model withIngredient(Ingredient ingredient, {String? replacing}) {
+  Collection withIngredient(Ingredient ingredient, {String? replacing}) {
     final from = replacing ?? ingredient.name;
     return copyWith(
       ingredients: _upserted(ingredients, ingredient, (i) => i.name, at: from),
@@ -74,23 +75,23 @@ extension ModelEdits on Model {
     );
   }
 
-  Model withoutIngredient(String name) =>
+  Collection withoutIngredient(String name) =>
       copyWith(ingredients: _without(ingredients, name, (i) => i.name));
 
-  Model withStock(String ingredient, StockLevel stock) {
+  Collection withStock(String ingredient, StockLevel stock) {
     final entry = ingredientNamed(ingredient);
     return entry == null ? this : withIngredient(entry.copyWith(stock: stock));
   }
 
   /// Adds [tag] to [kind]'s vocabulary, or replaces the entry of its name.
-  Model withTag(TagKind kind, Tag tag) =>
+  Collection withTag(TagKind kind, Tag tag) =>
       _withTags(kind, _upserted(tagsOf(kind), tag, _tagName));
 
-  Model withoutTag(TagKind kind, String name) =>
+  Collection withoutTag(TagKind kind, String name) =>
       _withTags(kind, _without(tagsOf(kind), name, _tagName));
 
   /// Renames tag and rewrites all entries wearing it; on their own side only (FR-VOC-4).
-  Model withTagRenamed(TagKind kind, String from, String to) {
+  Collection withTagRenamed(TagKind kind, String from, String to) {
     if (!hasTag(kind, from)) return this;
     final renamed = _withTags(kind, _renamedTag(tagsOf(kind), from, to));
     return switch (kind) {
@@ -115,19 +116,20 @@ extension ModelEdits on Model {
     };
   }
 
-  Model _withTags(TagKind kind, List<Tag> tags) => switch (kind) {
+  Collection _withTags(TagKind kind, List<Tag> tags) => switch (kind) {
     TagKind.recipe => copyWith(recipeTags: tags),
     TagKind.ingredient => copyWith(ingredientTags: tags),
   };
 
   /// Adds or replaces recipe by name.
-  Model withRecipe(Recipe recipe) =>
+  Collection withRecipe(Recipe recipe) =>
       copyWith(recipes: _upserted(recipes, recipe, (r) => r.name));
 
-  Model withoutRecipe(String name) =>
+  Collection withoutRecipe(String name) =>
       copyWith(recipes: _without(recipes, name, (r) => r.name));
 
-  /// Recipe names blocking ingredient deletion, in model order (FR-VOC-1, ADR-10).
+  /// Recipe names blocking ingredient deletion, in collection order
+  /// (FR-VOC-1, ADR-10).
   List<String> recipesUsingIngredient(String name) {
     final wanted = bottleNamed(name);
     return [

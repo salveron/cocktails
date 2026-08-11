@@ -88,7 +88,7 @@ recipes:
     notes: dry shake, then shake with ice
 ''';
 
-Model docModel() => Model(
+Collection docCollection() => Collection(
   units: const [
     Unit(partUnit, plural: 'parts'),
     Unit(mlUnit),
@@ -132,12 +132,12 @@ Model docModel() => Model(
   ],
 );
 
-Model decoded(String yaml) {
+Collection decoded(String yaml) {
   final result = codec.decode(yaml);
   if (result is Rejected) {
     fail('expected Decoded, got:\n${result.issues.join('\n')}');
   }
-  return (result as Decoded).model;
+  return (result as Decoded).collection;
 }
 
 List<SourcedIssue> rejected(String yaml) {
@@ -164,11 +164,11 @@ void expectIssue(
 void main() {
   group('encode', () {
     test('writes the docs/architecture.md example canonically', () {
-      expect(codec.encode(docModel()), canonicalText);
+      expect(codec.encode(docCollection()), canonicalText);
     });
 
-    test('writes an empty model with every section present', () {
-      expect(codec.encode(Model()), '''
+    test('writes an empty collection with every section present', () {
+      expect(codec.encode(Collection()), '''
 format: 1
 
 settings:
@@ -196,17 +196,17 @@ recipes: []
     });
 
     test('omits entry defaults and empty recipe fields', () {
-      final model = Model(
+      final collection = Collection(
         ingredients: [Ingredient('gin')],
         recipes: [Recipe('Nothing Yet')],
       );
-      final text = codec.encode(model);
+      final text = codec.encode(collection);
       expect(text, contains('\ningredients:\n  - {name: gin}\n'));
       expect(text, contains('\nrecipes:\n  - name: Nothing Yet\n'));
     });
 
     test('an entry writes the spellings it also answers to (ADR 10)', () {
-      final model = Model(
+      final collection = Collection(
         ingredients: [
           Ingredient(
             'bourbon',
@@ -218,7 +218,7 @@ recipes: []
         ingredientTags: const [Tag('oaked', color: TagColor.slate)],
       );
       expect(
-        codec.encode(model),
+        codec.encode(collection),
         contains(
           '\ningredients:\n'
           '  - {name: bourbon, stock: in, tags: [oaked], '
@@ -228,11 +228,11 @@ recipes: []
     });
 
     test('a tag colour is written even though nothing is default', () {
-      final model = Model(
+      final collection = Collection(
         ingredientTags: const [Tag('citrus', color: TagColor.sand)],
         recipeTags: const [Tag('sour', color: TagColor.rose)],
       );
-      final text = codec.encode(model);
+      final text = codec.encode(collection);
       expect(
         text,
         contains('\ningredient_tags:\n  - {name: citrus, color: sand}\n'),
@@ -241,11 +241,11 @@ recipes: []
     });
 
     test('writes non-default settings', () {
-      final model = Model(
+      final collection = Collection(
         settings: const Settings(partMl: 22.5, display: FixedUnit.ml),
       );
       expect(
-        codec.encode(model),
+        codec.encode(collection),
         contains(
           'settings:\n  part_ml: 22.5\n  oz_ml: 29.5735\n  display: ml\n',
         ),
@@ -253,14 +253,14 @@ recipes: []
     });
 
     test('quotes scalars YAML would read as other types', () {
-      final model = Model(
+      final collection = Collection(
         ingredients: [Ingredient('1976'), Ingredient('true')],
         recipeTags: const [
           Tag('true', color: TagColor.teal),
           Tag('no', color: TagColor.teal),
         ],
       );
-      final text = codec.encode(model);
+      final text = codec.encode(collection);
       expect(text, contains('- {name: "1976"}'));
       expect(text, contains('- {name: "true"}'));
       expect(
@@ -273,7 +273,7 @@ recipes: []
     });
 
     test('quotes structure-breaking text', () {
-      final model = Model(
+      final collection = Collection(
         ingredients: [Ingredient('lime, fresh'), Ingredient('rum # dark')],
         recipes: [
           Recipe(
@@ -285,7 +285,7 @@ recipes: []
           ),
         ],
       );
-      final text = codec.encode(model);
+      final text = codec.encode(collection);
       expect(text, contains('- {name: "lime, fresh"}'));
       expect(text, contains('- name: "gin: a study"'));
       expect(text, contains('- "1 oz rum # dark"'));
@@ -299,7 +299,7 @@ recipes: []
     });
 
     test('a section given replaces them, so a line may lose its unit', () {
-      final model = decoded(
+      final collection = decoded(
         'format: 1\n'
         'units:\n'
         '  - {name: part, plural: parts}\n'
@@ -311,7 +311,7 @@ recipes: []
         '  - name: Gin Shot\n'
         '    lines: [2 part gin]\n',
       );
-      expect(model.units, const [
+      expect(collection.units, const [
         Unit('part', plural: 'parts'),
         Unit('ml'),
         Unit('oz'),
@@ -417,7 +417,7 @@ recipes: []
 
   group('decode', () {
     test('reads the doc example, comments included', () {
-      expect(decoded(commentedText), docModel());
+      expect(decoded(commentedText), docCollection());
     });
 
     test('a made key is accepted and ignored, whatever it holds (ADR 21)', () {
@@ -429,7 +429,7 @@ recipes: []
         '[]',
       ];
       for (final stamp in stamps) {
-        final model = decoded(
+        final collection = decoded(
           'format: 1\n'
           'ingredients:\n'
           '  - {name: gin}\n'
@@ -439,7 +439,7 @@ recipes: []
           '    made: $stamp\n',
         );
         expect(
-          model.recipeNamed('Martini'),
+          collection.recipeNamed('Martini'),
           Recipe(
             'Martini',
             lines: const [
@@ -466,46 +466,55 @@ recipes: []
       expect(text, isNot(contains('made')));
     });
 
-    test('a file of only the format line is the empty model', () {
-      expect(decoded('format: 1\n'), Model());
+    test('a file of only the format line is the empty collection', () {
+      expect(decoded('format: 1\n'), Collection());
     });
 
     test('absent settings keys keep their defaults', () {
-      final model = decoded('format: 1\nsettings:\n  part_ml: 25\n');
-      expect(model.settings, const Settings(partMl: 25));
+      final collection = decoded('format: 1\nsettings:\n  part_ml: 25\n');
+      expect(collection.settings, const Settings(partMl: 25));
     });
 
     test('a file written before the ounce had a size still reads (ADR 17)', () {
-      final model = decoded(
+      final collection = decoded(
         'format: 1\nsettings:\n  part_ml: 25\n  display: ml\n',
       );
-      expect(model.settings, const Settings(partMl: 25, display: FixedUnit.ml));
-      expect(model.settings.ozMl, const Settings().ozMl);
+      expect(
+        collection.settings,
+        const Settings(partMl: 25, display: FixedUnit.ml),
+      );
+      expect(collection.settings.ozMl, const Settings().ozMl);
     });
 
     test('an ounce sized by hand is read and written back', () {
-      final model = decoded(
+      final collection = decoded(
         'format: 1\nsettings:\n  oz_ml: 30\n  display: oz\n',
       );
-      expect(model.settings, const Settings(ozMl: 30, display: FixedUnit.oz));
-      expect(codec.encode(model), contains('  oz_ml: 30\n  display: oz\n'));
+      expect(
+        collection.settings,
+        const Settings(ozMl: 30, display: FixedUnit.oz),
+      );
+      expect(
+        codec.encode(collection),
+        contains('  oz_ml: 30\n  display: oz\n'),
+      );
     });
 
     test('reads the spellings a bottle answers to (ADR 10)', () {
-      final model = decoded(
+      final collection = decoded(
         'format: 1\n'
         'ingredients:\n'
         '  - {name: bourbon, aliases: [bourbon whiskey, bourbon whisky]}\n',
       );
-      expect(model.ingredients.single.aliases, [
+      expect(collection.ingredients.single.aliases, [
         'bourbon whiskey',
         'bourbon whisky',
       ]);
-      expect(model.ingredientNamed('bourbon whisky')?.name, 'bourbon');
+      expect(collection.ingredientNamed('bourbon whisky')?.name, 'bourbon');
     });
 
     test('a hand-edited line naming one is stored canonical', () {
-      final model = decoded(
+      final collection = decoded(
         'format: 1\n'
         'ingredients:\n'
         '  - {name: bourbon, aliases: [whiskey]}\n'
@@ -514,7 +523,12 @@ recipes: []
         '    lines: [2 parts whiskey]\n',
       );
       expect(
-        model.recipeNamed('Old Fashioned')!.lines.single.ingredients.single,
+        collection
+            .recipeNamed('Old Fashioned')!
+            .lines
+            .single
+            .ingredients
+            .single,
         'bourbon',
       );
     });
@@ -1020,7 +1034,7 @@ recipes: []
 
   group('round trip (FR-DAT-5)', () {
     test('encode → decode → encode is the identity on canonical text', () {
-      final model = Model(
+      final collection = Collection(
         settings: const Settings(partMl: 22.5, display: FixedUnit.ml),
         ingredients: [
           Ingredient('bourbon', stock: StockLevel.in_),
@@ -1067,20 +1081,20 @@ recipes: []
           ),
         ],
       );
-      final text = codec.encode(model);
+      final text = codec.encode(collection);
       final reread = decoded(text);
-      expect(reread, model);
+      expect(reread, collection);
       expect(codec.encode(reread), text);
     });
 
     test('the doc example round-trips through its canonical form', () {
-      final model = decoded(commentedText);
-      expect(codec.encode(model), canonicalText);
-      expect(decoded(canonicalText), model);
+      final collection = decoded(commentedText);
+      expect(codec.encode(collection), canonicalText);
+      expect(decoded(canonicalText), collection);
     });
 
     test('a substitution group is written and read back whole (ADR 11)', () {
-      final model = Model(
+      final collection = Collection(
         ingredients: [Ingredient('cognac'), Ingredient('vodka')],
         recipes: [
           Recipe(
@@ -1094,14 +1108,14 @@ recipes: []
           ),
         ],
       );
-      final text = codec.encode(model);
+      final text = codec.encode(collection);
       expect(text, contains('      - 1 part cognac / vodka (base)\n'));
-      expect(decoded(text), model);
+      expect(decoded(text), collection);
       expect(codec.encode(decoded(text)), text);
     });
 
     test('a hand-written group normalises its spacing on the rewrite', () {
-      final model = decoded(
+      final collection = decoded(
         'format: 1\n'
         'ingredients:\n'
         '  - name: cognac\n'
@@ -1111,11 +1125,14 @@ recipes: []
         '    lines:\n'
         '      - 1 cognac/vodka\n',
       );
-      expect(codec.encode(model), contains('      - 1 part cognac / vodka\n'));
+      expect(
+        codec.encode(collection),
+        contains('      - 1 part cognac / vodka\n'),
+      );
     });
 
     test('hand-written input normalises on the first rewrite', () {
-      final model = decoded(
+      final collection = decoded(
         'format: 1\n'
         'ingredients:\n'
         '  - name: gin\n'
@@ -1129,7 +1146,7 @@ recipes: []
         '      - 2 dashes bitters\n'
         '      - 1 GIN\n',
       );
-      expect(codec.encode(model), '''
+      expect(codec.encode(collection), '''
 format: 1
 
 settings:

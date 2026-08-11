@@ -12,7 +12,7 @@ are one bottle but two to the vocabulary. Decided before aliases were built.
 **An ingredient carries aliases; the entry's own name stays its identity.**
 
 - `Ingredient.aliases` — spellings a bottle answers to, written as `aliases: [bourbon whiskey, bourbon whisky]`.
-- `Model.ingredientNamed` indexes aliases; resolution through one home.
+- `Collection.ingredientNamed` indexes aliases; resolution through one home.
 - Uniqueness spans names and aliases under fold (ADR 08): no collisions across bottles or within.
 - References stored canonical: line with alias resolves and stores under bottle's own name.
 - Aliases searched, not displayed (except in edit dialog).
@@ -33,4 +33,4 @@ are one bottle but two to the vocabulary. Decided before aliases were built.
 - `aliases` key on entry; every spelling unique under fold.
 - Recipe form no longer creates near-duplicates.
 - Files with aliases rewrite canonical (like unit plurals).
-- Name index carries aliases (built once per model).
+- Name index carries aliases (built once per collection).

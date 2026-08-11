@@ -14,7 +14,7 @@ the optimizer were built on name lookups.
 
 - `nameKey(name)` and `name.sameName(other)` in the domain are the only comparison there is.
   `duplicateNameIndexes` keys on the fold, so both contracts of [ADR 05](05-validation-contract.md)
-  refuse "Gin" beside "gin" — `Model` throws, `validateModel` reports — in all four vocabularies.
+  refuse "Gin" beside "gin" — `Collection` throws, `validateCollection` reports — in all four vocabularies.
 - Resolution folds with it: `ingredientNamed`, `recipeNamed`, `hasTag`, the unknown-ingredient and
   unknown-tag rules, `recipesUsingIngredient`, `usersOfTag`, `wornInOrder`, and the rename rewriters.
   A line reading "gin" resolves to the bottle "Gin" wherever it is read.

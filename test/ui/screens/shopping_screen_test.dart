@@ -21,7 +21,7 @@ Recipe _tagged(String name, String ingredient, List<String> tags) =>
 /// running low. Every budget answers, and each answers differently — and the
 /// switch moves the one-bottle answer off the missing bottle onto the low one,
 /// rather than merely lengthening the list.
-final shoppingModel = Model(
+final shoppingCollection = Collection(
   ingredients: [
     Ingredient('gin', stock: StockLevel.in_),
     Ingredient('lime juice', stock: StockLevel.low),
@@ -39,7 +39,7 @@ final shoppingModel = Model(
 
 /// Two recipes short of the same pair, so no single bottle answers and the
 /// two-bottle basket does.
-final pairedModel = Model(
+final pairedCollection = Collection(
   ingredients: [
     Ingredient('gin', stock: StockLevel.in_),
     Ingredient('campari'),
@@ -53,7 +53,7 @@ final pairedModel = Model(
 
 /// Three recipes short of a bottle each, so three baskets tie at one recipe
 /// apiece and the list has ranks to read.
-final spreadModel = Model(
+final spreadCollection = Collection(
   ingredients: [
     Ingredient('white rum'),
     Ingredient('vodka'),
@@ -72,7 +72,7 @@ final spreadModel = Model(
 /// bringing two of them answers to the pair; `sour` is worn by nothing, so the
 /// chips alone can empty every size; and `long` rides on a recipe beside `tiki`,
 /// so a dot can be told from every tag a recipe happens to wear.
-final taggedModel = Model(
+final taggedCollection = Collection(
   ingredients: [
     Ingredient('white rum'),
     Ingredient('vodka'),
@@ -109,12 +109,14 @@ Iterable<String> dotsBeside(WidgetTester tester, String name) => tester
     )
     .map((dot) => dot.tag.name);
 
-Future<MemoryModelStore> pumpShopping(WidgetTester tester, [Model? model]) =>
-    pumpOver(
-      tester,
-      const ShoppingScreen(showing: true),
-      model ?? shoppingModel,
-    );
+Future<MemoryModelStore> pumpShopping(
+  WidgetTester tester, [
+  Collection? collection,
+]) => pumpOver(
+  tester,
+  const ShoppingScreen(showing: true),
+  collection ?? shoppingCollection,
+);
 
 Future<void> pickBudget(WidgetTester tester, int budget) =>
     tap(tester, find.text('$budget'));
@@ -172,7 +174,7 @@ void main() {
     });
 
     testWidgets('baskets are numbered by where they rank', (tester) async {
-      await pumpShopping(tester, spreadModel);
+      await pumpShopping(tester, spreadCollection);
       expect(rowTexts(tester).where((text) => text!.startsWith('Shopping')), [
         'Shopping Cart #1',
         'Shopping Cart #2',
@@ -243,7 +245,7 @@ void main() {
     testWidgets('nothing at this size offers the size that answers', (
       tester,
     ) async {
-      await pumpShopping(tester, pairedModel);
+      await pumpShopping(tester, pairedCollection);
       expect(find.text('Nothing worth buying in 1'), findsOneWidget);
       await tap(tester, find.text('Try 2 bottles'));
       expect(rowTexts(tester), [
@@ -258,7 +260,7 @@ void main() {
     ) async {
       await pumpShopping(
         tester,
-        Model(
+        Collection(
           ingredients: [Ingredient('gin', stock: StockLevel.low)],
           recipes: [
             _recipe('Gin Shot', ['gin']),
@@ -278,14 +280,14 @@ void main() {
     testWidgets('says what would put baskets there while it is empty', (
       tester,
     ) async {
-      await pumpShopping(tester, Model());
+      await pumpShopping(tester, Collection());
       expect(find.text('No recipes yet'), findsOneWidget);
     });
 
     testWidgets('searches only while it is the destination on show', (
       tester,
     ) async {
-      await pumpApp(tester, store: MemoryModelStore(shoppingModel));
+      await pumpApp(tester, store: MemoryModelStore(shoppingCollection));
       expect(find.text('Buy'), findsNothing);
       await tap(tester, find.text('Shopping'));
       expect(find.text('Buy'), findsOneWidget);
@@ -335,7 +337,7 @@ void main() {
     testWidgets('the chips stand between the controls and the list', (
       tester,
     ) async {
-      await pumpShopping(tester, taggedModel);
+      await pumpShopping(tester, taggedCollection);
       final chips = tester.getCenter(find.byType(TagChoices)).dy;
       expect(chips, greaterThan(tester.getCenter(find.text('Buy')).dy));
       expect(
@@ -347,14 +349,14 @@ void main() {
     testWidgets('a pick keeps the baskets bringing a recipe wearing it', (
       tester,
     ) async {
-      await pumpShopping(tester, taggedModel);
+      await pumpShopping(tester, taggedCollection);
       await pickTag(tester, 'tiki');
       expect(isPicked(tester, 'tiki'), isTrue);
       expect(rowTexts(tester), ['Shopping Cart #3', 'white rum', '1 recipe']);
     });
 
     testWidgets('the ranks are those the unnarrowed list gave', (tester) async {
-      await pumpShopping(tester, taggedModel);
+      await pumpShopping(tester, taggedCollection);
       expect(cartsOn(tester), [
         'Shopping Cart #1',
         'Shopping Cart #2',
@@ -371,7 +373,7 @@ void main() {
     testWidgets('two picks reach a basket bringing one of each', (
       tester,
     ) async {
-      await pumpShopping(tester, taggedModel);
+      await pumpShopping(tester, taggedCollection);
       await pickBudget(tester, 2);
       await pickTag(tester, 'tiki');
       await pickTag(tester, 'clean');
@@ -387,7 +389,7 @@ void main() {
     testWidgets('picking a lit tag again lets the rest back in', (
       tester,
     ) async {
-      await pumpShopping(tester, taggedModel);
+      await pumpShopping(tester, taggedCollection);
       await pickTag(tester, 'tiki');
       expect(cartsOn(tester), ['Shopping Cart #3']);
       await pickTag(tester, 'tiki');
@@ -397,7 +399,7 @@ void main() {
 
     testWidgets('an empty screen blames the picks and offers the size that '
         'answers under them', (tester) async {
-      await pumpShopping(tester, taggedModel);
+      await pumpShopping(tester, taggedCollection);
       await pickTag(tester, 'tiki');
       await pickTag(tester, 'clean');
       expect(
@@ -413,7 +415,7 @@ void main() {
     });
 
     testWidgets('a pick nothing answers offers nowhere to go', (tester) async {
-      await pumpShopping(tester, taggedModel);
+      await pumpShopping(tester, taggedCollection);
       await pickTag(tester, 'sour');
       expect(
         find.text(
@@ -430,7 +432,7 @@ void main() {
     });
 
     testWidgets('an unnarrowed screen still blames the size', (tester) async {
-      await pumpShopping(tester, pairedModel);
+      await pumpShopping(tester, pairedCollection);
       expect(
         find.text('No single bottle unlocks a recipe on its own here.'),
         findsOneWidget,
@@ -440,7 +442,7 @@ void main() {
 
   group('an open basket marks the picks it answered (FR-DIS-10)', () {
     testWidgets('the recipe wearing the pick carries its dot', (tester) async {
-      await pumpShopping(tester, taggedModel);
+      await pumpShopping(tester, taggedCollection);
       await pickTag(tester, 'tiki');
       await openCard(tester, 3);
       expect(dotsBeside(tester, 'Rum Neat'), ['tiki']);
@@ -449,7 +451,7 @@ void main() {
     testWidgets('a tag the recipe wears but nobody picked draws none', (
       tester,
     ) async {
-      await pumpShopping(tester, taggedModel);
+      await pumpShopping(tester, taggedCollection);
       await pickTag(tester, 'tiki');
       await openCard(tester, 3);
       expect(
@@ -462,7 +464,7 @@ void main() {
     testWidgets('two picks on one recipe read in vocabulary order', (
       tester,
     ) async {
-      await pumpShopping(tester, taggedModel);
+      await pumpShopping(tester, taggedCollection);
       await pickTag(tester, 'tiki');
       await pickTag(tester, 'long');
       await openCard(tester, 3);
@@ -470,7 +472,7 @@ void main() {
     });
 
     testWidgets('a recipe that rode along wears nothing', (tester) async {
-      await pumpShopping(tester, taggedModel);
+      await pumpShopping(tester, taggedCollection);
       await pickBudget(tester, 2);
       await pickTag(tester, 'tiki');
       // The basket of tequila and white rum: Rum Neat is what the pick
@@ -481,7 +483,7 @@ void main() {
     });
 
     testWidgets('nothing picked leaves every recipe bare', (tester) async {
-      await pumpShopping(tester, taggedModel);
+      await pumpShopping(tester, taggedCollection);
       await openCard(tester, 3);
       expect(find.text('• Rum Neat'), findsOneWidget);
       expect(
@@ -492,7 +494,7 @@ void main() {
     });
 
     testWidgets('the bottles beside them keep their own dots', (tester) async {
-      await pumpShopping(tester, taggedModel);
+      await pumpShopping(tester, taggedCollection);
       await pickTag(tester, 'tiki');
       await openCard(tester, 3);
       expect(
