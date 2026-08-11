@@ -315,25 +315,6 @@ final class RecipeLine {
   }
 }
 
-/// Made-history stamps a date (FR-REC-6); [last] has no time of day.
-final class MadeHistory {
-  final DateTime last;
-  final int times;
-
-  MadeHistory(DateTime last, this.times)
-    : last = DateTime(last.year, last.month, last.day);
-
-  @override
-  bool operator ==(Object other) =>
-      other is MadeHistory && other.last == last && other.times == times;
-
-  @override
-  int get hashCode => Object.hash(last, times);
-
-  @override
-  String toString() => 'MadeHistory(last: $last, times: $times)';
-}
-
 /// What a part and an ounce are worth, and which fixed unit amounts read in
 /// (FR-SET-1). Sizes are held in ml because ml is the anchor — it needs none of
 /// its own — so the ratios between any two are derived rather than stored
@@ -401,35 +382,26 @@ final class Recipe {
   final List<String> tags;
   final List<RecipeLine> lines;
   final String notes;
-  final MadeHistory? made;
 
   Recipe(
     this.name, {
     List<String> tags = const [],
     List<RecipeLine> lines = const [],
     this.notes = '',
-    this.made,
   }) : tags = List.unmodifiable(tags),
        lines = List.unmodifiable(lines);
 
-  /// Null [made] keeps current history; use [stamped] to rewrite.
   Recipe copyWith({
     String? name,
     List<String>? tags,
     List<RecipeLine>? lines,
     String? notes,
-    MadeHistory? made,
   }) => Recipe(
     name ?? this.name,
     tags: tags ?? this.tags,
     lines: lines ?? this.lines,
     notes: notes ?? this.notes,
-    made: made ?? this.made,
   );
-
-  /// Only way to rewrite/clear history (copyWith uses null for "keep").
-  Recipe stamped(MadeHistory? made) =>
-      Recipe(name, tags: tags, lines: lines, notes: notes, made: made);
 
   @override
   bool operator ==(Object other) =>
@@ -437,17 +409,11 @@ final class Recipe {
       other.name == name &&
       listEquals(other.tags, tags) &&
       listEquals(other.lines, lines) &&
-      other.notes == notes &&
-      other.made == made;
+      other.notes == notes;
 
   @override
-  int get hashCode => Object.hash(
-    name,
-    Object.hashAll(tags),
-    Object.hashAll(lines),
-    notes,
-    made,
-  );
+  int get hashCode =>
+      Object.hash(name, Object.hashAll(tags), Object.hashAll(lines), notes);
 
   @override
   String toString() => 'Recipe($name)';

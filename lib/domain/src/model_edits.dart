@@ -127,21 +127,6 @@ extension ModelEdits on Model {
   Model withoutRecipe(String name) =>
       copyWith(recipes: _without(recipes, name, (r) => r.name));
 
-  /// Stamps recipe as made on [today] and counts it (FR-REC-6).
-  Model withRecipeMade(String name, DateTime today) {
-    final made = recipeNamed(name)?.made;
-    return withRecipeHistory(
-      name,
-      MadeHistory(today, made == null ? 1 : made.times + 1),
-    );
-  }
-
-  /// Only writer of made-history; null for never made (FR-REC-6).
-  Model withRecipeHistory(String name, MadeHistory? made) {
-    final recipe = recipeNamed(name);
-    return recipe == null ? this : withRecipe(recipe.stamped(made));
-  }
-
   /// Recipe names blocking ingredient deletion, in model order (FR-VOC-1, ADR-10).
   List<String> recipesUsingIngredient(String name) {
     final wanted = bottleNamed(name);

@@ -330,6 +330,8 @@ Recipe? _readRecipe(
     _report(issues, path, 'Recipe entry must be a mapping', node);
     return null;
   }
+  // `made` is accepted and ignored, whatever it holds: the key left the product
+  // with FR-REC-6, and a file already on a device keeps opening (ADR 21).
   const keys = {'name', 'tags', 'lines', 'notes', 'made'};
   _checkKeys(node, keys, path, issues);
   final name = _readText(node, 'name', path, issues, required: true);
@@ -353,13 +355,8 @@ Recipe? _readRecipe(
     }
   });
   final notes = _readText(node, 'notes', path, issues) ?? '';
-  MadeHistory? made;
-  final madeNode = node.nodes['made'];
-  if (madeNode != null) {
-    made = _readMade(madeNode, [...path, 'made'], issues);
-  }
   if (name == null) return null;
-  return Recipe(name, tags: tags, lines: lines, notes: notes, made: made);
+  return Recipe(name, tags: tags, lines: lines, notes: notes);
 }
 
 /// Walks string-list under [key]; shared shape for tags and lines.
@@ -379,38 +376,6 @@ void _forEachEntry(
   for (var i = 0; i < node.nodes.length; i++) {
     readEntry(node.nodes[i], [...path, key, i]);
   }
-}
-
-MadeHistory? _readMade(
-  YamlNode node,
-  List<Object> path,
-  List<ValidationIssue> issues,
-) {
-  if (node is! YamlMap) {
-    _report(issues, path, 'made must be a mapping', node);
-    return null;
-  }
-  _checkKeys(node, const {'last', 'times'}, path, issues);
-  final last = _readValue<DateTime>(
-    node,
-    'last',
-    path,
-    issues,
-    parse: (value) => _tryParseDate(_asString(value) ?? ''),
-    requirement: 'last must be a date (YYYY-MM-DD)',
-    required: true,
-  );
-  final times = _readValue<int>(
-    node,
-    'times',
-    path,
-    issues,
-    parse: (value) => value is int ? value : null,
-    requirement: 'times must be a whole number',
-    required: true,
-  );
-  if (last == null || times == null) return null;
-  return MadeHistory(last, times);
 }
 
 /// Required key missing; path is the entry itself, no inner node.
@@ -447,18 +412,4 @@ void _report(
       '$requirement: ${briefValue(node.value)}',
     ),
   );
-}
-
-final _datePattern = RegExp(r'^(\d{4})-(\d{2})-(\d{2})$');
-
-/// Strict `YYYY-MM-DD`; rejects calendar overflow like `02-31`.
-DateTime? _tryParseDate(String text) {
-  final match = _datePattern.firstMatch(text);
-  if (match == null) return null;
-  final year = int.parse(match[1]!);
-  final month = int.parse(match[2]!);
-  final day = int.parse(match[3]!);
-  final date = DateTime(year, month, day);
-  final overflows = date.year != year || date.month != month || date.day != day;
-  return overflows ? null : date;
 }

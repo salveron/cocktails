@@ -450,57 +450,6 @@ void main() {
     });
   });
 
-  group('made it', () {
-    final today = DateTime(2026, 7, 27);
-
-    test('the first time stamps the date and counts one', () {
-      final made = model
-          .withRecipeMade('Negroni', today)
-          .recipeNamed('Negroni')
-          ?.made;
-      expect(made, MadeHistory(today, 1));
-    });
-
-    test('every next time counts up and restamps the date', () {
-      final twice = model
-          .withRecipeMade('Negroni', DateTime(2026, 7, 18))
-          .withRecipeMade('Negroni', today);
-      expect(twice.recipeNamed('Negroni')?.made, MadeHistory(today, 2));
-    });
-
-    test('keeps the day, drops the time of day', () {
-      final edited = model.withRecipeMade('Negroni', DateTime(2026, 7, 27, 23));
-      expect(edited.recipeNamed('Negroni')?.made?.last, today);
-    });
-
-    test('leaves the rest of the recipe alone', () {
-      final edited = model.withRecipeMade('Negroni', today);
-      expect(edited.recipeNamed('Negroni')?.lines, negroni.lines);
-      expect(edited.recipeNamed('Whiskey Sour'), same(whiskeySour));
-    });
-
-    test('an unknown recipe changes nothing', () {
-      expect(model.withRecipeMade('Sazerac', today), same(model));
-    });
-
-    test('a history is written as handed over', () {
-      final edited = model.withRecipeHistory('Negroni', MadeHistory(today, 9));
-      expect(edited.recipeNamed('Negroni')?.made, MadeHistory(today, 9));
-    });
-
-    test('a null clears the history and leaves the recipe standing', () {
-      final cleared = model
-          .withRecipeMade('Negroni', today)
-          .withRecipeHistory('Negroni', null);
-      expect(cleared.recipeNamed('Negroni')?.made, isNull);
-      expect(cleared.recipeNamed('Negroni'), negroni);
-    });
-
-    test('an unknown recipe has no history to write', () {
-      expect(model.withRecipeHistory('Sazerac', null), same(model));
-    });
-  });
-
   group('withCanonicalIngredientNames (ADR 10)', () {
     /// The vocabulary with one bottle answering to a second spelling.
     final aliased = model.withIngredient(

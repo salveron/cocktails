@@ -192,18 +192,24 @@ void main() {
               ], mark: LineMark.optional),
             ],
             notes: 'dry shake, then shake with ice',
-            made: MadeHistory(DateTime(2026, 7, 18), 12),
           ),
         ],
       );
       expect(issues, isEmpty);
     });
 
-    test('flags a non-positive part_ml', () {
-      final issues = validateModel(settings: const Settings(partMl: 0));
-      expect(issues, hasLength(1));
-      expect(issues.single.path, ['settings', 'part_ml']);
-      expect(issues.single.message, contains('positive'));
+    test('flags a non-positive unit size, at the size it is', () {
+      // Every size a ratio is derived from is judged the same way (ADR 17).
+      for (final (settings, path) in [
+        (const Settings(partMl: 0), ['settings', 'part_ml']),
+        (const Settings(ozMl: -1), ['settings', 'oz_ml']),
+      ]) {
+        final issues = validateModel(settings: settings);
+        expect(issues, hasLength(1), reason: '$path');
+        expect(issues.single.path, path);
+        expect(issues.single.kind, ValidationIssueKind.unitSizeNotPositive);
+        expect(issues.single.message, contains('positive'));
+      }
     });
 
     test('flags malformed names in every vocabulary', () {
@@ -216,6 +222,12 @@ void main() {
         ],
       );
       expect(issues, hasLength(4));
+      expect(issues.map((i) => i.kind), [
+        ValidationIssueKind.emptyName,
+        ValidationIssueKind.whitespaceInName,
+        ValidationIssueKind.whitespaceInName,
+        ValidationIssueKind.lineBreakInName,
+      ]);
       expect(issues[0].path, ['ingredients', 0]);
       expect(issues[0].message, contains('Empty'));
       expect(issues[1].path, ['ingredient_tags', 0]);
@@ -234,6 +246,7 @@ void main() {
         final issues = validateModel(ingredients: [Ingredient(name)]);
         expect(issues, hasLength(1), reason: name);
         expect(issues.single.path, ['ingredients', 0]);
+        expect(issues.single.kind, ValidationIssueKind.reservedSuffix);
         expect(issues.single.message, contains('reserved'));
       }
     });
@@ -304,6 +317,10 @@ void main() {
         ],
       );
       expect(issues, hasLength(4));
+      expect(
+        issues.every((i) => i.kind == ValidationIssueKind.duplicateName),
+        isTrue,
+      );
       expect(issues[0].path, ['ingredients', 1]);
       expect(issues[0].message, 'Duplicate ingredient name: "gin"');
       expect(issues[1].path, ['ingredient_tags', 1]);
@@ -392,6 +409,10 @@ void main() {
         ],
       );
       expect(issues, hasLength(2));
+      expect(issues.map((i) => i.kind), [
+        ValidationIssueKind.unknownTag,
+        ValidationIssueKind.unknownIngredient,
+      ]);
       expect(issues[0].path, ['recipes', 0, 'tags', 0]);
       expect(issues[0].message, contains('"classic"'));
       expect(issues[1].path, ['recipes', 0, 'lines', 0]);
@@ -408,6 +429,7 @@ void main() {
       );
       expect(issues, hasLength(1));
       expect(issues.single.path, ['recipes', 0, 'tags', 1]);
+      expect(issues.single.kind, ValidationIssueKind.duplicateTag);
       expect(issues.single.message, contains('"sour"'));
     });
 
@@ -458,25 +480,14 @@ void main() {
         ],
       );
       expect(issues, hasLength(2));
+      expect(issues.map((i) => i.kind), [
+        ValidationIssueKind.amountNotPositive,
+        ValidationIssueKind.rangeOutOfOrder,
+      ]);
       expect(issues[0].path, ['recipes', 0, 'lines', 0]);
       expect(issues[0].message, contains('positive'));
       expect(issues[1].path, ['recipes', 0, 'lines', 1]);
       expect(issues[1].message, contains('2-1.5'));
-    });
-
-    test('flags a times-made count below 1', () {
-      final issues = validateModel(
-        ingredients: [Ingredient('gin')],
-        recipes: [
-          Recipe(
-            'Negroni',
-            lines: const [_gin],
-            made: MadeHistory(DateTime(2026, 7, 18), 0),
-          ),
-        ],
-      );
-      expect(issues, hasLength(1));
-      expect(issues.single.path, ['recipes', 0, 'made', 'times']);
     });
 
     test('collects every issue in one pass', () {
@@ -643,7 +654,6 @@ void main() {
             RecipeLine(Amount(1), 'part', ['vermouth']),
             RecipeLine(Amount(0), 'part', ['missing']),
           ],
-          made: MadeHistory(DateTime(2026, 7, 18), 0),
         ),
         knownIngredients: {'gin', 'vermouth'},
         knownTags: const {},
@@ -653,7 +663,6 @@ void main() {
         ['tags', 0],
         ['lines', 2],
         ['lines', 2],
-        ['made', 'times'],
       ]);
     });
 
@@ -978,70 +987,6 @@ void main() {
         ).single.kind,
         ValidationIssueKind.duplicateName,
       );
-    });
-  });
-
-  group('issue kinds', () {
-    test('settings, name and duplicate rules', () {
-      expect(
-        validateModel(settings: const Settings(partMl: 0)).single.kind,
-        ValidationIssueKind.unitSizeNotPositive,
-      );
-      // Every size a ratio is derived from is judged the same way (ADR 17).
-      expect(validateModel(settings: const Settings(ozMl: -1)).single.path, [
-        'settings',
-        'oz_ml',
-      ]);
-      expect(
-        validateModel(ingredients: [Ingredient('')]).single.kind,
-        ValidationIssueKind.emptyName,
-      );
-      expect(
-        validateModel(ingredients: [Ingredient(' gin')]).single.kind,
-        ValidationIssueKind.whitespaceInName,
-      );
-      expect(
-        validateModel(ingredients: [Ingredient('gin\nrum')]).single.kind,
-        ValidationIssueKind.lineBreakInName,
-      );
-      expect(
-        validateModel(
-          ingredients: [Ingredient('gin'), Ingredient('gin')],
-        ).single.kind,
-        ValidationIssueKind.duplicateName,
-      );
-      expect(
-        validateModel(
-          ingredients: [Ingredient('bitters (optional)')],
-        ).single.kind,
-        ValidationIssueKind.reservedSuffix,
-      );
-    });
-
-    test('recipe reference and value rules', () {
-      final issues = validateRecipe(
-        Recipe(
-          'Martini',
-          tags: const ['unknown', 'unknown'],
-          lines: const [
-            RecipeLine(Amount(0), 'part', ['missing']),
-            RecipeLine(Amount.range(2, 1), 'part', ['gin']),
-          ],
-          made: MadeHistory(DateTime(2026, 7, 18), 0),
-        ),
-        knownIngredients: {'gin'},
-        knownTags: const {},
-        knownUnits: shippedUnits,
-      );
-      expect(issues.map((i) => i.kind), [
-        ValidationIssueKind.unknownTag,
-        ValidationIssueKind.unknownTag,
-        ValidationIssueKind.duplicateTag,
-        ValidationIssueKind.unknownIngredient,
-        ValidationIssueKind.amountNotPositive,
-        ValidationIssueKind.rangeOutOfOrder,
-        ValidationIssueKind.timesBelowOne,
-      ]);
     });
   });
 }

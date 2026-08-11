@@ -1,24 +1,102 @@
 import 'package:cocktails/domain/domain.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-void main() {
-  group('StockLevel tokens', () {
-    test('tokens match the data format, including in_ -> "in"', () {
-      expect(StockLevel.in_.token, 'in');
-      expect(StockLevel.low.token, 'low');
-      expect(StockLevel.out.token, 'out');
+/// What every enum written into the data format promises: the [tokens] it
+/// spells, in order, and a [fromToken] that reads back exactly those and
+/// answers null for anything else. One body for all four, so a token added to
+/// one enum is held to the same contract as the rest.
+void tokenVocabulary<T extends Enum>(
+  String name, {
+  required List<T> values,
+  required String Function(T value) token,
+  required T? Function(String) fromToken,
+  required List<String> tokens,
+  required String unknown,
+}) {
+  group('$name tokens', () {
+    test('match the data format', () {
+      expect([for (final value in values) token(value)], tokens);
     });
 
     test('fromToken round-trips every member', () {
-      for (final level in StockLevel.values) {
-        expect(StockLevel.fromToken(level.token), level);
+      for (final value in values) {
+        expect(fromToken(token(value)), value);
       }
     });
 
     test('fromToken returns null for an unknown token', () {
-      expect(StockLevel.fromToken('missing'), isNull);
+      expect(fromToken(unknown), isNull);
     });
   });
+}
+
+/// Value semantics, read the same way for every type carrying them: two builds
+/// of the same values are equal and hash alike, while each of [differing] — the
+/// same build with one field moved off its default — is not. Each field is
+/// named, so a broken `==` reports which one it stopped reading.
+void valueEquality<T>(T Function() build, Map<String, T> differing) {
+  test('equality and hashCode isolate each field', () {
+    expect(build(), build());
+    expect(build().hashCode, build().hashCode);
+    differing.forEach((field, moved) {
+      expect(build(), isNot(moved), reason: field);
+    });
+  });
+}
+
+void main() {
+  // "in" rather than the in_ the language forces, and the palette spending no
+  // colour the stock and availability signals need.
+  tokenVocabulary(
+    'StockLevel',
+    values: StockLevel.values,
+    token: (value) => value.token,
+    fromToken: StockLevel.fromToken,
+    tokens: const ['in', 'low', 'out'],
+    unknown: 'missing',
+  );
+
+  tokenVocabulary(
+    'FixedUnit',
+    values: FixedUnit.values,
+    token: (value) => value.token,
+    fromToken: FixedUnit.fromToken,
+    tokens: const ['part', 'ml', 'oz'],
+    unknown: 'litre',
+  );
+
+  tokenVocabulary(
+    'LineMark',
+    values: LineMark.values,
+    token: (value) => value.token,
+    fromToken: LineMark.fromToken,
+    tokens: const ['base', 'optional'],
+    unknown: 'garnish',
+  );
+
+  tokenVocabulary(
+    'TagColor',
+    values: TagColor.values,
+    token: (value) => value.token,
+    fromToken: TagColor.fromToken,
+    tokens: const ['teal', 'indigo', 'plum', 'rose', 'sand', 'slate'],
+    unknown: 'puce',
+  );
+
+  test('the tag palette spends no colour stock or availability needs', () {
+    expect([
+      for (final color in TagColor.values) color.token,
+    ], isNot(contains(anyOf('green', 'amber', 'red'))));
+  });
+
+  test(
+    'FixedUnit.named finds the fixed unit a spelling stands for (ADR 08)',
+    () {
+      expect(FixedUnit.named('oz'), FixedUnit.oz);
+      expect(FixedUnit.named('OZ'), FixedUnit.oz);
+      expect(FixedUnit.named('dash'), isNull);
+    },
+  );
 
   group('StockLevel.next', () {
     test('follows a bottle: in -> low -> out -> in', () {
@@ -62,11 +140,9 @@ void main() {
       expect(dash.answersTo('dashs'), isFalse);
     });
 
-    test('equality and hashCode isolate each field', () {
-      expect(const Unit('dash'), const Unit('dash'));
-      expect(const Unit('dash').hashCode, const Unit('dash').hashCode);
-      expect(const Unit('dash'), isNot(const Unit('drop')));
-      expect(const Unit('dash'), isNot(const Unit('dash', plural: 'dashes')));
+    valueEquality(() => const Unit('dash'), const {
+      'name': Unit('drop'),
+      'plural': Unit('dash', plural: 'dashes'),
     });
   });
 
@@ -94,72 +170,6 @@ void main() {
     });
   });
 
-  group('FixedUnit tokens', () {
-    test('tokens match the data format', () {
-      expect(FixedUnit.part.token, 'part');
-      expect(FixedUnit.ml.token, 'ml');
-      expect(FixedUnit.oz.token, 'oz');
-    });
-
-    test('named finds the fixed unit a spelling stands for (ADR 08)', () {
-      expect(FixedUnit.named('oz'), FixedUnit.oz);
-      expect(FixedUnit.named('OZ'), FixedUnit.oz);
-      expect(FixedUnit.named('dash'), isNull);
-    });
-
-    test('fromToken round-trips every member', () {
-      for (final unit in FixedUnit.values) {
-        expect(FixedUnit.fromToken(unit.token), unit);
-      }
-    });
-
-    test('fromToken returns null for an unknown token', () {
-      expect(FixedUnit.fromToken('litre'), isNull);
-    });
-  });
-
-  group('LineMark tokens', () {
-    test('tokens match the data format', () {
-      expect(LineMark.base.token, 'base');
-      expect(LineMark.optional.token, 'optional');
-    });
-
-    test('fromToken round-trips every member', () {
-      for (final mark in LineMark.values) {
-        expect(LineMark.fromToken(mark.token), mark);
-      }
-    });
-
-    test('fromToken returns null for an unknown token', () {
-      expect(LineMark.fromToken('garnish'), isNull);
-    });
-  });
-
-  group('TagColor tokens', () {
-    test('tokens match the data format', () {
-      expect(
-        [for (final color in TagColor.values) color.token],
-        ['teal', 'indigo', 'plum', 'rose', 'sand', 'slate'],
-      );
-    });
-
-    test('the palette spends no colour stock or availability needs', () {
-      expect([
-        for (final color in TagColor.values) color.token,
-      ], isNot(contains(anyOf('green', 'amber', 'red'))));
-    });
-
-    test('fromToken round-trips every member', () {
-      for (final color in TagColor.values) {
-        expect(TagColor.fromToken(color.token), color);
-      }
-    });
-
-    test('fromToken returns null for an unknown token', () {
-      expect(TagColor.fromToken('puce'), isNull);
-    });
-  });
-
   group('Amount', () {
     test('single value is not a range', () {
       const amount = Amount(1.5);
@@ -179,12 +189,9 @@ void main() {
       expect(const Amount.range(2, 2), const Amount(2));
     });
 
-    test('equality and hashCode isolate each field', () {
-      const amount = Amount.range(1.5, 2);
-      expect(amount, const Amount.range(1.5, 2));
-      expect(amount.hashCode, const Amount.range(1.5, 2).hashCode);
-      expect(amount, isNot(const Amount.range(1, 2)));
-      expect(amount, isNot(const Amount.range(1.5, 3)));
+    valueEquality(() => const Amount.range(1.5, 2), const {
+      'min': Amount.range(1, 2),
+      'max': Amount.range(1.5, 3),
     });
   });
 
@@ -211,23 +218,21 @@ void main() {
       );
     });
 
-    test('equality and hashCode isolate each field', () {
-      expect(build(), build());
-      expect(build().hashCode, build().hashCode);
-      expect(build(), isNot(build(name: 'rum')));
-      expect(build(), isNot(build(stock: StockLevel.low)));
-      expect(build(), isNot(build(aliases: const ['london dry'])));
-      expect(build(), isNot(build(tags: const ['juniper'])));
+    valueEquality(build, {
+      'name': build(name: 'rum'),
+      'stock': build(stock: StockLevel.low),
+      'aliases': build(aliases: const ['london dry']),
+      'tags': build(tags: const ['juniper']),
     });
 
+    final ingredient = Ingredient(
+      'gin',
+      stock: StockLevel.low,
+      aliases: const ['london dry'],
+      tags: const ['juniper'],
+    );
     test('copyWith replaces one field and carries the rest', () {
-      final ingredient = Ingredient(
-        'gin',
-        stock: StockLevel.low,
-        aliases: const ['london dry'],
-        tags: const ['juniper'],
-      );
-      expect(ingredient.copyWith(), ingredient);
+      expect(ingredient.copyWith(), ingredient, reason: 'nothing named');
       expect(
         ingredient.copyWith(name: 'rum'),
         build(
@@ -236,6 +241,7 @@ void main() {
           aliases: const ['london dry'],
           tags: const ['juniper'],
         ),
+        reason: 'name',
       );
       expect(
         ingredient.copyWith(stock: StockLevel.in_),
@@ -244,14 +250,17 @@ void main() {
           aliases: const ['london dry'],
           tags: const ['juniper'],
         ),
+        reason: 'stock',
       );
       expect(
         ingredient.copyWith(aliases: const []),
         build(stock: StockLevel.low, tags: const ['juniper']),
+        reason: 'aliases',
       );
       expect(
         ingredient.copyWith(tags: const []),
         build(stock: StockLevel.low, aliases: const ['london dry']),
+        reason: 'tags',
       );
     });
 
@@ -272,23 +281,23 @@ void main() {
     Tag build({String name = 'sour', TagColor color = TagColor.teal}) =>
         Tag(name, color: color);
 
-    test('equality and hashCode isolate each field', () {
-      expect(build(), build());
-      expect(build().hashCode, build().hashCode);
-      expect(build(), isNot(build(name: 'classic')));
-      expect(build(), isNot(build(color: TagColor.rose)));
+    valueEquality(build, {
+      'name': build(name: 'classic'),
+      'color': build(color: TagColor.rose),
     });
 
     test('copyWith replaces one field and carries the rest', () {
       const tag = Tag('sour', color: TagColor.rose);
-      expect(tag.copyWith(), tag);
+      expect(tag.copyWith(), tag, reason: 'nothing named');
       expect(
         tag.copyWith(name: 'sours'),
         const Tag('sours', color: TagColor.rose),
+        reason: 'name',
       );
       expect(
         tag.copyWith(color: TagColor.plum),
         const Tag('sour', color: TagColor.plum),
+        reason: 'color',
       );
     });
   });
@@ -321,14 +330,15 @@ void main() {
       expect(optional.isOptional, isTrue);
     });
 
-    test('equality and hashCode isolate each field', () {
-      expect(build(), build());
-      expect(build().hashCode, build().hashCode);
-      expect(build(), isNot(build(amount: const Amount(1))));
-      expect(build(), isNot(build(unit: 'ml')));
-      expect(build(), isNot(build(ingredients: const ['gin'])));
-      expect(build(), isNot(build(ingredients: const ['egg white', 'gin'])));
-      expect(build(), isNot(build(mark: LineMark.optional)));
+    valueEquality(build, {
+      'amount': build(amount: const Amount(1)),
+      'unit': build(unit: 'ml'),
+      'ingredients': build(ingredients: const ['gin']),
+      'one alternative more': build(ingredients: const ['egg white', 'gin']),
+      'mark': build(mark: LineMark.optional),
+    });
+
+    test('one mark is not another', () {
       expect(build(mark: LineMark.base), isNot(build(mark: LineMark.optional)));
     });
 
@@ -336,22 +346,25 @@ void main() {
       const line = RecipeLine(Amount(0.5), 'part', [
         'egg white',
       ], mark: LineMark.optional);
-      expect(line.copyWith(), line);
+      expect(line.copyWith(), line, reason: 'nothing named');
       expect(
         line.copyWith(amount: const Amount(1)),
         const RecipeLine(Amount(1), 'part', [
           'egg white',
         ], mark: LineMark.optional),
+        reason: 'amount',
       );
       expect(
         line.copyWith(unit: 'ml'),
         const RecipeLine(Amount(0.5), 'ml', [
           'egg white',
         ], mark: LineMark.optional),
+        reason: 'unit',
       );
       expect(
         line.copyWith(ingredients: const ['gin']),
         const RecipeLine(Amount(0.5), 'part', ['gin'], mark: LineMark.optional),
+        reason: 'ingredients',
       );
     });
 
@@ -366,23 +379,6 @@ void main() {
         LineMark.optional,
       );
       expect(line.marked(LineMark.base).marked(null), line);
-    });
-  });
-
-  group('MadeHistory', () {
-    test('keeps the date, drops the time of day', () {
-      final history = MadeHistory(DateTime(2026, 7, 18, 23, 59), 12);
-      expect(history.last, DateTime(2026, 7, 18));
-      expect(history, MadeHistory(DateTime(2026, 7, 18), 12));
-    });
-
-    test('equality and hashCode isolate each field', () {
-      MadeHistory build({int day = 18, int times = 12}) =>
-          MadeHistory(DateTime(2026, 7, day), times);
-      expect(build(), build());
-      expect(build().hashCode, build().hashCode);
-      expect(build(), isNot(build(day: 19)));
-      expect(build(), isNot(build(times: 13)));
     });
   });
 
@@ -453,28 +449,29 @@ void main() {
       }
     });
 
-    test('equality and hashCode isolate each field', () {
-      expect(const Settings(), const Settings());
-      expect(const Settings().hashCode, const Settings().hashCode);
-      expect(const Settings(), isNot(const Settings(partMl: 22.5)));
-      expect(const Settings(), isNot(const Settings(ozMl: 30)));
-      expect(const Settings(), isNot(const Settings(display: FixedUnit.ml)));
+    valueEquality(() => const Settings(), const {
+      'partMl': Settings(partMl: 22.5),
+      'ozMl': Settings(ozMl: 30),
+      'display': Settings(display: FixedUnit.ml),
     });
 
     test('copyWith replaces one field and carries the rest', () {
       const settings = Settings(partMl: 25, ozMl: 30, display: FixedUnit.ml);
-      expect(settings.copyWith(), settings);
+      expect(settings.copyWith(), settings, reason: 'nothing named');
       expect(
         settings.copyWith(partMl: 30),
         const Settings(partMl: 30, ozMl: 30, display: FixedUnit.ml),
+        reason: 'partMl',
       );
       expect(
         settings.copyWith(ozMl: 29.5735),
         const Settings(partMl: 25, display: FixedUnit.ml),
+        reason: 'ozMl',
       );
       expect(
         settings.copyWith(display: FixedUnit.part),
         const Settings(partMl: 25, ozMl: 30),
+        reason: 'display',
       );
     });
   });
@@ -487,23 +484,13 @@ void main() {
         RecipeLine(Amount.range(1.5, 2), 'part', ['bourbon']),
       ],
       String notes = 'dry shake, then shake with ice',
-      int? madeTimes = 12,
-    }) => Recipe(
-      name,
-      tags: tags,
-      lines: lines,
-      notes: notes,
-      made: madeTimes == null
-          ? null
-          : MadeHistory(DateTime(2026, 7, 18), madeTimes),
-    );
+    }) => Recipe(name, tags: tags, lines: lines, notes: notes);
 
-    test('defaults: no tags, no lines, empty notes, never made', () {
+    test('defaults: no tags, no lines, empty notes', () {
       final recipe = Recipe('Whiskey Sour');
       expect(recipe.tags, isEmpty);
       expect(recipe.lines, isEmpty);
       expect(recipe.notes, isEmpty);
-      expect(recipe.made, isNull);
     });
 
     test('collections are unmodifiable', () {
@@ -522,33 +509,29 @@ void main() {
       expect(recipe.tags, ['sour']);
     });
 
-    test('equality and hashCode isolate each field', () {
-      expect(build(), build());
-      expect(build().hashCode, build().hashCode);
-      expect(build(), isNot(build(name: 'Sazerac')));
-      expect(build(), isNot(build(tags: const ['sour', 'classic'])));
-      expect(
-        build(),
-        isNot(
-          build(
-            lines: const [
-              RecipeLine(Amount(2), 'part', ['bourbon']),
-            ],
-          ),
-        ),
-      );
-      expect(build(), isNot(build(notes: 'stirred')));
-      expect(build(), isNot(build(madeTimes: 13)));
-      expect(build(), isNot(build(madeTimes: null)));
+    valueEquality(build, {
+      'name': build(name: 'Sazerac'),
+      'tags': build(tags: const ['sour', 'classic']),
+      'lines': build(
+        lines: const [
+          RecipeLine(Amount(2), 'part', ['bourbon']),
+        ],
+      ),
+      'notes': build(notes: 'stirred'),
     });
 
     test('copyWith replaces one field and carries the rest', () {
       final recipe = build();
-      expect(recipe.copyWith(), recipe);
-      expect(recipe.copyWith(name: 'Sazerac'), build(name: 'Sazerac'));
+      expect(recipe.copyWith(), recipe, reason: 'nothing named');
+      expect(
+        recipe.copyWith(name: 'Sazerac'),
+        build(name: 'Sazerac'),
+        reason: 'name',
+      );
       expect(
         recipe.copyWith(tags: ['classic']),
         build(tags: const ['classic']),
+        reason: 'tags',
       );
       expect(
         recipe.copyWith(
@@ -561,16 +544,13 @@ void main() {
             RecipeLine(Amount(2), 'ml', ['rye']),
           ],
         ),
+        reason: 'lines',
       );
-      expect(recipe.copyWith(notes: 'stirred'), build(notes: 'stirred'));
       expect(
-        recipe.copyWith(made: MadeHistory(DateTime(2026, 7, 18), 13)),
-        build(madeTimes: 13),
+        recipe.copyWith(notes: 'stirred'),
+        build(notes: 'stirred'),
+        reason: 'notes',
       );
-    });
-
-    test('copyWith cannot unmake a recipe: null keeps the history', () {
-      expect(build().copyWith(made: null).made?.times, 12);
     });
   });
 
@@ -734,45 +714,44 @@ void main() {
       );
     });
 
-    test('equality and hashCode isolate each field', () {
-      expect(build(), build());
-      expect(build().hashCode, build().hashCode);
-      expect(build(), isNot(build(settings: const Settings())));
-      expect(build(), isNot(build(ingredients: [Ingredient('gin')])));
-      expect(
-        build(),
-        isNot(
-          build(ingredientTags: const [Tag('peaty', color: TagColor.sand)]),
-        ),
-      );
-      expect(
-        build(),
-        isNot(build(recipeTags: const [Tag('classic', color: TagColor.rose)])),
-      );
-      expect(build(), isNot(build(recipes: [Recipe('Negroni')])));
+    const classic = [Tag('classic', color: TagColor.rose)];
+    const peaty = [Tag('peaty', color: TagColor.sand)];
+
+    valueEquality(build, {
+      'settings': build(settings: const Settings()),
+      'ingredients': build(ingredients: [Ingredient('gin')]),
+      'ingredientTags': build(ingredientTags: peaty),
+      'recipeTags': build(recipeTags: classic),
+      'recipes': build(recipes: [Recipe('Negroni')]),
     });
 
     test('copyWith replaces one field and carries the rest', () {
       final model = build();
-      const classic = [Tag('classic', color: TagColor.rose)];
-      const peaty = [Tag('peaty', color: TagColor.sand)];
-      expect(model.copyWith(), model);
+      expect(model.copyWith(), model, reason: 'nothing named');
       expect(
         model.copyWith(settings: const Settings()),
         build(settings: const Settings()),
+        reason: 'settings',
       );
       expect(
         model.copyWith(ingredients: [Ingredient('gin')]),
         build(ingredients: [Ingredient('gin')]),
+        reason: 'ingredients',
       );
       expect(
         model.copyWith(ingredientTags: peaty),
         build(ingredientTags: peaty),
+        reason: 'ingredientTags',
       );
-      expect(model.copyWith(recipeTags: classic), build(recipeTags: classic));
+      expect(
+        model.copyWith(recipeTags: classic),
+        build(recipeTags: classic),
+        reason: 'recipeTags',
+      );
       expect(
         model.copyWith(recipes: [Recipe('Negroni')]),
         build(recipes: [Recipe('Negroni')]),
+        reason: 'recipes',
       );
     });
 

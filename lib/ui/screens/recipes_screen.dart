@@ -50,9 +50,9 @@ String? _viewNote(_AmountView view, _AmountView resting) {
 }
 
 /// Every recipe as a card that expands in place — the compact two lines, or
-/// the full view: tags, lines, notes, made-history (FR-DIS-2) — and the
-/// recipes themselves: add and edit through the pushed form, delete behind
-/// the ⋮ (FR-REC-1). Designed in docs/ui-design.md#recipes-screen.
+/// the full view: tags, lines, notes (FR-DIS-2) — and the recipes themselves:
+/// add and edit through the pushed form, delete behind the ⋮ (FR-REC-1).
+/// Designed in docs/ui-design.md#recipes-screen.
 class RecipesScreen extends ConsumerStatefulWidget {
   const RecipesScreen({super.key});
 
@@ -64,14 +64,8 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
   /// Expansion state here, not per-card (list disposes what scrolls).
   final _expanded = <String>{};
 
-  /// What a recipe's history read before its last stamp, offered as Undo for
-  /// as long as the card that stamped it stays open. A null value is an
-  /// answer — never made — so membership is the test, never the value.
-  final _undo = <String, MadeHistory?>{};
-
   /// How an open card is reading its amounts (FR-REC-7), absent while it reads
-  /// them as written. Kept beside the undo and let go with it: both are a way
-  /// of looking at one card, and neither outlives it.
+  /// them as written — a way of looking at one card, which does not outlive it.
   final _views = <String, _AmountView>{};
 
   /// The tags narrowing the list (FR-DIS-3) — screen state like the order and
@@ -92,20 +86,14 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
 
   void _toggle(String name) => setState(() {
     _expanded.toggle(name);
-    if (!_expanded.contains(name)) _forget(name);
+    if (!_expanded.contains(name)) _views.remove(name);
   });
 
-  void _forget(String name) {
-    _undo.remove(name);
-    _views.remove(name);
-  }
-
   /// Opens [name] and shuts everything else — a roll and a jump are each one
-  /// answer rather than a pile of them (FR-DIS-5, FR-DIS-9).
+  /// answer rather than a pile of them (FR-DIS-5, FR-DIS-9). Every card shutting
+  /// takes its reading with it.
   void _openAlone(String name) {
-    for (final open in _expanded) {
-      _forget(open);
-    }
+    _views.clear();
     _expanded
       ..clear()
       ..add(name);
@@ -226,11 +214,6 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
               recipe: recipe,
               view: view,
               onReach: (bottle) => _reach(model, bottle),
-              onMade: () => unawaited(_made(recipe)),
-              onReset: () => unawaited(_reset(recipe)),
-              onUndo: _undo.containsKey(recipe.name)
-                  ? () => unawaited(_undoMade(recipe))
-                  : null,
             )
           : null,
       trailing: Row(
@@ -364,7 +347,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
     setState(() {
       if (_expanded.remove(recipe.name)) _expanded.add(saved);
       if (_rolled == recipe.name) _rolled = saved;
-      _forget(recipe.name);
+      _views.remove(recipe.name);
     });
   }
 
@@ -402,38 +385,9 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
     if (mounted) {
       setState(() {
         _expanded.remove(recipe.name);
-        _forget(recipe.name);
+        _views.remove(recipe.name);
       });
     }
-  }
-
-  /// Stamps today onto the recipe, keeping what stood there so Undo can put it
-  /// back — nothing else lowers a count that only climbs (FR-REC-6).
-  Future<void> _made(Recipe recipe) async {
-    setState(() => _undo[recipe.name] = recipe.made);
-    await ref.read(modelProvider.notifier).markMade(recipe.name);
-  }
-
-  /// Puts that history back, date included: a stamp taken back leaves no trace.
-  Future<void> _undoMade(Recipe recipe) async {
-    final previous = _undo[recipe.name];
-    setState(() => _undo.remove(recipe.name));
-    await ref.read(modelProvider.notifier).setMade(recipe.name, previous);
-  }
-
-  /// The long press on the button, asked about first — a count is not rebuilt
-  /// by tapping, and there is nothing left to undo with once it is gone.
-  Future<void> _reset(Recipe recipe) async {
-    final confirmed = await confirmDialog(
-      context,
-      title: 'Reset "${recipe.name}"\'s history?',
-      message: 'It will appear as never made. Nothing else about it changes.',
-      cancel: 'Cancel',
-      confirm: 'Reset',
-    );
-    if (!confirmed || !mounted) return;
-    setState(() => _undo.remove(recipe.name));
-    await ref.read(modelProvider.notifier).setMade(recipe.name, null);
   }
 }
 
@@ -495,7 +449,7 @@ class _BaseChip extends StatelessWidget {
       );
 }
 
-/// Full recipe card: tags, lines, notes, made row; empty sections omitted.
+/// Full recipe card: tags, lines, notes; empty sections omitted.
 class _Details extends StatelessWidget {
   const _Details({
     required this.model,
@@ -503,9 +457,6 @@ class _Details extends StatelessWidget {
     required this.recipe,
     required this.view,
     required this.onReach,
-    required this.onMade,
-    required this.onReset,
-    this.onUndo,
   });
 
   /// Read for the stock behind each line (FR-DIS-1), and for the ratios the
@@ -520,12 +471,6 @@ class _Details extends StatelessWidget {
 
   /// Where a bottle named on a line is kept (FR-DIS-9).
   final void Function(String bottle) onReach;
-
-  final VoidCallback onMade;
-  final VoidCallback onReset;
-
-  /// Null until a stamp leaves something to take back.
-  final VoidCallback? onUndo;
 
   @override
   Widget build(BuildContext context) {
@@ -563,13 +508,6 @@ class _Details extends StatelessWidget {
           const SizedBox(height: 8),
           Text(recipe.notes),
         ],
-        const SizedBox(height: 4),
-        _MadeRow(
-          made: recipe.made,
-          onMade: onMade,
-          onReset: onReset,
-          onUndo: onUndo,
-        ),
       ],
     );
   }
@@ -679,54 +617,6 @@ class _LineState extends State<_Line> {
   }
 }
 
-/// The card's last line: what the history reads, the Undo the last stamp left
-/// behind, and the button that stamps (FR-REC-6). A recipe never made says
-/// nothing on its left — the button stands there alone. The text gives way
-/// first, since a clipped date beats a wrapped row.
-class _MadeRow extends StatelessWidget {
-  const _MadeRow({
-    required this.made,
-    required this.onMade,
-    required this.onReset,
-    this.onUndo,
-  });
-
-  final MadeHistory? made;
-  final VoidCallback onMade;
-  final VoidCallback onReset;
-  final VoidCallback? onUndo;
-
-  @override
-  Widget build(BuildContext context) {
-    final made = this.made;
-    final theme = Theme.of(context);
-    return Row(
-      children: [
-        Expanded(
-          child: made == null
-              ? const SizedBox.shrink()
-              : Text(
-                  _madeLine(made),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-        ),
-        if (onUndo != null)
-          TextButton(onPressed: onUndo, child: const Text('Undo')),
-        FilledButton.tonalIcon(
-          onPressed: onMade,
-          onLongPress: made == null ? null : onReset,
-          icon: const Icon(Icons.check),
-          label: const Text('Made it'),
-        ),
-      ],
-    );
-  }
-}
-
 /// Both readings settled in one place, applied on Apply and dropped on Cancel
 /// — the card behind stands as it was until then. Picking [_resting] again is
 /// the way back, so the dialog needs no reset of its own.
@@ -813,27 +703,4 @@ class _ScaleDialogState extends State<_ScaleDialog> {
       control,
     ],
   );
-}
-
-const _months = [
-  'Jan',
-  'Feb',
-  'Mar',
-  'Apr',
-  'May',
-  'Jun',
-  'Jul',
-  'Aug',
-  'Sep',
-  'Oct',
-  'Nov',
-  'Dec',
-];
-
-String _madeLine(MadeHistory made) {
-  final last = made.last;
-  final date = '${last.day} ${_months[last.month - 1]} ${last.year}';
-  return made.times == 1
-      ? 'Made once · $date'
-      : 'Made ${made.times} times · last $date';
 }

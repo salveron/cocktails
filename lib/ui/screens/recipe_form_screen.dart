@@ -148,7 +148,6 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
         tags: [for (final tag in wornInOrder(vocabulary, _tags)) tag.name],
         lines: lines,
         notes: _notes.text.trim(),
-        made: widget.original?.made,
       ),
       fieldOf: fieldOf,
     );

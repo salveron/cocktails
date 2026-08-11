@@ -6,6 +6,7 @@ import 'package:cocktails/ui/theme.dart';
 import 'package:cocktails/ui/widgets/color_chip.dart';
 import 'package:cocktails/ui/widgets/search_field.dart';
 import 'package:cocktails/ui/widgets/tag_choices.dart';
+import 'package:cocktails/ui/widgets/vocabulary_list.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -30,9 +31,9 @@ final fixtureModel = Model(
 );
 
 /// Three recipes off their reading order, covering every card section and
-/// every form field: tags, marks, a range, notes and made-history — and each
-/// section's absence too. Shared by the recipe list and the recipe form, so
-/// neither can be exercised against a shape the other never sees.
+/// every form field: tags, marks, a range and notes — and each section's
+/// absence too. Shared by the recipe list and the recipe form, so neither can
+/// be exercised against a shape the other never sees.
 final recipeModel = Model(
   ingredients: [
     Ingredient('bourbon'),
@@ -69,7 +70,6 @@ final recipeModel = Model(
         RecipeLine(Amount(1), 'part', ['sweet vermouth']),
       ],
       notes: 'Stir over ice.',
-      made: MadeHistory(DateTime(2026, 7, 12), 4),
     ),
     Recipe(
       'Daiquiri',
@@ -79,7 +79,6 @@ final recipeModel = Model(
         ], mark: LineMark.base),
         RecipeLine(Amount(1), 'part', ['lime juice']),
       ],
-      made: MadeHistory(DateTime(2026, 1, 3), 1),
     ),
   ],
 );
@@ -98,20 +97,17 @@ MemoryModelStore corruptStore() => MemoryModelStore()
   ], recoveredFromBackup: fixtureModel);
 
 /// [widget] under the provider overrides the composition root makes, so a
-/// widget test reaches the real state layer over an in-memory store — over a
-/// clock stopped on [today] where the screen stamps a date, and over the two
-/// seams data crosses the edge by: [sharer] where a copy goes out to the
-/// system's sheet, [picker] where a file comes back off it (ADR 18).
+/// widget test reaches the real state layer over an in-memory store — and over
+/// the two seams data crosses the edge by: [sharer] where a copy goes out to
+/// the system's sheet, [picker] where a file comes back off it (ADR 18).
 Widget scoped(
   Widget widget, {
   ModelStore? store,
-  DateTime? today,
   Future<void> Function(String)? sharer,
   Future<String?> Function()? picker,
 }) => ProviderScope(
   overrides: [
     modelStoreProvider.overrideWithValue(store ?? MemoryModelStore()),
-    if (today != null) clockProvider.overrideWithValue(() => today),
     if (sharer != null) sharerProvider.overrideWithValue(sharer),
     if (picker != null) filePickerProvider.overrideWithValue(picker),
   ],
@@ -136,7 +132,6 @@ Future<void> pumpScreen(
   WidgetTester tester,
   Widget screen, {
   ModelStore? store,
-  DateTime? today,
   Future<void> Function(String)? sharer,
   Future<String?> Function()? picker,
 }) async {
@@ -147,7 +142,6 @@ Future<void> pumpScreen(
         home: Scaffold(body: screen),
       ),
       store: store,
-      today: today,
       sharer: sharer,
       picker: picker,
     ),
@@ -160,11 +154,10 @@ Future<void> pumpScreen(
 Future<MemoryModelStore> pumpOver(
   WidgetTester tester,
   Widget screen,
-  Model model, {
-  DateTime? today,
-}) async {
+  Model model,
+) async {
   final store = MemoryModelStore(model);
-  await pumpScreen(tester, screen, store: store, today: today);
+  await pumpScreen(tester, screen, store: store);
   return store;
 }
 
@@ -276,14 +269,17 @@ Color? cardFill(WidgetTester tester, String name) => tester
     )
     .color;
 
-/// Whether the card named [name] is reading open — only an open card carries
-/// the button that stamps it (FR-REC-6).
-bool cardOpen(WidgetTester tester, String name) => tester.any(
-  find.descendant(
-    of: find.ancestor(of: find.text(name), matching: find.byType(Card)),
-    matching: find.widgetWithText(FilledButton, 'Made it'),
-  ),
-);
+/// Whether the card named [name] is reading open — a row carries a body only
+/// while it is expanded, whichever screen drew it. A name no row is showing is
+/// not open, so a narrowed list answers rather than throwing.
+bool cardOpen(WidgetTester tester, String name) {
+  final rows = find.ancestor(
+    of: find.text(name),
+    matching: find.byType(VocabularyRow),
+  );
+  return tester.any(rows) &&
+      tester.widget<VocabularyRow>(rows.first).body != null;
+}
 
 /// Which of [names] are reading open, in the order asked.
 Iterable<String> openCards(WidgetTester tester, Iterable<String> names) =>

@@ -44,7 +44,6 @@ recipes:
       - 0.5 parts rich demerara syrup
       - 0.5 parts egg white (optional)
     notes: dry shake, then shake with ice
-    made: {last: 2026-07-18, times: 12}
 ''';
 
 /// The same example verbatim from the doc, comments included.
@@ -87,7 +86,6 @@ recipes:
       - 0.5 parts rich demerara syrup
       - 0.5 parts egg white (optional)
     notes: dry shake, then shake with ice
-    made: {last: 2026-07-18, times: 12}
 ''';
 
 Model docModel() => Model(
@@ -130,7 +128,6 @@ Model docModel() => Model(
         RecipeLine(Amount(0.5), 'part', ['egg white'], mark: LineMark.optional),
       ],
       notes: 'dry shake, then shake with ice',
-      made: MadeHistory(DateTime(2026, 7, 18), 12),
     ),
   ],
 );
@@ -421,6 +418,52 @@ recipes: []
   group('decode', () {
     test('reads the doc example, comments included', () {
       expect(decoded(commentedText), docModel());
+    });
+
+    test('a made key is accepted and ignored, whatever it holds (ADR 21)', () {
+      const stamps = [
+        '{last: 2026-07-18, times: 12}',
+        '{last: 2026-02-31}',
+        '{times: two, extra: 1}',
+        'yesterday',
+        '[]',
+      ];
+      for (final stamp in stamps) {
+        final model = decoded(
+          'format: 1\n'
+          'ingredients:\n'
+          '  - {name: gin}\n'
+          'recipes:\n'
+          '  - name: Martini\n'
+          '    lines: [1 part gin]\n'
+          '    made: $stamp\n',
+        );
+        expect(
+          model.recipeNamed('Martini'),
+          Recipe(
+            'Martini',
+            lines: const [
+              RecipeLine(Amount(1), 'part', ['gin']),
+            ],
+          ),
+          reason: stamp,
+        );
+      }
+    });
+
+    test('what a stamped file is written back as carries no made key', () {
+      final text = codec.encode(
+        decoded(
+          'format: 1\n'
+          'ingredients:\n'
+          '  - {name: gin}\n'
+          'recipes:\n'
+          '  - name: Martini\n'
+          '    lines: [1 part gin]\n'
+          '    made: {last: 2026-07-18, times: 12}\n',
+        ),
+      );
+      expect(text, isNot(contains('made')));
     });
 
     test('a file of only the format line is the empty model', () {
@@ -789,54 +832,6 @@ recipes: []
       );
     });
 
-    test('made-history problems, each at its own line', () {
-      final issues = rejected(
-        'format: 1\n'
-        'recipes:\n'
-        '  - name: A\n'
-        '    made: {last: 2026-02-31, times: 2}\n'
-        '  - name: B\n'
-        '    made: {last: 2026-07-18}\n'
-        '  - name: C\n'
-        '    made: {last: "2026-07-18T10:00:00", times: 1}\n'
-        '  - name: D\n'
-        '    made: {times: 2, last: 2026-07-18, extra: 1}\n'
-        '  - name: E\n'
-        '    made: {last: 2026-07-18, times: two}\n',
-      );
-      expect(issues, hasLength(5));
-      const kind = ValidationIssueKind.malformedValue;
-      expectIssue(
-        issues[0],
-        kind,
-        'recipes[0].made.last',
-        4,
-        messagePart: 'last must be a date (YYYY-MM-DD): "2026-02-31"',
-      );
-      expectIssue(
-        issues[1],
-        kind,
-        'recipes[1].made',
-        6,
-        messagePart: 'Missing times',
-      );
-      expectIssue(issues[2], kind, 'recipes[2].made.last', 8);
-      expectIssue(
-        issues[3],
-        kind,
-        'recipes[3].made.extra',
-        10,
-        messagePart: 'Unknown key: "extra"',
-      );
-      expectIssue(
-        issues[4],
-        kind,
-        'recipes[4].made.times',
-        12,
-        messagePart: 'times must be a whole number: "two"',
-      );
-    });
-
     test('notes that are not a string', () {
       final issues = rejected(
         'format: 1\nrecipes:\n  - name: A\n    notes: [x]\n',
@@ -987,24 +982,6 @@ recipes: []
       );
     });
 
-    test('a times below one', () {
-      final issues = rejected(
-        'format: 1\n'
-        'ingredients:\n'
-        '  - {name: gin}\n'
-        'recipes:\n'
-        '  - name: A\n'
-        '    lines: [1 part gin]\n'
-        '    made: {last: 2026-07-18, times: 0}\n',
-      );
-      expectIssue(
-        issues.single,
-        ValidationIssueKind.timesBelowOne,
-        'recipes[0].made.times',
-        7,
-      );
-    });
-
     test('an ingredient reaching into the other vocabulary', () {
       final issues = rejected(
         'format: 1\n'
@@ -1081,7 +1058,6 @@ recipes: []
               RecipeLine(Amount(2), 'part', ['bourbon', 'rum # dark']),
             ],
             notes: 'stir.\nstrain — serve "up"',
-            made: MadeHistory(DateTime(2025, 1, 3), 4),
           ),
           Recipe(
             'Plain',

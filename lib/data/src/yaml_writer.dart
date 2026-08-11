@@ -70,27 +70,17 @@ List<String> _ingredientEntry(Ingredient ingredient) =>
 List<String> _tagEntry(Tag tag) =>
     _vocabularyEntry(tag.name, ['color: ${tag.color.token}']);
 
-List<String> _recipeEntry(Recipe recipe, List<Unit> units) {
-  final made = recipe.made;
-  return [
-    'name: ${_scalar(recipe.name)}',
-    if (recipe.tags.isNotEmpty) 'tags: ${_flowList(recipe.tags)}',
-    if (recipe.lines.isNotEmpty) 'lines:',
-    for (final line in recipe.lines)
-      '  - ${_scalar(formatRecipeLine(line, units))}',
-    if (recipe.notes.isNotEmpty) 'notes: ${_scalar(recipe.notes)}',
-    if (made != null)
-      'made: {last: ${_isoDate(made.last)}, times: ${made.times}}',
-  ];
-}
+List<String> _recipeEntry(Recipe recipe, List<Unit> units) => [
+  'name: ${_scalar(recipe.name)}',
+  if (recipe.tags.isNotEmpty) 'tags: ${_flowList(recipe.tags)}',
+  if (recipe.lines.isNotEmpty) 'lines:',
+  for (final line in recipe.lines)
+    '  - ${_scalar(formatRecipeLine(line, units))}',
+  if (recipe.notes.isNotEmpty) 'notes: ${_scalar(recipe.notes)}',
+];
 
 String _flowList(Iterable<String> values) =>
     '[${values.map((value) => _scalar(value, inFlow: true)).join(', ')}]';
-
-String _isoDate(DateTime date) =>
-    '${date.year.toString().padLeft(4, '0')}-'
-    '${date.month.toString().padLeft(2, '0')}-'
-    '${date.day.toString().padLeft(2, '0')}';
 
 String _scalar(String value, {bool inFlow = false}) =>
     _isPlainSafe(value, inFlow: inFlow) ? value : _quoted(value);

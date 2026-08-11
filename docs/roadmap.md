@@ -176,15 +176,32 @@ First usable slice; recipes reference both vocabularies, so this precedes Phase 
 
 What ships as 1.0.0 should carry nothing the product no longer claims.
 
-- [ ] **M28a Made it comes out** — FR-REC-6 is retired, so the feature leaves rather than hides: the
-      made row and its button, the history text, the Undo and the long-press reset
-      ([ui-design.md](ui-design.md#recipes-screen)), `MadeHistory`, `Recipe.made` and `stamped`,
-      `withRecipeMade` and `withRecipeHistory`, `timesBelowOne`, and the `made:` the writer emits.
-      The reader goes on accepting that key and ignoring it — the rule format 1 keeps for good
+- [x] **M28a Made it comes out** — FR-REC-6 is retired, so the feature left rather than hid: the
+      made row and its button, the history text, the Undo and the long-press reset, `MadeHistory`,
+      `Recipe.made` and `stamped`, `withRecipeMade` and `withRecipeHistory`, `timesBelowOne`, and
+      the `made:` the writer emitted. The reader goes on accepting that key and ignoring it,
+      whatever it holds — the rule format 1 keeps for good
       ([ADR 21](adr/21-the-file-carries-one-bar.md)) — so a collection already on a device loses its
       stamps and nothing else, and the version waits for the bump that has something to add (M31).
-      `clockProvider` goes with it, the app having nothing left to ask the time of until a refresh
-      does (M36).
+      `clockProvider` went with it, the app having nothing left to ask the time of until a refresh
+      does (M36). The test harness reads an open card off the row's own body, the button having been
+      what said so before.
+- [x] **M28b The test suite reads once** — the suite was sound but said some things twice, so the
+      copies went and the rules they proved stayed. Four enum-token groups became one
+      `tokenVocabulary` body run over each, and the eight equality pairs one `valueEquality` table;
+      every `copyWith` case now names its field in a `reason`, so a broken `==` says which one it
+      stopped reading rather than printing two objects to be compared by eye. A matching table for
+      `copyWith` was tried and dropped: each case has to spell both sides out whatever wraps it, so
+      the wrapper bought a test name six times over and cost a layer of parens at every case.
+      `validation_test`'s trailing `issue kinds` group went — every kind it asserted now sits with
+      the test already owning that rule's path and message. `screens_test.dart` moved to
+      `screens/settings_screen_test.dart`, the name the other six screens use, and a docstring
+      stranded on the wrong declaration went back to `scale`. What earns a test at all is written
+      down for the first time, in [components.md](components.md#what-earns-a-test). The shared
+      `VocabularyList` keeps being proven through the screens that draw it rather than on its own:
+      its mechanics read differently per screen, and moving them off would leave a mis-wired list
+      with nothing watching. The suite came out 19 lines shorter — the point was one home per rule,
+      not fewer lines, and the parametrised bodies cost about what the copies did.
 - [ ] **M29 Release packaging** — signing configuration (keystore outside the repo),
       Android Auto Backup enabled, launcher icon and label, version 1.0.0.
 

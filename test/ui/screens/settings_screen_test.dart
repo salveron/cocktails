@@ -4,7 +4,7 @@ import 'package:cocktails/ui/screens/settings_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'harness.dart';
+import '../harness.dart';
 
 /// A store that cannot write, so the one thing a failed replace must not do —
 /// leave for a collection that was never written — can be watched.

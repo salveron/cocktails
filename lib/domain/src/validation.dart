@@ -25,7 +25,6 @@ enum ValidationIssueKind {
   amountNotPositive,
   rangeOutOfOrder,
   noRequiredLine,
-  timesBelowOne,
   unsupportedFormat,
   malformedLine,
   malformedValue,
@@ -484,16 +483,6 @@ List<ValidationIssue> _checkRecipe(
               )
             : null,
       ],
-    );
-  }
-  final made = recipe.made;
-  if (made != null && made.times < 1) {
-    issues.add(
-      ValidationIssue(
-        [...basePath, 'made', 'times'],
-        ValidationIssueKind.timesBelowOne,
-        'times must be at least 1: ${made.times}',
-      ),
     );
   }
   return issues;

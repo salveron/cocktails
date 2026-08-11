@@ -29,18 +29,13 @@ void main() {
     recipeTags: const [Tag('classic', color: TagColor.rose)],
     recipes: [negroni],
   );
-  // A date the real clock cannot return, so the stamp proves the injection.
-  final today = DateTime(2024, 3, 5);
 
   late MemoryModelStore store;
   setUp(() => store = MemoryModelStore(stored));
 
-  ProviderContainer containerFor(MemoryModelStore store, {DateTime? now}) {
+  ProviderContainer containerFor(MemoryModelStore store) {
     final container = ProviderContainer(
-      overrides: [
-        modelStoreProvider.overrideWithValue(store),
-        if (now != null) clockProvider.overrideWithValue(() => now),
-      ],
+      overrides: [modelStoreProvider.overrideWithValue(store)],
     );
     addTearDown(container.dispose);
     return container;
@@ -48,7 +43,7 @@ void main() {
 
   /// A container whose startup load has already resolved.
   Future<ProviderContainer> started([MemoryModelStore? seeded]) async {
-    final container = containerFor(seeded ?? store, now: today);
+    final container = containerFor(seeded ?? store);
     await container.read(modelProvider.future);
     return container;
   }
@@ -375,36 +370,6 @@ void main() {
       await controllerOf(container).removeRecipe('Negroni');
       expect(modelOf(container).recipes, isEmpty);
     });
-
-    test('markMade stamps the clock and counts up', () async {
-      final container = await started();
-      await controllerOf(container).markMade('Negroni');
-      expect(
-        modelOf(container).recipeNamed('Negroni')?.made,
-        MadeHistory(today, 1),
-      );
-      await controllerOf(container).markMade('Negroni');
-      expect(
-        modelOf(container).recipeNamed('Negroni')?.made,
-        MadeHistory(today, 2),
-      );
-    });
-
-    test('setMade puts a history back, and a null clears it', () async {
-      final container = await started();
-      final controller = controllerOf(container);
-      final before = MadeHistory(DateTime(2026, 1, 3), 4);
-
-      await controller.setMade('Negroni', before);
-      expect(modelOf(container).recipeNamed('Negroni')?.made, before);
-      await controller.setMade('Negroni', null);
-      expect(modelOf(container).recipeNamed('Negroni')?.made, isNull);
-    });
-
-    test('the clock is the real one unless a test replaces it', () async {
-      final container = containerFor(store);
-      expect(container.read(clockProvider), DateTime.now);
-    });
   });
 
   group('persistence', () {
@@ -423,7 +388,7 @@ void main() {
         const Tag('bitter', color: TagColor.plum),
       );
       await controller.setStock('campari', StockLevel.low);
-      await controller.markMade('Negroni');
+      await controller.removeRecipe('Negroni');
       expect(store.saveCount, 3);
       expect(store.saved, modelOf(container));
     });
@@ -437,8 +402,7 @@ void main() {
         const Tag('classic', color: TagColor.rose),
         replacing: 'classic',
       );
-      await controller.markMade('Sazerac');
-      await controller.setMade('Negroni', null);
+      await controller.removeRecipe('Sazerac');
       expect(store.saveCount, 0);
       expect(modelOf(container), same(stored));
     });
@@ -450,7 +414,7 @@ void main() {
     });
 
     test('an export asked for before the load waits for it', () async {
-      final container = containerFor(store, now: today);
+      final container = containerFor(store);
       await controllerOf(container).export();
       expect(store.snapshots[ExportPurpose.share], stored);
     });
@@ -465,7 +429,7 @@ void main() {
     });
 
     test('an edit made before the load resolves lands on top of it', () async {
-      final container = containerFor(store, now: today);
+      final container = containerFor(store);
       await controllerOf(container).setStock('campari', StockLevel.in_);
       expect(
         modelOf(container).ingredientNamed('campari')?.stock,
@@ -547,7 +511,7 @@ recipes:
     });
 
     test('a replace asked for before the load waits for it', () async {
-      final container = containerFor(store, now: today);
+      final container = containerFor(store);
       await controllerOf(container).replaceAll(incoming);
       // Not the empty model the copy would hold had it run before the load.
       expect(store.snapshots[ExportPurpose.beforeImport], stored);

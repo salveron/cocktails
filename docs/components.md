@@ -790,3 +790,20 @@ The controller is the UI's only route to the data layer; screens never hold a `B
   overrides.
 - **Boundaries**: `test/architecture_test.dart` enforces imports, the dependency list, and the one 
   route to a write.
+
+### What earns a test
+
+A test earns its place if it can fail for a reason a reader would care about, and nothing else 
+fails for that reason first.
+
+Write one for a requirement or ADR rule; for a boundary the code cannot express — a refusal, an 
+ordering, an invariant, an edge (none, one, many, absent); and for a defect that reached the branch 
+once. Don't for what the type system, the analyzer or a constructor already refuses; for a 
+framework's own contract; or for a second sample of a rule already proven over a table — that case 
+joins the table.
+
+One rule, one test: where a fact is pinned in two places a change has to visit both, and the second 
+one drifts. A rule holding over several types or vocabularies gets one parametrised body run over 
+each, not a copy each — `tokenVocabulary` and `valueEquality` in `test/domain/model_test.dart`, 
+`vocabulary` in `model_edits_test.dart`, `modelStoreContract` in `test/data/`. Every case in such a 
+table carries a `reason` naming it, so a failure says which one.

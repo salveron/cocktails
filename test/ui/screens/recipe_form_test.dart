@@ -328,18 +328,19 @@ void main() {
       );
     });
 
-    testWidgets('a rename replaces the entry and keeps the history', (
+    testWidgets('a rename replaces the entry and keeps the rest of it', (
       tester,
     ) async {
       final store = await pumpList(tester);
+      final before = recipeModel.recipeNamed('Negroni')!;
       await chooseOnRow(tester, 'Negroni', 'Edit');
       await typeInto(tester, nameField, 'Boulevardier');
       await tap(tester, find.text('Save'));
       final saved = store.saved!;
       expect(saved.recipeNamed('Negroni'), isNull);
       expect(
-        saved.recipeNamed('Boulevardier')!.made,
-        MadeHistory(DateTime(2026, 7, 12), 4),
+        saved.recipeNamed('Boulevardier'),
+        before.copyWith(name: 'Boulevardier'),
       );
       expect(store.saveCount, 1);
     });
@@ -419,32 +420,6 @@ void main() {
   });
 
   group('refusing what no field can carry', () {
-    testWidgets('says so out loud instead of doing nothing', (tester) async {
-      // A times below 1 is a rule only a recovered file can break, and its
-      // issue path names no line — so no field can carry the message.
-      final store = await pumpList(
-        tester,
-        Model(
-          ingredients: [Ingredient('gin')],
-          recipes: [
-            Recipe(
-              'Negroni',
-              lines: const [
-                RecipeLine(Amount(1), 'part', ['gin']),
-              ],
-              made: MadeHistory(DateTime(2026, 7, 12), 0),
-            ),
-          ],
-        ),
-      );
-      await chooseOnRow(tester, 'Negroni', 'Edit');
-      await typeInto(tester, nameField, 'Boulevardier');
-      await tap(tester, find.text('Save'));
-      expect(find.text('Edit "Negroni"'), findsOneWidget);
-      expect(find.text('times must be at least 1: 0'), findsOneWidget);
-      expect(store.saved, isNull);
-    });
-
     testWidgets('a recipe with nothing to make it from (FR-REC-2)', (
       tester,
     ) async {

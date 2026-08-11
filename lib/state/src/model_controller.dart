@@ -14,9 +14,6 @@ final modelStoreProvider = Provider<ModelStore>(
   (ref) => throw UnimplementedError('modelStoreProvider must be overridden'),
 );
 
-/// Clock provider for FR-REC-6; testable for fixed dates.
-final clockProvider = Provider<DateTime Function()>((ref) => DateTime.now);
-
 /// Share seam (ADR 18): hands an exported copy to the system's sheet. The one
 /// file naming the package, and what a widget test overrides to read the
 /// location [ModelController.export] answered with.
@@ -132,13 +129,6 @@ final class ModelController extends AsyncNotifier<Model> {
 
   Future<void> removeRecipe(String name) =>
       _edit((model) => model.withoutRecipe(name));
-
-  Future<void> markMade(String name) =>
-      _edit((model) => model.withRecipeMade(name, ref.read(clockProvider)()));
-
-  /// Restores or clears recipe history.
-  Future<void> setMade(String name, MadeHistory? made) =>
-      _edit((model) => model.withRecipeHistory(name, made));
 
   /// A shareable copy of the collection on screen, and where it went — opaque,
   /// so the screen hands it on rather than reading it (FR-DAT-1).
