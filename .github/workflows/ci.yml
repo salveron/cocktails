@@ -21,6 +21,16 @@ jobs:
       - run: dart format --set-exit-if-changed .
       - run: flutter analyze
       - run: flutter test
-      # The only check that exercises the Gradle side: a plugin incompatible
-      # with the Android toolchain fails here, not at release packaging.
-      - run: flutter build apk --debug
+      # A throwaway key, so the real one never leaves the machine that holds it.
+      # The build below refuses to run without one, by design.
+      - run: |
+          keytool -genkeypair -keystore "$RUNNER_TEMP/ci.jks" -alias ci \
+            -storepass ci-throwaway -keypass ci-throwaway \
+            -keyalg RSA -keysize 2048 -validity 30 -dname "CN=CI, O=cocktails"
+          printf 'storeFile=%s\nstorePassword=ci-throwaway\nkeyAlias=ci\nkeyPassword=ci-throwaway\n' \
+            "$RUNNER_TEMP/ci.jks" > android/key.properties
+      # The only check that exercises the Gradle side, and release rather than
+      # debug because that is the build that ships: R8 runs here and nowhere
+      # else, so a plugin its shrinking breaks fails on a push instead of on
+      # the one machine that packages the APK.
+      - run: flutter build apk --release

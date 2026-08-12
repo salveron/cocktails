@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The seed colour lib/ui/theme.dart derives both schemes from. -->
+    <color name="ic_launcher_background">#B26A00</color>
+</resources>

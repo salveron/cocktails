@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Auto Backup on API 24-30; data_extraction_rules.xml says the same for 31+.
+     Why the `root` domain and not `file`: docs/architecture.md, Platform facts. -->
+<full-backup-content>
+    <include domain="root" path="." />
+</full-backup-content>

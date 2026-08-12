@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Material's local_bar, the glass the Recipes destination already wears
+     (lib/ui/destinations.dart), lifted from the font outline rather than
+     redrawn: the launcher and the nav bar are the same shape. One path, so the
+     monochrome layer is the same silhouette; the second contour winds the other
+     way, which is what leaves the band under the rim open.
+
+     36dp across, spanning 36..72 of the viewport — half the 72dp a mask leaves
+     visible. The rim corners are the outermost points, and at the glyph's full
+     50dp they sat at radius 35.4, outside the 33 the safe circle guarantees, so
+     a round mask cut them flat. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#FFF6EC"
+        android:pathData="M72,40.03 V36 H36 V40.03 L52.03,58.03 V67.97 H42 V72 H66 V67.97 H55.97 V58.03 Z M44.91,43.97 L41.34,40.03 H66.66 L63.09,43.97 H44.91 Z" />
+</vector>

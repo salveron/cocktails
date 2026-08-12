@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Auto Backup on API 31+, where cloud backup and device transfer parted ways;
+     backup_rules.xml covers 24-30 and both carry the same thing. -->
+<data-extraction-rules>
+    <cloud-backup>
+        <include domain="root" path="." />
+    </cloud-backup>
+    <device-transfer>
+        <include domain="root" path="." />
+    </device-transfer>
+</data-extraction-rules>

@@ -219,8 +219,26 @@ What ships as 1.0.0 should carry nothing the product no longer claims.
       the name the store test had reached for independently. Reverses
       [ADR 20](adr/20-the-app-holds-many-bars.md), amended in place rather than superseded: cost was
       the whole of its argument, the cost only grew from here, and nothing had been built on it.
-- [ ] **M29 Release packaging** — signing configuration (keystore outside the repo),
-      Android Auto Backup enabled, launcher icon and label, version 1.0.0.
+- [x] **M29 The build takes an identity** — what 1.0.0 needs before it can be installed twice. The
+      release build is signed from a keystore named in `android/key.properties`, outside the repo,
+      and a build that finds no such file is **refused** rather than falling back to the debug key:
+      Android tells two builds apart by their signature, so a debug-signed APK cannot update one
+      signed anywhere else, and the only way past that is an uninstall that takes every bar on the
+      device with it. Auto Backup is declared rather than left to its default, in `backup_rules.xml`
+      (API 24–30) and `data_extraction_rules.xml` (31+, cloud and device transfer alike). Over the
+      `root` domain, which is the catch worth writing down: `path_provider` puts the store in
+      `app_flutter/`, a sibling of `files/` rather than a child, so the obvious `file` rule would
+      have narrowed the backup from everything to an empty directory and said so only on a restore
+      — [main.dart](../lib/main.dart) now names the coupling where the directory is chosen. The
+      rotation travels with the bars: neither rules format has a wildcard to leave it out, and at
+      ×4 the bytes it still sits inside the 25 MB quota
+      ([architecture.md](architecture.md#platform-facts)). The launcher icon is `local_bar`, the
+      glass the Recipes destination already wears, lifted from the Material font's own outline
+      rather than redrawn so the two cannot drift — adaptive over the seed colour, the same
+      silhouette serving as its monochrome layer, five legacy PNGs beneath it for API 24–25. The
+      label became `Cocktails`, which is what `MaterialApp.title` had said all along. CI builds the release APK against a throwaway key
+      of its own instead of a debug APK, R8 running on release builds and nowhere else. Version
+      1.0.0+1: the app's, not the file format's, which still waits for M31.
 
 ## Phase 7 — The app holds many bars
 

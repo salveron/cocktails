@@ -1,7 +1,29 @@
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+}
+
+// Signing is a fact about the machine, not the repo: key.properties and the
+// keystore it names stay outside version control (android/.gitignore).
+val keystoreProperties = Properties()
+val keystorePropertiesFile = rootProject.file("key.properties")
+val hasReleaseKey = keystorePropertiesFile.exists()
+if (hasReleaseKey) {
+    FileInputStream(keystorePropertiesFile).use { keystoreProperties.load(it) }
+} else if (gradle.startParameter.taskNames.any { it.contains("Release") }) {
+    throw GradleException(
+        "A release build needs android/key.properties naming storeFile, " +
+            "storePassword, keyAlias and keyPassword — see the release keystore " +
+            "section of docs/architecture.md. Falling back to the debug key is " +
+            "refused on purpose: Android tells two builds apart by their " +
+            "signature, so an APK signed with a debug key cannot update one " +
+            "signed anywhere else, and the only way past that is an uninstall " +
+            "that takes every bar on the device with it."
+    )
 }
 
 android {
@@ -15,21 +37,29 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "dev.salveron.cocktails"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
+        // Flutter's own defaults, taken as they move (architecture.md).
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
+        // Both read pubspec.yaml's `version:`, its one home.
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        if (hasReleaseKey) {
+            create("release") {
+                storeFile = rootProject.file(keystoreProperties.getProperty("storeFile"))
+                storePassword = keystoreProperties.getProperty("storePassword")
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.findByName("release")
         }
     }
 }

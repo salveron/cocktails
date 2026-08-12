@@ -1,7 +1,9 @@
 name: cocktails
 description: Personal cocktail recipe and inventory app.
 publish_to: none
-version: 0.1.0+1
+# versionName+versionCode, read straight by android/app/build.gradle.kts. The
+# code only ever climbs: Android refuses an update that lowers it.
+version: 1.0.0+1
 
 environment:
   sdk: ^3.12.2

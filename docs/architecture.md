@@ -263,16 +263,37 @@ carrying the guests it names where the way can (FR-BAR-6); `source` and `refresh
   them — and `XFile.readAsString` **drops the encoding asked of it** on that branch, decoding byte 
   per character; `Orange Curaçao` came back `Orange CuraÃ§ao`. The pick seam decodes UTF-8 itself and 
   refuses malformed input rather than substituting, a U+FFFD being the same loss made quieter. The 
-  nets are reachable only through Android Auto Backup: nothing in the app reads one back.
-- Android Auto Backup enabled; tens of bars of hundreds of recipes stay well inside its quota.
+  nets are written and never read: nothing in the app opens one, and app-private storage puts them 
+  past the reader as well. What they buy is that the bytes are still there — for a later version to 
+  offer, or for `adb` to pull — not a way back today.
+- Android Auto Backup carries the whole app-private data directory, declared in `backup_rules.xml` 
+  (API 24–30) and `data_extraction_rules.xml` (31+, cloud backup and device transfer alike). The 
+  `root` domain rather than `file`: `path_provider`'s documents directory is `app_flutter/`, a 
+  sibling of `files/` and not a child, so a `file` rule would carry nothing at all. Tens of bars of 
+  hundreds of recipes run to single-digit MB, ×4 for the rolling backups beside them — inside the 
+  25 MB quota, which is what makes carrying the rotation affordable rather than worth excluding 
+  (neither rules format has a wildcard to exclude it with).
 - Application ID: `dev.salveron.cocktails`.
 - Minimum Android: Flutter's own default, taken as it moves (minSdk 24 today).
 - UI: English only.
 
 ## Build & distribution
 
-- APK built locally, sideloaded; no Play Store yet.
-- Keystore outside repo. Play Store later without rework.
+- APK built locally, sideloaded; no Play Store yet. The universal APK carries three ABIs and runs 
+  about 53 MB; `--split-per-abi` roughly thirds it where one device is the target.
+- **Release keystore outside the repo**, named by `android/key.properties` (`storeFile` — relative 
+  to `android/` or absolute — `storePassword`, `keyAlias`, `keyPassword`). Both the properties file 
+  and `*.jks`/`*.keystore` are gitignored. Made once and kept, because it is the app's identity: 
+  Android tells two builds apart by signature, and Play Store would bind to this same certificate, 
+  so replacing it is not an option a later release has.
+  ```
+  keytool -genkey -v -keystore <path>.jks -keyalg RSA -keysize 2048 -validity 10000 -alias cocktails
+  ```
+- **A release build with no `key.properties` is refused**, not quietly signed with the debug key. A 
+  debug-signed APK cannot update one signed anywhere else, and the only way past that is an 
+  uninstall — which takes every bar on the device with it.
+- CI builds the release APK against a throwaway key of its own. That is what puts R8 on every push 
+  rather than on the one machine that packages the real thing; debug builds never run it.
 
 ## Testing
 
