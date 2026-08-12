@@ -6,7 +6,8 @@ const codec = YamlCodec();
 
 /// The docs/architecture.md#data-format example, as the emitter writes it.
 const canonicalText = '''
-format: 1
+format: 2
+name: Home bar
 
 settings:
   part_ml: 30
@@ -48,7 +49,8 @@ recipes:
 
 /// The same example verbatim from the doc, comments included.
 const commentedText = '''
-format: 1
+format: 2
+name: Home bar         # the bar's, a label rather than an identity (FR-BAR-1)
 
 settings:
   part_ml: 30          # how many ml one part is (FR-SET-1)
@@ -132,18 +134,28 @@ Collection docCollection() => Collection(
   ],
 );
 
-Collection decoded(String yaml) {
+BarPayload payloadOf(String yaml) {
   final result = codec.decode(yaml);
-  if (result is Rejected) {
+  if (result is Rejected<BarPayload>) {
     fail('expected Decoded, got:\n${result.issues.join('\n')}');
   }
-  return (result as Decoded).collection;
+  return (result as Decoded<BarPayload>).value;
 }
+
+Collection decoded(String yaml) => payloadOf(yaml).collection;
+
+/// A collection written as the bar's file — the doc example's name and unit
+/// unless a test is about one of the two (ADR 21).
+String encoded(
+  Collection collection, {
+  String name = 'Home bar',
+  FixedUnit display = FixedUnit.part,
+}) => codec.encode((name: name, display: display, collection: collection));
 
 List<SourcedIssue> rejected(String yaml) {
   final result = codec.decode(yaml);
-  expect(result, isA<Rejected>(), reason: 'expected Rejected');
-  return (result as Rejected).issues;
+  expect(result, isA<Rejected<BarPayload>>(), reason: 'expected Rejected');
+  return (result as Rejected<BarPayload>).issues;
 }
 
 void expectIssue(
@@ -164,12 +176,13 @@ void expectIssue(
 void main() {
   group('encode', () {
     test('writes the docs/architecture.md example canonically', () {
-      expect(codec.encode(docCollection()), canonicalText);
+      expect(encoded(docCollection()), canonicalText);
     });
 
     test('writes an empty collection with every section present', () {
-      expect(codec.encode(Collection()), '''
-format: 1
+      expect(encoded(Collection()), '''
+format: 2
+name: Home bar
 
 settings:
   part_ml: 30
@@ -200,7 +213,7 @@ recipes: []
         ingredients: [Ingredient('gin')],
         recipes: [Recipe('Nothing Yet')],
       );
-      final text = codec.encode(collection);
+      final text = encoded(collection);
       expect(text, contains('\ningredients:\n  - {name: gin}\n'));
       expect(text, contains('\nrecipes:\n  - name: Nothing Yet\n'));
     });
@@ -218,7 +231,7 @@ recipes: []
         ingredientTags: const [Tag('oaked', color: TagColor.slate)],
       );
       expect(
-        codec.encode(collection),
+        encoded(collection),
         contains(
           '\ningredients:\n'
           '  - {name: bourbon, stock: in, tags: [oaked], '
@@ -232,7 +245,7 @@ recipes: []
         ingredientTags: const [Tag('citrus', color: TagColor.sand)],
         recipeTags: const [Tag('sour', color: TagColor.rose)],
       );
-      final text = codec.encode(collection);
+      final text = encoded(collection);
       expect(
         text,
         contains('\ningredient_tags:\n  - {name: citrus, color: sand}\n'),
@@ -241,11 +254,9 @@ recipes: []
     });
 
     test('writes non-default settings', () {
-      final collection = Collection(
-        settings: const Settings(partMl: 22.5, display: FixedUnit.ml),
-      );
+      final collection = Collection(settings: const Settings(partMl: 22.5));
       expect(
-        codec.encode(collection),
+        encoded(collection, display: FixedUnit.ml),
         contains(
           'settings:\n  part_ml: 22.5\n  oz_ml: 29.5735\n  display: ml\n',
         ),
@@ -260,7 +271,7 @@ recipes: []
           Tag('no', color: TagColor.teal),
         ],
       );
-      final text = codec.encode(collection);
+      final text = encoded(collection);
       expect(text, contains('- {name: "1976"}'));
       expect(text, contains('- {name: "true"}'));
       expect(
@@ -285,7 +296,7 @@ recipes: []
           ),
         ],
       );
-      final text = codec.encode(collection);
+      final text = encoded(collection);
       expect(text, contains('- {name: "lime, fresh"}'));
       expect(text, contains('- name: "gin: a study"'));
       expect(text, contains('- "1 oz rum # dark"'));
@@ -387,7 +398,8 @@ recipes: []
 
     test('a vocabulary of one\'s own survives a round trip', () {
       const text =
-          'format: 1\n'
+          'format: 2\n'
+          'name: Home bar\n'
           '\n'
           'settings:\n'
           '  part_ml: 30\n'
@@ -411,7 +423,7 @@ recipes: []
           '  - name: Julep\n'
           '    lines:\n'
           '      - 8 leaves mint\n';
-      expect(codec.encode(decoded(text)), text);
+      expect(encoded(decoded(text)), text);
     });
   });
 
@@ -452,7 +464,7 @@ recipes: []
     });
 
     test('what a stamped file is written back as carries no made key', () {
-      final text = codec.encode(
+      final text = encoded(
         decoded(
           'format: 1\n'
           'ingredients:\n'
@@ -476,26 +488,23 @@ recipes: []
     });
 
     test('a file written before the ounce had a size still reads (ADR 17)', () {
-      final collection = decoded(
+      final payload = payloadOf(
         'format: 1\nsettings:\n  part_ml: 25\n  display: ml\n',
       );
-      expect(
-        collection.settings,
-        const Settings(partMl: 25, display: FixedUnit.ml),
-      );
-      expect(collection.settings.ozMl, const Settings().ozMl);
+      expect(payload.collection.settings, const Settings(partMl: 25));
+      // The pick comes out beside the sizes, not inside them (ADR 21).
+      expect(payload.display, FixedUnit.ml);
+      expect(payload.collection.settings.ozMl, const Settings().ozMl);
     });
 
     test('an ounce sized by hand is read and written back', () {
-      final collection = decoded(
+      final payload = payloadOf(
         'format: 1\nsettings:\n  oz_ml: 30\n  display: oz\n',
       );
+      expect(payload.collection.settings, const Settings(ozMl: 30));
+      expect(payload.display, FixedUnit.oz);
       expect(
-        collection.settings,
-        const Settings(ozMl: 30, display: FixedUnit.oz),
-      );
-      expect(
-        codec.encode(collection),
+        encoded(payload.collection, display: payload.display),
         contains('  oz_ml: 30\n  display: oz\n'),
       );
     });
@@ -564,15 +573,29 @@ recipes: []
       );
     });
 
-    test('rejects an unsupported version before anything else runs', () {
-      final issues = rejected('format: 2\njunk: true\n');
+    test('rejects a version past this one before anything else runs', () {
+      final issues = rejected('format: 3\njunk: true\n');
       expect(issues, hasLength(1));
       expectIssue(
         issues.single,
         ValidationIssueKind.unsupportedFormat,
         'format',
         1,
-        messagePart: 'Unsupported format version 2',
+        messagePart: 'Unsupported format version 3',
+      );
+    });
+
+    // Nothing was ever written as format 0, but the gate reads a range now and
+    // both its ends have to hold (ADR 21).
+    test('rejects a version below the oldest it reads', () {
+      final issues = rejected('format: 0\n');
+      expect(issues, hasLength(1));
+      expectIssue(
+        issues.single,
+        ValidationIssueKind.unsupportedFormat,
+        'format',
+        1,
+        messagePart: 'Unsupported format version 0',
       );
     });
 
@@ -1032,10 +1055,250 @@ recipes: []
     });
   });
 
+  // ADR 21: the file carries the bar's name and the reader's unit beside the
+  // collection, and says nothing about mode, source, refresh time or id.
+  group('the bar a file carries', () {
+    test('the name rides at the top, above the settings', () {
+      expect(
+        encoded(Collection(), name: 'Ada\'s bar'),
+        startsWith('format: 2\nname: Ada\'s bar\n\nsettings:'),
+      );
+    });
+
+    test('a name YAML would read as something else is quoted', () {
+      expect(encoded(Collection(), name: '1976'), contains('name: "1976"\n'));
+    });
+
+    test('the pick is written under settings, where a reader looks', () {
+      expect(
+        encoded(Collection(), display: FixedUnit.oz),
+        contains('  oz_ml: 29.5735\n  display: oz\n'),
+      );
+    });
+
+    test('all three parts come back off a decode', () {
+      final payload = payloadOf(encoded(docCollection(), name: 'Ada\'s bar'));
+      expect(payload.name, 'Ada\'s bar');
+      expect(payload.display, FixedUnit.part);
+      expect(payload.collection, docCollection());
+    });
+
+    test('the file says nothing of mode, source, refresh time or id', () {
+      final text = encoded(docCollection());
+      for (final key in ['mode:', 'source:', 'refreshed:', 'id:']) {
+        expect(text, isNot(contains(key)), reason: key);
+      }
+    });
+
+    test('a format-2 file with no name is refused', () {
+      final issues = rejected('format: 2\n');
+      expect(issues.first.issue.message, contains('Missing name'));
+    });
+
+    test('a format-1 file has no name to carry, and is not asked', () {
+      final payload = payloadOf('format: 1\n');
+      expect(payload.name, isEmpty);
+      expect(payload.collection, Collection());
+    });
+
+    test('a format-1 file is written back as 2 (ADR 21)', () {
+      final payload = payloadOf(
+        'format: 1\nsettings:\n  display: oz\ningredients:\n  - {name: gin}\n',
+      );
+      final rewritten = encoded(
+        payload.collection,
+        name: 'Home bar',
+        display: payload.display,
+      );
+      expect(rewritten, startsWith('format: 2\nname: Home bar\n'));
+      // Nothing of the old file is lost on the way but the key that left the
+      // product with FR-REC-6.
+      expect(payloadOf(rewritten).collection, payload.collection);
+      expect(payloadOf(rewritten).display, FixedUnit.oz);
+    });
+
+    test('a format-1 recipe\'s `made` is ignored, not reported', () {
+      final collection = decoded(
+        'format: 1\n'
+        'ingredients:\n'
+        '  - {name: gin}\n'
+        'recipes:\n'
+        '  - name: Gin Shot\n'
+        '    made: 2024-01-01\n'
+        '    lines: [1 part gin]\n',
+      );
+      expect(collection.recipes.single.name, 'Gin Shot');
+    });
+  });
+
+  // The index is device state rather than an export, written by the same
+  // emitter and judged by validateShelf (docs/architecture.md#data-format).
+  group('the index', () {
+    final home = Bar(id: '5f2c9a', name: 'Home bar', mode: BarMode.owner);
+    final guest = Bar(
+      id: 'b3e1d7',
+      name: 'Home bar',
+      mode: BarMode.guest,
+      display: FixedUnit.ml,
+      refreshed: DateTime.utc(2026, 8, 9, 18, 22, 4),
+      source: const BarSource(
+        via: Transport.lan,
+        at: '_cocktails._tcp/x',
+        from: 'Home bar (b3e)',
+      ),
+    );
+
+    Records indexOf(String yaml) {
+      final result = codec.decodeIndex(yaml);
+      if (result is Rejected<Records>) {
+        fail('expected Decoded, got:\n${result.issues.join('\n')}');
+      }
+      return (result as Decoded<Records>).value;
+    }
+
+    List<SourcedIssue> indexRejected(String yaml) {
+      final result = codec.decodeIndex(yaml);
+      expect(result, isA<Rejected<Records>>(), reason: 'expected Rejected');
+      return (result as Rejected<Records>).issues;
+    }
+
+    test('writes an owner as one line, its absent halves left off', () {
+      expect(codec.encodeIndex((bars: [home], openId: home.id)), '''
+format: 2
+open: 5f2c9a
+
+bars:
+  - {id: 5f2c9a, name: Home bar, mode: owner, display: part}
+''');
+    });
+
+    test('an offer and its guests ride on the record (FR-BAR-6)', () {
+      final shared = home.copyWith(
+        offers: const [
+          (via: Transport.lan, guests: ['ada']),
+          (via: Transport.file, guests: []),
+        ],
+      );
+      expect(
+        codec.encodeIndex((bars: [shared], openId: null)),
+        contains('offers: [{via: lan, guests: [ada]}, {via: file}]'),
+      );
+    });
+
+    test('a guest carries where it came from and when it answered', () {
+      expect(
+        codec.encodeIndex((bars: [guest], openId: null)),
+        contains(
+          'refreshed: "2026-08-09T18:22:04.000Z", '
+          'source: {via: lan, at: _cocktails._tcp/x, from: Home bar (b3e)}',
+        ),
+      );
+    });
+
+    test('two bars of one name are two records (FR-BAR-1)', () {
+      final records = indexOf(
+        codec.encodeIndex((bars: [home, guest], openId: guest.id)),
+      );
+      expect(records.bars, [home, guest]);
+      expect(records.openId, 'b3e1d7');
+    });
+
+    test('an empty shelf round-trips, open naming nothing', () {
+      final records = indexOf(
+        codec.encodeIndex((bars: const [], openId: null)),
+      );
+      expect(records.bars, isEmpty);
+      expect(records.openId, isNull);
+    });
+
+    test('an index carries the same format number as a bar\'s file', () {
+      expect(
+        codec.encodeIndex((bars: const [], openId: null)),
+        startsWith('format: ${YamlCodec.formatVersion}\n'),
+      );
+    });
+
+    test('a version it does not read is refused at the gate', () {
+      expect(
+        indexRejected('format: 9\nbars: []\n').single.issue.kind,
+        ValidationIssueKind.unsupportedFormat,
+      );
+    });
+
+    test('an unknown key is a structural error, as in a bar\'s file', () {
+      expect(
+        indexRejected('format: 2\nopen:\nbars: []\njunk: 1\n'),
+        isNotEmpty,
+      );
+    });
+
+    // The reason validateShelf takes bars already built (ADR 20): an index
+    // this broken must be reported on, never crashed on.
+    test('a record its mode forbids is reported, not thrown', () {
+      final issues = indexRejected(
+        'format: 2\nopen:\n'
+        'bars:\n'
+        '  - {id: a1, name: Ada, mode: guest}\n',
+      );
+      expect(issues.single.issue.message, contains('refreshes from'));
+    });
+
+    test('open naming a bar the shelf lacks is reported', () {
+      final issues = indexRejected(
+        'format: 2\nopen: nothing\n'
+        'bars:\n'
+        '  - {id: a1, name: Ada, mode: owner}\n',
+      );
+      expect(issues.single.issue.message, contains('open names no bar'));
+    });
+
+    test('a duplicate id is reported', () {
+      final issues = indexRejected(
+        'format: 2\nopen:\n'
+        'bars:\n'
+        '  - {id: a1, name: Ada, mode: owner}\n'
+        '  - {id: a1, name: Bea, mode: owner}\n',
+      );
+      expect(issues.first.issue.message, contains('Duplicate bar id'));
+    });
+
+    test('a record missing what every bar needs is reported', () {
+      expect(
+        indexRejected('format: 2\nopen:\nbars:\n  - {name: Ada}\n'),
+        isNotEmpty,
+      );
+    });
+
+    test('a refresh time that is not a timestamp is reported', () {
+      final issues = indexRejected(
+        'format: 2\nopen:\n'
+        'bars:\n'
+        '  - {id: a1, name: Ada, mode: owner, refreshed: soon}\n',
+      );
+      expect(issues.first.issue.message, contains('timestamp'));
+    });
+
+    test('never throws, whatever the input', () {
+      for (final input in [
+        '',
+        'format: 2',
+        'format: 2\nbars: 5\n',
+        'format: 2\nbars: [1, 2]\n',
+        'format: 2\nopen: 5\nbars: []\n',
+        'format: 2\nbars:\n  - {id: a1, name: Ada, mode: sideways}\n',
+        'format: 2\nbars:\n  - {id: a1, name: Ada, mode: guest, source: 5}\n',
+        '- a list\n',
+        '\t bad: yaml\n',
+      ]) {
+        expect(() => codec.decodeIndex(input), returnsNormally, reason: input);
+      }
+    });
+  });
+
   group('round trip (FR-DAT-5)', () {
     test('encode → decode → encode is the identity on canonical text', () {
       final collection = Collection(
-        settings: const Settings(partMl: 22.5, display: FixedUnit.ml),
+        settings: const Settings(partMl: 22.5),
         ingredients: [
           Ingredient('bourbon', stock: StockLevel.in_),
           Ingredient('true', tags: const ['no']),
@@ -1081,15 +1344,15 @@ recipes: []
           ),
         ],
       );
-      final text = codec.encode(collection);
+      final text = encoded(collection);
       final reread = decoded(text);
       expect(reread, collection);
-      expect(codec.encode(reread), text);
+      expect(encoded(reread), text);
     });
 
     test('the doc example round-trips through its canonical form', () {
       final collection = decoded(commentedText);
-      expect(codec.encode(collection), canonicalText);
+      expect(encoded(collection), canonicalText);
       expect(decoded(canonicalText), collection);
     });
 
@@ -1108,10 +1371,10 @@ recipes: []
           ),
         ],
       );
-      final text = codec.encode(collection);
+      final text = encoded(collection);
       expect(text, contains('      - 1 part cognac / vodka (base)\n'));
       expect(decoded(text), collection);
-      expect(codec.encode(decoded(text)), text);
+      expect(encoded(decoded(text)), text);
     });
 
     test('a hand-written group normalises its spacing on the rewrite', () {
@@ -1125,10 +1388,7 @@ recipes: []
         '    lines:\n'
         '      - 1 cognac/vodka\n',
       );
-      expect(
-        codec.encode(collection),
-        contains('      - 1 part cognac / vodka\n'),
-      );
+      expect(encoded(collection), contains('      - 1 part cognac / vodka\n'));
     });
 
     test('hand-written input normalises on the first rewrite', () {
@@ -1146,8 +1406,9 @@ recipes: []
         '      - 2 dashes bitters\n'
         '      - 1 GIN\n',
       );
-      expect(codec.encode(collection), '''
-format: 1
+      expect(encoded(collection), '''
+format: 2
+name: Home bar
 
 settings:
   part_ml: 30

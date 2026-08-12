@@ -83,18 +83,33 @@ final recipeCollection = Collection(
   ],
 );
 
-/// A store whose file did not decode, recovered onto [fixtureCollection].
-MemoryModelStore corruptStore() => MemoryModelStore()
-  ..outcome = Corrupt([
-    SourcedIssue(
-      ValidationIssue(
-        const ['recipes', 0],
-        ValidationIssueKind.unknownIngredient,
-        'Unknown ingredient: "rye"',
+/// The one bar every widget test runs over: owned, so nothing is hidden for
+/// being a guest's, and reading in parts.
+Bar testBar({String name = 'Home bar', FixedUnit display = FixedUnit.part}) =>
+    Bar(id: 'test01', name: name, mode: BarMode.owner, display: display);
+
+/// A store whose bar file did not decode, recovered onto [fixtureCollection].
+MemoryBarStore corruptStore() {
+  final bar = testBar();
+  return MemoryBarStore((bars: [bar], openId: bar.id))
+    ..barOutcomes[bar.id] = Corrupt(
+      [
+        SourcedIssue(
+          ValidationIssue(
+            const ['recipes', 0],
+            ValidationIssueKind.unknownIngredient,
+            'Unknown ingredient: "rye"',
+          ),
+          4,
+        ),
+      ],
+      recovered: (
+        name: bar.name,
+        display: bar.display,
+        collection: fixtureCollection,
       ),
-      4,
-    ),
-  ], recoveredFromBackup: fixtureCollection);
+    );
+}
 
 /// [widget] under the provider overrides the composition root makes, so a
 /// widget test reaches the real state layer over an in-memory store — and over
@@ -102,12 +117,12 @@ MemoryModelStore corruptStore() => MemoryModelStore()
 /// the system's sheet, [picker] where a file comes back off it (ADR 18).
 Widget scoped(
   Widget widget, {
-  ModelStore? store,
+  BarStore? store,
   Future<void> Function(String)? sharer,
   Future<String?> Function()? picker,
 }) => ProviderScope(
   overrides: [
-    modelStoreProvider.overrideWithValue(store ?? MemoryModelStore()),
+    barStoreProvider.overrideWithValue(store ?? MemoryBarStore.of(testBar())),
     if (sharer != null) sharerProvider.overrideWithValue(sharer),
     if (picker != null) filePickerProvider.overrideWithValue(picker),
   ],
@@ -117,7 +132,7 @@ Widget scoped(
 /// The whole app, pumped past its startup load.
 Future<void> pumpApp(
   WidgetTester tester, {
-  ModelStore? store,
+  BarStore? store,
   Future<String?> Function()? picker,
 }) async {
   await tester.pumpWidget(
@@ -131,7 +146,7 @@ Future<void> pumpApp(
 Future<void> pumpScreen(
   WidgetTester tester,
   Widget screen, {
-  ModelStore? store,
+  BarStore? store,
   Future<void> Function(String)? sharer,
   Future<String?> Function()? picker,
 }) async {
@@ -151,12 +166,13 @@ Future<void> pumpScreen(
 
 /// [screen] over a store seeded with [collection], handing that store back so
 /// the test can read what reached it. The one way a screen test starts.
-Future<MemoryModelStore> pumpOver(
+Future<MemoryBarStore> pumpOver(
   WidgetTester tester,
   Widget screen,
-  Collection collection,
-) async {
-  final store = MemoryModelStore(collection);
+  Collection collection, {
+  FixedUnit display = FixedUnit.part,
+}) async {
+  final store = MemoryBarStore.of(testBar(display: display), collection);
   await pumpScreen(tester, screen, store: store);
   return store;
 }

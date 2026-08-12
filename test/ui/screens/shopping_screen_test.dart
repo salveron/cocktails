@@ -109,7 +109,7 @@ Iterable<String> dotsBeside(WidgetTester tester, String name) => tester
     )
     .map((dot) => dot.tag.name);
 
-Future<MemoryModelStore> pumpShopping(
+Future<MemoryBarStore> pumpShopping(
   WidgetTester tester, [
   Collection? collection,
 ]) => pumpOver(
@@ -287,7 +287,10 @@ void main() {
     testWidgets('searches only while it is the destination on show', (
       tester,
     ) async {
-      await pumpApp(tester, store: MemoryModelStore(shoppingCollection));
+      await pumpApp(
+        tester,
+        store: MemoryBarStore.of(testBar(), shoppingCollection),
+      );
       expect(find.text('Buy'), findsNothing);
       await tap(tester, find.text('Shopping'));
       expect(find.text('Buy'), findsOneWidget);

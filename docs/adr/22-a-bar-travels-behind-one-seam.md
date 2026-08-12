@@ -11,7 +11,7 @@ file needs the reader, the LAN needs discovery and a socket, the cloud needs a s
 identity in the product (NFR-3).
 
 The app has never made a network call. It has three seams of exactly this shape already —
-`modelStoreProvider`, `sharerProvider`, `filePickerProvider` — where the platform crosses inside a
+`barStoreProvider`, `sharerProvider`, `filePickerProvider` — where the platform crosses inside a
 provider body and a test replaces it with a recorder (ADR 18).
 
 FR-BAR-9's backend is a decision with cost outside the repo: money, an account, uptime, or a vendor.

@@ -30,19 +30,25 @@ void main() {
     recipes: [negroni],
   );
 
-  late MemoryModelStore store;
-  setUp(() => store = MemoryModelStore(stored));
+  /// The one owned bar every test here runs over; the shelf around it is M32's.
+  final bar = Bar(id: 'a1b2c3', name: 'Home bar', mode: BarMode.owner);
 
-  ProviderContainer containerFor(MemoryModelStore store) {
+  BarPayload payloadOf(Collection collection, {FixedUnit? display}) =>
+      (name: bar.name, display: display ?? bar.display, collection: collection);
+
+  late MemoryBarStore store;
+  setUp(() => store = MemoryBarStore.of(bar, stored));
+
+  ProviderContainer containerFor(MemoryBarStore store) {
     final container = ProviderContainer(
-      overrides: [modelStoreProvider.overrideWithValue(store)],
+      overrides: [barStoreProvider.overrideWithValue(store)],
     );
     addTearDown(container.dispose);
     return container;
   }
 
   /// A container whose startup load has already resolved.
-  Future<ProviderContainer> started([MemoryModelStore? seeded]) async {
+  Future<ProviderContainer> started([MemoryBarStore? seeded]) async {
     final container = containerFor(seeded ?? store);
     await container.read(collectionProvider.future);
     return container;
@@ -65,9 +71,14 @@ void main() {
 
   group('startup load', () {
     test('an empty store starts the app on an empty collection', () async {
-      final container = await started(MemoryModelStore());
+      final store = MemoryBarStore();
+      final container = await started(store);
       expect(collectionOf(container), Collection());
       expect(container.read(startupIssuesProvider), isEmpty);
+      // A device holding nothing is given one owned bar to write into.
+      expect(store.savedShelf?.bars, hasLength(1));
+      expect(store.savedShelf?.bars.single.mode, BarMode.owner);
+      expect(store.savedShelf?.openId, store.savedShelf?.bars.single.id);
     });
 
     test('a stored collection is loaded as it stands', () async {
@@ -77,7 +88,9 @@ void main() {
     });
 
     test('a corrupt store starts on the recovered backup', () async {
-      store.outcome = Corrupt([issueAt(4)], recoveredFromBackup: stored);
+      store.barOutcomes[bar.id] = Corrupt([
+        issueAt(4),
+      ], recovered: payloadOf(stored));
       final container = await started();
       expect(collectionOf(container), stored);
       expect(container.read(startupIssuesProvider), [
@@ -86,14 +99,14 @@ void main() {
     });
 
     test('a corrupt store with nothing to recover starts empty', () async {
-      store.outcome = Corrupt([issueAt(4)]);
+      store.barOutcomes[bar.id] = Corrupt([issueAt(4)]);
       final container = await started();
       expect(collectionOf(container), Collection());
       expect(container.read(startupIssuesProvider), hasLength(1));
     });
 
     test('an issue without a line still reports what is wrong', () async {
-      store.outcome = Corrupt([issueAt(null)]);
+      store.barOutcomes[bar.id] = Corrupt([issueAt(null)]);
       final container = await started();
       expect(container.read(startupIssuesProvider), [
         'Unknown ingredient: "rye"',
@@ -101,7 +114,7 @@ void main() {
     });
 
     test('the issues are published when the load resolves', () async {
-      store.outcome = Corrupt([issueAt(4)]);
+      store.barOutcomes[bar.id] = Corrupt([issueAt(4)]);
       final container = containerFor(store);
       expect(container.read(startupIssuesProvider), isEmpty);
       await container.read(collectionProvider.future);
@@ -252,7 +265,8 @@ void main() {
 
     test('upsertIngredient renames onto an alias it lets go of', () async {
       final container = await started(
-        MemoryModelStore(
+        MemoryBarStore.of(
+          bar,
           stored.withIngredient(
             Ingredient(
               'gin',
@@ -310,7 +324,8 @@ void main() {
 
     test('upsertRecipe stores every line under the bottle it names', () async {
       final container = await started(
-        MemoryModelStore(
+        MemoryBarStore.of(
+          bar,
           stored.withIngredient(
             Ingredient(
               'gin',
@@ -389,13 +404,47 @@ void main() {
     });
   });
 
+  // ADR 21: the pick is the reader's and lives on the record, so it is written
+  // to the index and never into the collection a refresh would replace.
+  group('the reading unit', () {
+    test(
+      'a pick lands on the open bar\'s record, not the collection',
+      () async {
+        final container = await started();
+        await controllerOf(container).setDisplay(FixedUnit.oz);
+        expect(store.savedShelf?.bars.single.display, FixedUnit.oz);
+        expect(container.read(openBarProvider)?.display, FixedUnit.oz);
+        expect(store.saved, isNull, reason: 'no collection was written');
+      },
+    );
+
+    test('picking the unit already in force writes nothing', () async {
+      final container = await started();
+      await controllerOf(container).setDisplay(FixedUnit.part);
+      expect(store.savedShelf, isNull);
+    });
+
+    // The index is rewritten whole on every record edit, so a write that
+    // carried only the open bar would silently drop every other one.
+    test('the bars it is not editing stay on the shelf', () async {
+      final beach = Bar(id: 'd4e5f6', name: 'Beach bar', mode: BarMode.owner);
+      final seeded = MemoryBarStore((bars: [bar, beach], openId: bar.id))
+        ..barOutcomes[bar.id] = Loaded(payloadOf(stored));
+      final container = await started(seeded);
+      await controllerOf(container).setDisplay(FixedUnit.ml);
+      expect(seeded.savedShelf?.bars.map((b) => b.id), [bar.id, beach.id]);
+      expect(seeded.savedShelf?.bars.last, beach, reason: 'untouched');
+      expect(seeded.savedShelf?.openId, bar.id);
+    });
+  });
+
   group('persistence', () {
     test(
       'an edit reaches the store as the collection the app now holds',
       () async {
         final container = await started();
         await controllerOf(container).setStock('campari', StockLevel.in_);
-        expect(store.saved, collectionOf(container));
+        expect(store.savedBars[bar.id]?.$2, collectionOf(container));
         expect(store.saveCount, 1);
       },
     );
@@ -410,7 +459,7 @@ void main() {
       await controller.setStock('campari', StockLevel.low);
       await controller.removeRecipe('Negroni');
       expect(store.saveCount, 3);
-      expect(store.saved, collectionOf(container));
+      expect(store.savedBars[bar.id]?.$2, collectionOf(container));
     });
 
     test('an edit that changes nothing is not written', () async {
@@ -432,23 +481,25 @@ void main() {
       () async {
         final container = await started();
         expect(await controllerOf(container).export(), isNotEmpty);
-        expect(store.snapshots[ExportPurpose.share], stored);
+        expect(store.snapshots[ExportPurpose.share]?.$2, stored);
       },
     );
 
     test('an export asked for before the load waits for it', () async {
       final container = containerFor(store);
       await controllerOf(container).export();
-      expect(store.snapshots[ExportPurpose.share], stored);
+      expect(store.snapshots[ExportPurpose.share]?.$2, stored);
     });
 
     test('a session recovered from a damaged file exports what it '
         'recovered, not that file (ADR 18)', () async {
-      final damaged = MemoryModelStore()
-        ..outcome = Corrupt([issueAt(4)], recoveredFromBackup: stored);
+      final damaged = MemoryBarStore((bars: [bar], openId: bar.id))
+        ..barOutcomes[bar.id] = Corrupt([
+          issueAt(4),
+        ], recovered: payloadOf(stored));
       final container = await started(damaged);
       await controllerOf(container).export();
-      expect(damaged.snapshots[ExportPurpose.share], stored);
+      expect(damaged.snapshots[ExportPurpose.share]?.$2, stored);
     });
 
     test('an edit made before the load resolves lands on top of it', () async {
@@ -478,12 +529,12 @@ void main() {
         ),
       ],
     );
-    final incomingFile = const YamlCodec().encode(incoming);
+    final incomingFile = const YamlCodec().encode(payloadOf(incoming));
 
     test('a file that decodes reviews as the collection it holds', () async {
       final container = await started();
       final review = controllerOf(container).review(incomingFile);
-      expect(review.collection, incoming);
+      expect(review.bar?.collection, incoming);
       expect(review.issues, isEmpty);
     });
 
@@ -504,7 +555,7 @@ recipes:
   - name: Sazerac
     lines: ["2 parts rye"]
 ''');
-      expect(review.collection, isNull);
+      expect(review.bar, isNull);
       expect(review.issues, hasLength(1));
       expect(review.issues.single, contains('rye'));
       expect(review.issues.single, startsWith('line '));
@@ -512,7 +563,7 @@ recipes:
 
     test('a file that is not the format at all is refused, not crashed', () {
       final review = ModelController().review('not a cocktail in sight');
-      expect(review.collection, isNull);
+      expect(review.bar, isNull);
       expect(review.issues, hasLength(1));
     });
 
@@ -521,9 +572,9 @@ recipes:
       final container = await started();
       await controllerOf(container).replaceAll(incoming);
       // The copy is the collection that stood before, never the one arriving.
-      expect(store.snapshots[ExportPurpose.beforeImport], stored);
+      expect(store.snapshots[ExportPurpose.beforeImport]?.$2, stored);
       expect(collectionOf(container), incoming);
-      expect(store.saved, incoming);
+      expect(store.savedBars[bar.id]?.$2, incoming);
     });
 
     test('the copy it keeps is not the one an export shares', () async {
@@ -532,8 +583,8 @@ recipes:
       await controllerOf(container).replaceAll(incoming);
       // Two copies, two purposes: the export slot still holds what went out to
       // a reader, so an import cannot write over it.
-      expect(store.snapshots[ExportPurpose.share], stored);
-      expect(store.snapshots[ExportPurpose.beforeImport], stored);
+      expect(store.snapshots[ExportPurpose.share]?.$2, stored);
+      expect(store.snapshots[ExportPurpose.beforeImport]?.$2, stored);
     });
 
     test('a replace asked for before the load waits for it', () async {
@@ -541,7 +592,7 @@ recipes:
       await controllerOf(container).replaceAll(incoming);
       // Not the empty collection the copy would hold had it run before the
       // load.
-      expect(store.snapshots[ExportPurpose.beforeImport], stored);
+      expect(store.snapshots[ExportPurpose.beforeImport]?.$2, stored);
       expect(collectionOf(container), incoming);
     });
 
@@ -551,10 +602,17 @@ recipes:
         final container = await started();
         final controller = controllerOf(container);
         await controller.export();
-        final exported = store.snapshots[ExportPurpose.share]!;
-        final review = controller.review(const YamlCodec().encode(exported));
+        final (record, exported) = store.snapshots[ExportPurpose.share]!;
+        final review = controller.review(
+          const YamlCodec().encode(payloadOf(exported)),
+        );
         expect(review.issues, isEmpty);
-        expect(review.collection, stored);
+        expect(review.bar?.collection, stored);
+        expect(
+          record.id,
+          bar.id,
+          reason: 'the bar on screen is the one copied',
+        );
       },
     );
   });
@@ -570,12 +628,12 @@ recipes:
 
     test('an export picked back keeps the spelling it went out with', () async {
       final exported = Collection(ingredients: [Ingredient('Orange Curaçao')]);
-      final onDisk = const YamlCodec().encode(exported);
+      final onDisk = const YamlCodec().encode(payloadOf(exported));
       final container = await started();
 
       final text = await pickedText(XFile.fromData(utf8.encode(onDisk)));
 
-      expect(controllerOf(container).review(text).collection, exported);
+      expect(controllerOf(container).review(text).bar?.collection, exported);
     });
 
     test('bytes that are not UTF-8 are refused, not guessed at', () async {

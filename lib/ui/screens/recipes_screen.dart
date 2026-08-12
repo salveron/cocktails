@@ -23,12 +23,11 @@ import 'recipe_form_screen.dart';
 /// Display alone — nothing here reaches the collection or the file.
 typedef _AmountView = ({int scale, FixedUnit unit});
 
-/// Where every card rests: unscaled, in the unit the settings name. A card is
-/// transformed by departing from *that*, not from the way the file writes it —
-/// so under an ml setting it is "(part)" that marks a card as read otherwise
-/// (ADR 17).
-_AmountView _resting(Collection collection) =>
-    (scale: 1, unit: collection.settings.display);
+/// Where every card rests: unscaled, in the unit the bar reads in (ADR 21). A
+/// card is transformed by departing from *that*, not from the way the file
+/// writes it — so under an ml pick it is "(part)" that marks a card as read
+/// otherwise (ADR 17).
+_AmountView _resting(FixedUnit display) => (scale: 1, unit: display);
 
 /// What the list is narrowed to by base spirit (FR-DIS-4, ADR 12) — a record,
 /// so a null *spirit*, the recipes marking no base, is told apart from a null
@@ -179,7 +178,9 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
     Availability? availability,
   ) {
     final expanded = _expanded.contains(recipe.name);
-    final resting = _resting(collection);
+    final resting = _resting(
+      ref.watch(openBarProvider)?.display ?? FixedUnit.part,
+    );
     final view = _views[recipe.name] ?? resting;
     final note = _viewNote(view, resting);
     final summary = [
@@ -214,6 +215,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
               vocabulary: vocabulary,
               recipe: recipe,
               view: view,
+              resting: resting,
               onReach: (bottle) => _reach(collection, bottle),
             )
           : null,
@@ -457,6 +459,7 @@ class _Details extends StatelessWidget {
     required this.vocabulary,
     required this.recipe,
     required this.view,
+    required this.resting,
     required this.onReach,
   });
 
@@ -467,8 +470,12 @@ class _Details extends StatelessWidget {
   final List<Tag> vocabulary;
   final Recipe recipe;
 
-  /// How this card is reading its amounts, [_resting] until asked otherwise.
+  /// How this card is reading its amounts, [resting] until asked otherwise.
   final _AmountView view;
+
+  /// Where the card would rest, so a body knows whether it has been asked to
+  /// read otherwise; the bar's pick is the notifier's to watch, not a card's.
+  final _AmountView resting;
 
   /// Where a bottle named on a line is kept (FR-DIS-9).
   final void Function(String bottle) onReach;
@@ -476,8 +483,7 @@ class _Details extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final worn = wornInOrder(vocabulary, recipe.tags);
-    final settings = collection.settings.copyWith(display: view.unit);
-    final transformed = view != _resting(collection);
+    final transformed = view != resting;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -496,7 +502,8 @@ class _Details extends StatelessWidget {
               line,
               measure: displayMeasure(
                 line,
-                settings,
+                collection.settings,
+                view.unit,
                 collection.units,
                 scale: view.scale,
               ),

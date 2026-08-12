@@ -197,13 +197,15 @@ meant to open, written by the same canonical emitter and judged by the same rule
 
 ```yaml
 format: 2
-open: 5f2c9a                                          # the bar on show, empty where none is
+open: 5f2c9a           # the bar on show; the key stays, valueless, where none is
+
 bars:
   - {id: 5f2c9a, name: Home bar, mode: owner, display: part, offers: [{via: lan}]}
-  - {id: b3e1d7, name: Home bar, mode: guest, display: ml,   # one name, two bars (FR-BAR-1)
-     refreshed: 2026-08-09T18:22:04Z,                        # UTC, when the source answered
-     source: {via: lan, at: '_cocktails._tcp/…', from: Home bar (b3e)}}
+  - {id: b3e1d7, name: Home bar, mode: guest, display: ml, refreshed: "2026-08-09T18:22:04.000Z", source: {via: lan, at: _cocktails._tcp/x, from: Home bar (b3e)}}
 ```
+
+One record, one line: the halves a mode rules out are left off as every default is, and a timestamp
+is quoted because its colons would otherwise end the scalar in flow context.
 
 `id` is opaque, minted here, unique within the index and never written to a bar's own file. `mode` 
 is `owner`|`guest`; `via` is `file`|`lan`|`cloud`, `at` the transport's own business, `from` what to 

@@ -79,7 +79,10 @@ final longCollection = Collection(
 );
 
 Future<void> pumpShell(WidgetTester tester, [Collection? collection]) =>
-    pumpApp(tester, store: MemoryModelStore(collection ?? reachingCollection));
+    pumpApp(
+      tester,
+      store: MemoryBarStore.of(testBar(), collection ?? reachingCollection),
+    );
 
 /// Opens the one basket worth buying two bottles, whose card then names both
 /// bottles and both recipes.

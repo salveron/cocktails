@@ -7,24 +7,25 @@ import 'collection.dart';
 /// The factors a recipe view offers (FR-REC-7), the first as written.
 const scaleFactors = [1, 2, 3, 4];
 
-/// [line]'s measure at [scale]. A line measured in one of the fixed units reads
-/// in the one the settings name; everything else reads as entered (ADR 17). The
-/// measure is all that transforms — a card writes the body itself, one
-/// alternative at a time (docs/ui-design.md#recipes-screen).
+/// [line]'s measure at [scale], read in [display] — the reader's pick, standing
+/// beside the settings because the two sizes are the owner's (ADR 21). A fixed
+/// unit converts, everything else reads as entered (ADR 17), and the measure is
+/// all that transforms (docs/ui-design.md#recipes-screen).
 String displayMeasure(
   RecipeLine line,
   Settings settings,
+  FixedUnit display,
   List<Unit> units, {
   int scale = 1,
 }) {
   final from = FixedUnit.named(line.unit);
-  final converts = from != null && from != settings.display;
+  final converts = from != null && from != display;
   final factor = converts
-      ? scale * settings.ratio(from, settings.display)
+      ? scale * settings.ratio(from, display)
       : scale.toDouble();
   return formatMeasure(
     _scaled(line.amount, factor),
-    converts ? settings.display.token : line.unit,
+    converts ? display.token : line.unit,
     units,
   );
 }

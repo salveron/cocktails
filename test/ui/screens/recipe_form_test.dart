@@ -6,7 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import '../harness.dart';
 
-Future<MemoryModelStore> pumpList(
+Future<MemoryBarStore> pumpList(
   WidgetTester tester, [
   Collection? collection,
 ]) => pumpOver(tester, const RecipesScreen(), collection ?? recipeCollection);

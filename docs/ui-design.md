@@ -289,8 +289,10 @@ Behind Settings, below [Units](#units) — what those three fixed names are wort
 Units screen's shape and its `EditorScaffold`, so Save and the discard prompt read alike on both: 
 one dimmed sentence, the global unit, then two rows. Nothing else.
 
-- **Global unit**: `SegmentedButton` over the fixed three — the recipe card's own picker, since it 
-  is the same choice made globally rather than for one card.
+- **The bar's unit**: `SegmentedButton` over the fixed three — the recipe card's own picker, since 
+  it is the same choice made for the whole bar rather than for one card. One Save, two writes: the 
+  sizes are the owner's and go to the collection, the pick is the reader's and goes to the bar's 
+  record ([ADR 21](adr/21-the-file-carries-one-bar.md)), so two bars may read in different units.
 - **Two rows, a sentence each** — "1 part = [30] ml", the number their only field. The global unit 
   leads, *except* ml: "1 ml = 0.0333 part" is a number no one reads or types back, so under ml each 
   row leads with the unit it sizes — which is the pair the file itself stores, making that pick a 

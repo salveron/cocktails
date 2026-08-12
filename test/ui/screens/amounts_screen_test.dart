@@ -8,7 +8,7 @@ import '../harness.dart';
 
 /// The screen as it is reached — through Settings, so leaving it has somewhere
 /// to go and the menu entry is exercised with it.
-Future<MemoryModelStore> pumpAmounts(
+Future<MemoryBarStore> pumpAmounts(
   WidgetTester tester, [
   Collection? collection,
 ]) async {
@@ -103,7 +103,9 @@ void main() {
       await tap(tester, pick('ml'));
       expect(saveEnabled(tester), isTrue);
       await tap(tester, find.text('Save'));
-      expect(store.saved!.settings, const Settings(display: FixedUnit.ml));
+      // The pick lands on the bar's record, never in the collection (ADR 21).
+      expect(store.savedShelf?.bars.single.display, FixedUnit.ml);
+      expect(store.saved, isNull, reason: 'no collection was touched');
     });
 
     testWidgets('picking round the three drifts no number', (tester) async {
@@ -159,10 +161,8 @@ void main() {
       await typeInto(tester, ratioField(1), '30');
       expect(ratioRows(tester), ['1 part = 25 ml', '1 oz = 30 ml']);
       await tap(tester, find.text('Save'));
-      expect(
-        store.saved!.settings,
-        const Settings(partMl: 25, ozMl: 30, display: FixedUnit.ml),
-      );
+      expect(store.saved!.settings, const Settings(partMl: 25, ozMl: 30));
+      expect(store.savedShelf?.bars.single.display, FixedUnit.ml);
     });
 
     testWidgets('leaving them as they were writes nothing', (tester) async {

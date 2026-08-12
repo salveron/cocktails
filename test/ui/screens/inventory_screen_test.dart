@@ -34,7 +34,7 @@ final orderedCollection = fixtureCollection.withIngredient(
   Ingredient('absinthe'),
 );
 
-Future<MemoryModelStore> pumpInventory(
+Future<MemoryBarStore> pumpInventory(
   WidgetTester tester, [
   Collection? collection,
 ]) => pumpOver(tester, const InventoryScreen(), collection ?? taggedCollection);

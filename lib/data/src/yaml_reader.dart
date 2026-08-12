@@ -1,11 +1,21 @@
-/// YAML tree → collection parts; shape errors become issues at data-format
-/// paths.
+/// YAML tree → the parts of a bar's file and of the index; shape errors become
+/// issues at data-format paths.
 library;
 
 import 'package:cocktails/domain/domain.dart';
 import 'package:yaml/yaml.dart';
 
-final class ModelParts {
+import 'yaml_writer.dart' show oldestReadableFormat;
+
+final class BarParts {
+  /// What the file calls the bar, empty where it did not say — a format-1 file
+  /// carries no `name:` and is named by whoever establishes a bar from it
+  /// (ADR 21).
+  final String name;
+
+  /// The unit the file reads amounts in, taken only where a bar is established
+  /// and never on a refresh (ADR 21).
+  final FixedUnit display;
   final Settings settings;
   final List<Unit> units;
   final List<Ingredient> ingredients;
@@ -14,7 +24,9 @@ final class ModelParts {
   final List<Recipe> recipes;
   final List<ValidationIssue> issues;
 
-  ModelParts({
+  BarParts({
+    required this.name,
+    required this.display,
     required this.settings,
     required this.units,
     required this.ingredients,
@@ -28,10 +40,11 @@ final class ModelParts {
 typedef _EntryReader<T> =
     T? Function(YamlNode node, List<Object> path, List<ValidationIssue> issues);
 
-ModelParts readModelParts(YamlMap root) {
+BarParts readBarParts(YamlMap root) {
   final issues = <ValidationIssue>[];
   const sections = {
     'format',
+    'name',
     'settings',
     'units',
     'ingredients',
@@ -44,8 +57,21 @@ ModelParts readModelParts(YamlMap root) {
   final units = root.nodes['units'] == null
       ? defaultUnits
       : _readEntries(root, 'units', issues, _readUnit);
-  return ModelParts(
-    settings: _readSettings(root.nodes['settings'], issues),
+  final settingsNode = root.nodes['settings'];
+  return BarParts(
+    // Required from format 2 on, absent by definition in a format-1 file.
+    name:
+        _readText(
+          root,
+          'name',
+          const [],
+          issues,
+          required: root.nodes['format']?.value != oldestReadableFormat,
+        ) ??
+        '',
+    // Settings first, so the block's issues read in the file's own order.
+    settings: _readSettings(settingsNode, issues),
+    display: _readDisplay(settingsNode, issues),
     units: units,
     ingredients: _readEntries(root, 'ingredients', issues, _readIngredient),
     ingredientTags: _readEntries(root, 'ingredient_tags', issues, _readTag),
@@ -59,6 +85,146 @@ ModelParts readModelParts(YamlMap root) {
     issues: issues,
   );
 }
+
+final class ShelfParts {
+  final List<Bar> bars;
+  final String? openId;
+  final List<ValidationIssue> issues;
+
+  ShelfParts({required this.bars, this.openId, required this.issues});
+}
+
+/// The index's records, built whatever they say: coherence between a record's
+/// parts is `validateShelf`'s to report, and a `Bar` that refused to exist
+/// could only be crashed on rather than told about (ADR 20).
+ShelfParts readShelfParts(YamlMap root) {
+  final issues = <ValidationIssue>[];
+  _checkKeys(root, const {'format', 'open', 'bars'}, const [], issues);
+  // The key is written whether or not a bar is open, so a bare `open:` — a
+  // YAML null — is a shelf with none on show rather than a malformed value.
+  final open = root.nodes['open'];
+  return ShelfParts(
+    openId: open == null || open.value == null
+        ? null
+        : _readText(root, 'open', const [], issues),
+    bars: _readEntries(root, 'bars', issues, _readBar),
+    issues: issues,
+  );
+}
+
+Bar? _readBar(YamlNode node, List<Object> path, List<ValidationIssue> issues) {
+  if (node is! YamlMap) {
+    _report(issues, path, 'Bar entry must be a mapping', node);
+    return null;
+  }
+  const keys = {
+    'id',
+    'name',
+    'mode',
+    'display',
+    'offers',
+    'refreshed',
+    'source',
+  };
+  _checkKeys(node, keys, path, issues);
+  final id = _readText(node, 'id', path, issues, required: true);
+  final name = _readText(node, 'name', path, issues, required: true);
+  final mode = _readToken(
+    node,
+    'mode',
+    path,
+    issues,
+    fromToken: BarMode.fromToken,
+    values: BarMode.values,
+    token: (value) => value.token,
+    required: true,
+  );
+  final display =
+      _readToken(
+        node,
+        'display',
+        path,
+        issues,
+        fromToken: FixedUnit.fromToken,
+        values: FixedUnit.values,
+        token: (value) => value.token,
+      ) ??
+      FixedUnit.part;
+  final offers = <Offer>[];
+  _forEachEntry(node, 'offers', path, issues, (entryNode, entryPath) {
+    final offer = _readOffer(entryNode, entryPath, issues);
+    if (offer != null) offers.add(offer);
+  });
+  final refreshed = _readValue<DateTime>(
+    node,
+    'refreshed',
+    path,
+    issues,
+    parse: (value) => DateTime.tryParse(_asString(value) ?? '')?.toUtc(),
+    requirement: 'refreshed must be a UTC timestamp',
+  );
+  final source = _readSource(node.nodes['source'], [...path, 'source'], issues);
+  if (id == null || name == null || mode == null) return null;
+  return Bar(
+    id: id,
+    name: name,
+    mode: mode,
+    display: display,
+    offers: offers,
+    source: source,
+    refreshed: refreshed,
+  );
+}
+
+Offer? _readOffer(
+  YamlNode node,
+  List<Object> path,
+  List<ValidationIssue> issues,
+) {
+  if (node is! YamlMap) {
+    _report(issues, path, 'Offer entry must be a mapping', node);
+    return null;
+  }
+  _checkKeys(node, const {'via', 'guests'}, path, issues);
+  final via = _readTransport(node, path, issues);
+  return via == null
+      ? null
+      : (via: via, guests: _readNames(node, 'guests', path, issues, 'Guest'));
+}
+
+BarSource? _readSource(
+  YamlNode? node,
+  List<Object> path,
+  List<ValidationIssue> issues,
+) {
+  if (node == null) return null;
+  if (node is! YamlMap) {
+    _report(issues, path, 'source must be a mapping', node);
+    return null;
+  }
+  _checkKeys(node, const {'via', 'at', 'from'}, path, issues);
+  final via = _readTransport(node, path, issues);
+  final at = _readText(node, 'at', path, issues, required: true);
+  final from = _readText(node, 'from', path, issues, required: true);
+  return via == null || at == null || from == null
+      ? null
+      : BarSource(via: via, at: at, from: from);
+}
+
+Transport? _readTransport(
+  YamlMap node,
+  List<Object> path,
+  List<ValidationIssue> issues,
+) => _readToken(
+  node,
+  'via',
+  path,
+  issues,
+  fromToken: Transport.fromToken,
+  values: Transport.values,
+  token: (value) => value.token,
+  required: true,
+);
 
 /// 1-based source line [path] leads to; deepest resolvable node if not found.
 int lineOfPath(YamlNode root, List<Object> path) {
@@ -124,11 +290,14 @@ void _checkKeys(
   }
 }
 
+/// The two sizes, which are the owner's. `display` sits in the same block but
+/// belongs to the reader, so [_readDisplay] takes it out separately (ADR 21).
 Settings _readSettings(YamlNode? node, List<ValidationIssue> issues) {
   const defaults = Settings();
-  if (node == null) return defaults;
   if (node is! YamlMap) {
-    _report(issues, const ['settings'], 'settings must be a mapping', node);
+    if (node != null) {
+      _report(issues, const ['settings'], 'settings must be a mapping', node);
+    }
     return defaults;
   }
   const path = ['settings'];
@@ -144,19 +313,23 @@ Settings _readSettings(YamlNode? node, List<ValidationIssue> issues) {
   return Settings(
     partMl: size('part_ml') ?? defaults.partMl,
     ozMl: size('oz_ml') ?? defaults.ozMl,
-    // Its own wording rather than the token list: the readings, named.
-    display:
-        _readValue<FixedUnit>(
-          node,
-          'display',
-          path,
-          issues,
-          parse: (value) => FixedUnit.fromToken(_asString(value) ?? ''),
-          requirement: 'display must be part, ml or oz',
-        ) ??
-        defaults.display,
   );
 }
+
+/// Its own wording rather than the token list: the readings, named. The block's
+/// shape is [_readSettings]' to report on, so a non-mapping is passed over here.
+FixedUnit _readDisplay(YamlNode? node, List<ValidationIssue> issues) =>
+    node is! YamlMap
+    ? FixedUnit.part
+    : _readValue<FixedUnit>(
+            node,
+            'display',
+            const ['settings'],
+            issues,
+            parse: (value) => FixedUnit.fromToken(_asString(value) ?? ''),
+            requirement: 'display must be part, ml or oz',
+          ) ??
+          FixedUnit.part;
 
 /// A top-level section's entries; the same walk as any other string list,
 /// rooted at the file itself.

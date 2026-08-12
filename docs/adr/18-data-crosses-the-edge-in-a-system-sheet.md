@@ -4,7 +4,7 @@
 
 ## Context
 
-FR-DAT-1/3/4: export all to shareable file, import file replacing the database after validation. One seam, built in two halves; settling one alone risks drift. Data layer: `ModelStore.exportSnapshot` writes `cocktails-export.yaml` (opaque location); import is `YamlCodec.decode` + `save` (not store method, allows confirmation and pre-import export interleaved). Platform handling missing both ends.
+FR-DAT-1/3/4: export all to shareable file, import file replacing the database after validation. One seam, built in two halves; settling one alone risks drift. Data layer: `BarStore.exportSnapshot` writes a copy at an opaque location, under the basename [platform facts](../architecture.md#platform-facts) gives it; import is `YamlCodec.decode` + `saveBar` (not store method, allows confirmation and pre-import export interleaved). Platform handling missing both ends.
 
 Android constraints: (a) API 24+: `file://` URI throws `FileUriExposedException`; must use `content://` from `FileProvider` (b) Storage Access Framework: `ACTION_OPEN_DOCUMENT` returns `content://` URI of unknown app's provider; read via `ContentResolver` stream, invalid past process. App has no Kotlin (generated three-liner); first plugin/platform code goes both directions.
 
@@ -37,7 +37,7 @@ ADR 13 set dependency bar: *confined to one file, way out written down*. ADR 14 
 ## Consequences
 
 - **7th/8th dependency, 25 resolved packages**: `share_plus`, `file_selector` + platform interfaces + implementations, `cross_file`, `file`, `mime`, `uuid`, `web`, `fixnum`, `http`, `http_parser`, `ffi_leak_tracker`, `flutter_web_plugins`, `win32`, `url_launcher`. Most for unbuilt platforms (lock file not APK); first with tails larger than themselves. Price of passing 9-package alternative.
-- **No in-place overwrites**: staging via `FileModelStore` temp-and-rename (truncates); reader's copy by receiving app. No truncation analogue here (what extra packages bought).
+- **No in-place overwrites**: staging via `FileBarStore` temp-and-rename (truncates); reader's copy by receiving app. No truncation analogue here (what extra packages bought).
 - **Copy of copy both ways**: `exportSnapshot` → `cocktails-export.yaml` → plugin copies to `cacheDir/share_plus/` (clears folder at start of share); basename visible to receiver. Picked document copied to cache before Dart sees it; stable local file; no vanish mid-import.
 - **`XFile.name` not document name on Android**: picker drops SAF display name ([flutter#131328](https://github.com/flutter/flutter/issues/131328)); last path segment used. The import review must not show that string as "the file you picked".
 - **`state/` gains plugin imports**: no boundary moves; `architecture_test.dart` constrains app layers. State stops being pure Dart + Riverpod (before 3rd platform seam).

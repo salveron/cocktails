@@ -211,8 +211,8 @@ What ships as 1.0.0 should carry nothing the product no longer claims.
       `collection_edits.dart` and `CollectionEdits`, `validateCollection`, `collectionProvider`,
       `CollectionView`, `Loaded.collection`, the `architecture_test` paths naming the file, and every
       fixture. `helpers.dart` became `names.dart`, which is all it ever held. Left alone on purpose:
-      `ModelStore`, `ModelController` and `ModelParts`, which M31 and M32 replace outright with
-      `BarStore`, `ShelfController` and `BarPayload` — renaming them here would be a second edit to
+      `ModelStore`, `ModelController` and `ModelParts`, which M31 and M32 replace with
+      `BarStore`, `ShelfController` and `BarPayload`/`BarParts` — renaming them here would be a second edit to
       lines already scheduled for deletion, and the two milestones of `ModelStore` holding a
       `Collection` are the price. One collision surfaced and was worth having: `optimizer_test`'s
       builder was `model` where its locals were already `collection`, so it became `collectionOf`,
@@ -271,13 +271,46 @@ guest bar is built as a shape here and gets its first source in Phase 8.
       takes ids passed in, being pure of ambient chance, and where they come from is M31's. The three
       domain test files share one set of fixtures and the `tokenVocabulary`/`valueEquality` bodies by
       `show` import, the first time the suite reaches across its own files rather than copying.
-- [ ] **M31 One file per bar** — `BarStore` replaces `ModelStore`: `shelf.yaml` and `bars/<id>.yaml`,
+- [x] **M31 One file per bar** — `BarStore` replaces `ModelStore`: `shelf.yaml` and `bars/<id>.yaml`,
       atomic writes and rotation per bar, `removeBar`, and `beforeDelete` joining `ExportPurpose`.
       Format 2 lands whole ([ADR 21](adr/21-the-file-carries-one-bar.md)) — `name:` at the top,
       format 1 read and written back as 2 — and the device's own `cocktails.yaml` migrates through
       that same one route to become the first owned bar, its old files left standing as the net
       ([architecture.md](architecture.md#storage-isolation)). Pinned by integration test: one bar's
-      save leaves every other bar's bytes exactly as they were.
+      save leaves every other bar's bytes exactly as they were, its `modified` stamp included, and
+      rotates no backup it had no reason to. **The migration's commit point is the index**: the bar's
+      file is written first and `shelf.yaml` last, so a crash between the two leaves no index and the
+      next run migrates again rather than opening a bar whose file never arrived — the one ordering
+      that makes the step idempotent, and pinned by a test that makes the index write fail. The old
+      `cocktails.yaml` and its three backups are never read after the first run and never written at
+      all, which is what makes the whole step reversible by uninstalling nothing. Two bugs the tests
+      caught and the design did not: an index with no bar open writes `open:` valueless, which YAML
+      reads back as a null and the reader was refusing as a malformed string; and `replaceAll` read
+      the open bar before awaiting the load, so an import asked for during startup met a null. A
+      third the review caught: `setDisplay` rewrote the index from the open bar alone, which was
+      harmless while one bar can exist and would have silently dropped every other from M33 on — the
+      controller now keeps the records it read and replaces one in place, pinned by a test over two
+      bars. A fourth, from merging two write paths into one: every export rotated backups of itself,
+      so four shares left `home-bar.backup-1/2/3.yaml` in the directory Auto Backup carries. The
+      store's own three files rotate and a copy going out does not, which is the distinction the
+      old two-method shape had been carrying implicitly.
+      `Settings` lost `display` here as ADR 21 says, which is what pulled state and UI into a
+      data-layer milestone — `displayMeasure` takes the pick as a parameter, the Amounts screen
+      writes it to the record rather than the collection, and `ModelController` keeps its name while
+      running on `BarStore`, holding the open `Bar` and offering `openBarProvider`. That bridge is
+      M32's `ShelfController.build` in miniature rather than scaffolding to delete, which is why the
+      milestone boundary held. `newBarId` lives in data, not the domain, which stays pure of ambient
+      chance; `isStorableBarId` stands beside it because an id is also a file name and the index is
+      untrusted input like any other file — an id that could climb out of `bars/` is refused rather
+      than resolved, on both the read and the delete. `MemoryBarStore` became `base` so the two
+      widget-test fakes could specialise the one method each needed to fail instead of standing up a
+      sixth implementation of a six-method interface, and its `.of` a generative constructor so they
+      could chain to it. The doc's index example was wrong in two ways it could only have been found
+      by writing the emitter — a flow mapping cannot be followed by block keys, and a timestamp's
+      colons end a scalar in flow context — so it now reads as one quoted line per record. The last
+      of M28c's deferred renames went with it: `ModelParts` became `BarParts`, and ADR 18 and ADR 22
+      stopped naming `ModelStore`, `FileModelStore` and `modelStoreProvider`. `ModelController` is
+      the one `Model` left standing, and M32 deletes it.
 - [ ] **M32 The shelf in state** — `ShelfController` replaces `ModelController` and `collectionProvider`
       becomes derived rather than owned, which is what keeps the whole presentation layer still
       while the root moves above it ([components.md](components.md#state-contracts)).

@@ -6,20 +6,31 @@ library;
 import 'package:cocktails/domain/domain.dart';
 import 'package:yaml/yaml.dart';
 
-/// The schema version the app reads and writes.
-const int storeFormatVersion = 1;
+import 'bar_store.dart' show Records;
+
+/// The schema version the app reads and writes — the bar's file and the index
+/// alike, one number for the whole on-disk layout (ADR 21).
+const int storeFormatVersion = 2;
+
+/// The oldest version still read. Written back as [storeFormatVersion], so
+/// nothing but the reader below ever meets it.
+const int oldestReadableFormat = 1;
 
 /// Characters that end a plain scalar inside a flow collection.
 final _flowUnsafe = RegExp(r'[,\[\]{}:]');
 
-String encodeCollection(Collection collection) {
+/// One bar's file: the owner's [name] for it, the [display] whoever establishes
+/// a bar from this carries over, and the collection (ADR 21).
+String encodeBar(BarPayload payload) {
+  final collection = payload.collection;
   final settings = collection.settings;
   final sections = [
-    'format: $storeFormatVersion',
+    'format: $storeFormatVersion\n'
+        'name: ${_scalar(payload.name)}',
     'settings:\n'
         '  part_ml: ${formatNumber(settings.partMl)}\n'
         '  oz_ml: ${formatNumber(settings.ozMl)}\n'
-        '  display: ${settings.display.token}',
+        '  display: ${payload.display.token}',
     _section('units', collection.units.map(_unitEntry)),
     _section('ingredients', collection.ingredients.map(_ingredientEntry)),
     _section('ingredient_tags', collection.ingredientTags.map(_tagEntry)),
@@ -51,7 +62,7 @@ String _section(String key, Iterable<List<String>> entries) {
 /// The one-line `{name: …}` entry every vocabulary writes, [fields] carrying
 /// whatever else the entry has to say once its defaults are left out.
 List<String> _vocabularyEntry(String name, List<String> fields) => [
-  '{${['name: ${_scalar(name, inFlow: true)}', ...fields].join(', ')}}',
+  _flowMap(['name: ${_scalar(name, inFlow: true)}', ...fields]),
 ];
 
 /// A plural reading like the name is left out, as every default is.
@@ -80,6 +91,54 @@ List<String> _recipeEntry(Recipe recipe, List<Unit> units) => [
     '  - ${_scalar(formatRecipeLine(line, units))}',
   if (recipe.notes.isNotEmpty) 'notes: ${_scalar(recipe.notes)}',
 ];
+
+/// The index: every bar's record and which is open, in the same canonical form
+/// a bar's file takes. Device state rather than an export — it travels nowhere
+/// (docs/architecture.md#data-format).
+String encodeShelf(Records records) {
+  final open = records.openId;
+  final sections = [
+    'format: $storeFormatVersion\n'
+        'open:${open == null ? '' : ' ${_scalar(open)}'}',
+    _section('bars', records.bars.map(_barEntry)),
+  ];
+  return '${sections.join('\n\n')}\n';
+}
+
+/// One record, one line: the halves a mode rules out are left off as every
+/// default is, so an owner carries no source and a guest no offers.
+List<String> _barEntry(Bar bar) {
+  final refreshed = bar.refreshed;
+  final source = bar.source;
+  return [
+    _flowMap([
+      'id: ${_scalar(bar.id, inFlow: true)}',
+      'name: ${_scalar(bar.name, inFlow: true)}',
+      'mode: ${bar.mode.token}',
+      'display: ${bar.display.token}',
+      if (bar.offers.isNotEmpty)
+        'offers: [${bar.offers.map(_offer).join(', ')}]',
+      // Quoted: a timestamp's colons would end the scalar in flow context.
+      if (refreshed != null)
+        'refreshed: '
+            '${_scalar(refreshed.toUtc().toIso8601String(), inFlow: true)}',
+      if (source != null) 'source: ${_source(source)}',
+    ]),
+  ];
+}
+
+String _offer(Offer offer) => _flowMap([
+  'via: ${offer.via.token}',
+  if (offer.guests.isNotEmpty) 'guests: ${_flowList(offer.guests)}',
+]);
+
+String _source(BarSource source) => _flowMap([
+  'via: ${source.via.token}',
+  'at: ${_scalar(source.at, inFlow: true)}',
+  'from: ${_scalar(source.from, inFlow: true)}',
+]);
+
+String _flowMap(List<String> fields) => '{${fields.join(', ')}}';
 
 String _flowList(Iterable<String> values) =>
     '[${values.map((value) => _scalar(value, inFlow: true)).join(', ')}]';

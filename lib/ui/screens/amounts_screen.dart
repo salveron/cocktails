@@ -40,6 +40,13 @@ class _AmountsFormState extends ConsumerState<_AmountsForm> {
   /// picking another unit cannot drift it.
   late Settings _entered = widget.collection.settings;
 
+  /// The pick, edited beside the sizes and saved to the bar rather than into
+  /// the collection — the two belong to different people on a guest bar
+  /// (ADR 21).
+  late FixedUnit _display = _saved;
+
+  FixedUnit get _saved => ref.read(openBarProvider)?.display ?? FixedUnit.part;
+
   late final _fields = {
     for (final sized in _sizedUnits)
       sized: TextEditingController(text: _reading(sized)),
@@ -57,9 +64,8 @@ class _AmountsFormState extends ConsumerState<_AmountsForm> {
   /// "1 ml = 0.0333 part" is a number no one can read or type back — so under
   /// ml each row leads with the unit it sizes, which is the file's own shape.
   (FixedUnit, FixedUnit) _row(FixedUnit sized) {
-    final display = _entered.display;
-    if (display == FixedUnit.ml) return (sized, FixedUnit.ml);
-    return (display, sized == display ? FixedUnit.ml : sized);
+    if (_display == FixedUnit.ml) return (sized, FixedUnit.ml);
+    return (_display, sized == _display ? FixedUnit.ml : sized);
   }
 
   String _reading(FixedUnit sized) {
@@ -84,7 +90,7 @@ class _AmountsFormState extends ConsumerState<_AmountsForm> {
   });
 
   void _pick(FixedUnit display) => setState(() {
-    _entered = _entered.copyWith(display: display);
+    _display = display;
     _rewrite();
   });
 
@@ -115,7 +121,7 @@ class _AmountsFormState extends ConsumerState<_AmountsForm> {
     };
     return EditorScaffold(
       title: 'Amounts',
-      dirty: _entered != widget.collection.settings,
+      dirty: _entered != widget.collection.settings || _display != _saved,
       discardTitle: 'Discard these amounts?',
       onSave: issues.isEmpty && unread.isEmpty
           ? () => unawaited(_save())
@@ -135,7 +141,7 @@ class _AmountsFormState extends ConsumerState<_AmountsForm> {
             for (final unit in FixedUnit.values)
               ButtonSegment(value: unit, label: Text(unit.token)),
           ],
-          selected: {_entered.display},
+          selected: {_display},
           showSelectedIcon: false,
           onSelectionChanged: (picked) => _pick(picked.single),
         ),
@@ -165,8 +171,12 @@ class _AmountsFormState extends ConsumerState<_AmountsForm> {
     );
   }
 
+  /// Two writes, because the sizes go to the collection's file and the pick to
+  /// the bar's record (ADR 21); each is a no-op where nothing moved.
   Future<void> _save() async {
-    await ref.read(collectionProvider.notifier).setSettings(_entered);
+    final controller = ref.read(collectionProvider.notifier);
+    await controller.setSettings(_entered);
+    await controller.setDisplay(_display);
     if (mounted) Navigator.of(context).pop();
   }
 }

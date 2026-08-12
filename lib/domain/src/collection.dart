@@ -23,7 +23,7 @@ enum StockLevel {
 }
 
 /// The fixed units (FR-VOC-5): no rename, no delete, and the only ones a
-/// measure converts between — `Settings.display` names the one they all read in
+/// measure converts between — `Bar.display` names the one they all read in
 /// ([ADR 17](../../../docs/adr/17-the-fixed-units-interconvert.md)).
 enum FixedUnit {
   part(partUnit),
@@ -316,20 +316,15 @@ final class RecipeLine {
   }
 }
 
-/// What a part and an ounce are worth, and which fixed unit amounts read in
-/// (FR-SET-1). Sizes are held in ml because ml is the anchor — it needs none of
-/// its own — so the ratios between any two are derived rather than stored
-/// (ADR 17).
+/// What a part and an ounce are worth (FR-SET-1) — the owner's, where the unit
+/// they read in is the reader's and lives on the bar (ADR 21). Sizes are held in
+/// ml because ml is the anchor — it needs none of its own — so the ratios
+/// between any two are derived rather than stored (ADR 17).
 final class Settings {
   final double partMl;
   final double ozMl;
-  final FixedUnit display;
 
-  const Settings({
-    this.partMl = 30,
-    this.ozMl = 29.5735,
-    this.display = FixedUnit.part,
-  });
+  const Settings({this.partMl = 30, this.ozMl = 29.5735});
 
   /// How many ml one [unit] is.
   double mlPer(FixedUnit unit) => switch (unit) {
@@ -356,26 +351,18 @@ final class Settings {
     FixedUnit.oz => copyWith(ozMl: ml),
   };
 
-  Settings copyWith({double? partMl, double? ozMl, FixedUnit? display}) =>
-      Settings(
-        partMl: partMl ?? this.partMl,
-        ozMl: ozMl ?? this.ozMl,
-        display: display ?? this.display,
-      );
+  Settings copyWith({double? partMl, double? ozMl}) =>
+      Settings(partMl: partMl ?? this.partMl, ozMl: ozMl ?? this.ozMl);
 
   @override
   bool operator ==(Object other) =>
-      other is Settings &&
-      other.partMl == partMl &&
-      other.ozMl == ozMl &&
-      other.display == display;
+      other is Settings && other.partMl == partMl && other.ozMl == ozMl;
 
   @override
-  int get hashCode => Object.hash(partMl, ozMl, display);
+  int get hashCode => Object.hash(partMl, ozMl);
 
   @override
-  String toString() =>
-      'Settings($partMl ml/part, $ozMl ml/oz, display: ${display.token})';
+  String toString() => 'Settings($partMl ml/part, $ozMl ml/oz)';
 }
 
 final class Recipe {

@@ -10,8 +10,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
 
 /// Store seam: file in prod, memory in tests.
-final modelStoreProvider = Provider<ModelStore>(
-  (ref) => throw UnimplementedError('modelStoreProvider must be overridden'),
+final barStoreProvider = Provider<BarStore>(
+  (ref) => throw UnimplementedError('barStoreProvider must be overridden'),
 );
 
 /// Share seam (ADR 18): hands an exported copy to the system's sheet. The one
@@ -47,13 +47,20 @@ final filePickerProvider = Provider<Future<String?> Function()>(
 Future<String> pickedText(XFile picked) async =>
     utf8.decode(await picked.readAsBytes());
 
-/// What a picked file turned out to be: the collection it holds, or what
-/// stopped it being read (FR-DAT-4). Never both.
-typedef ImportReview = ({Collection? collection, List<String> issues});
+/// What a picked file turned out to be: the bar it holds, or what stopped it
+/// being read (FR-DAT-4). Never both.
+typedef ImportReview = ({BarPayload? bar, List<String> issues});
 
 final collectionProvider = AsyncNotifierProvider<ModelController, Collection>(
   ModelController.new,
 );
+
+/// The record of the bar on show — its name and the unit it reads amounts in
+/// (ADR 21). Null only before the first load answers.
+final openBarProvider = Provider<Bar?>((ref) {
+  ref.watch(collectionProvider);
+  return ref.watch(collectionProvider.notifier).openBar;
+});
 
 /// Startup load errors; empty when successful (FR-DAT-4).
 final startupIssuesProvider = Provider<List<String>>((ref) {
@@ -66,20 +73,62 @@ final class ModelController extends AsyncNotifier<Collection> {
 
   List<String> get startupIssues => _startupIssues;
 
-  /// Corrupt store recovers from newest backup or defaults to empty (FR-DAT-4).
+  Bar? _openBar;
+
+  /// The bar this controller's collection belongs to; the shelf around it is
+  /// M32's, so what stands here is the one record the screens need.
+  Bar? get openBar => _openBar;
+
+  /// The index as it was read, kept so a write of one record carries the rest:
+  /// an index rewritten from the open bar alone would drop every other bar.
+  Records _records = (bars: const [], openId: null);
+
+  /// Reads the index, opens the bar it names, and seeds an empty owned bar
+  /// where the device holds none. A bar that fails to decode opens on its
+  /// newest backup and says why (FR-DAT-4).
   @override
   Future<Collection> build() async {
-    final outcome = await ref.watch(modelStoreProvider).load();
-    final (collection, issues) = switch (outcome) {
-      Loaded(:final collection) => (collection, const <String>[]),
-      Empty() => (Collection(), const <String>[]),
-      Corrupt(:final issues, :final recoveredFromBackup) => (
-        recoveredFromBackup ?? Collection(),
-        _described(issues),
-      ),
+    final store = ref.watch(barStoreProvider);
+    final issues = <String>[];
+    final shelf = await store.loadShelf();
+    if (shelf is Corrupt<Records>) issues.addAll(_described(shelf.issues));
+    final records = switch (shelf) {
+      Loaded(:final value) => value,
+      Empty() => null,
+      Corrupt(:final recovered) => recovered,
     };
-    _startupIssues = issues;
-    return collection;
+    // An index naming no bar, or naming one it does not hold, still opens on
+    // whatever it does hold; only a shelf with nothing on it founds a bar.
+    final bars = records?.bars ?? const <Bar>[];
+    if (bars.isEmpty) return _foundFirstBar(store, issues);
+    final bar = bars.firstWhere(
+      (bar) => bar.id == records!.openId,
+      orElse: () => bars.first,
+    );
+    _openBar = bar;
+    _records = (bars: bars, openId: bar.id);
+    final loaded = await store.loadBar(bar.id);
+    if (loaded is Corrupt<BarPayload>) issues.addAll(_described(loaded.issues));
+    _startupIssues = List.unmodifiable(issues);
+    return switch (loaded) {
+      Loaded(:final value) => value.collection,
+      Empty() => Collection(),
+      Corrupt(:final recovered) => recovered?.collection ?? Collection(),
+    };
+  }
+
+  /// A device holding nothing gets one empty owned bar, written before it is
+  /// published so a first edit has a file to land beside.
+  Future<Collection> _foundFirstBar(BarStore store, List<String> issues) async {
+    final bar = Bar(id: newBarId(), name: 'Home bar', mode: BarMode.owner);
+    _openBar = bar;
+    _records = (bars: [bar], openId: bar.id);
+    _startupIssues = List.unmodifiable(issues);
+    // The bar before the index, as the migration does: the index is what says
+    // a bar exists, so it is written once the file it names is there.
+    await store.saveBar(bar, Collection());
+    await store.saveShelf(_records);
+    return Collection();
   }
 
   Future<void> setSettings(Settings settings) =>
@@ -133,27 +182,51 @@ final class ModelController extends AsyncNotifier<Collection> {
   Future<void> removeRecipe(String name) =>
       _edit((collection) => collection.withoutRecipe(name));
 
-  /// A shareable copy of the collection on screen, and where it went — opaque,
-  /// so the screen hands it on rather than reading it (FR-DAT-1).
-  Future<String> export() async =>
-      ref.read(modelStoreProvider).exportSnapshot(await future);
+  /// The unit amounts read in — the reader's, so it lives on the bar's record
+  /// and never in the collection a refresh replaces (FR-SET-1, ADR 21).
+  Future<void> setDisplay(FixedUnit display) async {
+    final bar = _openBar;
+    if (bar == null || bar.display == display) return;
+    final edited = bar.copyWith(display: display);
+    _openBar = edited;
+    _records = (
+      bars: [
+        for (final standing in _records.bars)
+          standing.id == edited.id ? edited : standing,
+      ],
+      openId: _records.openId,
+    );
+    await ref.read(barStoreProvider).saveShelf(_records);
+    ref.notifyListeners();
+  }
+
+  /// A shareable copy of the bar on screen, and where it went — opaque, so the
+  /// screen hands it on rather than reading it (FR-DAT-1).
+  Future<String> export() async {
+    final collection = await future;
+    return ref.read(barStoreProvider).exportSnapshot(_openBar!, collection);
+  }
 
   /// What [text] holds, judged before anything is touched: the confirmation and
   /// the copy [replaceAll] keeps both slot in between (FR-DAT-3/4).
   ImportReview review(String text) => switch (const YamlCodec().decode(text)) {
-    Decoded(:final collection) => (
-      collection: collection,
-      issues: const <String>[],
-    ),
-    Rejected(:final issues) => (collection: null, issues: _described(issues)),
+    Decoded(:final value) => (bar: value, issues: const <String>[]),
+    Rejected(:final issues) => (bar: null, issues: _described(issues)),
   };
 
-  /// Replaces the collection with [collection], keeping a copy of the one it
-  /// replaces first (FR-DAT-3).
+  /// Replaces the open bar's collection with [collection], keeping a copy of
+  /// what it replaces first (FR-DAT-3).
   Future<void> replaceAll(Collection collection) async {
+    // Awaited first: the bar is only known once the startup load has answered,
+    // and the copy must be of what stood rather than of nothing.
+    final replaced = await future;
     await ref
-        .read(modelStoreProvider)
-        .exportSnapshot(await future, purpose: ExportPurpose.beforeImport);
+        .read(barStoreProvider)
+        .exportSnapshot(
+          _openBar!,
+          replaced,
+          purpose: ExportPurpose.beforeImport,
+        );
     await _edit((_) => collection);
   }
 
@@ -168,6 +241,6 @@ final class ModelController extends AsyncNotifier<Collection> {
     final edited = edit(collection);
     if (edited == collection) return;
     state = AsyncData(edited);
-    await ref.read(modelStoreProvider).save(edited);
+    await ref.read(barStoreProvider).saveBar(_openBar!, edited);
   }
 }

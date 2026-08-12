@@ -1,5 +1,4 @@
 import 'package:cocktails/data/data.dart';
-import 'package:cocktails/domain/domain.dart';
 import 'package:cocktails/ui/widgets/collection_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -7,18 +6,10 @@ import 'package:flutter_test/flutter_test.dart';
 import '../harness.dart';
 
 /// A store whose load blows up — the only way to reach the failure face.
-final class _FailingStore implements ModelStore {
+final class _FailingStore extends MemoryBarStore {
   @override
-  Future<LoadOutcome> load() async => throw StateError('disk on fire');
-
-  @override
-  Future<void> save(Collection collection) async {}
-
-  @override
-  Future<String> exportSnapshot(
-    Collection collection, {
-    ExportPurpose purpose = ExportPurpose.share,
-  }) async => '';
+  Future<LoadOutcome<Records>> loadShelf() async =>
+      throw StateError('disk on fire');
 }
 
 void main() {

@@ -13,9 +13,7 @@ Future<void> main() async {
   final directory = await getApplicationDocumentsDirectory();
   runApp(
     ProviderScope(
-      overrides: [
-        modelStoreProvider.overrideWithValue(FileModelStore(directory)),
-      ],
+      overrides: [barStoreProvider.overrideWithValue(FileBarStore(directory))],
       child: const CocktailsApp(),
     ),
   );

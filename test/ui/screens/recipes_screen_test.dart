@@ -13,10 +13,16 @@ import '../harness.dart';
 
 const names = ['Daiquiri', 'Negroni', 'Whiskey Sour'];
 
-Future<MemoryModelStore> pumpRecipes(
+Future<MemoryBarStore> pumpRecipes(
   WidgetTester tester, [
   Collection? collection,
-]) => pumpOver(tester, const RecipesScreen(), collection ?? recipeCollection);
+  FixedUnit display = FixedUnit.part,
+]) => pumpOver(
+  tester,
+  const RecipesScreen(),
+  collection ?? recipeCollection,
+  display: display,
+);
 
 /// The recipe names on screen, in list order — [roster] naming which
 /// collection's, so a summary line is never mistaken for a row.
@@ -273,11 +279,10 @@ String italicOn(WidgetTester tester, String line) => [
     if (run.style?.fontStyle == FontStyle.italic) run.text!,
 ].join();
 
-/// The same recipes under a reader who pours in ml (FR-SET-1) — a part is
-/// 30 ml, so the Negroni's three lines land on round numbers.
-final inMillilitres = recipeCollection.copyWith(
-  settings: const Settings(display: FixedUnit.ml),
-);
+/// The reader who pours in ml (FR-SET-1) — a part is 30 ml, so the Negroni's
+/// three lines land on round numbers. A pick rather than a collection now: it
+/// is the bar's, not the recipes' (ADR 21).
+const inMillilitres = FixedUnit.ml;
 
 /// Settles that card's own dialog on [factor] and [unit], leaving whatever it
 /// does not name where the dialog opened it.
@@ -1240,7 +1245,7 @@ void main() {
     testWidgets('every card opens in the unit the settings name (ADR 17)', (
       tester,
     ) async {
-      await pumpRecipes(tester, inMillilitres);
+      await pumpRecipes(tester, recipeCollection, inMillilitres);
       await tap(tester, find.text('Negroni'));
 
       expect(find.text('30 ml gin (base)'), findsOneWidget);
@@ -1252,7 +1257,7 @@ void main() {
     testWidgets('under ml, it is the file\'s own unit that marks a card', (
       tester,
     ) async {
-      await pumpRecipes(tester, inMillilitres);
+      await pumpRecipes(tester, recipeCollection, inMillilitres);
       await tap(tester, find.text('Negroni'));
       await scale(tester, 'Negroni', unit: 'part');
 
@@ -1263,7 +1268,7 @@ void main() {
     testWidgets('the settings\' unit is the way back, whichever it is', (
       tester,
     ) async {
-      await pumpRecipes(tester, inMillilitres);
+      await pumpRecipes(tester, recipeCollection, inMillilitres);
       await tap(tester, find.text('Negroni'));
       await scale(tester, 'Negroni', factor: 3, unit: 'oz');
       await scale(tester, 'Negroni', factor: 1, unit: 'ml');

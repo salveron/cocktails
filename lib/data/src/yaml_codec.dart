@@ -1,22 +1,24 @@
-/// Decode/encode between store text and [Collection]; format-version gate.
+/// Decode/encode between store text and what it holds — a bar (ADR 21) or the
+/// index over them all; format-version gate.
 library;
 
 import 'package:cocktails/domain/domain.dart';
 import 'package:yaml/yaml.dart';
 
+import 'bar_store.dart';
 import 'sourced_issue.dart';
 import 'yaml_reader.dart';
 import 'yaml_writer.dart';
 
-sealed class DecodeResult {}
+sealed class DecodeResult<T> {}
 
-final class Decoded extends DecodeResult {
-  final Collection collection;
+final class Decoded<T> extends DecodeResult<T> {
+  final T value;
 
-  Decoded(this.collection);
+  Decoded(this.value);
 }
 
-final class Rejected extends DecodeResult {
+final class Rejected<T> extends DecodeResult<T> {
   final List<SourcedIssue> issues;
 
   Rejected(List<SourcedIssue> issues) : issues = List.unmodifiable(issues);
@@ -28,10 +30,30 @@ final class YamlCodec {
   const YamlCodec();
 
   /// Canonical text: fixed key order, fixed indent, no comments.
-  String encode(Collection collection) => encodeCollection(collection);
+  String encode(BarPayload payload) => encodeBar(payload);
+
+  String encodeIndex(Records records) => encodeShelf(records);
 
   /// Never throws — every failure is a [Rejected] carrying sourced issues.
-  DecodeResult decode(String yaml) {
+  /// Answers all three of a bar's parts and leaves who keeps which to the
+  /// caller, which is where an import and a refresh differ (ADR 21).
+  DecodeResult<BarPayload> decode(String yaml) => _decode(
+    yaml,
+    'format, name, settings, units, ingredients, ingredient_tags, '
+    'recipe_tags, recipes',
+    _readPayload,
+  );
+
+  /// The index, judged by `validateShelf` as a bar's file is by
+  /// `validateCollection` — one canonical form, two documents.
+  DecodeResult<Records> decodeIndex(String yaml) =>
+      _decode(yaml, 'format, open, bars', _readRecords);
+
+  DecodeResult<T> _decode<T>(
+    String yaml,
+    String shape,
+    T? Function(YamlMap root, List<ValidationIssue> issues) read,
+  ) {
     final YamlNode root;
     try {
       root = loadYamlNode(yaml);
@@ -56,34 +78,45 @@ final class YamlCodec {
           ValidationIssue(
             const [],
             ValidationIssueKind.malformedValue,
-            'The top level must be a mapping with format, settings, units, '
-            'ingredients, ingredient_tags, recipe_tags, recipes',
+            'The top level must be a mapping with $shape',
           ),
         ),
       ]);
     }
     final gateIssue = _formatGateIssue(root);
-    if (gateIssue != null) {
-      return Rejected([_sourced(root, gateIssue)]);
-    }
-    final parts = readModelParts(root);
-    final issues = parts.issues.isNotEmpty
-        ? parts.issues
-        : validateCollection(
-            settings: parts.settings,
-            units: parts.units,
-            ingredients: parts.ingredients,
-            ingredientTags: parts.ingredientTags,
-            recipeTags: parts.recipeTags,
-            recipes: parts.recipes,
-          );
-    if (issues.isNotEmpty) {
+    if (gateIssue != null) return Rejected([_sourced(root, gateIssue)]);
+
+    final issues = <ValidationIssue>[];
+    final value = read(root, issues);
+    if (value == null || issues.isNotEmpty) {
       return Rejected([for (final issue in issues) _sourced(root, issue)]);
     }
+    return Decoded(value);
+  }
+
+  /// A format-1 file carries no `name:` and its `made:` was dropped by the
+  /// reader; the caller names the bar it establishes from one (ADR 21).
+  static BarPayload? _readPayload(YamlMap root, List<ValidationIssue> issues) {
+    final parts = readBarParts(root);
+    issues.addAll(parts.issues);
+    if (issues.isNotEmpty) return null;
+    issues.addAll(
+      validateCollection(
+        settings: parts.settings,
+        units: parts.units,
+        ingredients: parts.ingredients,
+        ingredientTags: parts.ingredientTags,
+        recipeTags: parts.recipeTags,
+        recipes: parts.recipes,
+      ),
+    );
+    if (issues.isNotEmpty) return null;
     // A hand-edited file may name a bottle by an alias; the collection holds
     // the canonical name, so the next save writes it back that way (ADR 10).
-    return Decoded(
-      Collection(
+    return (
+      name: parts.name,
+      display: parts.display,
+      collection: Collection(
         settings: parts.settings,
         units: parts.units,
         ingredients: parts.ingredients,
@@ -94,10 +127,20 @@ final class YamlCodec {
     );
   }
 
+  static Records? _readRecords(YamlMap root, List<ValidationIssue> issues) {
+    final parts = readShelfParts(root);
+    issues.addAll(parts.issues);
+    if (issues.isNotEmpty) return null;
+    issues.addAll(validateShelf(bars: parts.bars, openId: parts.openId));
+    return issues.isEmpty ? (bars: parts.bars, openId: parts.openId) : null;
+  }
+
   static SourcedIssue _sourced(YamlNode root, ValidationIssue issue) =>
       SourcedIssue(issue, lineOfPath(root, issue.path));
 
-  /// The step-2 gate: on any [gateIssue] nothing else runs (FR-DAT-4).
+  /// The step-2 gate: on any [gateIssue] nothing else runs (FR-DAT-4). Format 1
+  /// passes and is written back as 2, so there is one reader of the old form
+  /// rather than two (ADR 21).
   static ValidationIssue? _formatGateIssue(YamlMap root) {
     final node = root.nodes['format'];
     if (node == null) {
@@ -109,10 +152,10 @@ final class YamlCodec {
     if (value is! int) {
       return _gateIssue('format must be an integer: ${briefValue(value)}');
     }
-    if (value != formatVersion) {
+    if (value < oldestReadableFormat || value > formatVersion) {
       return _gateIssue(
         'Unsupported format version $value; this app reads format '
-        '$formatVersion',
+        '$oldestReadableFormat to $formatVersion',
       );
     }
     return null;

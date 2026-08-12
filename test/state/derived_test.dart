@@ -30,7 +30,12 @@ void main() {
   ProviderContainer containerFor(Collection collection) {
     final container = ProviderContainer(
       overrides: [
-        modelStoreProvider.overrideWithValue(MemoryModelStore(collection)),
+        barStoreProvider.overrideWithValue(
+          MemoryBarStore.of(
+            Bar(id: 'a1b2c3', name: 'Home bar', mode: BarMode.owner),
+            collection,
+          ),
+        ),
       ],
     );
     addTearDown(container.dispose);

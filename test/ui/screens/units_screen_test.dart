@@ -8,7 +8,7 @@ import '../harness.dart';
 
 /// The screen as it is reached — through Settings, so leaving it has somewhere
 /// to go and the menu entry is exercised with it.
-Future<MemoryModelStore> pumpUnits(
+Future<MemoryBarStore> pumpUnits(
   WidgetTester tester, [
   Collection? collection,
 ]) async {
@@ -41,7 +41,7 @@ Finder pluralField(int row) => find.byType(TextField).at(row * 2 + 1);
 Finder deleteOn(int index) => find.byTooltip('Delete').at(index);
 
 /// The names the store was left holding.
-List<String> savedUnits(MemoryModelStore store) => [
+List<String> savedUnits(MemoryBarStore store) => [
   for (final unit in store.saved!.units) unit.name,
 ];
 

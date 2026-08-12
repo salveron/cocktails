@@ -5,16 +5,16 @@ const gin = RecipeLine(Amount(1.5), 'part', ['gin'], mark: LineMark.base);
 const bitters = RecipeLine(Amount(2), 'dash', ['bitters']);
 const rum = RecipeLine(Amount.range(1.5, 2), 'part', ['white rum']);
 
-const inMl = Settings(display: FixedUnit.ml);
-const inOz = Settings(display: FixedUnit.oz);
-
 /// The measure alone — the only half that transforms; a card writes the rest.
+/// [display] is the bar's pick, which stands beside the sizes rather than in
+/// them (ADR 21).
 String read(
   RecipeLine line, {
   Settings settings = const Settings(),
+  FixedUnit display = FixedUnit.part,
   List<Unit> units = defaultUnits,
   int scale = 1,
-}) => displayMeasure(line, settings, units, scale: scale);
+}) => displayMeasure(line, settings, display, units, scale: scale);
 
 void main() {
   group('displayMeasure', () {
@@ -37,16 +37,16 @@ void main() {
     });
 
     test('parts convert at the ratio the settings hold (FR-SET-1)', () {
-      expect(read(gin, settings: inMl), '45 ml');
+      expect(read(gin, display: FixedUnit.ml), '45 ml');
       expect(
-        read(gin, settings: const Settings(partMl: 25, display: FixedUnit.ml)),
+        read(gin, settings: const Settings(partMl: 25), display: FixedUnit.ml),
         '37.5 ml',
       );
     });
 
     test('what no ratio reaches shows as entered', () {
-      expect(read(bitters, settings: inMl), '2 dashes');
-      expect(read(bitters, settings: inOz), '2 dashes');
+      expect(read(bitters, display: FixedUnit.ml), '2 dashes');
+      expect(read(bitters, display: FixedUnit.oz), '2 dashes');
     });
 
     test('every fixed unit reads in the one picked (ADR 17)', () {
@@ -55,31 +55,22 @@ void main() {
       const round = Settings(ozMl: 30);
       const millilitres = RecipeLine(Amount(60), 'ml', ['gin']);
       const ounces = RecipeLine(Amount(2), 'oz', ['gin']);
-      expect(
-        read(millilitres, settings: round.copyWith(display: FixedUnit.oz)),
-        '2 oz',
-      );
-      expect(
-        read(ounces, settings: round.copyWith(display: FixedUnit.ml)),
-        '60 ml',
-      );
+      expect(read(millilitres, settings: round, display: FixedUnit.oz), '2 oz');
+      expect(read(ounces, settings: round, display: FixedUnit.ml), '60 ml');
       expect(read(ounces, settings: round), '2 parts');
-      expect(
-        read(gin, settings: round.copyWith(display: FixedUnit.oz)),
-        '1.5 oz',
-      );
+      expect(read(gin, settings: round, display: FixedUnit.oz), '1.5 oz');
     });
 
     test('the unit picked is the one a line already stands in', () {
       const ounces = RecipeLine(Amount(1.5), 'oz', ['gin']);
-      expect(read(ounces, settings: inOz), '1.5 oz');
+      expect(read(ounces, display: FixedUnit.oz), '1.5 oz');
     });
 
     test('an ounce is what the settings say it is, not what it is', () {
       const ounces = RecipeLine(Amount(1), 'oz', ['gin']);
-      expect(read(ounces, settings: inMl), '29.57 ml');
+      expect(read(ounces, display: FixedUnit.ml), '29.57 ml');
       expect(
-        read(ounces, settings: const Settings(ozMl: 30, display: FixedUnit.ml)),
+        read(ounces, settings: const Settings(ozMl: 30), display: FixedUnit.ml),
         '30 ml',
       );
     });
@@ -89,7 +80,8 @@ void main() {
       expect(
         read(
           ounces,
-          settings: const Settings(ozMl: 30, display: FixedUnit.ml),
+          settings: const Settings(ozMl: 30),
+          display: FixedUnit.ml,
           units: const [Unit(partUnit), Unit(mlUnit), Unit('OZ')],
         ),
         '60 ml',
@@ -97,12 +89,12 @@ void main() {
     });
 
     test('a card asking for both gets both', () {
-      expect(read(rum, settings: inMl, scale: 2), '90-120 ml');
+      expect(read(rum, display: FixedUnit.ml, scale: 2), '90-120 ml');
     });
 
     test('what a binary product loses, rounding gives back', () {
       const saline = RecipeLine(Amount(0.1), 'part', ['saline']);
-      expect(read(saline, settings: inMl), '3 ml');
+      expect(read(saline, display: FixedUnit.ml), '3 ml');
     });
 
     test('a scaled amount takes the plural the vocabulary spells', () {
@@ -116,13 +108,16 @@ void main() {
         Unit(partUnit, plural: 'parts'),
         Unit(mlUnit, plural: 'millilitres'),
       ];
-      expect(read(gin, settings: inMl, units: millilitre), '45 millilitres');
+      expect(
+        read(gin, display: FixedUnit.ml, units: millilitre),
+        '45 millilitres',
+      );
     });
 
     test(
       'it carries the amount and the unit, never the mark or the bottles',
       () {
-        expect(read(gin, settings: inMl, scale: 2), '90 ml');
+        expect(read(gin, display: FixedUnit.ml, scale: 2), '90 ml');
         const group = RecipeLine(Amount(1), 'part', ['cognac', 'vodka']);
         expect(read(group, scale: 3), '3 parts');
       },

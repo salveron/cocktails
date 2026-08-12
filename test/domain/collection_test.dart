@@ -387,7 +387,6 @@ void main() {
       const settings = Settings();
       expect(settings.partMl, 30);
       expect(settings.ozMl, 29.5735);
-      expect(settings.display, FixedUnit.part);
     });
 
     test('ml is the anchor the other two are sized against (ADR 17)', () {
@@ -430,12 +429,8 @@ void main() {
       );
     });
 
-    test('withRatio inverts ratio, and the display rides along', () {
-      const settings = Settings(
-        partMl: 27,
-        ozMl: 29.5735,
-        display: FixedUnit.oz,
-      );
+    test('withRatio inverts its own ratio, whichever way round', () {
+      const settings = Settings(partMl: 27, ozMl: 29.5735);
       for (final (from, to) in [
         (FixedUnit.part, FixedUnit.ml),
         (FixedUnit.oz, FixedUnit.ml),
@@ -445,34 +440,37 @@ void main() {
         final same = settings.withRatio(from, to, settings.ratio(from, to));
         expect(same.partMl, closeTo(settings.partMl, 1e-12));
         expect(same.ozMl, closeTo(settings.ozMl, 1e-12));
-        expect(same.display, FixedUnit.oz);
       }
     });
 
     valueEquality(() => const Settings(), const {
       'partMl': Settings(partMl: 22.5),
       'ozMl': Settings(ozMl: 30),
-      'display': Settings(display: FixedUnit.ml),
     });
 
     test('copyWith replaces one field and carries the rest', () {
-      const settings = Settings(partMl: 25, ozMl: 30, display: FixedUnit.ml);
+      const settings = Settings(partMl: 25, ozMl: 30);
       expect(settings.copyWith(), settings, reason: 'nothing named');
       expect(
         settings.copyWith(partMl: 30),
-        const Settings(partMl: 30, ozMl: 30, display: FixedUnit.ml),
+        const Settings(partMl: 30, ozMl: 30),
         reason: 'partMl',
       );
       expect(
         settings.copyWith(ozMl: 29.5735),
-        const Settings(partMl: 25, display: FixedUnit.ml),
+        const Settings(partMl: 25),
         reason: 'ozMl',
       );
+    });
+
+    // ADR 21: of the settings block the pick alone is the reader's, so it is
+    // the one part of it a guest bar's refresh must not be able to replace.
+    test('carries no reading unit, that being the bar\'s (ADR 21)', () {
       expect(
-        settings.copyWith(display: FixedUnit.part),
-        const Settings(partMl: 25, ozMl: 30),
-        reason: 'display',
+        Bar(id: 'a1', name: 'Home bar', mode: BarMode.owner).display,
+        FixedUnit.part,
       );
+      expect(const Settings().toString(), isNot(contains('display')));
     });
   });
 

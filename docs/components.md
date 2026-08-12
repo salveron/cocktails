@@ -503,6 +503,8 @@ Data layer owns: YAML, files, atomicity, backups, and what crosses to another de
 
 ```dart
 typedef Records = ({List<Bar> bars, String? openId});   // the index, with no collection in it
+String newBarId();                                     // six hex characters, minted per device
+bool isStorableBarId(String id);                       // may it name a file — an index is untrusted
 
 abstract interface class BarStore {
   Future<LoadOutcome<Records>> loadShelf();
@@ -533,6 +535,12 @@ to that bar's store file regardless, the emitter being canonical.
 and `beforeDelete` the nets FR-DAT-3 and FR-BAR-2 ask for. The store maps each to its own file 
 ([platform facts](architecture.md#platform-facts)), so no one act can cost a reader the copy another 
 just staged — and no caller learns a name.
+
+Ids are minted in the data layer rather than the domain, which stays pure of ambient chance, and are 
+reached by the state layer through the barrel. `isStorableBarId` stands beside `newBarId` because an 
+id is also a file name: minted ones are always safe, but the index is a file like any other and one 
+carrying `../secrets` has to be refused rather than resolved. The store gates on it before it 
+resolves a path, and answers `Corrupt` rather than reaching outside `bars/`.
 
 Import is `YamlCodec.decode` + `saveBar`, not a store method. Separate so confirmation and 
 pre-import export can slot between (FR-DAT-3), and so a refresh reaches the same decode by another 

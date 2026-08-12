@@ -125,7 +125,9 @@ class _ImportReview extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final incoming = review.collection;
+    // The collection alone: what else the file carries is the two destinations'
+    // to take, and both are M36's (FR-BAR-7).
+    final incoming = review.bar?.collection;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Import'),

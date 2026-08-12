@@ -34,7 +34,7 @@ final tagged = Collection(
 );
 
 /// The screen over its store, opened on the Recipe tab.
-Future<MemoryModelStore> pumpTags(
+Future<MemoryBarStore> pumpTags(
   WidgetTester tester, {
   Collection? collection,
 }) => pumpOver(tester, const TagsScreen(), collection ?? tagged);

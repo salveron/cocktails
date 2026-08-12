@@ -6,21 +6,22 @@ import 'package:flutter_test/flutter_test.dart';
 
 import '../harness.dart';
 
+/// [collection] as a bar's file — the shape a picked document actually has
+/// from format 2 on (ADR 21).
+String fileOf(Collection collection) => const YamlCodec().encode((
+  name: 'Ada\'s bar',
+  display: FixedUnit.part,
+  collection: collection,
+));
+
 /// A store that cannot write, so the one thing a failed replace must not do —
 /// leave for a collection that was never written — can be watched.
-final class _UnwritableStore implements ModelStore {
-  @override
-  Future<LoadOutcome> load() async => Loaded(fixtureCollection);
+final class _UnwritableStore extends MemoryBarStore {
+  _UnwritableStore() : super.of(testBar(), fixtureCollection);
 
   @override
-  Future<void> save(Collection collection) async =>
+  Future<void> saveBar(Bar bar, Collection collection) async =>
       throw Exception('disk full');
-
-  @override
-  Future<String> exportSnapshot(
-    Collection collection, {
-    ExportPurpose purpose = ExportPurpose.share,
-  }) async => 'memory:${purpose.name}';
 }
 
 void main() {
@@ -51,12 +52,12 @@ void main() {
   group('export', () {
     /// The location the export answered with, and the copy the store was
     /// handed to make it.
-    Future<(List<String>, MemoryModelStore)> exportOver(
+    Future<(List<String>, MemoryBarStore)> exportOver(
       WidgetTester tester, {
       Future<void> Function(String)? sharer,
     }) async {
       final shared = <String>[];
-      final store = MemoryModelStore(fixtureCollection);
+      final store = MemoryBarStore.of(testBar(), fixtureCollection);
       await pumpScreen(
         tester,
         const SettingsScreen(),
@@ -73,7 +74,7 @@ void main() {
       final (shared, store) = await exportOver(tester);
       expect(shared, ['memory:share']);
       // What went out is the collection on screen, not a file re-read (ADR 18).
-      expect(store.snapshots[ExportPurpose.share], fixtureCollection);
+      expect(store.snapshots[ExportPurpose.share]?.$2, fixtureCollection);
     });
 
     testWidgets('the row acts where it stands, and does not travel', (
@@ -111,7 +112,7 @@ void main() {
     /// A file holding three recipes and nine ingredients, against the one recipe
     /// and two ingredients the screen opens over — so a count on the review
     /// cannot be read off the store and pass for the file's.
-    final pickedFile = const YamlCodec().encode(recipeCollection);
+    final pickedFile = fileOf(recipeCollection);
 
     /// A file the codec can read but the rules refuse: nothing declares "rye".
     const damagedFile = '''
@@ -123,11 +124,11 @@ recipes:
 
     /// The Import row tapped over a store holding [fixtureCollection], with the
     /// system's picker answering [picked] — a file, nothing, or a refusal.
-    Future<MemoryModelStore> importOver(
+    Future<MemoryBarStore> importOver(
       WidgetTester tester,
       Future<String?> Function() picked,
     ) async {
-      final store = MemoryModelStore(fixtureCollection);
+      final store = MemoryBarStore.of(testBar(), fixtureCollection);
       await pumpScreen(
         tester,
         const SettingsScreen(),
@@ -192,7 +193,7 @@ recipes:
             ),
         ],
       );
-      await importOver(tester, () async => const YamlCodec().encode(many));
+      await importOver(tester, () async => fileOf(many));
       await tap(tester, find.text('2000 recipes'));
       // The last one as surely as the first: a list cut short is exactly where
       // the entry a reader came looking for would have been.
@@ -210,7 +211,7 @@ recipes:
         ingredientTags: const [Tag('juniper', color: TagColor.sand)],
         recipeTags: const [Tag('classic', color: TagColor.rose)],
       );
-      await importOver(tester, () async => const YamlCodec().encode(both));
+      await importOver(tester, () async => fileOf(both));
       // One count over both, the body keeping the lists it came from.
       await tap(tester, find.text('2 tags'));
       expect(find.text('Recipe'), findsOneWidget);
@@ -230,10 +231,7 @@ recipes:
     });
 
     testWidgets('a kind the file holds none of does not open', (tester) async {
-      await importOver(
-        tester,
-        () async => const YamlCodec().encode(Collection()),
-      );
+      await importOver(tester, () async => fileOf(Collection()));
       expect(find.text('0 recipes'), findsOneWidget);
       await tap(tester, find.text('0 recipes'));
       // Nothing to open, so no chevron offered and the tap answered with none.
@@ -245,7 +243,10 @@ recipes:
       final store = await importOver(tester, () async => pickedFile);
       await tap(tester, find.text('Accept'));
       expect(store.saved, recipeCollection);
-      expect(store.snapshots[ExportPurpose.beforeImport], fixtureCollection);
+      expect(
+        store.snapshots[ExportPurpose.beforeImport]?.$2,
+        fixtureCollection,
+      );
       expect(find.text('3 recipes imported.'), findsOneWidget);
     });
 
@@ -309,7 +310,7 @@ recipes:
     ) async {
       await pumpApp(
         tester,
-        store: MemoryModelStore(fixtureCollection),
+        store: MemoryBarStore.of(testBar(), fixtureCollection),
         picker: () async => pickedFile,
       );
       await tap(tester, find.byTooltip('Settings'));
