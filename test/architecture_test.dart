@@ -216,6 +216,7 @@ void main() {
       final exported = _directivesOf(barrel).map((d) => d.target);
       expect(exported, isNot(contains('src/names.dart')));
       expect(barrel, contains('hide reservedSuffixes'));
+      expect(barrel, contains('hide enumFromToken'));
     });
 
     // lib/main.dart sits outside every layer (docs/components.md module

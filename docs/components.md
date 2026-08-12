@@ -16,9 +16,11 @@ lib/
   domain/
     domain.dart                # barrel — the only domain import other layers use
     src/
-      bar.dart                 # Bar, BarMode, Transport, BarSource, Offer, BarPayload,
-                               #   and Shelf, the root above Collection (ADR 20)
-      bar_edits.dart           # extension ShelfEdits on Shelf — pure derivations,
+      shelf.dart               # Shelf, the root above Collection (ADR 20), and the bar it
+                               #   holds: Bar, BarMode, Transport, BarSource, Offer,
+                               #   BarPayload. enumFromToken, the token lookup it shares
+                               #   with collection.dart, is layer-private like names.dart
+      shelf_edits.dart         # extension ShelfEdits on Shelf — pure derivations,
                                #   the guest-bar refusal among them (ADR 23)
       collection.dart          # entities, Collection — one bar's contents — name lookups,
                                #   wornInOrder, the unit vocabulary and its lookup (ADR 09)
@@ -149,7 +151,9 @@ final class BarSource {          // where a guest bar refreshes from (FR-BAR-5)
 }
 
 final class Bar {
-  final String id;               // minted on this device, never written to a bar's file
+  final String id;               // minted on this device, never written to a bar's file;
+                                 //   opaque, so compared exactly — ADR 08's fold is a rule
+                                 //   for names, and two ids differing in case are two bars
   final String name;             // a label: two bars may carry one (FR-BAR-1)
   final BarMode mode;
   final FixedUnit display;       // the reader's pick, outliving every refresh (FR-SET-1)
@@ -167,7 +171,7 @@ final class Shelf {
   Bar? barWithId(String id);
 }
 
-extension ShelfEdits on Shelf {         // bar_edits.dart, as CollectionEdits is collection_edits.dart
+extension ShelfEdits on Shelf {         // shelf_edits.dart, as CollectionEdits is collection_edits.dart
   Shelf withCollection(Collection collection);      // throws on a guest bar (ADR 23)
   Shelf withBar(Bar bar);                      // add or replace by id — rename, offers, source
   Shelf withoutBar(String id);                 // FR-BAR-2; a deleted open bar leaves openId null
@@ -177,10 +181,18 @@ extension ShelfEdits on Shelf {         // bar_edits.dart, as CollectionEdits is
 ```
 
 `Shelf`'s constructor throws `ArgumentError` on a broken shelf, the programmer contract `Collection`'s own 
-constructor already keeps: ids unique, `openId` naming a bar that exists, a guest carrying a source 
-and an owner none, an owner's offers one per transport. `collection` is an empty `Collection` while no bar 
+constructor already keeps: ids unique, `openId` naming a bar that exists, and the mode deciding which 
+half of a record a bar may carry — a guest carries the source it refreshes from and offers nothing, 
+being no device's to give away twice, while an owner carries neither source nor refresh time and 
+offers a bar once per transport. That coherence sits on `Shelf` rather than on `Bar` for the reason 
+`Ingredient` has no invariants and `Collection` has them all: `validateShelf` takes bars already 
+built, so a rule `Bar`'s constructor kept would be one an untrusted index could never be *reported* 
+on — it would crash on the way in instead. `collection` is an empty `Collection` while no bar 
 is open, and no screen can read it then — the shell offers no destination without a bar 
 ([architecture.md](architecture.md#bars)).
+
+`Offer` is a record, and a record compares its fields with `==` — so `Bar` compares the guest lists 
+inside its offers itself, two offers built apart being equal in every part but list identity.
 
 **One collection is resident**, which is what makes FR-BAR-1's "nothing crosses" a fact rather than a 
 rule: there is no second `Collection` for a search, a draw or a jump to reach into. It also leaves 

@@ -19,7 +19,7 @@ enum StockLevel {
   StockLevel get next => values[(index + 1) % values.length];
 
   static StockLevel? fromToken(String text) =>
-      _fromToken(values, text, (v) => v.token);
+      enumFromToken(values, text, (v) => v.token);
 }
 
 /// The fixed units (FR-VOC-5): no rename, no delete, and the only ones a
@@ -34,7 +34,7 @@ enum FixedUnit {
   const FixedUnit(this.token);
 
   static FixedUnit? fromToken(String text) =>
-      _fromToken(values, text, (v) => v.token);
+      enumFromToken(values, text, (v) => v.token);
 
   /// The fixed unit [name] spells, or null where it is one of the reader's own.
   static FixedUnit? named(String name) {
@@ -55,7 +55,7 @@ enum LineMark {
   const LineMark(this.token);
 
   static LineMark? fromToken(String text) =>
-      _fromToken(values, text, (v) => v.token);
+      enumFromToken(values, text, (v) => v.token);
 }
 
 /// Tag color palette; green/amber/red reserved by stock and availability (ADR-07).
@@ -72,11 +72,12 @@ enum TagColor {
   const TagColor(this.token);
 
   static TagColor? fromToken(String text) =>
-      _fromToken(values, text, (v) => v.token);
+      enumFromToken(values, text, (v) => v.token);
 }
 
-/// Linear token lookup shared by the enums above.
-T? _fromToken<T extends Enum>(
+/// Linear token lookup, shared by the enums above and by the bar's own
+/// (shelf.dart). Public in src/, not exported (ADR-04).
+T? enumFromToken<T extends Enum>(
   List<T> values,
   String text,
   String Function(T) token,

@@ -245,13 +245,32 @@ What ships as 1.0.0 should carry nothing the product no longer claims.
 The root moves above `Collection` and every layer follows it up. Nothing travels between devices yet: a
 guest bar is built as a shape here and gets its first source in Phase 8.
 
-- [ ] **M30 Shelf domain** — [ADR 20](adr/20-the-app-holds-many-bars.md): `Bar`, `BarMode`,
-      `Transport`, `BarSource`, `Offer`, `BarPayload`, and `Shelf` over them, keeping the
-      constructor contract `Collection`'s own already does — ids unique, `openId` naming a bar that
-      exists, a guest carrying a source and an owner none. `ShelfEdits` beside `CollectionEdits`, with
-      `withCollection` refusing a guest bar ([ADR 23](adr/23-nothing-writes-a-guest-bar.md)), and
-      `validateShelf` reading the index's parts through the kinds that already exist. Shape only —
-      nothing above the domain knows yet.
+- [x] **M30 Shelf domain** — [ADR 20](adr/20-the-app-holds-many-bars.md): `Bar`, `BarMode`,
+      `Transport`, `BarSource`, `Offer`, `BarPayload` and `Shelf` over them, `ShelfEdits` beside
+      `CollectionEdits` with `withCollection` refusing a guest bar
+      ([ADR 23](adr/23-nothing-writes-a-guest-bar.md)), and `validateShelf` reading the index's parts
+      through the kinds that already exist. Shape only — nothing above the domain knows yet. The
+      files are `shelf.dart` and `shelf_edits.dart`, not the `bar_edits.dart` the module map named:
+      the root names the file, as `collection.dart` holds six entities that are not a `Collection`,
+      and `ShelfEdits` living in a file named for the type it is not is M28c's defect in miniature —
+      which the map's own "as `CollectionEdits` is `collection_edits.dart`" had already argued by an
+      analogy it then failed to follow. Where a record's coherence is checked was the decision worth
+      making: on `Shelf`, never on `Bar`, because `validateShelf` takes bars already built, so a rule
+      `Bar`'s constructor kept would be one an untrusted index could only ever crash on rather than
+      be told about — the reason `Ingredient` has no invariants and `Collection` has them all. Two
+      invariants past the four written down, both read off what the fields already claimed to be: a
+      guest offers nothing, being no device's to give away twice, and an owner carries no refresh
+      time any more than it carries a source. `Offer` stayed the documented record and `Bar` compares
+      the guest lists inside its offers itself — a record compares its fields with `==`, so two
+      offers built apart would have been unequal by list identity alone, and `Shelf` equality is what
+      M32 hands Riverpod. `enumFromToken` came out of `collection.dart`'s privacy to serve the bar's
+      two enums rather than be copied into them: layer-private like `names.dart`, hidden from the
+      barrel, pinned there by `architecture_test`. `Bar.display` stands beside `Settings.display`
+      until M31 — the pick's removal from the collection is a format-2 fact and format 2 lands whole,
+      as `ModelStore` held a `Collection` for two milestones (M28c). No id is minted here: the domain
+      takes ids passed in, being pure of ambient chance, and where they come from is M31's. The three
+      domain test files share one set of fixtures and the `tokenVocabulary`/`valueEquality` bodies by
+      `show` import, the first time the suite reaches across its own files rather than copying.
 - [ ] **M31 One file per bar** — `BarStore` replaces `ModelStore`: `shelf.yaml` and `bars/<id>.yaml`,
       atomic writes and rotation per bar, `removeBar`, and `beforeDelete` joining `ExportPurpose`.
       Format 2 lands whole ([ADR 21](adr/21-the-file-carries-one-bar.md)) — `name:` at the top,

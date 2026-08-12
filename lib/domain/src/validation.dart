@@ -5,6 +5,7 @@ library;
 import 'names.dart';
 import 'line_format.dart';
 import 'collection.dart';
+import 'shelf.dart';
 
 /// Issue rules; switch on this instead of the message.
 enum ValidationIssueKind {
@@ -140,6 +141,114 @@ List<ValidationIssue> validateCollection({
       knownUnits: nameKeys(units.spellings),
     ),
   );
+  return issues;
+}
+
+/// Checks the parts of a would-be [Shelf] — the index's own record, never a
+/// bar's contents (ADR-21) — against the rules its constructor keeps, reported
+/// rather than thrown. Names go unchecked for uniqueness: two bars may carry
+/// one (FR-BAR-1). Paths follow the index's keys, `open` before `bars` as the
+/// file writes them.
+List<ValidationIssue> validateShelf({required List<Bar> bars, String? openId}) {
+  final issues = <ValidationIssue>[];
+  final ids = {for (final bar in bars) bar.id};
+  if (openId != null && !ids.contains(openId)) {
+    issues.add(
+      ValidationIssue(
+        const ['open'],
+        ValidationIssueKind.malformedValue,
+        'open names no bar on the shelf: "$openId"',
+      ),
+    );
+  }
+  final seen = <String>{};
+  for (var i = 0; i < bars.length; i++) {
+    final bar = bars[i];
+    _addProblems(
+      issues,
+      ['bars', i, 'id'],
+      [
+        // Ids are minted rather than written, so they compare exactly: ADR-08's
+        // fold is a rule for names, and two ids differing in case are two bars.
+        bar.id.isEmpty
+            ? (kind: ValidationIssueKind.emptyName, message: 'Empty bar id')
+            : null,
+        seen.add(bar.id)
+            ? null
+            : (
+                kind: ValidationIssueKind.duplicateName,
+                message: 'Duplicate bar id: "${bar.id}"',
+              ),
+      ],
+    );
+    issues.addAll(
+      _checkName(
+        'bar',
+        bar.name,
+        isDuplicate: false,
+        basePath: ['bars', i, 'name'],
+      ),
+    );
+    issues.addAll(_checkRecord(bar, ['bars', i]));
+  }
+  return issues;
+}
+
+/// The half of a record its mode allows it: a guest refreshes from a source and
+/// has nothing of its own to give away, an owner shares and refreshes from
+/// nothing (FR-BAR-3/6).
+List<ValidationIssue> _checkRecord(Bar bar, List<Object> basePath) {
+  final issues = <ValidationIssue>[];
+  final hasSource = bar.source != null;
+  _addProblems(
+    issues,
+    [...basePath, 'source'],
+    [
+      if (bar.isOwned && hasSource)
+        (
+          kind: ValidationIssueKind.malformedValue,
+          message: 'An owned bar refreshes from no source: "${bar.name}"',
+        ),
+      if (!bar.isOwned && !hasSource)
+        (
+          kind: ValidationIssueKind.malformedValue,
+          message:
+              'A guest bar needs the source it refreshes from: "${bar.name}"',
+        ),
+    ],
+  );
+  if (bar.isOwned && bar.refreshed != null) {
+    issues.add(
+      ValidationIssue(
+        [...basePath, 'refreshed'],
+        ValidationIssueKind.malformedValue,
+        'An owned bar has nothing to refresh: "${bar.name}"',
+      ),
+    );
+  }
+  final vias = <Transport>{};
+  for (var o = 0; o < bar.offers.length; o++) {
+    final via = bar.offers[o].via;
+    _addProblems(
+      issues,
+      [...basePath, 'offers', o],
+      [
+        bar.isOwned
+            ? null
+            : (
+                kind: ValidationIssueKind.malformedValue,
+                message:
+                    'A guest bar is not this device\'s to share: "${bar.name}"',
+              ),
+        vias.add(via)
+            ? null
+            : (
+                kind: ValidationIssueKind.duplicateName,
+                message: 'Bar offered twice by ${via.token}: "${bar.name}"',
+              ),
+      ],
+    );
+  }
   return issues;
 }
 
