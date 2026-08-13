@@ -540,6 +540,31 @@ final class Collection {
       '${recipes.length} recipes)';
 }
 
+/// The four kinds a collection is summed up by, recipes first: a reader tells
+/// one collection from another by what it makes long before by the vocabulary
+/// serving it. One home for the kinds, their order and what each is called, so
+/// a bar card and an import review read alike.
+enum Holding {
+  recipe,
+  ingredient,
+  tag,
+  unit;
+
+  String get noun => name;
+}
+
+/// How many of each [Holding], which is all a bar list may know of a bar that
+/// is not on show ([ADR 20](../../../docs/adr/20-the-app-holds-many-bars.md)) —
+/// four numbers rather than a second collection.
+Map<Holding, int> holdingsOf(Collection collection) => {
+  Holding.recipe: collection.recipes.length,
+  Holding.ingredient: collection.ingredients.length,
+  // The one kind spanning two vocabularies, counted as the reader meets it:
+  // one word for both, as `tags_screen.dart` lists them (ADR 07).
+  Holding.tag: collection.recipeTags.length + collection.ingredientTags.length,
+  Holding.unit: collection.units.length,
+};
+
 /// Tags [worn] names, in [vocabulary] order.
 List<Tag> wornInOrder(List<Tag> vocabulary, Iterable<String> worn) {
   final names = nameKeys(worn);

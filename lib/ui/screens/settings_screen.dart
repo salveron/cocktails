@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../widgets/vocabulary_list.dart';
 import 'amounts_screen.dart';
+import 'bars_screen.dart';
 import 'tags_screen.dart';
 import 'units_screen.dart';
 
@@ -22,6 +23,12 @@ class SettingsScreen extends ConsumerWidget {
     appBar: AppBar(title: const Text('Settings')),
     body: ListView(
       children: [
+        const _Entry.opens(
+          icon: Icons.liquor_outlined,
+          title: 'Switch bar…',
+          subtitle: 'The bars this device holds, and what each one is',
+          page: BarsScreen(),
+        ),
         const _Entry.opens(
           icon: Icons.label_outline,
           title: 'Tags',
@@ -226,7 +233,7 @@ class _Holdings extends StatefulWidget {
 }
 
 class _HoldingsState extends State<_Holdings> {
-  final _open = <String>{};
+  final _open = <Holding>{};
 
   @override
   Widget build(BuildContext context) => ListView(
@@ -249,10 +256,10 @@ class _HoldingsState extends State<_Holdings> {
   /// list when opened. A kind the file holds none of opens onto nothing, so it
   /// offers no chevron and does not answer a tap.
   Widget _card(_Holding holding) {
-    final open = _open.contains(holding.noun);
+    final open = _open.contains(holding.kind);
     final empty = holding.count == 0;
     return VocabularyRow(
-      title: Text(counted(holding.count, holding.noun)),
+      title: Text(counted(holding.count, holding.kind.noun)),
       subtitle: open || empty
           ? null
           : Text(holding.line, maxLines: 1, overflow: TextOverflow.ellipsis),
@@ -260,16 +267,16 @@ class _HoldingsState extends State<_Holdings> {
           ? null
           : Icon(open ? Icons.expand_less : Icons.expand_more),
       body: open ? BulletRuns(holding.runs) : null,
-      onTap: empty ? null : () => setState(() => _open.toggle(holding.noun)),
+      onTap: empty ? null : () => setState(() => _open.toggle(holding.kind)),
     );
   }
 }
 
-/// One kind the file carries: what the app calls it, and the names behind it.
+/// One kind the file carries, and the names behind it.
 final class _Holding {
-  const _Holding(this.noun, this.runs);
+  const _Holding(this.kind, this.runs);
 
-  final String noun;
+  final Holding kind;
 
   /// One run but for the tags, whose single count covers two vocabularies a
   /// body has to keep apart (ADR 07).
@@ -291,23 +298,26 @@ final class _Holding {
 /// rather than on the count of what was left out of it.
 const _lineNames = 24;
 
-/// What the file amounts to, recipes first: a reader tells one collection from
-/// another by what it makes long before by the vocabulary serving it. Each kind
-/// is named and ordered as the screen managing it names and orders it, so a card
-/// here reads as the list it stands for (`inventory_screen.dart`,
-/// `tags_screen.dart`, `units_screen.dart`).
+/// What the file amounts to, in [Holding]'s own order and under its own nouns —
+/// the same four a bar card counts. Each kind is named and ordered within itself
+/// as the screen managing it does, so a card here reads as the list it stands
+/// for (`inventory_screen.dart`, `tags_screen.dart`, `units_screen.dart`).
 List<_Holding> _holdingsOf(Collection collection) => [
-  _Holding('recipe', [_run(collection.recipes.map((recipe) => recipe.name))]),
-  _Holding('ingredient', [
-    _run(collection.ingredients.map((ingredient) => ingredient.name)),
-  ]),
-  _Holding('tag', [
-    _run(collection.recipeTags.map((tag) => tag.name), label: 'Recipe'),
-    _run(collection.ingredientTags.map((tag) => tag.name), label: 'Ingredient'),
-  ]),
-  _Holding('unit', [
-    _run(collection.units.map((unit) => unit.name), sorted: false),
-  ]),
+  for (final kind in Holding.values)
+    _Holding(kind, switch (kind) {
+      Holding.recipe => [_run(collection.recipes.map((it) => it.name))],
+      Holding.ingredient => [_run(collection.ingredients.map((it) => it.name))],
+      Holding.tag => [
+        _run(collection.recipeTags.map((it) => it.name), label: 'Recipe'),
+        _run(
+          collection.ingredientTags.map((it) => it.name),
+          label: 'Ingredient',
+        ),
+      ],
+      Holding.unit => [
+        _run(collection.units.map((it) => it.name), sorted: false),
+      ],
+    }),
 ];
 
 /// A→Z on the app's one ordering (ADR 08), so a reader scanning a long card

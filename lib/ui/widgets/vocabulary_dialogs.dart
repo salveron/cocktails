@@ -53,6 +53,34 @@ typedef VocabularyEntry = ({
   List<String> tags,
 });
 
+/// Get a name and nothing else, or null if cancelled — the entry dialog with
+/// every part only a vocabulary needs left out, so a bar is named the way an
+/// ingredient is (`bars_screen.dart`). Blank is the one rule: bar names are
+/// labels and two may be alike (FR-BAR-1).
+Future<String?> promptForName(
+  BuildContext context, {
+  required String title,
+  required String hintText,
+  String initial = '',
+}) async => (await _prompt(
+  context,
+  title: title,
+  hintText: hintText,
+  validate: (entry) => [
+    if (entry.name.trim().isEmpty)
+      ValidationIssue(
+        const [],
+        ValidationIssueKind.emptyName,
+        'A name of spaces is no name',
+      ),
+  ],
+  initial: initial,
+  aliases: null,
+  color: null,
+  vocabulary: const [],
+  chosen: const [],
+))?.entry.name.trim();
+
 /// Get ingredient name, aliases and tags, or null if cancelled.
 Future<VocabularyEntry?> promptForIngredient(
   BuildContext context, {

@@ -6,8 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'shelf_controller.dart';
 
-/// The open bar's collection, the shape every screen already reads — derived
-/// rather than owned, which kept them still while the root moved above them.
+/// The open bar's collection: derived, not owned, which is what keeps every
+/// screen reading the shape it always did.
 final collectionProvider = Provider<AsyncValue<Collection>>(
   (ref) => ref.watch(shelfProvider).whenData((shelf) => shelf.collection),
 );
@@ -17,14 +17,18 @@ final openBarProvider = Provider<Bar?>(
   (ref) => ref.watch(shelfProvider).valueOrNull?.open,
 );
 
-/// Startup load errors; empty when successful (FR-DAT-4).
-final startupIssuesProvider = Provider<List<String>>((ref) {
+/// Every bar the device holds, records only (ADR 20).
+final barsProvider = Provider<List<Bar>>(
+  (ref) => ref.watch(shelfProvider).valueOrNull?.bars ?? const [],
+);
+
+/// What the last load — startup or crossing — turned up (FR-DAT-4).
+final loadIssuesProvider = Provider<List<String>>((ref) {
   ref.watch(shelfProvider);
-  return ref.watch(shelfProvider.notifier).startupIssues;
+  return ref.watch(shelfProvider.notifier).loadIssues;
 });
 
-/// By recipe name, recomputed whole per change (under a millisecond at NFR-2
-/// scale); empty until the load lands.
+/// By recipe name, recomputed whole per change (under a millisecond at NFR-2).
 final availabilityProvider = Provider<Map<String, Availability>>((ref) {
   final collection = ref.watch(collectionProvider).valueOrNull;
   return {
@@ -34,8 +38,8 @@ final availabilityProvider = Provider<Map<String, Availability>>((ref) {
   };
 });
 
-/// What to buy next, searched once at the largest budget (FR-DIS-6, ADR 15) —
-/// keyed on what counts as short (ADR 16), and autoDispose, so the one costly
+/// What to buy next, searched once at the largest budget (FR-DIS-6, ADR 15),
+/// keyed on what counts as short (ADR 16); autoDispose, so the one costly
 /// computation stops with the screen that asked for it (docs/components.md).
 final purchasesProvider = Provider.autoDispose.family<List<Purchase>, bool>((
   ref,

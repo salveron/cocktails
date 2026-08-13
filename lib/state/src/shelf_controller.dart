@@ -1,5 +1,4 @@
-/// The one writable provider: the startup load, the bar on show, and the file
-/// seam either way (docs/components.md#state-contracts).
+/// The one writable provider (docs/components.md#state-contracts).
 library;
 
 import 'package:cocktails/data/data.dart';
@@ -10,20 +9,19 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'bar_writer.dart';
 import 'seams.dart';
 
-/// The root, and the only thing that writes: `ui/` reads through the derived
-/// providers and mutates through `barWriterProvider` (ADR 23).
+/// The root: `ui/` reads through the derived providers and mutates through
+/// `barWriterProvider` (ADR 23).
 final shelfProvider = AsyncNotifierProvider<ShelfController, Shelf>(
   ShelfController.new,
 );
 
 final class ShelfController extends AsyncNotifier<Shelf> {
-  List<String> _startupIssues = const [];
+  List<String> _loadIssues = const [];
 
-  List<String> get startupIssues => _startupIssues;
+  /// What the last load turned up, startup or crossing.
+  List<String> get loadIssues => _loadIssues;
 
-  /// Reads the index and opens the bar it names, founding one where the device
-  /// holds none and falling back to a backup where it will not decode
-  /// (FR-DAT-4).
+  /// Reads the index and opens the bar it names (FR-DAT-4).
   @override
   Future<Shelf> build() async {
     final store = ref.watch(barStoreProvider);
@@ -35,42 +33,52 @@ final class ShelfController extends AsyncNotifier<Shelf> {
       Empty() => null,
       Corrupt(:final recovered) => recovered,
     };
-    // An index naming no bar, or naming one it does not hold, still opens on
-    // whatever it does hold; only a shelf with nothing on it founds a bar.
-    final bars = records?.bars ?? const <Bar>[];
-    if (bars.isEmpty) return _foundFirstBar(store, issues);
-    final open = bars.firstWhere(
-      (bar) => bar.id == records!.openId,
-      orElse: () => bars.first,
-    );
-    final loaded = await store.loadBar(open.id);
-    if (loaded is Corrupt<BarPayload>) issues.addAll(_described(loaded.issues));
-    _startupIssues = List.unmodifiable(issues);
-    return Shelf(
-      bars: bars,
-      openId: open.id,
-      collection: switch (loaded) {
-        Loaded(:final value) => value.collection,
-        Empty() => Collection(),
-        Corrupt(:final recovered) => recovered?.collection ?? Collection(),
-      },
-    );
+    // No index at all is a first run and gets a bar; an index listing none is a
+    // reader who deleted their last, whom the bar list meets instead (ADR 20).
+    if (records == null) return _foundFirstBar(store, issues);
+    // One naming no open bar, or naming one it lacks, opens on what it holds.
+    final bars = records.bars;
+    final open = bars.isEmpty
+        ? null
+        : bars.firstWhere(
+            (bar) => bar.id == records.openId,
+            orElse: () => bars.first,
+          );
+    final collection = open == null
+        ? null
+        : await _collectionOf(store, open.id, issues);
+    _loadIssues = List.unmodifiable(issues);
+    return Shelf(bars: bars, openId: open?.id, collection: collection);
   }
 
-  /// A device holding nothing gets one empty owned bar, written before it is
-  /// published so a first edit has a file to land beside.
+  /// A device holding nothing gets one empty owned bar, its file before the
+  /// index as [addOwnedBar] and the migration both write one.
   Future<Shelf> _foundFirstBar(BarStore store, List<String> issues) async {
     final bar = Bar(id: newBarId(), name: 'Home bar', mode: BarMode.owner);
-    _startupIssues = List.unmodifiable(issues);
-    // The bar before the index, as the migration does: the index is what says
-    // a bar exists, so it is written once the file it names is there.
+    _loadIssues = List.unmodifiable(issues);
     await store.saveBar(bar, Collection());
     await store.saveShelf((bars: [bar], openId: bar.id));
     return Shelf(bars: [bar], openId: bar.id);
   }
 
-  /// The unit amounts read in: on the controller, not the writer, being the
-  /// reader's on a guest bar too (FR-BAR-3, FR-SET-1, ADR 21).
+  /// One bar's contents, or the best recovered from them, what failed reaching
+  /// [issues] (FR-DAT-4). The one read of a bar's bytes, startup or crossing.
+  Future<Collection> _collectionOf(
+    BarStore store,
+    String id,
+    List<String> issues,
+  ) async {
+    final loaded = await store.loadBar(id);
+    if (loaded is Corrupt<BarPayload>) issues.addAll(_described(loaded.issues));
+    return switch (loaded) {
+      Loaded(:final value) => value.collection,
+      Empty() => Collection(),
+      Corrupt(:final recovered) => recovered?.collection ?? Collection(),
+    };
+  }
+
+  /// The unit amounts read in: on the controller rather than the writer, being
+  /// the reader's on a guest bar too (FR-BAR-3, FR-SET-1, ADR 21).
   Future<void> setDisplay(FixedUnit display) async {
     final shelf = await future;
     final bar = shelf.open;
@@ -79,7 +87,7 @@ final class ShelfController extends AsyncNotifier<Shelf> {
   }
 
   /// A shareable copy and where it went, opaque so the screen hands it on
-  /// unread (FR-DAT-1). A guest bar exports like any other (FR-BAR-4).
+  /// unread (FR-DAT-1, FR-BAR-4).
   Future<String> export() async {
     final shelf = await future;
     return ref
@@ -87,19 +95,17 @@ final class ShelfController extends AsyncNotifier<Shelf> {
         .exportSnapshot(shelf.open!, shelf.collection);
   }
 
-  /// What [text] holds, judged before anything is touched — the confirmation
-  /// and the copy [replaceOpen] keeps both slot in between (FR-DAT-3/4).
+  /// What [text] holds, judged before anything is touched (FR-DAT-3/4).
   ImportReview review(String text) => switch (const YamlCodec().decode(text)) {
     Decoded(:final value) => (bar: value, issues: const <String>[]),
     Rejected(:final issues) => (bar: null, issues: _described(issues)),
   };
 
   /// Replaces the open bar with a picked file, copying what stood first
-  /// (FR-DAT-3). Owned bars only, by that requirement's own wording — the same
-  /// file is *added* as a guest bar instead (FR-BAR-7).
+  /// (FR-DAT-3). Owned bars only — the same file is *added* as a guest bar
+  /// instead (FR-BAR-7).
   Future<void> replaceOpen(BarPayload payload) async {
-    // Awaited first: the bar is only known once the load has answered, and the
-    // copy must be of what stood rather than of nothing.
+    // Awaited first: the copy must be of what stood rather than of nothing.
     final shelf = await future;
     final bar = shelf.open;
     if (bar == null || !bar.isOwned) return;
@@ -117,23 +123,101 @@ final class ShelfController extends AsyncNotifier<Shelf> {
     );
   }
 
+  /// The switch (FR-BAR-1): the record and the bytes at once (ADR 20).
+  Future<void> openBar(String id) async {
+    final shelf = await future;
+    if (shelf.openId == id || shelf.barWithId(id) == null) return;
+    final issues = <String>[];
+    final collection = await _collectionOf(
+      ref.read(barStoreProvider),
+      id,
+      issues,
+    );
+    // The banner reports the load last asked for, so a sound bar clears it.
+    _loadIssues = List.unmodifiable(issues);
+    await _publish(shelf.opening(id, collection));
+  }
+
+  /// FR-BAR-2: a new bar, empty, owned and opened on the spot; its file lands
+  /// before the index names it.
+  Future<void> addOwnedBar(String name) async {
+    final shelf = await future;
+    final bar = Bar(id: newBarId(), name: name, mode: BarMode.owner);
+    final collection = Collection();
+    await ref.read(barStoreProvider).saveBar(bar, collection);
+    _loadIssues = const [];
+    await _publish(shelf.withBar(bar).opening(bar.id, collection));
+  }
+
+  /// FR-BAR-2. A guest bar's name is its owner's and arrives with every refresh
+  /// (FR-BAR-5), so a rename there would be thrown away by the next one.
+  Future<void> renameBar(String id, String name) async {
+    final shelf = await future;
+    final bar = shelf.barWithId(id);
+    if (bar == null || !bar.isOwned || bar.name == name) return;
+    await _publish(shelf.withBar(bar.copyWith(name: name)));
+  }
+
+  /// FR-BAR-2: the copy first, then the bar. The record goes before the file it
+  /// names — storage to reclaim one way round, a bar opening onto nothing the
+  /// other. Deleting the bar on show leaves none open.
+  Future<void> removeBar(String id) async {
+    final shelf = await future;
+    final bar = shelf.barWithId(id);
+    if (bar == null) return;
+    final store = ref.read(barStoreProvider);
+    // Only an owned bar is copied: a guest's contents are its owner's, and
+    // FR-BAR-3 removes one touching nothing. Any bar but the one on show is
+    // read back for it, no other collection being resident (ADR 20).
+    if (bar.isOwned) {
+      final collection = id == shelf.openId
+          ? shelf.collection
+          : await _collectionOf(store, id, <String>[]);
+      await store.exportSnapshot(
+        bar,
+        collection,
+        purpose: ExportPurpose.beforeDelete,
+      );
+    }
+    await _publish(shelf.withoutBar(id));
+    await store.removeBar(id);
+  }
+
+  /// How much a bar holds, for the card that lists it: counts rather than
+  /// contents, so no second collection reaches `ui/` (ADR 20). Null where
+  /// nothing could be read; the bar on show is resident and is not fetched.
+  Future<Map<Holding, int>?> holdingsOfBar(String id) async {
+    final shelf = await future;
+    if (id == shelf.openId) return holdingsOf(shelf.collection);
+    // A file that never landed counts as the empty collection opening it would
+    // give; only one that cannot be read at all has nothing to answer with.
+    return switch (await ref.read(barStoreProvider).loadBar(id)) {
+      Loaded(:final value) => holdingsOf(value.collection),
+      Empty() => holdingsOf(Collection()),
+      Corrupt(:final recovered) =>
+        recovered == null ? null : holdingsOf(recovered.collection),
+    };
+  }
+
   /// FR-DAT-4's issues as a reader meets them, whenever they arose.
   static List<String> _described(List<SourcedIssue> issues) =>
       List.unmodifiable([for (final issue in issues) issue.description]);
 
   /// Publish, then persist only what moved: a stock tap rewrites one bar's file
-  /// and a unit pick only the index, neither rotating the other's backups.
+  /// and a unit pick only the index, neither rotating the other's backups. A
+  /// collection is written only where the bar under it stayed put — that is what
+  /// tells an edit from a crossing, which brings its collection up from disk and
+  /// would rotate the backups of a bar nobody touched.
   Future<void> _publish(Shelf edited) async {
-    final standing = state.valueOrNull;
+    final standing = state.requireValue;
     if (edited == standing) return;
     state = AsyncData(edited);
     final store = ref.read(barStoreProvider);
-    if (standing == null || edited.collection != standing.collection) {
+    final crossed = edited.openId != standing.openId;
+    if (!crossed && edited.collection != standing.collection) {
       await store.saveBar(edited.open!, edited.collection);
     }
-    if (standing == null ||
-        edited.openId != standing.openId ||
-        !listEquals(edited.bars, standing.bars)) {
+    if (crossed || !listEquals(edited.bars, standing.bars)) {
       await store.saveShelf((bars: edited.bars, openId: edited.openId));
     }
   }

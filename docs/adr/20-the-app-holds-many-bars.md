@@ -62,8 +62,20 @@ the only one resident.**
 
 - The one writable provider becomes `ShelfController`; `collectionProvider` survives as a derived reading
   of the open bar's collection, which is what keeps every screen unchanged.
-- A shelf may hold no open bar — first run before the migration, or the last bar deleted. The shell
-  offers no destination then, and the bar list is what it shows.
+- A shelf may hold no open bar — first run before the migration, the last bar deleted, or the open
+  one deleted with others still standing. The shell offers no destination then, and the bar list is
+  what it shows. **Built:** that is the whole rule, and the empty shelf needs no path of its own.
+  A first run is told from a cleared shelf by the index — absent versus present and listing none —
+  so a device holding nothing is given a bar while a reader who deleted theirs is met by the list.
 - Reaching another bar costs one file read and one decode, the work startup has always done.
+- **A record is all the bar list may know**, which is what the list is built on: a card carries the
+  name, and opening it spends that one decode to answer with *counts* rather than contents
+  ([ui-design.md](../ui-design.md#bars)). Reading every bar's file to fill the closed cards was
+  weighed and refused on the same NFR-2 grounds as keeping them resident — tens of bars is the stated
+  scale — and a summary kept in the index was refused as a format bump buying a number that every
+  write would then have to keep true.
+- The crossing is what taught `_publish` to tell an edit from a load: a collection that changed
+  because it came up from disk must not be written back, or every switch rotates the backups of a bar
+  nobody touched ([components.md](../components.md#state-contracts)).
 - The bar list is the first thing in the app above the destinations, and the first state that is not
   about one collection.

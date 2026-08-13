@@ -320,7 +320,9 @@ recipes:
       // were not there a moment ago is the answer no sentence improves on.
       expect(find.widgetWithText(AppBar, 'Import'), findsNothing);
       expect(find.widgetWithText(AppBar, 'Settings'), findsNothing);
-      expect(find.widgetWithText(AppBar, 'Recipes'), findsOneWidget);
+      // Under the imported bar's name, not the one that stood: a file carries a
+      // whole bar (ADR 21), so the name rode in with the contents.
+      expect(shellTitle('Recipes', bar: "Ada's bar"), findsOneWidget);
       expect(find.text('Whiskey Sour'), findsOneWidget);
       expect(find.text('3 recipes imported.'), findsOneWidget);
     });

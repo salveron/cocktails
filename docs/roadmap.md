@@ -341,12 +341,48 @@ guest bar is built as a shape here and gets its first source in Phase 8.
       write path persisted the index on *every* collection edit, so a stock tap rotated
       `shelf.yaml`'s three backups though no record had moved. It now writes only what changed —
       a stock tap one bar's file, a unit pick only the index — pinned both ways.
-- [ ] **M33 The bars screen** — [ui-design.md](ui-design.md#bars): the gear's **Switch bar…**, one
-      card a bar, tapped to switch and popped on the way, with rename and delete behind its ⋮ —
-      delete confirmed and exported first (FR-BAR-2). An empty shelf is the one time this screen is
-      home, offering the two ways to a first bar. The app bar reads "Home bar's Recipes", and the
-      shell's subtree is keyed by the open bar, so a crossing takes every search, pick, open card
-      and jump trail with it (FR-BAR-1).
+- [x] **M33 The bars screen** — [ui-design.md](ui-design.md#bars): the gear's **Switch bar…**, one
+      card a bar, and `openBar`/`addOwnedBar`/`renameBar`/`removeBar` under it — delete confirmed and
+      exported first (FR-BAR-2). The app bar reads "Home bar's Recipes" on the three destinations, and
+      the shell's subtree is keyed by the open bar, so a crossing takes every search, pick, open card
+      and jump trail with it (FR-BAR-1). Four questions settled the design, and three of the four
+      moved it off what was written. **The card expands rather than switches** — the recipe card's own
+      gesture — so a stray tap no longer throws away a bar's every narrowing; the crossing became its
+      own **Open bar** button, whose *absence* is how the list marks the bar you are already in, no
+      badge and no fill. A card opening reads that bar's file for **counts, not contents**: closed
+      cards showing a summary would mean decoding every bar on arrival, which NFR-2's "tens of bars"
+      rules out and ADR 20 line 24 forbids outright, and a summary kept in the index was refused as a
+      format bump every write would then have to keep true. `holdingsOf` and the `Holding` enum are
+      the one home for the four kinds, their order and their nouns — the import review names the same
+      four. **"No bar open" replaced "an empty shelf"** as the rule putting the list on screen as
+      home, which is ADR 20's own wording and covers the reader who deletes the bar they are standing
+      in: nothing is left open and they pick from the list they are already on, rather than the app
+      choosing one for them. A first run is told from a cleared shelf by the index being absent rather
+      than empty. Two things the milestone did not plan for. `_publish` was **wrong for a crossing**:
+      it inferred "the collection changed, so write it", which is true of an edit and false of a bar
+      loaded up from disk — every switch would have rotated the backups of a bar nobody touched. The
+      fix made it *simpler* than M32 left it: a collection is written only where the bar under it
+      stayed put, one rule now covering all seven writes, and the dead `standing == null` branches
+      went with it. And `startupIssues` became `loadIssues`, a crossing onto a torn file having as
+      much to report as a startup — the banner's dismissal is now of the issues it dismissed, not of
+      the banner, so the next bar's trouble is not swallowed by a tap made before it.
+- [ ] **M33a The load answers once** — the cleanup phase 7 left behind, taken before M34 rather than
+      after: M34 hides a control on the same seven screens, so cleaning first means it edits
+      already-simplified code instead of both changes rewriting the same lines. `collectionProvider`
+      is an `AsyncValue` unwrapped in exactly one place in `ui/` — `CollectionView` — and null-guarded
+      twice in `derived.dart`; now that `_Home` already gates on whether the shelf has answered, the
+      spinner and the failure face live there once and `collectionProvider` becomes a plain
+      `Provider<Collection>`. `CollectionView` and its test go, `availabilityProvider` and
+      `purchasesProvider` lose their null branches, and seven screens stop wrapping their whole body
+      in a closure — the recipes screen most of all, where it costs a level of indentation over 714
+      lines. **The one visible change**: during the startup read the app draws a bare spinner rather
+      than shell chrome around one, which is honester than an app bar with no bar to name. Two small
+      ones ride along. `loadIssuesProvider` reads a mutable field through a `ref.watch` that exists
+      only to force recomputation, which works because the controller always sets `_loadIssues`
+      before `state` moves — an invariant nothing enforces and M33 had to keep at three new call
+      sites; a `Notifier<List<String>>` makes it ordinary state. And `Bar.copyWith` cannot clear a
+      nullable field (`source ?? this.source`), which nothing needs today and M35/M36 add the code
+      that might.
 - [ ] **M34 A guest bar is read-only** — FR-BAR-3/4 built as shape, before any channel can make one:
       two destinations rather than three, the optimizer absent rather than empty (FR-DIS-6/7/10
       unreachable, so nothing watches `purchasesProvider` at all), and no form, dialog, toggle or

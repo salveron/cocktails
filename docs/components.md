@@ -68,13 +68,14 @@ lib/
                                #   and `neutralSwatch`, the ground a chip meaning
                                #   nothing by its colour stands on (ADR 12)
     screens/                   # one file per destination, plus settings, tags, units,
-                               #   amounts, recipe form, the bar list and the owner's
-                               #   view of what a bar is shared by — the last two shaped
-                               #   by ui-design.md once it is settled. settings_screen
+                               #   amounts, recipe form, bars — the list that is also
+                               #   home wherever none is open — and the owner's view of
+                               #   what a bar is shared by, that last shaped by
+                               #   ui-design.md once it is settled. settings_screen
                                #   holds both halves of the data exchange and the import
                                #   review its pick pushes, so one file keeps them from
                                #   drifting apart (ADR 18)
-    widgets/                   # empty_state, collection_view, search_field, startup_issues,
+    widgets/                   # empty_state, collection_view, search_field, load_issues,
                                #   color_chip — the pill, chip, dot, the run of dots a name
                                #     or a basket's recipe wears, the dotted name itself, and
                                #     `chipRadius`, the corner a chip and its ink round to
@@ -89,8 +90,9 @@ lib/
                                #     many of a thing there are, in words. The one file that
                                #     knows a list scrolls (ADR 13)
                                #   vocabulary_dialogs — entry (name, aliases, colour, tags),
-                               #     delete, discard, plus VocabularyEntry and the one
-                               #     reading of issue paths into fields every form shares
+                               #     a bare name where only that is asked for, delete,
+                               #     discard, plus VocabularyEntry and the one reading of
+                               #     issue paths into fields every form shares
                                #   editor_form — the pushed editor both forms wear: the
                                #     Save/discard frame and the self-growing row list
 test/                          # mirrors lib/, plus test/architecture_test.dart
@@ -649,18 +651,28 @@ ImportReview review(String text);        // pure: decode, described, nothing tou
 Future<String> export();                           // the open bar's copy (FR-DAT-1)
 Future<void> replaceOpen(BarPayload bar);          // the copy, then the replace (FR-DAT-3)
 Future<void> setDisplay(FixedUnit display);        // the reader's, guest bar included
+Future<void> openBar(String id);                   // FR-BAR-1, the switch
+Future<void> addOwnedBar(String name);             // FR-BAR-2, opened by the making
+Future<void> renameBar(String id, String name);    // FR-BAR-2, owned bars only
+Future<void> removeBar(String id);                 // FR-BAR-2, after its own export
+Future<Map<Holding, int>?> holdingsOfBar(String id);   // counts for the card listing it
 Future<void> addGuestBar(BarSource source, BarPayload bar);        // FR-BAR-3/7/8/9
 Future<void> refresh(String barId);                // FR-BAR-5; never awaited by a screen
-Future<void> openBar(String id);                   // FR-BAR-1, the switch
-Future<void> removeBar(String id);                 // FR-BAR-2, after its own export
 ```
 
-The first four are the controller's from M32; the last four land with the screens and channels that
-call them (M33, M35). Those four are the ones that take **one call site each**, which is why they sit
-here rather than on the writer — see [ADR 23](adr/23-nothing-writes-a-guest-bar.md), where the count
-is the whole argument. `export` and `setDisplay` work on a guest bar (FR-DAT-1, FR-BAR-3);
-`replaceOpen` refuses one, FR-DAT-3 importing "into an owned bar" and FR-BAR-7 giving the same file
-its other road.
+The first four are M32's, the next five M33's; the last two land with the channels that call them
+(M35). All of them take **one call site each**, which is why they sit here rather than on the writer
+— see [ADR 23](adr/23-nothing-writes-a-guest-bar.md), where the count is the whole argument. `export`
+and `setDisplay` work on a guest bar (FR-DAT-1, FR-BAR-3); `replaceOpen` refuses one, FR-DAT-3
+importing "into an owned bar" and FR-BAR-7 giving the same file its other road, and `renameBar`
+refuses one because a refresh replaces the name wholesale (FR-BAR-5) and would throw the rename away.
+
+`holdingsOfBar` is the one read of a bar that is not on show, and it answers **counts rather than
+contents** — `holdingsOf(Collection)` in the domain, keyed by the `Holding` enum that is also the one
+home for the four kinds, their order and their nouns (the import review names the same four). A card
+expanding is what sends the app to disk; the list itself reads the index alone (ADR 20), and no
+second `Collection` ever reaches `ui/`. A file that never landed counts as the empty collection
+opening it would give, where one that cannot be read at all answers null and the card says so.
 
 `review` is deliberately pure so the confirmation and the pre-import copy slot after it, and it is 
 the controller's rather than the screen's because `ui/` never imports `data/`. `_described` is the 
@@ -671,14 +683,19 @@ offers — replacing an owned bar, the file's `display` landing with the rest, o
 
 `ShelfController.build()` performs the startup load and is the only writable provider: it reads the 
 index, opens the bar it names, and reports what failed — a `Corrupt` bar starts on its recovered 
-backup, and issues reach the UI through `startupIssuesProvider` as `"line N: message"` strings 
-(FR-DAT-4; `SourcedIssue` is data-layer). An index naming no bar, or naming one it does not hold, 
-still opens on whatever it does hold; only a shelf with nothing on it founds one, writing the bar's 
-file before the index that names it.
+backup, and issues reach the UI through `loadIssuesProvider` as `"line N: message"` strings 
+(FR-DAT-4; `SourcedIssue` is data-layer). Those issues are the *last* load's, startup or crossing 
+alike, so a bar opened onto a torn file says so where the banner already speaks. An index naming no 
+open bar, or naming one it does not hold, still opens on whatever it does hold. **No index at all is 
+a first run and founds a bar; an index listing none is a reader who deleted their last, and the bar 
+list meets them** — the store tells the two apart, and `Empty` versus `Loaded` with no bars is where.
 
-One private path serves every write, `_publish`: publish, then persist — the record always, the 
-collection only where it moved, so picking a reading unit rotates no backup of a bar's file. The 
-platform seams sit in `seams.dart` beside it, one provider each 
+One private path serves every write, `_publish`: publish, then persist only what moved. A collection 
+is written **only where the bar under it stayed put**, which is what tells an edit from a crossing — 
+a crossing brings its collection up from disk, and writing that back would rotate the backups of a 
+bar nobody touched. The index is written only where a record moved or the open bar changed, so a 
+stock tap rotates no backup of `shelf.yaml` and a unit pick none of a bar's file. One rule covers all 
+seven writes. The platform seams sit in `seams.dart` beside it, one provider each 
 ([ADR 18](adr/18-data-crosses-the-edge-in-a-system-sheet.md)).
 
 **The write surface is separate from the controller** ([ADR 23](adr/23-nothing-writes-a-guest-bar.md)): 
@@ -703,8 +720,10 @@ Everything else is derived, read-only:
 
 `collectionProvider` — the open bar's collection, and the shape every screen already reads. It is derived 
 from `shelfProvider` rather than owned, which is what kept the whole presentation layer still while 
-the root moved above it. `openBarProvider` answers the record beside it: name, mode, reading unit, 
-source, last refresh.
+the root moved above it. `openBarProvider` answers the record beside it — name, mode, reading unit, 
+source, last refresh — and `barsProvider` every record on the shelf, which is all the bar list reads. 
+`openBarProvider` answering null once the shelf has loaded is what puts the bar list on screen as 
+home ([ui-design.md](ui-design.md#bars)).
 
 `availabilityProvider` — `Map<String, Availability>` by recipe name, `availabilityOf` over every 
 recipe on each collection change; empty until the load lands. One pass serves the list's chips and, later, 
@@ -794,10 +813,11 @@ Performance facts (no over-engineering):
    the serving screen clears the request, its own picks and the open cards, and hands the name to 
    `VocabularyList` for one build → the list clears its search and order, goes home, then scrolls to 
    the row and washes it (ADR 13, ADR 19).
-7. **Switching bars** (FR-BAR-1): the bar list calls `openBar(id)` → the controller loads that bar 
-   and publishes record and collection together, so no frame pairs one bar's record with another's 
-   recipes → the shell's subtree is keyed by the open bar, so every screen is built anew and no 
-   narrowing, open card or jump trail survives the crossing.
+7. **Switching bars** (FR-BAR-1): a card's **Open bar** calls `openBar(id)` → the controller loads 
+   that bar and publishes record and collection together, so no frame pairs one bar's record with 
+   another's recipes, and the index alone is written → the shell's subtree is keyed by the open bar, 
+   so every screen is built anew and no narrowing, open card or jump trail survives the crossing → 
+   the screen pops to the root, landing the reader in the bar rather than back on the gear.
 8. **Adding a guest bar** (FR-BAR-3): a source — picked, or found nearby — reaches `channel.fetch` 
    → `Fetched` becomes a bar with a minted id, the payload's name and display, and the source kept 
    for next time; `Refused` reads as an import's issues do, `Unreachable` says which of the three.
@@ -807,8 +827,10 @@ Performance facts (no over-engineering):
 10. **Sharing** (FR-BAR-6): an offer on a bar's record starts the adapter and removing it stops the 
     adapter; `sharingProvider` is the one place the two are kept in step, so nothing is announced 
     that the shelf does not say is shared (NFR-5).
-11. **Deleting a bar** (FR-BAR-2): confirmed, exported under `beforeDelete`, then record, file and 
-    backups go; a deleted open bar leaves the shelf with none open.
+11. **Deleting a bar** (FR-BAR-2): confirmed, exported under `beforeDelete` — owned bars only, a 
+    guest's contents being its owner's (FR-BAR-3) — then the record, then the file and its backups, 
+    in that order, since a record outliving its file is a bar that opens onto nothing. A deleted open 
+    bar leaves the shelf with none open, and the bar list becomes home under the reader.
 
 The controller is the UI's only route to the data layer; screens never hold a `BarStore`, a 
 `BarChannel` or a `YamlCodec`.

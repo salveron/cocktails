@@ -333,9 +333,19 @@ Future<void> systemBack(WidgetTester tester) async {
   await tester.pumpAndSettle();
 }
 
-/// Which destination the shell is showing, read off the title over it.
+/// Which destination the shell is showing, read off the title over it — the
+/// bar's name leads that title (docs/ui-design.md#bars) and the destination
+/// closes it, which is the part this answers.
 String showing(WidgetTester tester) =>
-    (tester.widget<AppBar>(find.byType(AppBar)).title! as Text).data!;
+    (tester.widget<AppBar>(find.byType(AppBar)).title! as Text).data!
+        .split("'s ")
+        .last;
+
+/// The whole title over [destination]: the bar's name, then the destination. One
+/// home for the possessive, so a test naming the destination alone cannot pass
+/// while the title says something else.
+Finder shellTitle(String destination, {String bar = 'Home bar'}) =>
+    find.widgetWithText(AppBar, "$bar's $destination");
 
 /// Taps the bottom bar's [label] — a destination the reader chose, never a jump.
 Future<void> goTo(WidgetTester tester, String label) => tap(

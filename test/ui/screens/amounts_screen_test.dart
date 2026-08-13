@@ -193,7 +193,7 @@ void main() {
     ) async {
       // Tall, so the Settings menu it is reached through is not the thing
       // running out of room: the width and the text size are the point.
-      await tester.binding.setSurfaceSize(const Size(320, 1200));
+      await tester.binding.setSurfaceSize(const Size(320, 1600));
       addTearDown(() => tester.binding.setSurfaceSize(null));
       tester.platformDispatcher.textScaleFactorTestValue = 2;
       addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);

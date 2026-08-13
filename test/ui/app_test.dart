@@ -1,3 +1,5 @@
+import 'package:cocktails/data/data.dart';
+import 'package:cocktails/ui/app.dart';
 import 'package:cocktails/ui/screens/inventory_screen.dart';
 import 'package:cocktails/ui/screens/recipes_screen.dart';
 import 'package:cocktails/ui/screens/shopping_screen.dart';
@@ -12,7 +14,7 @@ void main() {
       tester,
     ) async {
       await pumpApp(tester);
-      expect(find.widgetWithText(AppBar, 'Recipes'), findsOneWidget);
+      expect(shellTitle('Recipes'), findsOneWidget);
       expect(find.byType(RecipesScreen), findsOneWidget);
       for (final label in ['Recipes', 'Inventory', 'Shopping']) {
         expect(find.widgetWithText(NavigationBar, label), findsOneWidget);
@@ -25,7 +27,7 @@ void main() {
       await pumpApp(tester);
       await tester.tap(find.text('Inventory'));
       await tester.pumpAndSettle();
-      expect(find.widgetWithText(AppBar, 'Inventory'), findsOneWidget);
+      expect(shellTitle('Inventory'), findsOneWidget);
       expect(find.byType(InventoryScreen), findsOneWidget);
       expect(find.byType(RecipesScreen), findsNothing);
     });
@@ -38,6 +40,33 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(ShoppingScreen), findsOneWidget);
       expect(find.byType(RecipesScreen, skipOffstage: false), findsOneWidget);
+    });
+
+    testWidgets('the bar leads the title, and follows a rename', (
+      tester,
+    ) async {
+      final store = MemoryBarStore.of(testBar(name: 'Cellar'));
+      await pumpApp(tester, store: store);
+      expect(shellTitle('Recipes', bar: 'Cellar'), findsOneWidget);
+      expect(find.widgetWithText(AppBar, 'Recipes'), findsNothing);
+    });
+
+    testWidgets('an edit rebuilds no more of the shell than it has to', (
+      tester,
+    ) async {
+      await pumpApp(
+        tester,
+        store: MemoryBarStore.of(testBar(), fixtureCollection),
+      );
+      final shell = tester.state(find.byType(AppShell));
+      await tester.tap(find.text('Inventory'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('gin'));
+      await tester.pumpAndSettle();
+      // A stock tap moves the collection, not the record: the subtree keyed by
+      // the open bar is what a crossing tears down, and nothing else may.
+      expect(tester.state(find.byType(AppShell)), same(shell));
+      expect(shellTitle('Inventory'), findsOneWidget);
     });
 
     testWidgets('the gear opens settings, and back returns to the shell', (
@@ -53,7 +82,7 @@ void main() {
       await tester.tap(find.byTooltip('Back'));
       await tester.pumpAndSettle();
       expect(find.byType(NavigationBar), findsOneWidget);
-      expect(find.widgetWithText(AppBar, 'Recipes'), findsOneWidget);
+      expect(shellTitle('Recipes'), findsOneWidget);
     });
 
     testWidgets('what the startup load could not read sits above the screen', (

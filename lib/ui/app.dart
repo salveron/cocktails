@@ -1,16 +1,19 @@
-/// Material 3 app frame: three bottom-bar destinations, settings gear.
+/// Material 3 app frame: what the app opens on, three bottom-bar destinations,
+/// settings gear.
 library;
 
+import 'package:cocktails/state/state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'destinations.dart';
+import 'screens/bars_screen.dart';
 import 'screens/inventory_screen.dart';
 import 'screens/recipes_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/shopping_screen.dart';
 import 'theme.dart';
-import 'widgets/startup_issues.dart';
+import 'widgets/load_issues.dart';
 
 class CocktailsApp extends StatelessWidget {
   const CocktailsApp({super.key});
@@ -20,8 +23,29 @@ class CocktailsApp extends StatelessWidget {
     title: 'Cocktails',
     theme: cocktailsTheme(Brightness.light),
     darkTheme: cocktailsTheme(Brightness.dark),
-    home: const AppShell(),
+    home: const _Home(),
   );
+}
+
+/// What the app opens on: the bar on show, or the list of them where there is
+/// none ([ADR 20](../../docs/adr/20-the-app-holds-many-bars.md)).
+class _Home extends ConsumerWidget {
+  const _Home();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final open = ref.watch(openBarProvider);
+    // The record and whether the load has answered, never the shelf itself: a
+    // stock tap would otherwise rebuild the shell a keyed subtree exists to
+    // hold still. A shelf that has answered and holds no open bar is met by the
+    // bar list, there being no destination to draw; before it answers there is a
+    // shell as there always was, its screens waiting on `CollectionView`.
+    final loaded = ref.watch(shelfProvider.select((shelf) => shelf.hasValue));
+    if (open == null && loaded) return const BarsScreen();
+    // Keyed by the bar on show, so a crossing rebuilds everything under it and
+    // takes every search, pick, open card and jump trail with it (FR-BAR-1).
+    return AppShell(key: ValueKey(open?.id));
+  }
 }
 
 /// The screen behind [destination], told whether it is the one on show: all
@@ -66,7 +90,14 @@ class _AppShellState extends ConsumerState<AppShell> {
       },
       child: Scaffold(
         appBar: AppBar(
-          title: Text(_current.label),
+          // The bar's name leads the title, the destination answering the
+          // smaller question once the app holds more than one collection
+          // (docs/ui-design.md#bars). Nothing else marks the bar, and the
+          // pushed screens above this one keep their own plain titles.
+          title: Text(switch (ref.watch(openBarProvider)) {
+            final bar? => "${bar.name}'s ${_current.label}",
+            null => _current.label,
+          }),
           actions: [
             IconButton(
               icon: const Icon(Icons.settings_outlined),
@@ -79,7 +110,7 @@ class _AppShellState extends ConsumerState<AppShell> {
         ),
         body: Column(
           children: [
-            const StartupIssues(),
+            const LoadIssues(),
             Expanded(
               child: IndexedStack(
                 index: _current.index,

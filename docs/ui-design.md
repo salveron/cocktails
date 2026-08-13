@@ -37,7 +37,9 @@ Screen/shell design. Modules [components.md](components.md), requirements [requi
   basket is found open where it was, but a search a jump cleared stays cleared.
 - **`CollectionView`**: only reader of `collectionProvider`'s `AsyncValue`. Screens never see loading/failure.
 - **`EmptyState`**: icon, title, fill hint.
-- **`StartupIssues`**: displays FR-DAT-4 problems above all screens (dismissable).
+- **`LoadIssues`**: displays FR-DAT-4 problems above all screens, from startup or from a crossing 
+  alike. Dismissable — of the issues on show, so the next bar's trouble is not swallowed by a tap 
+  made before it.
 
 ## Bars
 
@@ -48,16 +50,28 @@ it has always meant.
 
 - **The app opens on the bar it was left in**, `openId` outliving the run 
   ([ADR 20](adr/20-the-app-holds-many-bars.md)), so a reader who keeps one bar never comes here 
-  twice. **An empty shelf is the one time this screen is home**: there is no bar to open, so the app 
-  opens on the list, and its empty state offers the two ways to a first one — a new bar, or a file 
-  (FR-BAR-2, FR-BAR-7).
-- **One card a bar**, tapped to switch and popped on the way: the name, the mode, and for a guest the 
-  source it came from and when it last answered. Rename, share, refresh and delete sit behind its ⋮, 
-  so the screen that lists bars is the screen that manages them and no second place holds half of it.
+  twice. **No bar open means this screen is home**: there is no destination to draw, so the app opens 
+  on the list, and its empty state says what a bar is. That is a first run before the founding, and 
+  the reader who deleted the bar they were standing in — one rule rather than a case for each. 
+  Deleting the open bar is why: it leaves the reader on the list they are already on, where the app 
+  choosing the next bar for them would be an arbitrary one.
+- **One card a bar, expanded in place** — the recipe card's own gesture 
+  ([recipes screen](#recipes-screen)). Closed it is the name; opened it is what the bar holds, kind by 
+  kind, and the buttons for everything done to it: **Open bar**, **Rename**, **Delete**, later Share 
+  and Refresh. The screen that lists bars is the screen that manages them, and no second place holds 
+  half of it. **A card opens onto counts, never contents**: the list reads the index alone (ADR 20), 
+  so opening one costs the same single decode reaching a bar has always cost, and no second collection 
+  is ever resident. Buttons rather than a ⋮ because the card already opens to hold them.
+- **The bar on show offers no Open bar**, which is how the list says which one it is. No check, no 
+  fill, no badge — an absent control is read the way the guest bar's missing destination is.
+- **A tap opens the card; it never switches.** ui-design's first draft had the card itself do the 
+  crossing, which put a bar's every narrowing one stray tap from being thrown away. The crossing is 
+  now its own button, and the reader lands in the bar rather than back on the gear.
 - **The bar's name leads the title** — "Home bar's Recipes", "Anna's Ingredients". The destination 
   named alone was what the app bar carried while there was one collection; with several it answers 
-  the smaller question. Nothing else marks the bar: no subtitle, no strip, the title standing on 
-  every screen already.
+  the smaller question. The three destinations carry it and nothing else does: Settings, the 
+  vocabularies and the forms keep their own plain titles, being one push above a title that has just 
+  said which bar this is. Nothing else marks the bar: no subtitle, no strip.
 - **A guest bar is told by the bottom bar's shape**, not by a badge (FR-BAR-4). Two destinations 
   where an owned bar has three is a difference read at a glance and read from the row the reader 
   navigates by, which is where they are looking in any case.

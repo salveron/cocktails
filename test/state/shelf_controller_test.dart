@@ -8,6 +8,33 @@ import 'package:file_selector/file_selector.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+/// Records what reached the store and in what order: a bar's file must land
+/// before the index names it, and its record must go before the file is
+/// dropped, or a crash between the two leaves a bar that opens onto nothing.
+base class _WriteLog extends MemoryBarStore {
+  _WriteLog(super.records);
+
+  final calls = <String>[];
+
+  @override
+  Future<void> saveBar(Bar bar, Collection collection) {
+    calls.add('bar:${bar.id}');
+    return super.saveBar(bar, collection);
+  }
+
+  @override
+  Future<void> saveShelf(Records records) {
+    calls.add('shelf');
+    return super.saveShelf(records);
+  }
+
+  @override
+  Future<void> removeBar(String id) {
+    calls.add('remove:$id');
+    return super.removeBar(id);
+  }
+}
+
 void main() {
   final negroni = Recipe(
     'Negroni',
@@ -79,7 +106,7 @@ void main() {
       final store = MemoryBarStore();
       final container = await started(store);
       expect(collectionOf(container), Collection());
-      expect(container.read(startupIssuesProvider), isEmpty);
+      expect(container.read(loadIssuesProvider), isEmpty);
       // A device holding nothing is given one owned bar to write into.
       expect(store.savedShelf?.bars, hasLength(1));
       expect(store.savedShelf?.bars.single.mode, BarMode.owner);
@@ -89,7 +116,7 @@ void main() {
     test('a stored collection is loaded as it stands', () async {
       final container = await started();
       expect(collectionOf(container), stored);
-      expect(container.read(startupIssuesProvider), isEmpty);
+      expect(container.read(loadIssuesProvider), isEmpty);
     });
 
     test('a corrupt store starts on the recovered backup', () async {
@@ -98,7 +125,7 @@ void main() {
       ], recovered: payloadOf(stored));
       final container = await started();
       expect(collectionOf(container), stored);
-      expect(container.read(startupIssuesProvider), [
+      expect(container.read(loadIssuesProvider), [
         'line 4: Unknown ingredient: "rye"',
       ]);
     });
@@ -107,23 +134,21 @@ void main() {
       store.barOutcomes[bar.id] = Corrupt([issueAt(4)]);
       final container = await started();
       expect(collectionOf(container), Collection());
-      expect(container.read(startupIssuesProvider), hasLength(1));
+      expect(container.read(loadIssuesProvider), hasLength(1));
     });
 
     test('an issue without a line still reports what is wrong', () async {
       store.barOutcomes[bar.id] = Corrupt([issueAt(null)]);
       final container = await started();
-      expect(container.read(startupIssuesProvider), [
-        'Unknown ingredient: "rye"',
-      ]);
+      expect(container.read(loadIssuesProvider), ['Unknown ingredient: "rye"']);
     });
 
     test('the issues are published when the load resolves', () async {
       store.barOutcomes[bar.id] = Corrupt([issueAt(4)]);
       final container = containerFor(store);
-      expect(container.read(startupIssuesProvider), isEmpty);
+      expect(container.read(loadIssuesProvider), isEmpty);
       await container.read(shelfProvider.future);
-      expect(container.read(startupIssuesProvider), hasLength(1));
+      expect(container.read(loadIssuesProvider), hasLength(1));
     });
   });
 
@@ -732,6 +757,284 @@ recipes:
   /// The seam's own reading, over a file shaped the way `file_selector_android`
   /// answers: `XFile.fromData`, whose `readAsString` ignores the encoding asked
   /// of it. Overriding the picker with a plain `String` never reached this.
+  /// A second owned bar and a guest one, so a crossing has somewhere to go and
+  /// the guest refusals have something to refuse.
+  final other = Bar(id: 'd4e5f6', name: 'Anna', mode: BarMode.owner);
+  final otherCollection = Collection(ingredients: [Ingredient('white rum')]);
+  final guest = Bar(
+    id: 'g7h8i9',
+    name: "Anna's bar",
+    mode: BarMode.guest,
+    source: const BarSource(via: Transport.file, at: 'anna.yaml', from: 'Anna'),
+  );
+
+  BarPayload payloadFor(Bar bar, Collection collection) =>
+      (name: bar.name, display: bar.display, collection: collection);
+
+  /// A shelf of [bars] with the first open, each holding what [collections]
+  /// gives it — the arrangement every crossing, rename and delete runs over.
+  _WriteLog shelfOf(List<Bar> bars, Map<String, Collection> collections) {
+    final store = _WriteLog((bars: bars, openId: bars.first.id));
+    for (final bar in bars) {
+      store.barOutcomes[bar.id] = Loaded(
+        payloadFor(bar, collections[bar.id] ?? Collection()),
+      );
+    }
+    return store;
+  }
+
+  _WriteLog twoBars() =>
+      shelfOf([bar, other], {bar.id: stored, other.id: otherCollection});
+
+  group('crossing to another bar', () {
+    test('the other bar comes up and the first is left behind', () async {
+      final store = twoBars();
+      final container = await started(store);
+      await controllerOf(container).openBar(other.id);
+      expect(container.read(openBarProvider)?.id, other.id);
+      expect(collectionOf(container), otherCollection);
+      expect(store.savedShelf?.openId, other.id);
+    });
+
+    test('the index moves and no bar file is touched', () async {
+      final store = twoBars();
+      final container = await started(store);
+      await controllerOf(container).openBar(other.id);
+      // The collection came up from disk; writing it straight back would
+      // rotate the backups of a bar nobody edited.
+      expect(store.saveCount, 0);
+      expect(store.calls, ['shelf']);
+    });
+
+    test('the bar already open is left alone', () async {
+      final store = twoBars();
+      final container = await started(store);
+      await controllerOf(container).openBar(bar.id);
+      expect(store.calls, isEmpty);
+      expect(collectionOf(container), same(stored));
+    });
+
+    test('an id the shelf does not hold opens nothing', () async {
+      final store = twoBars();
+      final container = await started(store);
+      await controllerOf(container).openBar('nosuch');
+      expect(container.read(openBarProvider)?.id, bar.id);
+      expect(store.calls, isEmpty);
+    });
+
+    test('a torn file opens on its backup and says what tore', () async {
+      final store = twoBars();
+      store.barOutcomes[other.id] = Corrupt([
+        issueAt(4),
+      ], recovered: payloadFor(other, otherCollection));
+      final container = await started(store);
+      await controllerOf(container).openBar(other.id);
+      expect(collectionOf(container), otherCollection);
+      expect(container.read(loadIssuesProvider), [
+        'line 4: Unknown ingredient: "rye"',
+      ]);
+    });
+
+    test('a crossing onto a sound bar clears the last load\'s word', () async {
+      final store = twoBars();
+      store.barOutcomes[bar.id] = Corrupt([
+        issueAt(4),
+      ], recovered: payloadOf(stored));
+      final container = await started(store);
+      expect(container.read(loadIssuesProvider), hasLength(1));
+      await controllerOf(container).openBar(other.id);
+      expect(container.read(loadIssuesProvider), isEmpty);
+    });
+  });
+
+  group('a new bar', () {
+    test('is founded empty and owned, and opened by the making', () async {
+      final store = twoBars();
+      final container = await started(store);
+      await controllerOf(container).addOwnedBar('Cellar');
+      final founded = container.read(openBarProvider);
+      expect(founded?.name, 'Cellar');
+      expect(founded?.mode, BarMode.owner);
+      expect(collectionOf(container), Collection());
+      expect(container.read(barsProvider), hasLength(3));
+    });
+
+    test('its file is written before the index names it', () async {
+      final store = twoBars();
+      final container = await started(store);
+      await controllerOf(container).addOwnedBar('Cellar');
+      final founded = container.read(openBarProvider)!;
+      // A crash between the two must leave storage to reclaim rather than a
+      // record opening onto nothing.
+      expect(store.calls, ['bar:${founded.id}', 'shelf']);
+      expect(store.savedShelf?.openId, founded.id);
+    });
+
+    test('two bars may carry one name (FR-BAR-1)', () async {
+      final store = twoBars();
+      final container = await started(store);
+      await controllerOf(container).addOwnedBar(bar.name);
+      final names = [for (final b in container.read(barsProvider)) b.name];
+      expect(names.where((name) => name == bar.name), hasLength(2));
+    });
+  });
+
+  group('renaming a bar', () {
+    test('the record moves and the collection stays put', () async {
+      final store = twoBars();
+      final container = await started(store);
+      await controllerOf(container).renameBar(bar.id, 'Downstairs');
+      expect(container.read(openBarProvider)?.name, 'Downstairs');
+      expect(store.savedShelf?.bars.first.name, 'Downstairs');
+      expect(store.saveCount, 0);
+    });
+
+    test('a bar not on show is renamed where it stands', () async {
+      final store = twoBars();
+      final container = await started(store);
+      await controllerOf(container).renameBar(other.id, 'Upstairs');
+      expect(store.savedShelf?.bars.last.name, 'Upstairs');
+      expect(container.read(openBarProvider)?.id, bar.id);
+    });
+
+    test('a guest bar keeps the name its owner gave it', () async {
+      final store = shelfOf([bar, guest], {bar.id: stored});
+      final container = await started(store);
+      await controllerOf(container).renameBar(guest.id, 'Mine now');
+      // A refresh replaces the name wholesale (FR-BAR-5), so a rename here
+      // would be thrown away by the next one.
+      expect(container.read(barsProvider).last.name, guest.name);
+      expect(store.calls, isEmpty);
+    });
+
+    test('the name it already carries writes nothing', () async {
+      final store = twoBars();
+      final container = await started(store);
+      await controllerOf(container).renameBar(bar.id, bar.name);
+      expect(store.calls, isEmpty);
+    });
+  });
+
+  group('deleting a bar', () {
+    test('the copy is kept before the bar goes (FR-BAR-2)', () async {
+      final store = twoBars();
+      final container = await started(store);
+      await controllerOf(container).removeBar(bar.id);
+      expect(store.snapshots[ExportPurpose.beforeDelete]?.$2, stored);
+      expect(container.read(barsProvider), [other]);
+    });
+
+    test('the record goes before the file it names', () async {
+      final store = twoBars();
+      final container = await started(store);
+      await controllerOf(container).removeBar(other.id);
+      expect(store.calls, ['shelf', 'remove:${other.id}']);
+    });
+
+    test('deleting the bar on show leaves none open', () async {
+      final store = twoBars();
+      final container = await started(store);
+      await controllerOf(container).removeBar(bar.id);
+      expect(container.read(openBarProvider), isNull);
+      expect(store.savedShelf?.openId, isNull);
+      expect(collectionOf(container), Collection());
+    });
+
+    test('deleting another leaves the bar on show alone', () async {
+      final store = twoBars();
+      final container = await started(store);
+      await controllerOf(container).removeBar(other.id);
+      expect(container.read(openBarProvider)?.id, bar.id);
+      expect(collectionOf(container), same(stored));
+    });
+
+    test('a bar not on show is copied from its own file', () async {
+      final store = twoBars();
+      final container = await started(store);
+      await controllerOf(container).removeBar(other.id);
+      expect(store.snapshots[ExportPurpose.beforeDelete]?.$2, otherCollection);
+    });
+
+    test('a guest bar goes without a copy being kept', () async {
+      final store = shelfOf([bar, guest], {bar.id: stored});
+      final container = await started(store);
+      await controllerOf(container).removeBar(guest.id);
+      // Its contents are its owner's; FR-BAR-3 removes one touching nothing.
+      expect(store.snapshots[ExportPurpose.beforeDelete], isNull);
+      expect(container.read(barsProvider), [bar]);
+    });
+
+    test('a bar the shelf does not hold is not a deletion', () async {
+      final store = twoBars();
+      final container = await started(store);
+      await controllerOf(container).removeBar('nosuch');
+      expect(store.calls, isEmpty);
+      expect(container.read(barsProvider), hasLength(2));
+    });
+  });
+
+  group('what a bar holds', () {
+    test('a bar not on show is read for its counts', () async {
+      final container = await started(twoBars());
+      expect(await controllerOf(container).holdingsOfBar(other.id), {
+        Holding.recipe: 0,
+        Holding.ingredient: 1,
+        Holding.tag: 0,
+        Holding.unit: defaultUnits.length,
+      });
+    });
+
+    test('the bar on show is counted where it already stands', () async {
+      final store = twoBars();
+      final container = await started(store);
+      // Resident already (ADR 20): asking costs no read at all, so a store
+      // that has forgotten the file still answers.
+      store.barOutcomes.remove(bar.id);
+      expect(
+        await controllerOf(container).holdingsOfBar(bar.id),
+        holdingsOf(stored),
+      );
+    });
+
+    test('a file that will not read has no counts to give', () async {
+      final store = twoBars();
+      store.barOutcomes[other.id] = Corrupt([issueAt(4)]);
+      final container = await started(store);
+      expect(await controllerOf(container).holdingsOfBar(other.id), isNull);
+    });
+
+    test('a torn file falls back to what its backup holds', () async {
+      final store = twoBars();
+      store.barOutcomes[other.id] = Corrupt([
+        issueAt(4),
+      ], recovered: payloadFor(other, otherCollection));
+      final container = await started(store);
+      expect(
+        await controllerOf(container).holdingsOfBar(other.id),
+        holdingsOf(otherCollection),
+      );
+    });
+  });
+
+  group('a shelf with nothing on it', () {
+    test('an index listing no bars founds none (ADR 20)', () async {
+      final store = _WriteLog((bars: const [], openId: null));
+      final container = await started(store);
+      // A reader who deleted their last bar meets the bar list, where a device
+      // holding no index at all is given one to write into.
+      expect(container.read(barsProvider), isEmpty);
+      expect(container.read(openBarProvider), isNull);
+      expect(store.calls, isEmpty);
+    });
+
+    test('no index at all is a first run and is given a bar', () async {
+      final store = _WriteLog(null);
+      final container = await started(store);
+      expect(container.read(barsProvider), hasLength(1));
+      expect(container.read(openBarProvider), isNotNull);
+    });
+  });
+
   group('a picked file reads as UTF-8', () {
     test('a name outside ASCII arrives as it left', () async {
       final picked = XFile.fromData(utf8.encode('Orange Curaçao'));

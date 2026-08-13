@@ -960,4 +960,45 @@ void main() {
       expect(namesOf(wornInOrder(vocabulary, ['SOUR'])), ['sour']);
     });
   });
+
+  group('holdingsOf', () {
+    test('counts each kind, and the four in the order a reader meets '
+        'them', () {
+      final collection = Collection(
+        units: const [Unit('part'), Unit('dash')],
+        ingredients: [Ingredient('gin'), Ingredient('campari')],
+        recipeTags: const [Tag('classic', color: TagColor.rose)],
+        ingredientTags: const [
+          Tag('italian', color: TagColor.teal),
+          Tag('juniper', color: TagColor.sand),
+        ],
+        recipes: [Recipe('Negroni')],
+      );
+      expect(holdingsOf(collection).keys, Holding.values);
+      // The tags of both vocabularies under one count, as the screen managing
+      // them lists them (ADR 07).
+      expect(holdingsOf(collection), {
+        Holding.recipe: 1,
+        Holding.ingredient: 2,
+        Holding.tag: 3,
+        Holding.unit: 2,
+      });
+    });
+
+    test('an empty collection still carries the units it opens with', () {
+      expect(holdingsOf(Collection()), {
+        Holding.recipe: 0,
+        Holding.ingredient: 0,
+        Holding.tag: 0,
+        Holding.unit: defaultUnits.length,
+      });
+    });
+
+    test('every kind is named for the reader by its own noun', () {
+      expect(
+        [for (final holding in Holding.values) holding.noun],
+        ['recipe', 'ingredient', 'tag', 'unit'],
+      );
+    });
+  });
 }
