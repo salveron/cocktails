@@ -50,8 +50,9 @@ lib/
   state/
     state.dart                 # barrel — every provider over the shelf
     src/
-      shelf_controller.dart    # the one writable provider, and the write surface it
-                               #   hands out for an owned bar only (ADR 23)
+      shelf_controller.dart    # the one writable provider (ADR 23)
+      bar_writer.dart          # the write surface, handed out for an owned bar only
+      seams.dart               # store, share sheet, picker — one provider each (ADR 18)
       channels.dart            # the transports resolved, the refreshes in flight and
                                #   what they failed with, the offers standing (ADR 22)
       derived.dart             # availabilityProvider; visible recipes, optimizer
@@ -645,12 +646,21 @@ of every name on the way in ([architecture.md](architecture.md#platform-facts)).
 typedef ImportReview = ({BarPayload? bar, List<String> issues});   // never both
 
 ImportReview review(String text);        // pure: decode, described, nothing touched
+Future<String> export();                           // the open bar's copy (FR-DAT-1)
 Future<void> replaceOpen(BarPayload bar);          // the copy, then the replace (FR-DAT-3)
+Future<void> setDisplay(FixedUnit display);        // the reader's, guest bar included
 Future<void> addGuestBar(BarSource source, BarPayload bar);        // FR-BAR-3/7/8/9
 Future<void> refresh(String barId);                // FR-BAR-5; never awaited by a screen
 Future<void> openBar(String id);                   // FR-BAR-1, the switch
 Future<void> removeBar(String id);                 // FR-BAR-2, after its own export
 ```
+
+The first four are the controller's from M32; the last four land with the screens and channels that
+call them (M33, M35). Those four are the ones that take **one call site each**, which is why they sit
+here rather than on the writer — see [ADR 23](adr/23-nothing-writes-a-guest-bar.md), where the count
+is the whole argument. `export` and `setDisplay` work on a guest bar (FR-DAT-1, FR-BAR-3);
+`replaceOpen` refuses one, FR-DAT-3 importing "into an owned bar" and FR-BAR-7 giving the same file
+its other road.
 
 `review` is deliberately pure so the confirmation and the pre-import copy slot after it, and it is 
 the controller's rather than the screen's because `ui/` never imports `data/`. `_described` is the 
@@ -662,7 +672,14 @@ offers — replacing an owned bar, the file's `display` landing with the rest, o
 `ShelfController.build()` performs the startup load and is the only writable provider: it reads the 
 index, opens the bar it names, and reports what failed — a `Corrupt` bar starts on its recovered 
 backup, and issues reach the UI through `startupIssuesProvider` as `"line N: message"` strings 
-(FR-DAT-4; `SourcedIssue` is data-layer).
+(FR-DAT-4; `SourcedIssue` is data-layer). An index naming no bar, or naming one it does not hold, 
+still opens on whatever it does hold; only a shelf with nothing on it founds one, writing the bar's 
+file before the index that names it.
+
+One private path serves every write, `_publish`: publish, then persist — the record always, the 
+collection only where it moved, so picking a reading unit rotates no backup of a bar's file. The 
+platform seams sit in `seams.dart` beside it, one provider each 
+([ADR 18](adr/18-data-crosses-the-edge-in-a-system-sheet.md)).
 
 **The write surface is separate from the controller** ([ADR 23](adr/23-nothing-writes-a-guest-bar.md)): 
 `barWriterProvider` answers a `BarWriter?` — every collection mutation, and null on a guest bar, so 

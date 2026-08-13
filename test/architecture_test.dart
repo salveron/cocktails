@@ -146,6 +146,21 @@ List<String> _violations(String libPath, List<_Directive> directives) {
   return violations;
 }
 
+/// ADR 23: `editCollection` is the one route that writes a collection without
+/// asking whose it is — the domain's throw is all that stands behind it. Every
+/// mutation `ui/` makes goes through `barWriterProvider`, which is null on a
+/// guest bar, so a screen naming the raw route has found a way round the check
+/// that hides its own control. The rest of the notifier is fair game: export,
+/// import and the reading unit are the controller's on purpose (FR-BAR-3,
+/// FR-DAT-1/3), so the older "off the notifier entirely" rule cannot hold.
+const _rawWriteRoute = 'editCollection';
+
+List<String> _writeRouteViolations(String libPath, String source) => [
+  if (_layerOf(libPath) == 'ui' && source.contains(_rawWriteRoute))
+    '$libPath names $_rawWriteRoute: a screen writes through '
+        'barWriterProvider, which a guest bar has none of',
+];
+
 List<_Directive> _imports(List<String> targets) => [
   for (final target in targets) (kind: 'import', target: target),
 ];
@@ -211,6 +226,21 @@ void main() {
       expect(violations, isEmpty, reason: violations.join('\n'));
     });
 
+    test('no screen writes a collection round the writer (ADR 23)', () {
+      final violations = <String>[];
+      var scanned = 0;
+      for (final entity in Directory('lib/ui').listSync(recursive: true)) {
+        if (entity is! File || !entity.path.endsWith('.dart')) continue;
+        final libPath = entity.path.substring(entity.path.indexOf('lib/') + 4);
+        scanned++;
+        violations.addAll(
+          _writeRouteViolations(libPath, entity.readAsStringSync()),
+        );
+      }
+      expect(scanned, greaterThan(4), reason: 'scanned only $scanned files');
+      expect(violations, isEmpty, reason: violations.join('\n'));
+    });
+
     test('the domain barrel keeps layer-private names unexported', () {
       final barrel = File('lib/domain/domain.dart').readAsStringSync();
       final exported = _directivesOf(barrel).map((d) => d.target);
@@ -240,7 +270,7 @@ void main() {
       expect(
         _violations(
           'main.dart',
-          _imports(['package:cocktails/state/src/model_controller.dart']),
+          _imports(['package:cocktails/state/src/shelf_controller.dart']),
         ),
         isNotEmpty,
       );
@@ -302,7 +332,7 @@ void main() {
       );
       expect(
         _violations(
-          'state/src/model_controller.dart',
+          'state/src/shelf_controller.dart',
           _imports([
             'package:cocktails/domain/domain.dart',
             'package:cocktails/data/data.dart',
@@ -354,7 +384,7 @@ void main() {
     test('data importing state or ui is caught', () {
       expect(
         _violations(
-          'data/src/model_store.dart',
+          'data/src/bar_store.dart',
           _imports(['package:cocktails/state/state.dart']),
         ),
         isNotEmpty,
@@ -465,6 +495,60 @@ void main() {
       );
       expect(violations.single, contains('domain/src/collection.dart'));
       expect(violations.single, contains('package:flutter/material.dart'));
+    });
+  });
+
+  group('write-route matcher sanity checks (fake inputs)', () {
+    test('a screen naming the raw write route is caught', () {
+      expect(
+        _writeRouteViolations(
+          'ui/screens/inventory_screen.dart',
+          'ref.read(shelfProvider.notifier).editCollection((c) => c);',
+        ),
+        isNotEmpty,
+      );
+    });
+
+    test('a screen reaching the notifier for the file seam is not', () {
+      expect(
+        _writeRouteViolations(
+          'ui/screens/settings_screen.dart',
+          'final shelf = ref.read(shelfProvider.notifier);\n'
+              'await shelf.export();\n'
+              'shelf.review(text);\n'
+              'await shelf.setDisplay(FixedUnit.ml);',
+        ),
+        isEmpty,
+      );
+    });
+
+    test('a screen writing through the writer is not', () {
+      expect(
+        _writeRouteViolations(
+          'ui/screens/tags_screen.dart',
+          'ref.read(barWriterProvider)!.removeTag(kind, name);',
+        ),
+        isEmpty,
+      );
+    });
+
+    test('the rule is ui-only: state owns the route it publishes', () {
+      expect(
+        _writeRouteViolations(
+          'state/src/bar_writer.dart',
+          'Future<void> _edit(f) => _controller.editCollection(f);',
+        ),
+        isEmpty,
+      );
+    });
+
+    test('a violation message names the file and what to use instead', () {
+      final violation = _writeRouteViolations(
+        'ui/screens/foo.dart',
+        'editCollection',
+      ).single;
+      expect(violation, contains('ui/screens/foo.dart'));
+      expect(violation, contains('barWriterProvider'));
     });
   });
 

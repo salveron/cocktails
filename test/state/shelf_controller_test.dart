@@ -50,15 +50,20 @@ void main() {
   /// A container whose startup load has already resolved.
   Future<ProviderContainer> started([MemoryBarStore? seeded]) async {
     final container = containerFor(seeded ?? store);
-    await container.read(collectionProvider.future);
+    await container.read(shelfProvider.future);
     return container;
   }
 
   Collection collectionOf(ProviderContainer container) =>
       container.read(collectionProvider).requireValue;
 
-  ModelController controllerOf(ProviderContainer container) =>
-      container.read(collectionProvider.notifier);
+  ShelfController controllerOf(ProviderContainer container) =>
+      container.read(shelfProvider.notifier);
+
+  /// The write surface, which a guest bar has none of (ADR 23). Non-null here:
+  /// every test in this file runs over an owned bar.
+  BarWriter writerOf(ProviderContainer container) =>
+      container.read(barWriterProvider)!;
 
   SourcedIssue issueAt(int? line) => SourcedIssue(
     ValidationIssue(
@@ -117,7 +122,7 @@ void main() {
       store.barOutcomes[bar.id] = Corrupt([issueAt(4)]);
       final container = containerFor(store);
       expect(container.read(startupIssuesProvider), isEmpty);
-      await container.read(collectionProvider.future);
+      await container.read(shelfProvider.future);
       expect(container.read(startupIssuesProvider), hasLength(1));
     });
   });
@@ -125,20 +130,18 @@ void main() {
   group('mutations', () {
     test('setSettings replaces the settings', () async {
       final container = await started();
-      await controllerOf(container).setSettings(const Settings(partMl: 25));
+      await writerOf(container).setSettings(const Settings(partMl: 25));
       expect(collectionOf(container).settings, const Settings(partMl: 25));
     });
 
     test('upsertIngredient adds and replaces by name', () async {
       final container = await started();
-      await controllerOf(
-        container,
-      ).upsertIngredient(Ingredient('sweet vermouth'));
+      await writerOf(container).upsertIngredient(Ingredient('sweet vermouth'));
       expect(
         collectionOf(container).ingredientNamed('sweet vermouth'),
         isNotNull,
       );
-      await controllerOf(
+      await writerOf(
         container,
       ).upsertIngredient(Ingredient('campari', stock: StockLevel.in_));
       expect(collectionOf(container).ingredients, hasLength(3));
@@ -150,7 +153,7 @@ void main() {
 
     test('upsertIngredient replacing a name renames in one edit', () async {
       final container = await started();
-      await controllerOf(container).upsertIngredient(
+      await writerOf(container).upsertIngredient(
         Ingredient('dry gin', stock: StockLevel.in_, tags: const ['juniper']),
         replacing: 'gin',
       );
@@ -169,7 +172,7 @@ void main() {
       'upsertIngredient replacing the name it keeps drops nothing',
       () async {
         final container = await started();
-        await controllerOf(container).upsertIngredient(
+        await writerOf(container).upsertIngredient(
           Ingredient('gin', tags: const ['juniper']),
           replacing: 'gin',
         );
@@ -182,23 +185,23 @@ void main() {
 
     test('upsertIngredient replaces the tags the entry carried', () async {
       final container = await started();
-      final controller = controllerOf(container);
+      final writer = writerOf(container);
       final gin = Ingredient('gin', stock: StockLevel.in_);
-      await controller.upsertIngredient(gin.copyWith(tags: const ['juniper']));
+      await writer.upsertIngredient(gin.copyWith(tags: const ['juniper']));
       expect(collectionOf(container).ingredientNamed('gin')?.tags, ['juniper']);
-      await controller.upsertIngredient(gin);
+      await writer.upsertIngredient(gin);
       expect(collectionOf(container).ingredientNamed('gin')?.tags, isEmpty);
     });
 
     test('removeIngredient drops the entry', () async {
       final container = await started();
-      await controllerOf(container).removeIngredient('campari');
+      await writerOf(container).removeIngredient('campari');
       expect(collectionOf(container).ingredientNamed('campari'), isNull);
     });
 
     test('setStock changes only the stock level', () async {
       final container = await started();
-      await controllerOf(container).setStock('gin', StockLevel.low);
+      await writerOf(container).setStock('gin', StockLevel.low);
       expect(
         collectionOf(container).ingredientNamed('gin'),
         Ingredient('gin', stock: StockLevel.low),
@@ -208,7 +211,7 @@ void main() {
     test('upsertTag lands in the vocabulary it names and no other', () async {
       final container = await started();
       const bitter = Tag('bitter', color: TagColor.plum);
-      await controllerOf(container).upsertTag(TagKind.recipe, bitter);
+      await writerOf(container).upsertTag(TagKind.recipe, bitter);
       expect(collectionOf(container).hasTag(TagKind.recipe, 'bitter'), isTrue);
       expect(
         collectionOf(container).hasTag(TagKind.ingredient, 'bitter'),
@@ -218,7 +221,7 @@ void main() {
 
     test('upsertTag replacing a name propagates in one edit', () async {
       final container = await started();
-      await controllerOf(container).upsertTag(
+      await writerOf(container).upsertTag(
         TagKind.recipe,
         const Tag('classics', color: TagColor.plum),
         replacing: 'classic',
@@ -232,7 +235,7 @@ void main() {
 
     test('upsertTag reaches the other vocabulary too', () async {
       final container = await started();
-      await controllerOf(container).upsertTag(
+      await writerOf(container).upsertTag(
         TagKind.ingredient,
         const Tag('italiano', color: TagColor.teal),
         replacing: 'italian',
@@ -244,7 +247,7 @@ void main() {
 
     test('upsertTag replacing the name it keeps drops nothing', () async {
       final container = await started();
-      await controllerOf(container).upsertTag(
+      await writerOf(container).upsertTag(
         TagKind.ingredient,
         const Tag('juniper', color: TagColor.plum),
         replacing: 'juniper',
@@ -256,7 +259,7 @@ void main() {
 
     test('removeTag drops the entry', () async {
       final container = await started();
-      await controllerOf(container).removeTag(TagKind.ingredient, 'juniper');
+      await writerOf(container).removeTag(TagKind.ingredient, 'juniper');
       expect(
         collectionOf(container).hasTag(TagKind.ingredient, 'juniper'),
         isFalse,
@@ -276,7 +279,7 @@ void main() {
           ),
         ),
       );
-      await controllerOf(
+      await writerOf(
         container,
       ).upsertIngredient(Ingredient('jenever'), replacing: 'gin');
       final collection = collectionOf(container);
@@ -290,9 +293,9 @@ void main() {
 
     test('upsertRecipe adds and replaces by name', () async {
       final container = await started();
-      await controllerOf(container).upsertRecipe(Recipe('Americano'));
+      await writerOf(container).upsertRecipe(Recipe('Americano'));
       expect(collectionOf(container).recipes, hasLength(2));
-      await controllerOf(
+      await writerOf(
         container,
       ).upsertRecipe(Recipe('Negroni', notes: 'stir with ice'));
       expect(collectionOf(container).recipes, hasLength(2));
@@ -304,7 +307,7 @@ void main() {
 
     test('upsertRecipe carries the ingredients it introduced', () async {
       final container = await started();
-      await controllerOf(container).upsertRecipe(
+      await writerOf(container).upsertRecipe(
         Recipe(
           'Sazerac',
           lines: const [
@@ -335,7 +338,7 @@ void main() {
           ),
         ),
       );
-      await controllerOf(container).upsertRecipe(
+      await writerOf(container).upsertRecipe(
         Recipe(
           'Gin Fizz',
           lines: const [
@@ -354,7 +357,7 @@ void main() {
 
     test('a bottle this edit introduces answers for its own line', () async {
       final container = await started();
-      await controllerOf(container).upsertRecipe(
+      await writerOf(container).upsertRecipe(
         Recipe(
           'Sazerac',
           lines: const [
@@ -374,7 +377,7 @@ void main() {
 
     test('upsertRecipe replacing a name renames in one edit', () async {
       final container = await started();
-      await controllerOf(container).upsertRecipe(
+      await writerOf(container).upsertRecipe(
         negroni.copyWith(name: 'Boulevardier'),
         replacing: 'Negroni',
       );
@@ -386,7 +389,7 @@ void main() {
 
     test('upsertRecipe replacing the name it keeps drops nothing', () async {
       final container = await started();
-      await controllerOf(container).upsertRecipe(
+      await writerOf(container).upsertRecipe(
         negroni.copyWith(notes: 'stir with ice'),
         replacing: 'Negroni',
       );
@@ -399,8 +402,117 @@ void main() {
 
     test('removeRecipe drops the recipe', () async {
       final container = await started();
-      await controllerOf(container).removeRecipe('Negroni');
+      await writerOf(container).removeRecipe('Negroni');
       expect(collectionOf(container).recipes, isEmpty);
+    });
+  });
+
+  // ADR 23: the write surface is withheld whole rather than refusing per call,
+  // so the null a screen reads is the same fact that hides its control.
+  group('the write surface', () {
+    /// A guest bar, which nothing but a refresh may write (FR-BAR-3).
+    final visiting = Bar(
+      id: 'f7a2b8',
+      name: "Ada's bar",
+      mode: BarMode.guest,
+      source: const BarSource(
+        via: Transport.file,
+        at: 'ada.yaml',
+        from: "Ada's bar",
+      ),
+    );
+
+    test('an owned bar has one', () async {
+      final container = await started();
+      expect(container.read(barWriterProvider), isNotNull);
+    });
+
+    // Each file rotates three backups, so writing one that did not move costs
+    // a reader an older copy of it for nothing.
+    test('a collection edit leaves the index alone', () async {
+      final container = await started();
+      await writerOf(container).setStock('campari', StockLevel.in_);
+      expect(store.savedBars[bar.id]?.$2, collectionOf(container));
+      expect(store.savedShelf, isNull, reason: 'no record moved');
+    });
+
+    test('a record edit leaves the collection\'s file alone', () async {
+      final container = await started();
+      await controllerOf(container).setDisplay(FixedUnit.oz);
+      expect(store.savedShelf?.bars.single.display, FixedUnit.oz);
+      expect(store.saved, isNull, reason: 'the collection did not move');
+    });
+
+    test('an import moves both, so both are written', () async {
+      final container = await started();
+      await controllerOf(container).replaceOpen((
+        name: 'Ada\'s bar',
+        display: FixedUnit.ml,
+        collection: Collection(ingredients: [Ingredient('rye')]),
+      ));
+      expect(store.saved?.ingredientNamed('rye'), isNotNull);
+      expect(store.savedShelf?.bars.single.name, 'Ada\'s bar');
+      expect(container.read(openBarProvider)?.display, FixedUnit.ml);
+    });
+
+    test('a guest bar has none', () async {
+      final seeded = MemoryBarStore.of(visiting, stored);
+      final container = await started(seeded);
+      expect(container.read(barWriterProvider), isNull);
+    });
+
+    // The null must mean "someone else's bar", never "not loaded yet": a tap
+    // landing during startup used to queue behind the load and still must.
+    test('a bar still loading has one, so an early edit lands', () async {
+      final container = containerFor(store);
+      expect(container.read(barWriterProvider), isNotNull);
+      await writerOf(container).setStock('campari', StockLevel.in_);
+      expect(
+        collectionOf(container).ingredientNamed('campari')?.stock,
+        StockLevel.in_,
+      );
+    });
+
+    // The domain's own refusal, the third of ADR 23's enforcements and the one
+    // no route around the writer can escape.
+    test('the raw route refuses a guest bar rather than writing it', () async {
+      final seeded = MemoryBarStore.of(visiting, stored);
+      final container = await started(seeded);
+      await expectLater(
+        controllerOf(container).editCollection(
+          (collection) => collection.withStock('gin', StockLevel.out),
+        ),
+        throwsArgumentError,
+      );
+      expect(seeded.savedBars, isEmpty, reason: 'nothing was written');
+    });
+
+    test('an import leaves a guest bar exactly as it stood', () async {
+      final seeded = MemoryBarStore.of(visiting, stored);
+      final container = await started(seeded);
+      await controllerOf(
+        container,
+      ).replaceOpen(payloadOf(Collection(ingredients: [Ingredient('rye')])));
+      expect(collectionOf(container), stored);
+      expect(seeded.savedBars, isEmpty);
+      expect(seeded.snapshots, isEmpty, reason: 'no copy was staged either');
+    });
+
+    // FR-BAR-3: the one thing that stays the reader's on someone else's bar.
+    test('the reading unit is still the reader\'s on a guest bar', () async {
+      final seeded = MemoryBarStore.of(visiting, stored);
+      final container = await started(seeded);
+      await controllerOf(container).setDisplay(FixedUnit.oz);
+      expect(container.read(openBarProvider)?.display, FixedUnit.oz);
+      expect(seeded.savedShelf?.bars.single.display, FixedUnit.oz);
+      expect(seeded.savedBars, isEmpty, reason: 'the collection is untouched');
+    });
+
+    test('a guest bar exports like any other (FR-DAT-1)', () async {
+      final seeded = MemoryBarStore.of(visiting, stored);
+      final container = await started(seeded);
+      expect(await controllerOf(container).export(), isNotEmpty);
+      expect(seeded.snapshots[ExportPurpose.share]?.$2, stored);
     });
   });
 
@@ -443,7 +555,7 @@ void main() {
       'an edit reaches the store as the collection the app now holds',
       () async {
         final container = await started();
-        await controllerOf(container).setStock('campari', StockLevel.in_);
+        await writerOf(container).setStock('campari', StockLevel.in_);
         expect(store.savedBars[bar.id]?.$2, collectionOf(container));
         expect(store.saveCount, 1);
       },
@@ -451,27 +563,27 @@ void main() {
 
     test('every edit is written, in the order it was made', () async {
       final container = await started();
-      final controller = controllerOf(container);
-      await controller.upsertTag(
+      final writer = writerOf(container);
+      await writer.upsertTag(
         TagKind.recipe,
         const Tag('bitter', color: TagColor.plum),
       );
-      await controller.setStock('campari', StockLevel.low);
-      await controller.removeRecipe('Negroni');
+      await writer.setStock('campari', StockLevel.low);
+      await writer.removeRecipe('Negroni');
       expect(store.saveCount, 3);
       expect(store.savedBars[bar.id]?.$2, collectionOf(container));
     });
 
     test('an edit that changes nothing is not written', () async {
       final container = await started();
-      final controller = controllerOf(container);
-      await controller.setStock('rye', StockLevel.in_);
-      await controller.upsertTag(
+      final writer = writerOf(container);
+      await writer.setStock('rye', StockLevel.in_);
+      await writer.upsertTag(
         TagKind.recipe,
         const Tag('classic', color: TagColor.rose),
         replacing: 'classic',
       );
-      await controller.removeRecipe('Sazerac');
+      await writer.removeRecipe('Sazerac');
       expect(store.saveCount, 0);
       expect(collectionOf(container), same(stored));
     });
@@ -504,7 +616,7 @@ void main() {
 
     test('an edit made before the load resolves lands on top of it', () async {
       final container = containerFor(store);
-      await controllerOf(container).setStock('campari', StockLevel.in_);
+      await writerOf(container).setStock('campari', StockLevel.in_);
       expect(
         collectionOf(container).ingredientNamed('campari')?.stock,
         StockLevel.in_,
@@ -562,7 +674,7 @@ recipes:
     });
 
     test('a file that is not the format at all is refused, not crashed', () {
-      final review = ModelController().review('not a cocktail in sight');
+      final review = ShelfController().review('not a cocktail in sight');
       expect(review.bar, isNull);
       expect(review.issues, hasLength(1));
     });
@@ -570,7 +682,7 @@ recipes:
     test('replacing keeps a copy of what it replaced first '
         '(FR-DAT-3)', () async {
       final container = await started();
-      await controllerOf(container).replaceAll(incoming);
+      await controllerOf(container).replaceOpen(payloadOf(incoming));
       // The copy is the collection that stood before, never the one arriving.
       expect(store.snapshots[ExportPurpose.beforeImport]?.$2, stored);
       expect(collectionOf(container), incoming);
@@ -580,7 +692,7 @@ recipes:
     test('the copy it keeps is not the one an export shares', () async {
       final container = await started();
       await controllerOf(container).export();
-      await controllerOf(container).replaceAll(incoming);
+      await controllerOf(container).replaceOpen(payloadOf(incoming));
       // Two copies, two purposes: the export slot still holds what went out to
       // a reader, so an import cannot write over it.
       expect(store.snapshots[ExportPurpose.share]?.$2, stored);
@@ -589,7 +701,7 @@ recipes:
 
     test('a replace asked for before the load waits for it', () async {
       final container = containerFor(store);
-      await controllerOf(container).replaceAll(incoming);
+      await controllerOf(container).replaceOpen(payloadOf(incoming));
       // Not the empty collection the copy would hold had it run before the
       // load.
       expect(store.snapshots[ExportPurpose.beforeImport]?.$2, stored);

@@ -118,7 +118,7 @@ class _UnitsFormState extends ConsumerState<_UnitsForm> {
   }
 
   Future<void> _save(List<_UnitRow> entered) async {
-    await ref.read(collectionProvider.notifier).setUnits([
+    await ref.read(barWriterProvider)!.setUnits([
       for (final row in entered) (unit: row.unit, was: row.was),
     ]);
     if (mounted) Navigator.of(context).pop();

@@ -542,7 +542,7 @@ void main() {
             tester.element(find.byType(InventoryScreen)),
             listen: false,
           )
-          .read(collectionProvider.notifier)
+          .read(barWriterProvider)!
           .upsertTag(
             TagKind.ingredient,
             const Tag('sirop', color: TagColor.teal),

@@ -229,7 +229,7 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
   /// Atomic edit: new bottles + recipe + handling old name.
   Future<void> _commit(Recipe recipe, List<Ingredient> adding) async {
     await ref
-        .read(collectionProvider.notifier)
+        .read(barWriterProvider)!
         .upsertRecipe(
           recipe,
           addingIngredients: adding,

@@ -172,11 +172,12 @@ class _AmountsFormState extends ConsumerState<_AmountsForm> {
   }
 
   /// Two writes, because the sizes go to the collection's file and the pick to
-  /// the bar's record (ADR 21); each is a no-op where nothing moved.
+  /// the bar's record (ADR 21); each is a no-op where nothing moved. Two
+  /// surfaces with them: the sizes are the owner's, the pick the reader's on a
+  /// guest bar as on their own (FR-BAR-3), which is what M34 draws.
   Future<void> _save() async {
-    final controller = ref.read(collectionProvider.notifier);
-    await controller.setSettings(_entered);
-    await controller.setDisplay(_display);
+    await ref.read(barWriterProvider)!.setSettings(_entered);
+    await ref.read(shelfProvider.notifier).setDisplay(_display);
     if (mounted) Navigator.of(context).pop();
   }
 }

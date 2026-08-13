@@ -384,7 +384,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
       blockedByNoun: 'recipes',
     );
     if (!confirmed || !mounted) return;
-    await ref.read(collectionProvider.notifier).removeRecipe(recipe.name);
+    await ref.read(barWriterProvider)!.removeRecipe(recipe.name);
     if (mounted) {
       setState(() {
         _expanded.remove(recipe.name);

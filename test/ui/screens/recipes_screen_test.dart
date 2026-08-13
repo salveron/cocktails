@@ -309,7 +309,7 @@ Future<void> rewriteUnder(WidgetTester tester, String recipe) async {
   );
   final collection = container.read(collectionProvider).requireValue;
   await container
-      .read(collectionProvider.notifier)
+      .read(barWriterProvider)!
       .upsertRecipe(
         collection.recipeNamed(recipe)!.copyWith(notes: 'Stirred.'),
       );
@@ -627,7 +627,7 @@ void main() {
             tester.element(find.byType(RecipesScreen)),
             listen: false,
           )
-          .read(collectionProvider.notifier)
+          .read(barWriterProvider)!
           .upsertIngredient(Ingredient('Gin'), replacing: 'gin');
       await tester.pumpAndSettle();
 

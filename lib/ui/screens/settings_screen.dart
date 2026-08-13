@@ -80,11 +80,11 @@ Future<bool> _wentThrough(
 /// dismisses the sheet has done nothing, which is not one.
 Future<void> _export(BuildContext context, WidgetRef ref) async {
   final sharer = ref.read(sharerProvider);
-  final notifier = ref.read(collectionProvider.notifier);
+  final shelf = ref.read(shelfProvider.notifier);
   await _wentThrough(
     ScaffoldMessenger.of(context),
     'Could not export',
-    () async => sharer(await notifier.export()),
+    () async => sharer(await shelf.export()),
   );
 }
 
@@ -94,7 +94,7 @@ Future<void> _export(BuildContext context, WidgetRef ref) async {
 /// read with issues rather than an exception.
 Future<void> _import(BuildContext context, WidgetRef ref) async {
   final picker = ref.read(filePickerProvider);
-  final notifier = ref.read(collectionProvider.notifier);
+  final shelf = ref.read(shelfProvider.notifier);
   final navigator = Navigator.of(context);
   await _wentThrough(
     ScaffoldMessenger.of(context),
@@ -105,7 +105,7 @@ Future<void> _import(BuildContext context, WidgetRef ref) async {
       if (text == null) return;
       await navigator.push(
         MaterialPageRoute<void>(
-          builder: (_) => _ImportReview(notifier.review(text)),
+          builder: (_) => _ImportReview(shelf.review(text)),
         ),
       );
     },
@@ -125,9 +125,10 @@ class _ImportReview extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // The collection alone: what else the file carries is the two destinations'
-    // to take, and both are M36's (FR-BAR-7).
-    final incoming = review.bar?.collection;
+    // The whole bar is accepted; the body reads its collection, what else the
+    // file carries being the two destinations' to take and both M36's
+    // (FR-BAR-7).
+    final incoming = review.bar;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Import'),
@@ -140,7 +141,9 @@ class _ImportReview extends ConsumerWidget {
             ),
         ],
       ),
-      body: incoming == null ? _Refused(review.issues) : _Holdings(incoming),
+      body: incoming == null
+          ? _Refused(review.issues)
+          : _Holdings(incoming.collection),
     );
   }
 
@@ -151,21 +154,21 @@ class _ImportReview extends ConsumerWidget {
   Future<void> _accept(
     BuildContext context,
     WidgetRef ref,
-    Collection incoming,
+    BarPayload incoming,
   ) async {
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
     final replaced = await _wentThrough(
       messenger,
       'Could not import',
-      () => ref.read(collectionProvider.notifier).replaceAll(incoming),
+      () => ref.read(shelfProvider.notifier).replaceOpen(incoming),
     );
     if (!replaced) return;
     navigator.popUntil((route) => route.isFirst);
     messenger.showSnackBar(
       SnackBar(
         content: Text(
-          '${counted(incoming.recipes.length, 'recipe')} imported.',
+          '${counted(incoming.collection.recipes.length, 'recipe')} imported.',
         ),
       ),
     );

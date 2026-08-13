@@ -105,7 +105,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
     ),
     onTap: () => unawaited(
       ref
-          .read(collectionProvider.notifier)
+          .read(barWriterProvider)!
           .setStock(ingredient.name, ingredient.stock.next),
     ),
   );
@@ -126,7 +126,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
     );
     if (added == null || !context.mounted) return false;
     await ref
-        .read(collectionProvider.notifier)
+        .read(barWriterProvider)!
         .upsertIngredient(
           Ingredient(added.name, aliases: added.aliases, tags: added.tags),
         );
@@ -152,7 +152,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
     );
     if (edited == null || !context.mounted) return;
     await ref
-        .read(collectionProvider.notifier)
+        .read(barWriterProvider)!
         .upsertIngredient(
           ingredient.copyWith(
             name: edited.name,
@@ -171,9 +171,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
       blockedByNoun: 'recipes',
     );
     if (!confirmed || !context.mounted) return;
-    await ref
-        .read(collectionProvider.notifier)
-        .removeIngredient(ingredient.name);
+    await ref.read(barWriterProvider)!.removeIngredient(ingredient.name);
   }
 }
 

@@ -45,7 +45,7 @@ void main() {
   /// A container whose startup load has already resolved.
   Future<ProviderContainer> started(Collection collection) async {
     final container = containerFor(collection);
-    await container.read(collectionProvider.future);
+    await container.read(shelfProvider.future);
     return container;
   }
 
@@ -64,9 +64,7 @@ void main() {
 
     test('one stock tap moves every recipe that bottle stands in', () async {
       final container = await started(stored);
-      await container
-          .read(collectionProvider.notifier)
-          .setStock('gin', StockLevel.out);
+      await container.read(barWriterProvider)!.setStock('gin', StockLevel.out);
       expect(container.read(availabilityProvider), {
         'Negroni': Availability.missing,
         'Gin Shot': Availability.missing,

@@ -4,10 +4,27 @@ library;
 import 'package:cocktails/domain/domain.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'model_controller.dart';
+import 'shelf_controller.dart';
 
-/// Availability by recipe name, recomputed whole on every collection change —
-/// the pass is under a millisecond at NFR-2 scale. Empty until the load lands.
+/// The open bar's collection, the shape every screen already reads — derived
+/// rather than owned, which kept them still while the root moved above them.
+final collectionProvider = Provider<AsyncValue<Collection>>(
+  (ref) => ref.watch(shelfProvider).whenData((shelf) => shelf.collection),
+);
+
+/// The record beside it: name, mode, reading unit, source, last refresh.
+final openBarProvider = Provider<Bar?>(
+  (ref) => ref.watch(shelfProvider).valueOrNull?.open,
+);
+
+/// Startup load errors; empty when successful (FR-DAT-4).
+final startupIssuesProvider = Provider<List<String>>((ref) {
+  ref.watch(shelfProvider);
+  return ref.watch(shelfProvider.notifier).startupIssues;
+});
+
+/// By recipe name, recomputed whole per change (under a millisecond at NFR-2
+/// scale); empty until the load lands.
 final availabilityProvider = Provider<Map<String, Availability>>((ref) {
   final collection = ref.watch(collectionProvider).valueOrNull;
   return {

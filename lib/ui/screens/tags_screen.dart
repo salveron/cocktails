@@ -119,7 +119,7 @@ class _TagTab extends ConsumerWidget {
       initial: query,
     );
     if (tag == null || !context.mounted) return false;
-    await ref.read(collectionProvider.notifier).upsertTag(kind, tag);
+    await ref.read(barWriterProvider)!.upsertTag(kind, tag);
     return true;
   }
 
@@ -137,7 +137,7 @@ class _TagTab extends ConsumerWidget {
     );
     if (edited == null || !context.mounted) return;
     await ref
-        .read(collectionProvider.notifier)
+        .read(barWriterProvider)!
         .upsertTag(kind, edited, replacing: tag.name);
   }
 
@@ -149,7 +149,7 @@ class _TagTab extends ConsumerWidget {
       blockedByNoun: vocabulary.blockedByNoun,
     );
     if (!confirmed || !context.mounted) return;
-    await ref.read(collectionProvider.notifier).removeTag(kind, tag.name);
+    await ref.read(barWriterProvider)!.removeTag(kind, tag.name);
   }
 
   /// Name rules (excluding [except] to prevent collision on rename). A tag

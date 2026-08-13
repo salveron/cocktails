@@ -311,13 +311,36 @@ guest bar is built as a shape here and gets its first source in Phase 8.
       of M28c's deferred renames went with it: `ModelParts` became `BarParts`, and ADR 18 and ADR 22
       stopped naming `ModelStore`, `FileModelStore` and `modelStoreProvider`. `ModelController` is
       the one `Model` left standing, and M32 deletes it.
-- [ ] **M32 The shelf in state** — `ShelfController` replaces `ModelController` and `collectionProvider`
-      becomes derived rather than owned, which is what keeps the whole presentation layer still
-      while the root moves above it ([components.md](components.md#state-contracts)).
+- [x] **M32 The shelf in state** — `ShelfController` replaces `ModelController` and `collectionProvider`
+      becomes derived rather than owned, which is what kept the whole presentation layer still
+      while the root moved above it ([components.md](components.md#state-contracts)).
       `openBarProvider` answers the record, `barWriterProvider` the writes — null on a guest bar,
-      the same null that will hide a control (ADR 23). Export and import become the open bar's
-      (FR-DAT-1/3), every other bar untouched. `test/architecture_test.dart` gains the rule keeping
-      `ui/` off the notifier.
+      the same null that will hide a control (ADR 23). Export and import became the open bar's
+      (FR-DAT-1/3), every other bar untouched. Scope held to this line: `openBar`, `removeBar`,
+      `refresh` and `addGuestBar` are documented but land with the screens and channels that call
+      them (M33, M35), so nothing shipped here is untested through a real path. **What the milestone
+      turned on was where import sits.** ADR 23 said the writer owned every write and `ui/` was to
+      stay off the notifier entirely — but export, import and the reading unit each have *one* call
+      site, and each is settled by a requirement rather than by that ADR: a guest bar exports like
+      any other (FR-DAT-1), the reading unit is expressly the reader's on a guest bar as on their
+      own (FR-BAR-3), and FR-DAT-3 imports "into an owned bar" while FR-BAR-7 gives the same file its
+      other road as a guest bar. Sixteen call sites need a structure; one needs a line. So the three
+      stayed on the controller beside each other, `replaceOpen` refusing a guest bar itself, and
+      ADR 23 was amended in place rather than gaining exception prose — its argument was always the
+      count, which is what the amendment makes explicit. The architecture rule moved with it: `ui/`
+      may name `shelfProvider.notifier`, but never `editCollection`, the one route that writes a
+      collection without asking whose it is. One regression the tests caught and the design did not:
+      `barWriterProvider` keyed on `valueOrNull?.open`, so the writer was null *during startup* and a
+      tap landing before the load resolved crashed instead of queueing behind it — the null has to
+      mean "someone else's bar", never "not loaded yet". `replaceAll(Collection)` became
+      `replaceOpen(BarPayload)`, the file carrying a whole bar since ADR 21, so an import now moves
+      the name and reading unit with the contents. The platform seams left the controller for
+      `seams.dart` on the way: five declarations of dense rationale kept the file over the 20% comment
+      cap, and the fix was deleting what architecture.md#platform-facts already owned rather than
+      rewording it. A second bug the review caught, the same shape as M31's export rotation: the one
+      write path persisted the index on *every* collection edit, so a stock tap rotated
+      `shelf.yaml`'s three backups though no record had moved. It now writes only what changed —
+      a stock tap one bar's file, a unit pick only the index — pinned both ways.
 - [ ] **M33 The bars screen** — [ui-design.md](ui-design.md#bars): the gear's **Switch bar…**, one
       card a bar, tapped to switch and popped on the way, with rename and delete behind its ⋮ —
       delete confirmed and exported first (FR-BAR-2). An empty shelf is the one time this screen is
