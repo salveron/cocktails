@@ -6,16 +6,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../widgets/editor_form.dart';
-import '../widgets/collection_view.dart';
 import '../widgets/vocabulary_dialogs.dart';
 
 /// The unit amounts read in and what each of the others is worth (FR-SET-1),
 /// designed in docs/ui-design.md#amounts.
-class AmountsScreen extends StatelessWidget {
+class AmountsScreen extends ConsumerWidget {
   const AmountsScreen({super.key});
 
   @override
-  Widget build(BuildContext context) => CollectionView(_AmountsForm.new);
+  Widget build(BuildContext context, WidgetRef ref) =>
+      _AmountsForm(ref.watch(collectionProvider));
 }
 
 class _AmountsForm extends ConsumerStatefulWidget {
@@ -174,7 +174,8 @@ class _AmountsFormState extends ConsumerState<_AmountsForm> {
   /// Two writes, because the sizes go to the collection's file and the pick to
   /// the bar's record (ADR 21); each is a no-op where nothing moved. Two
   /// surfaces with them: the sizes are the owner's, the pick the reader's on a
-  /// guest bar as on their own (FR-BAR-3), which is what M34 draws.
+  /// guest bar as on their own (FR-BAR-3), so a guest bar is offered the pick
+  /// alone.
   Future<void> _save() async {
     await ref.read(barWriterProvider)!.setSettings(_entered);
     await ref.read(shelfProvider.notifier).setDisplay(_display);

@@ -366,23 +366,45 @@ guest bar is built as a shape here and gets its first source in Phase 8.
       went with it. And `startupIssues` became `loadIssues`, a crossing onto a torn file having as
       much to report as a startup — the banner's dismissal is now of the issues it dismissed, not of
       the banner, so the next bar's trouble is not swallowed by a tap made before it.
-- [ ] **M33a The load answers once** — the cleanup phase 7 left behind, taken before M34 rather than
-      after: M34 hides a control on the same seven screens, so cleaning first means it edits
+- [x] **M33a The load answers once** — the cleanup phase 7 left behind, taken before M34 rather than
+      after: M34 hides a control on the same seven screens, so cleaning first meant it edits
       already-simplified code instead of both changes rewriting the same lines. `collectionProvider`
-      is an `AsyncValue` unwrapped in exactly one place in `ui/` — `CollectionView` — and null-guarded
-      twice in `derived.dart`; now that `_Home` already gates on whether the shelf has answered, the
-      spinner and the failure face live there once and `collectionProvider` becomes a plain
-      `Provider<Collection>`. `CollectionView` and its test go, `availabilityProvider` and
-      `purchasesProvider` lose their null branches, and seven screens stop wrapping their whole body
-      in a closure — the recipes screen most of all, where it costs a level of indentation over 714
-      lines. **The one visible change**: during the startup read the app draws a bare spinner rather
-      than shell chrome around one, which is honester than an app bar with no bar to name. Two small
-      ones ride along. `loadIssuesProvider` reads a mutable field through a `ref.watch` that exists
-      only to force recomputation, which works because the controller always sets `_loadIssues`
-      before `state` moves — an invariant nothing enforces and M33 had to keep at three new call
-      sites; a `Notifier<List<String>>` makes it ordinary state. And `Bar.copyWith` cannot clear a
-      nullable field (`source ?? this.source`), which nothing needs today and M35/M36 add the code
-      that might.
+      became a plain `Provider<Collection>`, the spinner and the failure face moved into `_Home`, and
+      `CollectionView` and its test went with them; `availabilityProvider` and `purchasesProvider`
+      lost their null branches, and all seven screens stopped wrapping their body in a closure — the
+      recipes screen most of all, where it cost a level of indentation over 714 lines. The visible
+      change is the one that was planned: during the startup read the app draws a bare spinner rather
+      than shell chrome around one, honester than an app bar with no bar to name. An error holding a
+      stale value still shows the failure rather than the shell — `_Home` reads `error` before
+      `hasValue`, which is what `CollectionView`'s `AsyncData` pattern already did.
+      `loadIssuesProvider` became a `Notifier<List<String>>` beside the controller that writes it,
+      rather than a field reached through a `ref.watch` that existed only to force recomputation: the
+      old shape was right only while every write set `_loadIssues` before `state` moved, an invariant
+      nothing enforced and M33 had to keep at three new call sites.
+      **`Bar.copyWith` narrowed rather than learning to clear.** A sentinel (`Object? source = _keep`)
+      was weighed and refused: nothing in FR-BAR ever clears a source or a stamp — a guest bar always
+      carries where it refreshes from, and `refreshed` only ever gains a time — so the trap was the
+      signature promising a clear it dropped, not a missing capability. `copyWith` now takes the three
+      fields a copy may move, `id` and `mode` come out with the nullable pair (a bar is the same bar,
+      and whose it is arrives with it), and `refreshedAt` is the one writer of the stamp — the shape
+      `RecipeLine.marked` already had, and a would-be clear is now a compile error rather than a
+      silent no-op. **What the milestone turned on was the widget tests.** `pumpScreen` built its
+      screen before the shelf had answered, which a plain `Provider<Collection>` throws on — so the
+      harness now builds its own container, awaits the load, and pumps into an
+      `UncontrolledProviderScope`. That is the honest reading rather than a workaround: a screen over
+      an unanswered shelf is a state the app cannot reach, and the harness saying so is what the
+      seven wrappers were papering over. `scoped` stayed for `pumpApp`, the app being the one thing
+      that does meet the load, and the override list moved to a helper both share. Two tests came out
+      that pinned the unreachable state (`availabilityProvider` and `purchasesProvider` "hold nothing
+      until the startup load lands") and one refusal went in, `collectionProvider` throwing rather
+      than standing in with a collection nobody wrote. `derived.dart` went **over the 20% comment cap**
+      on the way — it lost code while gaining rationale — and the fix was moving that rationale to
+      [components.md](components.md#state-contracts), which was its home to begin with. Riding along:
+      seven records named a milestone rather than the feature it delivered
+      (`M31`/`M32`/`M34`/`M36` in two screens, two test fixtures, `components.md` and
+      [ADR 23](adr/23-nothing-writes-a-guest-bar.md)), against the working agreement that identifiers
+      stay in the plan; and `components.md` still called `barStoreContract` by the name it carried
+      before M31 and still listed a `visible recipes` provider that never existed.
 - [ ] **M34 A guest bar is read-only** — FR-BAR-3/4 built as shape, before any channel can make one:
       two destinations rather than three, the optimizer absent rather than empty (FR-DIS-6/7/10
       unreachable, so nothing watches `purchasesProvider` at all), and no form, dialog, toggle or

@@ -7,17 +7,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../widgets/editor_form.dart';
-import '../widgets/collection_view.dart';
 import '../widgets/vocabulary_dialogs.dart';
 
 /// The measurement vocabulary (FR-VOC-5), edited in place: a row per unit and
 /// one Save for the screen, so two units can trade names in a single edit.
 /// Designed in docs/ui-design.md#units.
-class UnitsScreen extends StatelessWidget {
+class UnitsScreen extends ConsumerWidget {
   const UnitsScreen({super.key});
 
   @override
-  Widget build(BuildContext context) => CollectionView(_UnitsForm.new);
+  Widget build(BuildContext context, WidgetRef ref) =>
+      _UnitsForm(ref.watch(collectionProvider));
 }
 
 class _UnitsForm extends ConsumerStatefulWidget {

@@ -57,7 +57,7 @@ void main() {
     recipes: [negroni],
   );
 
-  /// The one owned bar every test here runs over; the shelf around it is M32's.
+  /// The one owned bar every test here runs over.
   final bar = Bar(id: 'a1b2c3', name: 'Home bar', mode: BarMode.owner);
 
   BarPayload payloadOf(Collection collection, {FixedUnit? display}) =>
@@ -82,7 +82,7 @@ void main() {
   }
 
   Collection collectionOf(ProviderContainer container) =>
-      container.read(collectionProvider).requireValue;
+      container.read(collectionProvider);
 
   ShelfController controllerOf(ProviderContainer container) =>
       container.read(shelfProvider.notifier);

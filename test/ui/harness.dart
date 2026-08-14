@@ -111,23 +111,29 @@ MemoryBarStore corruptStore() {
     );
 }
 
-/// [widget] under the provider overrides the composition root makes, so a
-/// widget test reaches the real state layer over an in-memory store — and over
-/// the two seams data crosses the edge by: [sharer] where a copy goes out to
-/// the system's sheet, [picker] where a file comes back off it (ADR 18).
+/// The overrides the composition root makes, so a widget test reaches the real
+/// state layer over an in-memory store — and over the two seams data crosses
+/// the edge by: [sharer] where a copy goes out to the system's sheet, [picker]
+/// where a file comes back off it (ADR 18).
+List<Override> _overrides(
+  BarStore? store,
+  Future<void> Function(String)? sharer,
+  Future<String?> Function()? picker,
+) => [
+  barStoreProvider.overrideWithValue(store ?? MemoryBarStore.of(testBar())),
+  if (sharer != null) sharerProvider.overrideWithValue(sharer),
+  if (picker != null) filePickerProvider.overrideWithValue(picker),
+];
+
+/// [widget] under those overrides, meeting the startup load itself — which is
+/// what the app does and what only the app does.
 Widget scoped(
   Widget widget, {
   BarStore? store,
   Future<void> Function(String)? sharer,
   Future<String?> Function()? picker,
-}) => ProviderScope(
-  overrides: [
-    barStoreProvider.overrideWithValue(store ?? MemoryBarStore.of(testBar())),
-    if (sharer != null) sharerProvider.overrideWithValue(sharer),
-    if (picker != null) filePickerProvider.overrideWithValue(picker),
-  ],
-  child: widget,
-);
+}) =>
+    ProviderScope(overrides: _overrides(store, sharer, picker), child: widget);
 
 /// The whole app, pumped past its startup load.
 Future<void> pumpApp(
@@ -141,8 +147,11 @@ Future<void> pumpApp(
   await tester.pumpAndSettle();
 }
 
-/// One screen on its own, pumped past its startup load — under the app's own
-/// theme, so a screen is judged in the ink it will actually be drawn in.
+/// One screen on its own, over a shelf that has already answered — under the
+/// app's own theme, so a screen is judged in the ink it will actually be drawn
+/// in. The load is awaited before the first frame rather than met in one: the
+/// shell draws no screen until it has landed (docs/ui-design.md#app-shell), so
+/// a screen pumped over an unanswered shelf is a state the app cannot reach.
 Future<void> pumpScreen(
   WidgetTester tester,
   Widget screen, {
@@ -150,15 +159,18 @@ Future<void> pumpScreen(
   Future<void> Function(String)? sharer,
   Future<String?> Function()? picker,
 }) async {
+  final container = ProviderContainer(
+    overrides: _overrides(store, sharer, picker),
+  );
+  addTearDown(container.dispose);
+  await container.read(shelfProvider.future);
   await tester.pumpWidget(
-    scoped(
-      MaterialApp(
+    UncontrolledProviderScope(
+      container: container,
+      child: MaterialApp(
         theme: cocktailsTheme(Brightness.light),
         home: Scaffold(body: screen),
       ),
-      store: store,
-      sharer: sharer,
-      picker: picker,
     ),
   );
   await tester.pumpAndSettle();

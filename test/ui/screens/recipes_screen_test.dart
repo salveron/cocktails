@@ -307,7 +307,7 @@ Future<void> rewriteUnder(WidgetTester tester, String recipe) async {
     tester.element(find.byType(RecipesScreen)),
     listen: false,
   );
-  final collection = container.read(collectionProvider).requireValue;
+  final collection = container.read(collectionProvider);
   await container
       .read(barWriterProvider)!
       .upsertRecipe(

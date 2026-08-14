@@ -55,7 +55,8 @@ lib/
       seams.dart               # store, share sheet, picker — one provider each (ADR 18)
       channels.dart            # the transports resolved, the refreshes in flight and
                                #   what they failed with, the offers standing (ADR 22)
-      derived.dart             # availabilityProvider; visible recipes, optimizer
+      derived.dart             # read-only over the shelf: the open bar's collection and
+                               #   record, every record on it, availability, the optimizer
   ui/                          # no barrel — leaves, imported directly; design in ui-design.md
     app.dart                   # MaterialApp and the shell: app bar, gear, the stack, and
                                #   the trail a jump leaves for back to undo (ADR 19)
@@ -75,7 +76,7 @@ lib/
                                #   holds both halves of the data exchange and the import
                                #   review its pick pushes, so one file keeps them from
                                #   drifting apart (ADR 18)
-    widgets/                   # empty_state, collection_view, search_field, load_issues,
+    widgets/                   # empty_state, search_field, load_issues,
                                #   color_chip — the pill, chip, dot, the run of dots a name
                                #     or a basket's recipe wears, the dotted name itself, and
                                #     `chipRadius`, the corner a chip and its ink round to
@@ -660,9 +661,9 @@ Future<void> addGuestBar(BarSource source, BarPayload bar);        // FR-BAR-3/7
 Future<void> refresh(String barId);                // FR-BAR-5; never awaited by a screen
 ```
 
-The first four are M32's, the next five M33's; the last two land with the channels that call them
-(M35). All of them take **one call site each**, which is why they sit here rather than on the writer
-— see [ADR 23](adr/23-nothing-writes-a-guest-bar.md), where the count is the whole argument. `export`
+The last two land with the channels that call them. All of them take **one call site each**, which is
+why they sit here rather than on the writer — see
+[ADR 23](adr/23-nothing-writes-a-guest-bar.md), where the count is the whole argument. `export`
 and `setDisplay` work on a guest bar (FR-DAT-1, FR-BAR-3); `replaceOpen` refuses one, FR-DAT-3
 importing "into an owned bar" and FR-BAR-7 giving the same file its other road, and `renameBar`
 refuses one because a refresh replaces the name wholesale (FR-BAR-5) and would throw the rename away.
@@ -685,8 +686,11 @@ offers — replacing an owned bar, the file's `display` landing with the rest, o
 index, opens the bar it names, and reports what failed — a `Corrupt` bar starts on its recovered 
 backup, and issues reach the UI through `loadIssuesProvider` as `"line N: message"` strings 
 (FR-DAT-4; `SourcedIssue` is data-layer). Those issues are the *last* load's, startup or crossing 
-alike, so a bar opened onto a torn file says so where the banner already speaks. An index naming no 
-open bar, or naming one it does not hold, still opens on whatever it does hold. **No index at all is 
+alike, so a bar opened onto a torn file says so where the banner already speaks. That provider is 
+**ordinary state the load writes**, a `Notifier` beside the controller rather than a field read off 
+it: a field would only ever be right while every write set it before the shelf moved, and no write 
+site can be made to keep an invariant the type does not. An index naming no open bar, or naming one 
+it does not hold, still opens on whatever it does hold. **No index at all is 
 a first run and founds a bar; an index listing none is a reader who deleted their last, and the bar 
 list meets them** — the store tells the two apart, and `Empty` versus `Loaded` with no bars is where.
 
@@ -720,8 +724,13 @@ Everything else is derived, read-only:
 
 `collectionProvider` — the open bar's collection, and the shape every screen already reads. It is derived 
 from `shelfProvider` rather than owned, which is what kept the whole presentation layer still while 
-the root moved above it. `openBarProvider` answers the record beside it — name, mode, reading unit, 
-source, last refresh — and `barsProvider` every record on the shelf, which is all the bar list reads. 
+the root moved above it. It answers a `Collection`, never an `AsyncValue` of one: **the startup load 
+is met in exactly one place**, the shell ([ui-design.md](ui-design.md#app-shell)), which draws no 
+screen until it has answered — so a screen reading this provider cannot exist early enough to see a 
+wait, and reading it before the shelf has landed throws rather than standing in with an empty 
+collection nobody wrote. `availabilityProvider` and `purchasesProvider` read it plainly for the same 
+reason. `openBarProvider` answers the record beside it — name, mode, reading unit, source, last 
+refresh — and `barsProvider` every record on the shelf, which is all the bar list reads. 
 `openBarProvider` answering null once the shelf has loaded is what puts the bar list on screen as 
 home ([ui-design.md](ui-design.md#bars)).
 
@@ -864,5 +873,5 @@ joins the table.
 One rule, one test: where a fact is pinned in two places a change has to visit both, and the second 
 one drifts. A rule holding over several types or vocabularies gets one parametrised body run over 
 each, not a copy each — `tokenVocabulary` and `valueEquality` in `test/domain/collection_test.dart`, 
-`vocabulary` in `collection_edits_test.dart`, `modelStoreContract` in `test/data/`. Every case in such a 
+`vocabulary` in `collection_edits_test.dart`, `barStoreContract` in `test/data/`. Every case in such a 
 table carries a `reason` naming it, so a failure says which one.

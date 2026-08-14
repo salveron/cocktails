@@ -8,7 +8,38 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'harness.dart';
 
+/// A store whose load blows up — the only way to reach the failure face.
+final class _FailingStore extends MemoryBarStore {
+  @override
+  Future<LoadOutcome<Records>> loadShelf() async =>
+      throw StateError('disk on fire');
+}
+
 void main() {
+  group('the startup load', () {
+    testWidgets('is a bare spinner until it answers, then the shell', (
+      tester,
+    ) async {
+      await tester.pumpWidget(scoped(const CocktailsApp()));
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      // Chrome naming a bar the app has not read yet would say more than it
+      // knows, so none of it is drawn.
+      expect(find.byType(AppBar), findsNothing);
+      expect(find.byType(NavigationBar), findsNothing);
+
+      await tester.pumpAndSettle();
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+      expect(shellTitle('Recipes'), findsOneWidget);
+    });
+
+    testWidgets('says so when the store cannot be read at all', (tester) async {
+      await pumpApp(tester, store: _FailingStore());
+      expect(find.text('Your data could not be opened'), findsOneWidget);
+      expect(find.textContaining('disk on fire'), findsOneWidget);
+      expect(find.byType(NavigationBar), findsNothing);
+    });
+  });
+
   group('app shell', () {
     testWidgets('starts on recipes with every destination one tap away', (
       tester,

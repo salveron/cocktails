@@ -149,6 +149,18 @@ void main() {
       );
     });
 
+    test('refreshedAt is the one writer of the stamp (FR-BAR-5)', () {
+      final now = DateTime.utc(2026, 3, 1, 18);
+      final bar = guestBar(refreshed: anHourAgo);
+      final landed = bar.refreshedAt('Ada\'s bar, renamed', now);
+      expect(landed.refreshed, now);
+      expect(landed.name, 'Ada\'s bar, renamed');
+      // The reader's pick outlives what the owner sent (ADR 21), and where the
+      // bar refreshes from is untouched by having refreshed.
+      expect(landed.display, bar.display);
+      expect(landed.source, bar.source);
+    });
+
     test('the offers cannot be changed from outside', () {
       final offers = <Offer>[(via: Transport.lan, guests: [])];
       final bar = ownedBar(offers: offers);

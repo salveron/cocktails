@@ -62,7 +62,7 @@ extension ShelfEdits on Shelf {
     if (bar.isOwned) {
       throw ArgumentError('An owned bar refreshes from nothing: "${bar.name}"');
     }
-    final shelf = withBar(bar.copyWith(name: payload.name, refreshed: at));
+    final shelf = withBar(bar.refreshedAt(payload.name, at));
     return id == openId
         ? Shelf(
             bars: shelf.bars,

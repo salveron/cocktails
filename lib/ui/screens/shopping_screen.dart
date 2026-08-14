@@ -6,7 +6,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../destinations.dart';
 import '../widgets/color_chip.dart';
 import '../widgets/empty_state.dart';
-import '../widgets/collection_view.dart';
 import '../widgets/vocabulary_list.dart';
 
 String _bottlesOf(Purchase purchase) => purchase.bottles.join(' + ');
@@ -51,54 +50,52 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
   @override
   Widget build(BuildContext context) {
     if (!widget.showing) return const SizedBox.shrink();
-    return CollectionView((collection) {
-      final purchases = ref.watch(purchasesProvider(_restocking));
-      final vocabulary = sortedByName(collection.recipeTags);
-      final worn = {
-        for (final recipe in collection.recipes) recipe.name: recipe.tags,
-      };
-      final filter = _tagFilter(vocabulary, worn);
-      // The picks as the vocabulary spells them — `tagFilter` reads them by the
-      // same rule, so nothing is dotted by a pick that stopped narrowing.
-      final lit = wornInOrder(vocabulary, _picked);
-      // Ranked among every basket of the size, then narrowed — the rank is
-      // bound before the tags drop any, so the numbering on show gaps.
-      final onShow = [
-        for (final (rank, purchase)
-            in purchases
-                .where((purchase) => purchase.bottles.length == _budget)
-                .indexed)
-          if (filter?.test(purchase) ?? true)
-            (rank: rank + 1, basket: purchase),
-      ];
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _Controls(
-            budget: _budget,
-            restocking: _restocking,
-            onBudget: (budget) => setState(() => _budget = budget),
-            onRestocking: (on) => setState(() => _restocking = on),
-          ),
-          ?filter?.row,
-          Expanded(
-            child: onShow.isEmpty
-                ? _emptyFor(collection, purchases, filter)
-                : ListView.builder(
-                    padding: const EdgeInsets.only(bottom: 16),
-                    itemCount: onShow.length,
-                    itemBuilder: (context, index) => _card(
-                      collection,
-                      onShow[index].basket,
-                      onShow[index].rank,
-                      lit: lit,
-                      worn: worn,
-                    ),
+    final collection = ref.watch(collectionProvider);
+    final purchases = ref.watch(purchasesProvider(_restocking));
+    final vocabulary = sortedByName(collection.recipeTags);
+    final worn = {
+      for (final recipe in collection.recipes) recipe.name: recipe.tags,
+    };
+    final filter = _tagFilter(vocabulary, worn);
+    // The picks as the vocabulary spells them — `tagFilter` reads them by the
+    // same rule, so nothing is dotted by a pick that stopped narrowing.
+    final lit = wornInOrder(vocabulary, _picked);
+    // Ranked among every basket of the size, then narrowed — the rank is
+    // bound before the tags drop any, so the numbering on show gaps.
+    final onShow = [
+      for (final (rank, purchase)
+          in purchases
+              .where((purchase) => purchase.bottles.length == _budget)
+              .indexed)
+        if (filter?.test(purchase) ?? true) (rank: rank + 1, basket: purchase),
+    ];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _Controls(
+          budget: _budget,
+          restocking: _restocking,
+          onBudget: (budget) => setState(() => _budget = budget),
+          onRestocking: (on) => setState(() => _restocking = on),
+        ),
+        ?filter?.row,
+        Expanded(
+          child: onShow.isEmpty
+              ? _emptyFor(collection, purchases, filter)
+              : ListView.builder(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  itemCount: onShow.length,
+                  itemBuilder: (context, index) => _card(
+                    collection,
+                    onShow[index].basket,
+                    onShow[index].rank,
+                    lit: lit,
+                    worn: worn,
                   ),
-          ),
-        ],
-      );
-    });
+                ),
+        ),
+      ],
+    );
   }
 
   /// The chip row and what it keeps (FR-DIS-10), on the recipes' own terms: a

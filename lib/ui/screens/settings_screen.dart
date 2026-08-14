@@ -133,8 +133,7 @@ class _ImportReview extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     // The whole bar is accepted; the body reads its collection, what else the
-    // file carries being the two destinations' to take and both M36's
-    // (FR-BAR-7).
+    // file carries being the two roads it can take, and theirs (FR-BAR-7).
     final incoming = review.bar;
     return Scaffold(
       appBar: AppBar(

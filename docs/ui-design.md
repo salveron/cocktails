@@ -35,7 +35,12 @@ Screen/shell design. Modules [components.md](components.md), requirements [requi
   left. A bottom-bar tap clears the way back — a destination the reader chose has nothing to return 
   *from*. What comes back is their place, not their narrowings: the destinations are all alive, so a 
   basket is found open where it was, but a search a jump cleared stays cleared.
-- **`CollectionView`**: only reader of `collectionProvider`'s `AsyncValue`. Screens never see loading/failure.
+- **The startup load is met once, here.** While it runs the app is a **bare spinner** — no app bar, 
+  no bottom bar: chrome naming a bar the app has not read yet would say more than it knows. Where it 
+  fails outright the whole screen says so. Only past both does anything else get built, which is 
+  what lets every screen below read a collection rather than the wait for one 
+  ([components.md](components.md#state-contracts)). A per-screen wrapper doing this seven times was 
+  what stood here before, and it cost every screen a level of indentation to say what one gate says.
 - **`EmptyState`**: icon, title, fill hint.
 - **`LoadIssues`**: displays FR-DAT-4 problems above all screens, from startup or from a crossing 
   alike. Dismissable — of the issues on show, so the next bar's trouble is not swallowed by a tap 

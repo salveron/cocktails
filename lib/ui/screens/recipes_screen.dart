@@ -13,7 +13,6 @@ import '../palette.dart';
 import '../theme.dart';
 import '../widgets/color_chip.dart';
 import '../widgets/empty_state.dart';
-import '../widgets/collection_view.dart';
 import '../widgets/vocabulary_dialogs.dart';
 import '../widgets/vocabulary_list.dart';
 import 'recipe_form_screen.dart';
@@ -116,49 +115,48 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
   Widget build(BuildContext context) {
     final availability = ref.watch(availabilityProvider);
     ref.listen(revealProvider, (_, request) => _serve(request));
-    return CollectionView((collection) {
-      final vocabulary = sortedByName(collection.recipeTags);
-      // Read through the build that carries it, so no later one reveals again.
-      final revealing = _revealing;
-      _revealing = null;
-      return VocabularyList<Recipe>(
-        entries: collection.recipes,
-        nameOf: (recipe) => recipe.name,
-        spellingsOf: (recipe) => _spellings(collection, recipe),
-        rowOf: (recipe) =>
-            _row(collection, vocabulary, recipe, availability[recipe.name]),
-        onAdd: (query) => _add(collection.units, query),
-        reveal: revealing,
-        noun: 'recipe',
-        plural: 'recipes',
-        filter: tagFilter(
-          vocabulary: vocabulary,
-          picked: _picked,
-          onToggle: (tag) => setState(() => _picked.toggle(tag)),
-          tagsOf: (recipe) => recipe.tags,
-          leading: _baseFilter(collection),
-        ),
-        draw: (
-          icon: const FaIcon(FontAwesomeIcons.dice),
-          tooltip: 'Random pick',
-          draw: _roll,
-        ),
-        orders: {
-          // A recipe the pass has yet to judge ranks with the missing ones,
-          // where a card drawing no chip belongs.
-          'Availability': (recipe) =>
-              (availability[recipe.name] ?? Availability.missing).index,
-          ...alphabetical,
-        },
-        empty: const EmptyState(
-          icon: Icons.local_bar_outlined,
-          title: 'No recipes yet',
-          message:
-              'Recipes you add appear here, marked with what you can make '
-              'from the bottles you have.',
-        ),
-      );
-    });
+    final collection = ref.watch(collectionProvider);
+    final vocabulary = sortedByName(collection.recipeTags);
+    // Read through the build that carries it, so no later one reveals again.
+    final revealing = _revealing;
+    _revealing = null;
+    return VocabularyList<Recipe>(
+      entries: collection.recipes,
+      nameOf: (recipe) => recipe.name,
+      spellingsOf: (recipe) => _spellings(collection, recipe),
+      rowOf: (recipe) =>
+          _row(collection, vocabulary, recipe, availability[recipe.name]),
+      onAdd: (query) => _add(collection.units, query),
+      reveal: revealing,
+      noun: 'recipe',
+      plural: 'recipes',
+      filter: tagFilter(
+        vocabulary: vocabulary,
+        picked: _picked,
+        onToggle: (tag) => setState(() => _picked.toggle(tag)),
+        tagsOf: (recipe) => recipe.tags,
+        leading: _baseFilter(collection),
+      ),
+      draw: (
+        icon: const FaIcon(FontAwesomeIcons.dice),
+        tooltip: 'Random pick',
+        draw: _roll,
+      ),
+      orders: {
+        // A recipe the pass has yet to judge ranks with the missing ones,
+        // where a card drawing no chip belongs.
+        'Availability': (recipe) =>
+            (availability[recipe.name] ?? Availability.missing).index,
+        ...alphabetical,
+      },
+      empty: const EmptyState(
+        icon: Icons.local_bar_outlined,
+        title: 'No recipes yet',
+        message:
+            'Recipes you add appear here, marked with what you can make '
+            'from the bottles you have.',
+      ),
+    );
   }
 
   /// Sends the reader to the bottle a line names, on the Inventory (FR-DIS-9).

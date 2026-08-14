@@ -58,10 +58,6 @@ void main() {
       });
     });
 
-    test('holds nothing until the startup load lands', () {
-      expect(containerFor(stored).read(availabilityProvider), isEmpty);
-    });
-
     test('one stock tap moves every recipe that bottle stands in', () async {
       final container = await started(stored);
       await container.read(barWriterProvider)!.setStock('gin', StockLevel.out);
@@ -101,9 +97,20 @@ void main() {
       expect(container.read(purchasesProvider(false)), isEmpty);
       expect(container.read(purchasesProvider(true)).single.bottles, ['gin']);
     });
+  });
 
-    test('holds nothing until the startup load lands', () {
-      expect(containerFor(short).read(purchasesProvider(false)), isEmpty);
+  // What it answers with once the load has landed is proven by every mutation
+  // in shelf_controller_test, which reads the open bar's collection through it.
+  group('collectionProvider', () {
+    // The shell meets the load and draws no screen until it has answered
+    // (docs/ui-design.md#app-shell), so this is the reading of a provider no
+    // widget can be built early enough to make — a throw, not an empty
+    // collection standing in for one nobody has read yet.
+    test('refuses to stand in for a collection not yet read', () {
+      expect(
+        () => containerFor(stored).read(collectionProvider),
+        throwsStateError,
+      );
     });
   });
 }

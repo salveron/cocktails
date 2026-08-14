@@ -8,7 +8,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../destinations.dart';
 import '../widgets/color_chip.dart';
 import '../widgets/empty_state.dart';
-import '../widgets/collection_view.dart';
 import '../widgets/vocabulary_dialogs.dart';
 import '../widgets/vocabulary_list.dart';
 
@@ -47,39 +46,38 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
   @override
   Widget build(BuildContext context) {
     ref.listen(revealProvider, (_, request) => _serve(request));
-    return CollectionView((collection) {
-      final vocabulary = sortedByName(collection.ingredientTags);
-      // Read through the build that carries it, so no later one reveals again.
-      final revealing = _revealing;
-      _revealing = null;
-      return VocabularyList<Ingredient>(
-        entries: collection.ingredients,
-        nameOf: (ingredient) => ingredient.name,
-        spellingsOf: (ingredient) => ingredient.spellings,
-        rowOf: (ingredient) => _row(collection, vocabulary, ingredient),
-        onAdd: (query) => _add(collection, vocabulary, query),
-        reveal: revealing,
-        noun: 'ingredient',
-        plural: 'ingredients',
-        orders: {
-          'Stock': (ingredient) => ingredient.stock.index,
-          ...alphabetical,
-        },
-        filter: tagFilter(
-          vocabulary: vocabulary,
-          picked: _picked,
-          onToggle: _toggle,
-          tagsOf: (ingredient) => ingredient.tags,
-        ),
-        empty: const EmptyState(
-          icon: Icons.inventory_2_outlined,
-          title: 'No ingredients yet',
-          message:
-              'Every ingredient your recipes use is listed here, with what you '
-              'have in stock.',
-        ),
-      );
-    });
+    final collection = ref.watch(collectionProvider);
+    final vocabulary = sortedByName(collection.ingredientTags);
+    // Read through the build that carries it, so no later one reveals again.
+    final revealing = _revealing;
+    _revealing = null;
+    return VocabularyList<Ingredient>(
+      entries: collection.ingredients,
+      nameOf: (ingredient) => ingredient.name,
+      spellingsOf: (ingredient) => ingredient.spellings,
+      rowOf: (ingredient) => _row(collection, vocabulary, ingredient),
+      onAdd: (query) => _add(collection, vocabulary, query),
+      reveal: revealing,
+      noun: 'ingredient',
+      plural: 'ingredients',
+      orders: {
+        'Stock': (ingredient) => ingredient.stock.index,
+        ...alphabetical,
+      },
+      filter: tagFilter(
+        vocabulary: vocabulary,
+        picked: _picked,
+        onToggle: _toggle,
+        tagsOf: (ingredient) => ingredient.tags,
+      ),
+      empty: const EmptyState(
+        icon: Icons.inventory_2_outlined,
+        title: 'No ingredients yet',
+        message:
+            'Every ingredient your recipes use is listed here, with what you '
+            'have in stock.',
+      ),
+    );
   }
 
   /// Row tap toggles stock (in → low → out → in); vocab actions use ⋮.

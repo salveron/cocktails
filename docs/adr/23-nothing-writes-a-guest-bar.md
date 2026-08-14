@@ -70,7 +70,7 @@ guest bar has no shopping destination and the optimizer is never asked for one (
   whether to draw the control.
 - Import sits with export on the data seam rather than on the writer ([ADR 18](18-data-crosses-the-edge-in-a-system-sheet.md)),
   so the one exchange stays one subject and `replaceOpen` refuses a guest bar itself. What draws or
-  hides its row is M34's, reading the same `openBarProvider` mode every other control does.
+  hides its row reads the same `openBarProvider` mode every other control does.
 - The architecture test grows from reading directives to reading a name in source. A small widening,
   and the same non-vacuity discipline applies: the new rule is exercised on constructed input.
 - Vision's likes and dislikes would be a reader's datum about someone else's recipe, not an edit to

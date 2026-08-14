@@ -31,7 +31,7 @@ BarPayload payloadOf(Bar bar, Collection collection) =>
     (name: bar.name, display: bar.display, collection: collection);
 
 /// A format-1 file as this app wrote them before ADR 21 — the shape a device
-/// upgrading into M31 is actually carrying. No `units:`, which is the shipped
+/// upgrading to one file per bar is actually carrying. No `units:`, the shipped
 /// vocabulary (ADR 09) and keeps the fixture to what the migration turns on.
 String legacyText({String ingredient = 'gin', String display = 'oz'}) =>
     'format: 1\n\n'

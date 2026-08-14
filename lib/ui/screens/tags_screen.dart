@@ -7,35 +7,37 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../widgets/color_chip.dart';
 import '../widgets/empty_state.dart';
-import '../widgets/collection_view.dart';
 import '../widgets/vocabulary_dialogs.dart';
 import '../widgets/vocabulary_list.dart';
 
 /// Both tag vocabularies, a tab each — add, rename with propagation, colour,
 /// and reference-blocked delete (FR-VOC-1/3/4). Designed in
 /// docs/ui-design.md#tags-screen.
-class TagsScreen extends StatelessWidget {
+class TagsScreen extends ConsumerWidget {
   const TagsScreen({super.key});
 
   @override
-  Widget build(BuildContext context) => DefaultTabController(
-    length: TagKind.values.length,
-    child: Scaffold(
-      appBar: AppBar(
-        title: const Text('Tags'),
-        bottom: TabBar(
-          tabs: [for (final kind in TagKind.values) Tab(text: kind.words.tab)],
+  Widget build(BuildContext context, WidgetRef ref) {
+    final collection = ref.watch(collectionProvider);
+    return DefaultTabController(
+      length: TagKind.values.length,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Tags'),
+          bottom: TabBar(
+            tabs: [
+              for (final kind in TagKind.values) Tab(text: kind.words.tab),
+            ],
+          ),
         ),
-      ),
-      body: CollectionView(
-        (collection) => TabBarView(
+        body: TabBarView(
           children: [
             for (final kind in TagKind.values) _TagTab(kind, collection),
           ],
         ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 /// What one vocabulary is called on this screen. The domain tells the two

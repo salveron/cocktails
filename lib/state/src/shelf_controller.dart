@@ -15,12 +15,22 @@ final shelfProvider = AsyncNotifierProvider<ShelfController, Shelf>(
   ShelfController.new,
 );
 
+/// What the last load — startup or crossing — turned up (FR-DAT-4). Ordinary
+/// state written by the load itself: a field read off the controller would only
+/// be right while every write set it before the shelf moved, which is an
+/// invariant nothing could enforce.
+final loadIssuesProvider = NotifierProvider<LoadIssuesController, List<String>>(
+  LoadIssuesController.new,
+);
+
+final class LoadIssuesController extends Notifier<List<String>> {
+  @override
+  List<String> build() => const [];
+
+  void report(List<String> issues) => state = List.unmodifiable(issues);
+}
+
 final class ShelfController extends AsyncNotifier<Shelf> {
-  List<String> _loadIssues = const [];
-
-  /// What the last load turned up, startup or crossing.
-  List<String> get loadIssues => _loadIssues;
-
   /// Reads the index and opens the bar it names (FR-DAT-4).
   @override
   Future<Shelf> build() async {
@@ -47,7 +57,7 @@ final class ShelfController extends AsyncNotifier<Shelf> {
     final collection = open == null
         ? null
         : await _collectionOf(store, open.id, issues);
-    _loadIssues = List.unmodifiable(issues);
+    _report(issues);
     return Shelf(bars: bars, openId: open?.id, collection: collection);
   }
 
@@ -55,7 +65,7 @@ final class ShelfController extends AsyncNotifier<Shelf> {
   /// index as [addOwnedBar] and the migration both write one.
   Future<Shelf> _foundFirstBar(BarStore store, List<String> issues) async {
     final bar = Bar(id: newBarId(), name: 'Home bar', mode: BarMode.owner);
-    _loadIssues = List.unmodifiable(issues);
+    _report(issues);
     await store.saveBar(bar, Collection());
     await store.saveShelf((bars: [bar], openId: bar.id));
     return Shelf(bars: [bar], openId: bar.id);
@@ -134,7 +144,7 @@ final class ShelfController extends AsyncNotifier<Shelf> {
       issues,
     );
     // The banner reports the load last asked for, so a sound bar clears it.
-    _loadIssues = List.unmodifiable(issues);
+    _report(issues);
     await _publish(shelf.opening(id, collection));
   }
 
@@ -145,7 +155,7 @@ final class ShelfController extends AsyncNotifier<Shelf> {
     final bar = Bar(id: newBarId(), name: name, mode: BarMode.owner);
     final collection = Collection();
     await ref.read(barStoreProvider).saveBar(bar, collection);
-    _loadIssues = const [];
+    _report(const []);
     await _publish(shelf.withBar(bar).opening(bar.id, collection));
   }
 
@@ -202,6 +212,9 @@ final class ShelfController extends AsyncNotifier<Shelf> {
   /// FR-DAT-4's issues as a reader meets them, whenever they arose.
   static List<String> _described(List<SourcedIssue> issues) =>
       List.unmodifiable([for (final issue in issues) issue.description]);
+
+  void _report(List<String> issues) =>
+      ref.read(loadIssuesProvider.notifier).report(issues);
 
   /// Publish, then persist only what moved: a stock tap rewrites one bar's file
   /// and a unit pick only the index, neither rotating the other's backups. A

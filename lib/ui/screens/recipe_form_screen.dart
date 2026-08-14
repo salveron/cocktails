@@ -8,7 +8,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../widgets/editor_form.dart';
 import '../widgets/vocabulary_dialogs.dart';
-import '../widgets/collection_view.dart';
 import '../widgets/tag_choices.dart';
 import '../widgets/vocabulary_list.dart';
 
@@ -239,7 +238,8 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => CollectionView((collection) {
+  Widget build(BuildContext context) {
+    final collection = ref.watch(collectionProvider);
     final vocabulary = sortedByName(collection.recipeTags);
     final original = widget.original;
     final nameIssues = _nameIssues(collection);
@@ -290,7 +290,7 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
         ),
       ],
     );
-  });
+  }
 }
 
 class _SectionLabel extends StatelessWidget {

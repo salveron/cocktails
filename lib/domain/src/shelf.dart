@@ -101,22 +101,31 @@ final class Bar {
 
   bool get isOwned => mode == BarMode.owner;
 
-  Bar copyWith({
-    String? id,
-    String? name,
-    BarMode? mode,
-    FixedUnit? display,
-    List<Offer>? offers,
-    BarSource? source,
-    DateTime? refreshed,
-  }) => Bar(
-    id: id ?? this.id,
+  /// What a copy may change, and nothing else: null means "keep", so a field
+  /// that can be absent would read as unclearable here. Id and mode are not a
+  /// copy's to move either — a bar is the same bar, and whose it is arrives
+  /// with it.
+  Bar copyWith({String? name, FixedUnit? display, List<Offer>? offers}) => Bar(
+    id: id,
     name: name ?? this.name,
-    mode: mode ?? this.mode,
+    mode: mode,
     display: display ?? this.display,
     offers: offers ?? this.offers,
-    source: source ?? this.source,
-    refreshed: refreshed ?? this.refreshed,
+    source: source,
+    refreshed: refreshed,
+  );
+
+  /// FR-BAR-5: the owner's name as it just arrived, and when the source
+  /// answered. The one writer of [refreshed], so a stamp cannot be dropped by
+  /// a copy that meant to keep it.
+  Bar refreshedAt(String name, DateTime at) => Bar(
+    id: id,
+    name: name,
+    mode: mode,
+    display: display,
+    offers: offers,
+    source: source,
+    refreshed: at,
   );
 
   @override
