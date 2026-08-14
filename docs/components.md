@@ -1,9 +1,6 @@
 # Components
 
-Module-level design: folder structure, layer surfaces, interfaces, data flows. System-level design 
-in [architecture.md](architecture.md); boundaries in [ADR 04](adr/04-module-boundaries.md); screens 
-in [ui-design.md](ui-design.md). Signatures are named here rather than read off the source, so 
-every consumer designs against one fixed shape.
+Module-level design: structure, layers, interfaces, data flows. System: [architecture.md](architecture.md); boundaries: [ADR 04](adr/04-module-boundaries.md); screens: [ui-design.md](ui-design.md).
 
 ## Module map
 

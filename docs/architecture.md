@@ -1,8 +1,6 @@
 # Architecture
 
-Technical design for [requirements.md](requirements.md); direction in [vision.md](vision.md).
-Decision rationale lives in the [ADRs](adr/); this document records the resulting design at system
-level, [components.md](components.md) at module level.
+Technical design for [requirements.md](requirements.md); direction [vision.md](vision.md); rationale [ADRs](adr/). System-level design; module-level in [components.md](components.md).
 
 ## Technology stack
 
@@ -21,9 +19,7 @@ level, [components.md](components.md) at module level.
 
 ## System overview
 
-Offline app holding many bars, one on show ([ADR 20](adr/20-the-app-holds-many-bars.md)). The bar on 
-show is in memory whole and every other is known by its record alone, so tens of bars cost tens of 
-rows rather than tens of collections (NFR-2).
+Offline app, many bars ([ADR 20](adr/20-the-app-holds-many-bars.md)), one resident (NFR-2).
 
 - One YAML file per bar, byte-identical to that bar's export, and an index carrying the records 
   ([ADR 02](adr/02-persistence-and-export-format.md), [ADR 21](adr/21-the-file-carries-one-bar.md)).
@@ -38,20 +34,9 @@ rows rather than tens of collections (NFR-2).
 
 ## Bars
 
-`Shelf` is the root above `Collection` ([components.md](components.md#the-shelf-and-the-bar)): the record 
-of every bar the device holds, which one is open, and that one's collection. A bar carries an id, a 
-name, a mode, the fixed unit its amounts read in, what its owner offers it by, and — for a guest — 
-the source it refreshes from and when it last did. **Nothing crosses between bars** (FR-BAR-1) 
-because there is nothing to cross to: one collection is resident, every domain query takes that one, 
-and the store is the only route to another bar's bytes. Switching bars discards the screens with it 
-— search text, tag and base picks, open cards, the budget, the jump trail (ADR 19) — a narrowing of 
-one bar's list meaning nothing over the next one's.
+`Shelf` is the root ([components.md](components.md#the-shelf-and-the-bar)): every bar on device, which is open, and that bar's resident collection. Nothing crosses bars (FR-BAR-1): one collection is resident; switching bars discards UI state.
 
-**A guest bar is read-only** (FR-BAR-3/4), enforced three deep rather than screen by screen 
-([ADR 23](adr/23-nothing-writes-a-guest-bar.md)): a derivation that changes a collection throws on a 
-guest bar, the write surface is handed out for an owned one only, and the architecture test keeps 
-the UI off every other route. The mode also decides what the shell offers — the shopping destination 
-is absent on a guest bar rather than empty, so the optimizer is never asked for one.
+**Guest bar is read-only** (FR-BAR-3/4), enforced at domain, data, and UI layers ([ADR 23](adr/23-nothing-writes-a-guest-bar.md)). Shopping destination absent rather than empty.
 
 **The reading unit is the reader's, the sizes are the owner's** (FR-SET-1): `Bar.display` holds the 
 pick, `Collection.settings` what a part and an ounce are worth in ml. They part company on a guest bar, 
