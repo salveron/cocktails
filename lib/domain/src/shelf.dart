@@ -89,6 +89,16 @@ final class Bar {
   final BarSource? source;
   final DateTime? refreshed;
 
+  /// An owner's: when its contents last changed on this device. A guest's
+  /// change only when its source answers, which [refreshed] already dates.
+  final DateTime? updated;
+
+  /// What the bar holds, kept beside the record so a list of bars costs no
+  /// collection ([ADR 20](../../../docs/adr/20-the-app-holds-many-bars.md)).
+  /// Null where nothing has summarised it yet — an index written before the
+  /// summary existed — which is the one state a reader repairs by summarising.
+  final Map<Holding, int>? holds;
+
   Bar({
     required this.id,
     required this.name,
@@ -97,14 +107,18 @@ final class Bar {
     List<Offer> offers = const [],
     this.source,
     this.refreshed,
-  }) : offers = List.unmodifiable(offers);
+    this.updated,
+    Map<Holding, int>? holds,
+  }) : offers = List.unmodifiable(offers),
+       holds = holds == null ? null : Map.unmodifiable(holds);
 
   bool get isOwned => mode == BarMode.owner;
 
   /// What a copy may change, and nothing else: null means "keep", so a field
   /// that can be absent would read as unclearable here. Id and mode are not a
   /// copy's to move either — a bar is the same bar, and whose it is arrives
-  /// with it.
+  /// with it. Neither stamp is a copy's to move: both date contents, and a
+  /// copy that renames a bar has not touched them.
   Bar copyWith({String? name, FixedUnit? display, List<Offer>? offers}) => Bar(
     id: id,
     name: name ?? this.name,
@@ -113,12 +127,14 @@ final class Bar {
     offers: offers ?? this.offers,
     source: source,
     refreshed: refreshed,
+    updated: updated,
+    holds: holds,
   );
 
-  /// FR-BAR-5: the owner's name as it just arrived, and when the source
-  /// answered. The one writer of [refreshed], so a stamp cannot be dropped by
-  /// a copy that meant to keep it.
-  Bar refreshedAt(String name, DateTime at) => Bar(
+  /// FR-BAR-5: the owner's name and contents as they just arrived, and when the
+  /// source answered. The one writer of [refreshed], so a stamp cannot be
+  /// dropped by a copy that meant to keep it.
+  Bar refreshedAt(String name, Collection collection, DateTime at) => Bar(
     id: id,
     name: name,
     mode: mode,
@@ -126,6 +142,25 @@ final class Bar {
     offers: offers,
     source: source,
     refreshed: at,
+    holds: holdingsOf(collection),
+  );
+
+  /// What the bar holds, counted afresh. The one writer of [updated] and —
+  /// with [refreshedAt] — of [holds], so a summary is never a step behind the
+  /// contents it counts. [at] is the moment the contents became these, and is
+  /// absent only where they did not just change: a bar being summarised for
+  /// the first time is being counted, not edited, and inventing a stamp for it
+  /// would date an edit nobody made.
+  Bar summarised(Collection collection, {DateTime? at}) => Bar(
+    id: id,
+    name: name,
+    mode: mode,
+    display: display,
+    offers: offers,
+    source: source,
+    refreshed: refreshed,
+    updated: at ?? updated,
+    holds: holdingsOf(collection),
   );
 
   @override
@@ -137,7 +172,9 @@ final class Bar {
       other.display == display &&
       _sameOffers(other.offers, offers) &&
       other.source == source &&
-      other.refreshed == refreshed;
+      other.refreshed == refreshed &&
+      other.updated == updated &&
+      _sameHoldings(other.holds, holds);
 
   @override
   int get hashCode => Object.hash(
@@ -148,6 +185,8 @@ final class Bar {
     _offersHash(offers),
     source,
     refreshed,
+    updated,
+    _holdingsHash(holds),
   );
 
   @override
@@ -231,6 +270,11 @@ void _requireCoherent(Bar bar) {
         '"${bar.name}"',
       );
     }
+    if (bar.updated != null) {
+      throw ArgumentError(
+        'A guest bar changes only when it refreshes: "${bar.name}"',
+      );
+    }
   }
 }
 
@@ -250,3 +294,15 @@ int _offersHash(List<Offer> offers) => Object.hashAll([
   for (final offer in offers)
     Object.hash(offer.via, Object.hashAll(offer.guests)),
 ]);
+
+/// A summary compares kind by kind, [Holding] being closed: two maps built
+/// apart would otherwise never read as equal, and an unsummarised bar is
+/// unequal to one counted as empty rather than the same thing said twice.
+bool _sameHoldings(Map<Holding, int>? a, Map<Holding, int>? b) {
+  if (a == null || b == null) return a == null && b == null;
+  return Holding.values.every((holding) => a[holding] == b[holding]);
+}
+
+int? _holdingsHash(Map<Holding, int>? holds) => holds == null
+    ? null
+    : Object.hashAll([for (final holding in Holding.values) holds[holding]]);

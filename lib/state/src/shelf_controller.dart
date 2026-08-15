@@ -58,13 +58,54 @@ final class ShelfController extends AsyncNotifier<Shelf> {
         ? null
         : await _collectionOf(store, open.id, issues);
     _report(issues);
-    return Shelf(bars: bars, openId: open?.id, collection: collection);
+    return _summarising(
+      store,
+      Shelf(bars: bars, openId: open?.id, collection: collection),
+    );
   }
+
+  /// An index written before a bar was ever summarised carries no counts for
+  /// it, and the bar list reads counts alone (ADR 20). Each such bar is read
+  /// once here, under the startup spinner, and the index is written back
+  /// holding what they turned out to be — so this runs once per bar, ever. A
+  /// bar that cannot be read keeps its absent summary rather than gaining one
+  /// saying it holds nothing.
+  Future<Shelf> _summarising(BarStore store, Shelf shelf) async {
+    final counted = <Bar>[];
+    for (final bar in shelf.bars) {
+      if (bar.holds != null) {
+        counted.add(bar);
+      } else if (bar.id == shelf.openId) {
+        counted.add(bar.summarised(shelf.collection));
+      } else {
+        final collection = await _readableCollectionOf(store, bar.id);
+        counted.add(collection == null ? bar : bar.summarised(collection));
+      }
+    }
+    if (listEquals(counted, shelf.bars)) return shelf;
+    final summarised = Shelf(
+      bars: counted,
+      openId: shelf.openId,
+      collection: shelf.collection,
+    );
+    await store.saveShelf((bars: summarised.bars, openId: summarised.openId));
+    return summarised;
+  }
+
+  /// A bar's contents where they could be read at all, null where the file is
+  /// unreadable and no backup decoded. A file that never landed is the empty
+  /// collection opening it would give, which is a real answer.
+  Future<Collection?> _readableCollectionOf(BarStore store, String id) async =>
+      switch (await store.loadBar(id)) {
+        Loaded(:final value) => value.collection,
+        Empty() => Collection(),
+        Corrupt(:final recovered) => recovered?.collection,
+      };
 
   /// A device holding nothing gets one empty owned bar, its file before the
   /// index as [addOwnedBar] and the migration both write one.
   Future<Shelf> _foundFirstBar(BarStore store, List<String> issues) async {
-    final bar = Bar(id: newBarId(), name: 'Home bar', mode: BarMode.owner);
+    final bar = _newBar('Home bar', Collection());
     _report(issues);
     await store.saveBar(bar, Collection());
     await store.saveShelf((bars: [bar], openId: bar.id));
@@ -129,7 +170,7 @@ final class ShelfController extends AsyncNotifier<Shelf> {
     await _publish(
       shelf
           .withBar(bar.copyWith(name: payload.name, display: payload.display))
-          .withCollection(payload.collection),
+          .withCollection(payload.collection, _now()),
     );
   }
 
@@ -152,12 +193,22 @@ final class ShelfController extends AsyncNotifier<Shelf> {
   /// before the index names it.
   Future<void> addOwnedBar(String name) async {
     final shelf = await future;
-    final bar = Bar(id: newBarId(), name: name, mode: BarMode.owner);
     final collection = Collection();
+    final bar = _newBar(name, collection);
     await ref.read(barStoreProvider).saveBar(bar, collection);
     _report(const []);
     await _publish(shelf.withBar(bar).opening(bar.id, collection));
   }
+
+  /// An owned bar, summarised and stamped from the moment it is founded, so no
+  /// bar is ever listed without the counts the list reads it by.
+  Bar _newBar(String name, Collection collection) => Bar(
+    id: newBarId(),
+    name: name,
+    mode: BarMode.owner,
+  ).summarised(collection, at: _now());
+
+  DateTime _now() => ref.read(clockProvider)();
 
   /// FR-BAR-2. A guest bar's name is its owner's and arrives with every refresh
   /// (FR-BAR-5), so a rename there would be thrown away by the next one.
@@ -193,22 +244,6 @@ final class ShelfController extends AsyncNotifier<Shelf> {
     await store.removeBar(id);
   }
 
-  /// How much a bar holds, for the card that lists it: counts rather than
-  /// contents, so no second collection reaches `ui/` (ADR 20). Null where
-  /// nothing could be read; the bar on show is resident and is not fetched.
-  Future<Map<Holding, int>?> holdingsOfBar(String id) async {
-    final shelf = await future;
-    if (id == shelf.openId) return holdingsOf(shelf.collection);
-    // A file that never landed counts as the empty collection opening it would
-    // give; only one that cannot be read at all has nothing to answer with.
-    return switch (await ref.read(barStoreProvider).loadBar(id)) {
-      Loaded(:final value) => holdingsOf(value.collection),
-      Empty() => holdingsOf(Collection()),
-      Corrupt(:final recovered) =>
-        recovered == null ? null : holdingsOf(recovered.collection),
-    };
-  }
-
   /// FR-DAT-4's issues as a reader meets them, whenever they arose.
   static List<String> _described(List<SourcedIssue> issues) =>
       List.unmodifiable([for (final issue in issues) issue.description]);
@@ -241,6 +276,6 @@ final class ShelfController extends AsyncNotifier<Shelf> {
     final edited = edit(shelf.collection);
     if (edited == shelf.collection) return;
     // withCollection throws on a guest bar: ADR 23's last line of defence.
-    await _publish(shelf.withCollection(edited));
+    await _publish(shelf.withCollection(edited, _now()));
   }
 }

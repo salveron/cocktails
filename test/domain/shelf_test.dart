@@ -13,6 +13,12 @@ const aSource = BarSource(
 /// When a source last answered; UTC, as the index records it.
 final anHourAgo = DateTime.utc(2026, 8, 9, 18, 22, 4);
 
+/// Something for a summary to count, small enough that the four numbers it
+/// answers with can be read at a glance.
+final _twoBottles = Collection(
+  ingredients: [Ingredient('gin'), Ingredient('campari')],
+);
+
 /// The two kinds of record, built so a test names only what it is about. Shared
 /// with shelf_edits_test.dart and validation_test.dart.
 Bar ownedBar({
@@ -20,12 +26,16 @@ Bar ownedBar({
   String name = 'Home bar',
   FixedUnit display = FixedUnit.part,
   List<Offer> offers = const [],
+  DateTime? updated,
+  Map<Holding, int>? holds,
 }) => Bar(
   id: id,
   name: name,
   mode: BarMode.owner,
   display: display,
   offers: offers,
+  updated: updated,
+  holds: holds,
 );
 
 Bar guestBar({
@@ -34,6 +44,7 @@ Bar guestBar({
   FixedUnit display = FixedUnit.part,
   BarSource? source = aSource,
   DateTime? refreshed,
+  Map<Holding, int>? holds,
 }) => Bar(
   id: id,
   name: name,
@@ -41,6 +52,7 @@ Bar guestBar({
   display: display,
   source: source,
   refreshed: refreshed,
+  holds: holds,
 );
 
 void main() {
@@ -152,14 +164,54 @@ void main() {
     test('refreshedAt is the one writer of the stamp (FR-BAR-5)', () {
       final now = DateTime.utc(2026, 3, 1, 18);
       final bar = guestBar(refreshed: anHourAgo);
-      final landed = bar.refreshedAt('Ada\'s bar, renamed', now);
+      final landed = bar.refreshedAt('Ada\'s bar, renamed', _twoBottles, now);
       expect(landed.refreshed, now);
       expect(landed.name, 'Ada\'s bar, renamed');
+      expect(landed.holds, holdingsOf(_twoBottles));
       // The reader's pick outlives what the owner sent (ADR 21), and where the
       // bar refreshes from is untouched by having refreshed.
       expect(landed.display, bar.display);
       expect(landed.source, bar.source);
     });
+
+    test('summarised counts the contents and dates them', () {
+      final at = DateTime.utc(2026, 3, 1, 18);
+      final bar = ownedBar().summarised(_twoBottles, at: at);
+      expect(bar.holds, holdingsOf(_twoBottles));
+      expect(bar.updated, at);
+    });
+
+    test('a first summary is a count, not an edit, and dates nothing', () {
+      final bar = ownedBar().summarised(_twoBottles);
+      expect(bar.holds, holdingsOf(_twoBottles));
+      expect(bar.updated, isNull);
+    });
+
+    test('neither stamp is a copy\'s to move', () {
+      final at = DateTime.utc(2026, 3, 1, 18);
+      final bar = ownedBar().summarised(_twoBottles, at: at);
+      final renamed = bar.copyWith(name: 'Beach bar');
+      expect(renamed.updated, at);
+      expect(renamed.holds, bar.holds);
+    });
+
+    test('a summary cannot be changed from outside', () {
+      expect(
+        () => ownedBar().summarised(_twoBottles).holds!.clear(),
+        throwsUnsupportedError,
+      );
+    });
+
+    test(
+      'two bars counted apart compare equal, and a bar uncounted does not',
+      () {
+        expect(
+          ownedBar().summarised(_twoBottles),
+          ownedBar().summarised(_twoBottles),
+        );
+        expect(ownedBar().summarised(Collection()), isNot(ownedBar()));
+      },
+    );
 
     test('the offers cannot be changed from outside', () {
       final offers = <Offer>[(via: Transport.lan, guests: [])];
@@ -256,6 +308,29 @@ void main() {
       ]) {
         expect(() => Shelf(bars: [bar]), throwsArgumentError, reason: '$bar');
       }
+    });
+
+    test('rejects a guest bar dating a change of its own', () {
+      expect(
+        () => Shelf(
+          bars: [
+            Bar(
+              id: 'a',
+              name: 'Ada\'s bar',
+              mode: BarMode.guest,
+              source: aSource,
+              updated: anHourAgo,
+            ),
+          ],
+        ),
+        throwsA(
+          isA<ArgumentError>().having(
+            (e) => e.message,
+            'message',
+            contains('refreshes'),
+          ),
+        ),
+      );
     });
 
     test('rejects a guest bar offering what is not this device\'s to give', () {

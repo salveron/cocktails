@@ -28,7 +28,16 @@ stay on the device. The reading unit leaves the collection and lives on the bar.
 - **Mode, source, refresh time and id are never in the file.** Mode is the relationship between this
   device and the bar, not a property of the bar, and the same file makes either kind (FR-BAR-7).
   Source and refresh time are this device's record of how and when it got the bar. An id in the file
-  would make an exported copy claim to be the original.
+  would make an exported copy claim to be the original. **Amended:** the record gained two more of
+  the same kind — `updated:`, when the contents last changed on *this* device, and `holds:`, the
+  count per kind the bar list reads ([ADR 20](20-the-app-holds-many-bars.md)). Neither is in the
+  file either. The stamp is this device's history, and a count of what the file already carries
+  would be a second copy of a fact the file states in full — so a bar arriving anywhere is counted
+  where it lands rather than trusting a number that travelled with it.
+- **Both are optional keys on the index's records, and format 2 did not move for them.** An index
+  written before they existed decodes as a bar not yet summarised, which is a state the reader
+  repairs rather than refuses; a `holds:` missing a kind is dropped whole rather than patched with
+  zeroes, a partial count being indistinguishable from a bar that holds nothing.
 - **`Bar.display` holds the reading unit; `Settings` holds only the two ml sizes.** The pick
   physically cannot ride in the payload, so no refresh can lose it and no code has to remember not
   to take it. It still travels in the file, inside `settings:` where a reader expects it, as a

@@ -41,6 +41,19 @@ Swatch tagColors(TagColor color, Brightness brightness) => _forTheme(
   brightness,
 );
 
+/// What this device is to a bar (FR-BAR-3). Scheme roles for [neutralSwatch]'s
+/// own reason: a mode is no reading on the traffic light, and no tag either.
+Swatch barModeColors(BarMode mode, ColorScheme colors) => switch (mode) {
+  BarMode.owner => (
+    fill: colors.primaryContainer,
+    ink: colors.onPrimaryContainer,
+  ),
+  BarMode.guest => (
+    fill: colors.tertiaryContainer,
+    ink: colors.onTertiaryContainer,
+  ),
+};
+
 /// What a chip carrying no signal stands on — the base filter, which names a
 /// bottle rather than a level (ADR 12). Scheme roles precisely because every
 /// other swatch is a fixed hue: this one can read as neither tag nor traffic

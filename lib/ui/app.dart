@@ -97,7 +97,15 @@ class _AppShellState extends ConsumerState<AppShell> {
     // Watched only to switch: which row was asked for is the serving screen's,
     // and this hears nothing of it.
     ref.listen(revealProvider, (_, request) {
-      if (request != null) _jumpTo(request.destination);
+      if (request == null) return;
+      // A request naming a row is a jump and leaves a way back; one naming only
+      // a destination is a landing, and a reader who has just crossed into a
+      // bar has nothing here to return from (docs/ui-design.md#bars).
+      if (request.name == null) {
+        _choose(request.destination.index);
+      } else {
+        _jumpTo(request.destination);
+      }
     });
     return PopScope(
       // Back undoes a jump while there is one to undo, and leaves otherwise.

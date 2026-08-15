@@ -1092,6 +1092,22 @@ void main() {
       ]);
     });
 
+    test('a guest bar dates no change of its own (FR-BAR-3)', () {
+      final issue = validateShelf(
+        bars: [
+          Bar(
+            id: 'b3e1d7',
+            name: 'Ada\'s bar',
+            mode: BarMode.guest,
+            source: aSource,
+            updated: anHourAgo,
+          ),
+        ],
+      ).single;
+      expect(issue.kind, ValidationIssueKind.malformedValue);
+      expect(issue.location, 'bars[0].updated');
+    });
+
     test('a guest bar is not this device\'s to share (FR-BAR-6)', () {
       final issue = validateShelf(
         bars: [

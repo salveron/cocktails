@@ -19,8 +19,9 @@ enum Destination {
 }
 
 /// A destination and a row to reveal there — never an index, a widget or an
-/// entity, and the name the entry's own, whatever spelling the sender held.
-typedef Reveal = ({Destination destination, String name});
+/// entity, and the name the entry's own, whatever spelling the sender held. A
+/// null [name] is a crossing rather than a jump: land, name no row (ADR 19).
+typedef Reveal = ({Destination destination, String? name});
 
 /// The one request pending, or none: one-shot, cleared by the screen serving it.
 class Reveals extends Notifier<Reveal?> {
@@ -29,6 +30,9 @@ class Reveals extends Notifier<Reveal?> {
 
   void ask(Destination destination, String name) =>
       state = (destination: destination, name: name);
+
+  void land(Destination destination) =>
+      state = (destination: destination, name: null);
 
   void served() => state = null;
 }

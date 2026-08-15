@@ -15,7 +15,9 @@ lib/
     src/
       shelf.dart               # Shelf, the root above Collection (ADR 20), and the bar it
                                #   holds: Bar, BarMode, Transport, BarSource, Offer,
-                               #   BarPayload. enumFromToken, the token lookup it shares
+                               #   BarPayload. Bar.summarised and Bar.refreshedAt are the
+                               #   only writers of what a bar holds and when it changed.
+                               #   enumFromToken, the token lookup it shares
                                #   with collection.dart, is layer-private like names.dart
       shelf_edits.dart         # extension ShelfEdits on Shelf — pure derivations,
                                #   the guest-bar refusal among them (ADR 23)
@@ -49,7 +51,8 @@ lib/
     src/
       shelf_controller.dart    # the one writable provider (ADR 23)
       bar_writer.dart          # the write surface, handed out for an owned bar only
-      seams.dart               # store, share sheet, picker — one provider each (ADR 18)
+      seams.dart               # store, clock, share sheet, picker — one provider each
+                               #   (ADR 18); the clock so the domain needs none
       channels.dart            # the transports resolved, the refreshes in flight and
                                #   what they failed with, the offers standing (ADR 22)
       derived.dart             # read-only over the shelf: the open bar's collection and
@@ -63,8 +66,10 @@ lib/
     theme.dart                 # the seed colour, the two schemes, `dimmedInk` — the one
                                #   dim, worn by a hint and by a bottle the bar lacks
     palette.dart               # the fixed hues — stock signals and the tag palette —
-                               #   and `neutralSwatch`, the ground a chip meaning
-                               #   nothing by its colour stands on (ADR 12)
+                               #   and the swatches built from scheme roles instead:
+                               #   `neutralSwatch`, the ground a chip meaning nothing by
+                               #   its colour stands on (ADR 12), and `barModeColors`,
+                               #   which must read as neither tag nor traffic light
     screens/                   # one file per destination, plus settings, tags, units,
                                #   amounts, recipe form, bars — the list that is also
                                #   home wherever none is open — and the owner's view of
@@ -653,7 +658,6 @@ Future<void> openBar(String id);                   // FR-BAR-1, the switch
 Future<void> addOwnedBar(String name);             // FR-BAR-2, opened by the making
 Future<void> renameBar(String id, String name);    // FR-BAR-2, owned bars only
 Future<void> removeBar(String id);                 // FR-BAR-2, after its own export
-Future<Map<Holding, int>?> holdingsOfBar(String id);   // counts for the card listing it
 Future<void> addGuestBar(BarSource source, BarPayload bar);        // FR-BAR-3/7/8/9
 Future<void> refresh(String barId);                // FR-BAR-5; never awaited by a screen
 ```
@@ -665,12 +669,20 @@ and `setDisplay` work on a guest bar (FR-DAT-1, FR-BAR-3); `replaceOpen` refuses
 importing "into an owned bar" and FR-BAR-7 giving the same file its other road, and `renameBar`
 refuses one because a refresh replaces the name wholesale (FR-BAR-5) and would throw the rename away.
 
-`holdingsOfBar` is the one read of a bar that is not on show, and it answers **counts rather than
-contents** — `holdingsOf(Collection)` in the domain, keyed by the `Holding` enum that is also the one
-home for the four kinds, their order and their nouns (the import review names the same four). A card
-expanding is what sends the app to disk; the list itself reads the index alone (ADR 20), and no
-second `Collection` ever reaches `ui/`. A file that never landed counts as the empty collection
-opening it would give, where one that cannot be read at all answers null and the card says so.
+**What a bar holds rides on its record**, so listing bars reads the index and nothing else (ADR 20)
+and no second `Collection` ever reaches `ui/`. `Bar.holds` is `holdingsOf(Collection)` in the domain,
+keyed by the `Holding` enum that is also the one home for the four kinds, their order and their nouns
+(the import review names the same four); `Bar.updated` dates the change beside it. Both are written
+by `Bar.summarised` and — for a guest's refresh — `Bar.refreshedAt`, and by nothing else, which is
+what keeps the count from falling a step behind the contents: every route a collection takes ends in
+one of them, `ShelfEdits.withCollection` included.
+
+`Bar.holds` is null only on a record no summary has reached — an index written before they existed.
+`ShelfController.build()` repairs those, reading each such bar once under the startup spinner and
+writing the index back; the open bar is counted from the collection the load already brought up, so
+it costs no read of its own. A bar whose file cannot be read at all stays null and the card says so,
+where a file that never landed counts as the empty collection opening it would give. Counting is not
+editing: the repair writes no `updated`, a stamp invented there dating an edit nobody made.
 
 `review` is deliberately pure so the confirmation and the pre-import copy slot after it, and it is 
 the controller's rather than the screen's because `ui/` never imports `data/`. `_described` is the 
@@ -823,7 +835,9 @@ Performance facts (no over-engineering):
    that bar and publishes record and collection together, so no frame pairs one bar's record with 
    another's recipes, and the index alone is written → the shell's subtree is keyed by the open bar, 
    so every screen is built anew and no narrowing, open card or jump trail survives the crossing → 
-   the screen pops to the root, landing the reader in the bar rather than back on the gear.
+   the screen pops to the root, landing the reader in the bar rather than back on the gear. The bar
+   already loaded has nothing to read again, so it asks `Reveals.land` for the recipes instead and
+   pops to the same place (ADR 19).
 8. **Adding a guest bar** (FR-BAR-3): a source — picked, or found nearby — reaches `channel.fetch` 
    → `Fetched` becomes a bar with a minted id, the payload's name and display, and the source kept 
    for next time; `Refused` reads as an import's issues do, `Unreachable` says which of the three.

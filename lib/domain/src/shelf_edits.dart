@@ -7,10 +7,12 @@ import 'collection.dart';
 import 'shelf.dart';
 
 extension ShelfEdits on Shelf {
-  /// The open bar's collection, replaced. Every collection edit ends here, so
-  /// a guest bar — whose contents are its owner's — is refused once
-  /// ([ADR 23](../../../docs/adr/23-nothing-writes-a-guest-bar.md)).
-  Shelf withCollection(Collection collection) {
+  /// The open bar's collection, replaced and the record restamped [at]. Every
+  /// collection edit ends here, so a guest bar — whose contents are its
+  /// owner's — is refused once
+  /// ([ADR 23](../../../docs/adr/23-nothing-writes-a-guest-bar.md)), and no
+  /// edit can leave the summary counting what the bar held before it.
+  Shelf withCollection(Collection collection, DateTime at) {
     final bar = open;
     if (bar == null) {
       throw ArgumentError('No bar is open to write to');
@@ -18,7 +20,11 @@ extension ShelfEdits on Shelf {
     if (!bar.isOwned) {
       throw ArgumentError('A guest bar is read-only: "${bar.name}"');
     }
-    return Shelf(bars: bars, openId: openId, collection: collection);
+    return Shelf(
+      bars: withBar(bar.summarised(collection, at: at)).bars,
+      openId: openId,
+      collection: collection,
+    );
   }
 
   /// Adds [bar], or replaces the record standing under its id: a rename, an
@@ -62,7 +68,9 @@ extension ShelfEdits on Shelf {
     if (bar.isOwned) {
       throw ArgumentError('An owned bar refreshes from nothing: "${bar.name}"');
     }
-    final shelf = withBar(bar.refreshedAt(payload.name, at));
+    final shelf = withBar(
+      bar.refreshedAt(payload.name, payload.collection, at),
+    );
     return id == openId
         ? Shelf(
             bars: shelf.bars,

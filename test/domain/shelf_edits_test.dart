@@ -16,18 +16,28 @@ Shelf shelfOf({String? openId, Collection? collection}) => Shelf(
   collection: collection,
 );
 
+final _at = DateTime.utc(2026, 5, 4, 9);
+
 void main() {
   group('withCollection', () {
-    test('replaces the open owned bar\'s collection, records untouched', () {
-      final shelf = shelfOf(openId: '5f2c9a').withCollection(_gin);
+    test('replaces the open owned bar\'s collection', () {
+      final shelf = shelfOf(openId: '5f2c9a').withCollection(_gin, _at);
       expect(shelf.collection, _gin);
       expect(shelf.openId, '5f2c9a');
-      expect(shelf.bars, shelfOf().bars);
+      expect(shelf.barWithId('b3e1d7'), guestBar(refreshed: anHourAgo));
+    });
+
+    test('restamps the bar it wrote, and only that one', () {
+      final shelf = shelfOf(openId: '5f2c9a').withCollection(_gin, _at);
+      final written = shelf.barWithId('5f2c9a')!;
+      expect(written.updated, _at);
+      expect(written.holds, holdingsOf(_gin));
+      expect(shelf.barWithId('b3e1d7')!.updated, isNull);
     });
 
     test('throws on a guest bar, whose contents are its owner\'s (ADR 23)', () {
       expect(
-        () => shelfOf(openId: 'b3e1d7').withCollection(_gin),
+        () => shelfOf(openId: 'b3e1d7').withCollection(_gin, _at),
         throwsA(
           isA<ArgumentError>().having(
             (e) => e.message,
@@ -39,7 +49,7 @@ void main() {
     });
 
     test('throws where no bar is open, there being nothing to write to', () {
-      expect(() => shelfOf().withCollection(_gin), throwsArgumentError);
+      expect(() => shelfOf().withCollection(_gin, _at), throwsArgumentError);
     });
   });
 
@@ -152,6 +162,16 @@ void main() {
       expect(shelf.collection, _gin);
       expect(shelf.barWithId('b3e1d7')?.name, 'Ada\'s cocktails');
       expect(shelf.barWithId('b3e1d7')?.refreshed, now);
+    });
+
+    test('counts what arrived, the open bar and another alike', () {
+      for (final openId in ['b3e1d7', '5f2c9a']) {
+        final shelf = shelfOf(
+          openId: openId,
+          collection: _gin,
+        ).refreshedWith('b3e1d7', payload, now);
+        expect(shelf.barWithId('b3e1d7')?.holds, holdingsOf(_rum));
+      }
     });
 
     test('the source it refreshed from stays with it', () {

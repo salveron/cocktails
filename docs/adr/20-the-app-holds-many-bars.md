@@ -21,7 +21,8 @@ the only one resident.**
 - The collection type keeps its shape. It is one bar's contents; the app gains a level rather than
   rewriting one. **Amended:** it did not keep its name — see the alternative below.
 - A **record** is what a bar costs when it is not on show: id, name, mode, reading unit, offers,
-  source, last refresh. The bar list reads the index and no collection at all.
+  source, last refresh, when it last changed, and how much it holds kind by kind. The bar list reads
+  the index and no collection at all.
 - **Nothing crosses because there is nothing to cross to.** One `Collection` is in memory, every domain
   query takes it, and the store is the only route to another bar's bytes. This is a property of the
   design rather than a rule screens keep.
@@ -69,11 +70,26 @@ the only one resident.**
   so a device holding nothing is given a bar while a reader who deleted theirs is met by the list.
 - Reaching another bar costs one file read and one decode, the work startup has always done.
 - **A record is all the bar list may know**, which is what the list is built on: a card carries the
-  name, and opening it spends that one decode to answer with *counts* rather than contents
-  ([ui-design.md](../ui-design.md#bars)). Reading every bar's file to fill the closed cards was
-  weighed and refused on the same NFR-2 grounds as keeping them resident — tens of bars is the stated
-  scale — and a summary kept in the index was refused as a format bump buying a number that every
-  write would then have to keep true.
+  name and answers with *counts* rather than contents ([ui-design.md](../ui-design.md#bars)). Reading
+  every bar's file to fill the closed cards was weighed and refused on the same NFR-2 grounds as
+  keeping them resident — tens of bars is the stated scale.
+- **The summary lives on the record. Amended:** it was first refused as "a format bump buying a
+  number that every write would then have to keep true", with the card spending one decode to count
+  what it opened onto. Both halves of that turned out wrong. The decode is not free and not
+  invisible: it is synchronous, it lands in the middle of the expansion animation, and at NFR-2's
+  stated scale it measures 14 ms at 50 recipes and 65 ms at 500 — of which the YAML parse alone is
+  two thirds, so counting without building the domain would have bought back a third of the wrong
+  number. And the format bump was no longer the summary's to pay: the card had to date a bar in any
+  case, so `updated` was buying the bump already and the counts ride along on it. What the refusal
+  got right was the cost, and it is paid where it was named — a collection edit now writes the index
+  as well as the bar. That is one small file beside the large one that was being written anyway.
+- **Nothing has to remember to keep the summary true**, which is the other half of the reversal.
+  `holds` and `updated` are written by `Bar.summarised` and `Bar.refreshedAt` alone, and every route
+  a collection takes ends in one of them — so the summary cannot be a step behind the contents it
+  counts. A record carrying none is the one degraded state: an index written before summaries
+  existed, which the startup load repairs by counting each such bar once, under the spinner it
+  already draws, and never again. A bar whose file will not read keeps its absent summary rather
+  than gaining one that says it holds nothing.
 - The crossing is what taught `_publish` to tell an edit from a load: a collection that changed
   because it came up from disk must not be written back, or every switch rotates the backups of a bar
   nobody touched ([components.md](../components.md#state-contracts)).

@@ -1083,9 +1083,18 @@ recipes: []
       expect(payload.collection, docCollection());
     });
 
-    test('the file says nothing of mode, source, refresh time or id', () {
+    test('the file says nothing the device keeps for itself (ADR 21)', () {
       final text = encoded(docCollection());
-      for (final key in ['mode:', 'source:', 'refreshed:', 'id:']) {
+      // Neither stamp travels, and a summary counts what the file already
+      // carries — so a bar arriving anywhere is counted where it lands.
+      for (final key in [
+        'mode:',
+        'source:',
+        'refreshed:',
+        'updated:',
+        'holds:',
+        'id:',
+      ]) {
         expect(text, isNot(contains(key)), reason: key);
       }
     });
@@ -1193,6 +1202,94 @@ bars:
           'source: {via: lan, at: _cocktails._tcp/x, from: Home bar (b3e)}',
         ),
       );
+    });
+
+    test('an owner carries when it changed and what it holds', () {
+      final summarised = home.summarised(
+        Collection(ingredients: [Ingredient('gin')]),
+        at: DateTime.utc(2026, 8, 9, 18, 22, 4),
+      );
+      expect(
+        codec.encodeIndex((bars: [summarised], openId: null)),
+        contains(
+          'updated: "2026-08-09T18:22:04.000Z", '
+          'holds: {recipe: 0, ingredient: 1, tag: 0, '
+          'unit: ${defaultUnits.length}}',
+        ),
+      );
+    });
+
+    test('a summary and its stamp survive the round trip', () {
+      final counted = [
+        home.summarised(
+          Collection(recipes: [Recipe('Negroni')]),
+          at: DateTime.utc(2026, 8, 9, 18, 22, 4),
+        ),
+        guest.summarised(Collection()),
+      ];
+      expect(
+        indexOf(codec.encodeIndex((bars: counted, openId: null))).bars,
+        counted,
+      );
+    });
+
+    test('an index written before summaries existed reads as uncounted', () {
+      // The one state the reader repairs by counting the bar afresh, so it
+      // must survive decoding rather than being refused (ADR 20).
+      final records = indexOf(
+        'format: 2\n'
+        'open: 5f2c9a\n\n'
+        'bars:\n'
+        '  - {id: 5f2c9a, name: Home bar, mode: owner}\n',
+      );
+      expect(records.bars.single.holds, isNull);
+      expect(records.bars.single.updated, isNull);
+    });
+
+    test('a summary missing a kind is dropped, not patched with zeroes', () {
+      final records = indexOf(
+        'format: 2\n'
+        'open: 5f2c9a\n\n'
+        'bars:\n'
+        '  - {id: 5f2c9a, name: Home bar, mode: owner, '
+        'holds: {recipe: 3, ingredient: 4}}\n',
+      );
+      // A partial count read as a whole one would say the bar holds no tags.
+      expect(records.bars.single.holds, isNull);
+    });
+
+    test('a count that is not one is refused', () {
+      for (final holds in ['{recipe: -1}', '{recipe: many}', 'plenty']) {
+        expect(
+          indexRejected(
+            'format: 2\n'
+            'open: 5f2c9a\n\n'
+            'bars:\n'
+            '  - {id: 5f2c9a, name: Home bar, mode: owner, holds: $holds}\n',
+          ),
+          isNotEmpty,
+          reason: holds,
+        );
+      }
+    });
+
+    test('an owned bar dating a refresh, or a guest an edit, is refused', () {
+      for (final entry in [
+        'mode: owner, refreshed: "2026-08-09T18:22:04.000Z"',
+        'mode: guest, source: {via: file, at: a, from: b}, '
+            'updated: "2026-08-09T18:22:04.000Z"',
+      ]) {
+        expect(
+          indexRejected(
+            'format: 2\n'
+            'open:\n\n'
+            'bars:\n'
+            '  - {id: 5f2c9a, name: Home bar, $entry}\n',
+          ),
+          isNotEmpty,
+          reason: entry,
+        );
+      }
     });
 
     test('two bars of one name are two records (FR-BAR-1)', () {

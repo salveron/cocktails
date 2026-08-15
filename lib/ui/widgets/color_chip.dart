@@ -110,6 +110,21 @@ class StockChip extends StatelessWidget {
   );
 }
 
+/// Whose bar this is, on its row in the bar list (FR-BAR-3). Words on colour
+/// as every other chip is: the mode decides what the bar offers, and a reader
+/// meets that difference here before the bottom bar shows it to them.
+class BarModeChip extends StatelessWidget {
+  const BarModeChip(this.mode, {super.key});
+
+  final BarMode mode;
+
+  @override
+  Widget build(BuildContext context) => ColorChip(switch (mode) {
+    BarMode.owner => 'Yours',
+    BarMode.guest => 'Guest',
+  }, swatch: barModeColors(mode, Theme.of(context).colorScheme));
+}
+
 /// What the bottles make of a recipe, on its list row (FR-DIS-1).
 class AvailabilityChip extends StatelessWidget {
   const AvailabilityChip(this.availability, {super.key});

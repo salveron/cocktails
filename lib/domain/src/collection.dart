@@ -545,10 +545,16 @@ final class Collection {
 /// serving it. One home for the kinds, their order and what each is called, so
 /// a bar card and an import review read alike.
 enum Holding {
-  recipe,
-  ingredient,
-  tag,
-  unit;
+  recipe('recipe'),
+  ingredient('ingredient'),
+  tag('tag'),
+  unit('unit');
+
+  /// What a bar's summary is written under (ADR 21). Declared rather than the
+  /// identifier, so renaming a kind cannot quietly rewrite the index's format —
+  /// and independent of [noun], which is the reader's word and free to change.
+  final String token;
+  const Holding(this.token);
 
   String get noun => name;
 }

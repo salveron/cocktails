@@ -5,9 +5,30 @@ import 'package:cocktails/state/state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../destinations.dart';
+import '../widgets/color_chip.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/vocabulary_dialogs.dart';
 import '../widgets/vocabulary_list.dart';
+
+/// A stamp as a reader tells the time: the largest whole unit it has been, and
+/// "just now" under a minute. Coarse on purpose — how current a bar is answers
+/// whether to refresh it, which no count of seconds makes clearer.
+String _agoInWords(DateTime now, DateTime at) {
+  const scale = [
+    (31536000, 'year'),
+    (2592000, 'month'),
+    (604800, 'week'),
+    (86400, 'day'),
+    (3600, 'hour'),
+    (60, 'minute'),
+  ];
+  final seconds = now.difference(at).inSeconds;
+  for (final (span, noun) in scale) {
+    if (seconds >= span) return '${counted(seconds ~/ span, noun)} ago';
+  }
+  return 'just now';
+}
 
 /// Every bar the device holds, and everything done to one — the screen that
 /// lists bars is the screen that manages them, so no second place holds half of
@@ -21,11 +42,9 @@ class BarsScreen extends ConsumerStatefulWidget {
 }
 
 class _BarsScreenState extends ConsumerState<BarsScreen> {
-  /// The cards standing open, each holding what its one read answered with. A
-  /// card opening is what sends the app to disk — the list itself knows only
-  /// the index (ADR 20) — and the future is kept so a rebuild does not ask a
-  /// second time. Closing a card forgets it, so opening it again reads afresh.
-  final _opened = <String, Future<Map<Holding, int>?>>{};
+  /// Which cards stand open. Nothing is fetched to open one: what a bar holds
+  /// is counted on its record (ADR 20), so this is the whole of a card's state.
+  final _opened = <String>{};
 
   @override
   Widget build(BuildContext context) {
@@ -36,6 +55,8 @@ class _BarsScreenState extends ConsumerState<BarsScreen> {
     });
     final bars = ref.watch(barsProvider);
     final openId = ref.watch(openBarProvider)?.id;
+    // One reading for the whole list, so no two cards date themselves apart.
+    final now = ref.watch(clockProvider)();
     return Scaffold(
       appBar: AppBar(title: const Text('Bars')),
       body: bars.isEmpty
@@ -49,7 +70,8 @@ class _BarsScreenState extends ConsumerState<BarsScreen> {
           : ListView(
               padding: const EdgeInsets.only(top: 8, bottom: 88),
               children: [
-                for (final bar in bars) _card(bar, isOpen: bar.id == openId),
+                for (final bar in bars)
+                  _card(bar, now, isOpen: bar.id == openId),
               ],
             ),
       floatingActionButton: FloatingActionButton(
@@ -60,65 +82,68 @@ class _BarsScreenState extends ConsumerState<BarsScreen> {
     );
   }
 
-  /// The name while closed, what the bar holds and what may be done to it once
-  /// opened. The bar on show offers no way in, which is how the list says which
-  /// one that is.
-  Widget _card(Bar bar, {required bool isOpen}) {
-    final holdings = _opened[bar.id];
+  /// The name and how current the bar is while closed, what it holds once
+  /// opened. Whose bar it is rides beside the ⋮ as a chip, the mode being what
+  /// decides everything the bar offers (FR-BAR-3).
+  Widget _card(Bar bar, DateTime now, {required bool isOpen}) {
+    final standing = _standing(bar, now, isOpen: isOpen);
     return VocabularyRow(
       title: Text(bar.name),
-      trailing: Icon(holdings == null ? Icons.expand_more : Icons.expand_less),
-      body: holdings == null ? null : _body(bar, holdings, isOpen: isOpen),
+      subtitle: standing == null ? null : Text(standing),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          BarModeChip(bar.mode),
+          RowMenu({
+            // A guest bar's name is its owner's and every refresh brings it
+            // back, so the rename is absent rather than refused (ADR 23).
+            if (bar.isOwned) 'Rename': () => unawaited(_rename(bar)),
+            'Delete': () => unawaited(_delete(bar)),
+          }),
+        ],
+      ),
+      body: _opened.contains(bar.id) ? _body(bar) : null,
       onTap: () => setState(() {
-        if (_opened.remove(bar.id) != null) return;
-        _opened[bar.id] = ref
-            .read(shelfProvider.notifier)
-            .holdingsOfBar(bar.id);
+        if (!_opened.remove(bar.id)) _opened.add(bar.id);
       }),
     );
   }
 
-  Widget _body(
-    Bar bar,
-    Future<Map<Holding, int>?> holdings, {
-    required bool isOpen,
-  }) => Column(
+  /// Which bar is loaded, and how long ago it last became what it holds — an
+  /// owner's own edit, a guest's last answer from its source (FR-BAR-5). Null
+  /// where there is neither to say: a bar summarised before this device kept
+  /// stamps has no date to give, and says nothing rather than guessing one.
+  String? _standing(Bar bar, DateTime now, {required bool isOpen}) {
+    final at = bar.isOwned ? bar.updated : bar.refreshed;
+    final parts = [
+      if (isOpen) 'Loaded',
+      if (at != null)
+        '${bar.isOwned ? 'Updated' : 'Synced'} ${_agoInWords(now, at)}',
+    ];
+    return parts.isEmpty ? null : parts.join(' · ');
+  }
+
+  Widget _body(Bar bar) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      FutureBuilder(future: holdings, builder: _counts),
+      _counts(bar),
       OverflowBar(
-        spacing: 8,
         children: [
-          if (!isOpen)
-            TextButton(
-              onPressed: () => unawaited(_open(bar)),
-              child: const Text('Open bar'),
-            ),
           TextButton(
-            onPressed: () => unawaited(_rename(bar)),
-            child: const Text('Rename'),
-          ),
-          TextButton(
-            onPressed: () => unawaited(_delete(bar)),
-            child: const Text('Delete'),
+            onPressed: () => unawaited(_open(bar)),
+            child: const Text('Open bar'),
           ),
         ],
       ),
     ],
   );
 
-  /// How much the bar holds, kind by kind. Nothing stands here while the read
-  /// is in flight: a card that has just opened is a moment old, and a spinner
-  /// on four numbers reads as longer than the wait it stands for.
-  Widget _counts(
-    BuildContext context,
-    AsyncSnapshot<Map<Holding, int>?> snapshot,
-  ) {
-    if (snapshot.connectionState != ConnectionState.done) {
-      return const SizedBox.shrink();
-    }
-    final holdings = snapshot.data;
-    if (holdings == null) {
+  /// How much the bar holds, kind by kind, read off the record the list is
+  /// already holding — no file, no wait, no spinner over four numbers (ADR 20).
+  /// A bar whose file could not be read carries no summary and says so.
+  Widget _counts(Bar bar) {
+    final holds = bar.holds;
+    if (holds == null) {
       return Text(
         'This bar could not be read.',
         style: TextStyle(color: Theme.of(context).colorScheme.error),
@@ -126,16 +151,22 @@ class _BarsScreenState extends ConsumerState<BarsScreen> {
     }
     return BulletRuns([
       bulletRun([
-        for (final holding in holdings.entries)
+        for (final holding in holds.entries)
           counted(holding.value, holding.key.noun),
       ]),
     ]);
   }
 
   /// A crossing takes the reader to the bar itself rather than back to the gear
-  /// they reached this screen through (FR-BAR-1).
+  /// they reached this screen through (FR-BAR-1). The bar already loaded is
+  /// crossed into just the same — there is nothing to read again, so the reader
+  /// is simply put where the crossing would have left them.
   Future<void> _open(Bar bar) async {
-    await ref.read(shelfProvider.notifier).openBar(bar.id);
+    if (bar.id == ref.read(openBarProvider)?.id) {
+      ref.read(revealProvider.notifier).land(Destination.recipes);
+    } else {
+      await ref.read(shelfProvider.notifier).openBar(bar.id);
+    }
     _leave();
   }
 

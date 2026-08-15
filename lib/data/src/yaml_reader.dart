@@ -124,6 +124,8 @@ Bar? _readBar(YamlNode node, List<Object> path, List<ValidationIssue> issues) {
     'display',
     'offers',
     'refreshed',
+    'updated',
+    'holds',
     'source',
   };
   _checkKeys(node, keys, path, issues);
@@ -155,14 +157,8 @@ Bar? _readBar(YamlNode node, List<Object> path, List<ValidationIssue> issues) {
     final offer = _readOffer(entryNode, entryPath, issues);
     if (offer != null) offers.add(offer);
   });
-  final refreshed = _readValue<DateTime>(
-    node,
-    'refreshed',
-    path,
-    issues,
-    parse: (value) => DateTime.tryParse(_asString(value) ?? '')?.toUtc(),
-    requirement: 'refreshed must be a UTC timestamp',
-  );
+  final refreshed = _readStamp(node, 'refreshed', path, issues);
+  final updated = _readStamp(node, 'updated', path, issues);
   final source = _readSource(node.nodes['source'], [...path, 'source'], issues);
   if (id == null || name == null || mode == null) return null;
   return Bar(
@@ -173,7 +169,54 @@ Bar? _readBar(YamlNode node, List<Object> path, List<ValidationIssue> issues) {
     offers: offers,
     source: source,
     refreshed: refreshed,
+    updated: updated,
+    holds: _readHolds(node.nodes['holds'], [...path, 'holds'], issues),
   );
+}
+
+DateTime? _readStamp(
+  YamlMap node,
+  String key,
+  List<Object> path,
+  List<ValidationIssue> issues,
+) => _readValue<DateTime>(
+  node,
+  key,
+  path,
+  issues,
+  parse: (value) => DateTime.tryParse(_asString(value) ?? '')?.toUtc(),
+  requirement: '$key must be a UTC timestamp',
+);
+
+/// The summary, or null where it is not wholly there. It counts what a bar's
+/// own file holds, so a half-read one is dropped rather than patched with
+/// zeroes that would read as a bar holding nothing; the reader summarises the
+/// file afresh instead (ADR 20).
+Map<Holding, int>? _readHolds(
+  YamlNode? node,
+  List<Object> path,
+  List<ValidationIssue> issues,
+) {
+  if (node == null) return null;
+  if (node is! YamlMap) {
+    _report(issues, path, 'holds must be a mapping', node);
+    return null;
+  }
+  _checkKeys(node, {for (final h in Holding.values) h.token}, path, issues);
+  final holds = <Holding, int>{};
+  for (final holding in Holding.values) {
+    final count = _readValue<int>(
+      node,
+      holding.token,
+      path,
+      issues,
+      parse: (value) => value is int && value >= 0 ? value : null,
+      requirement: '${holding.token} must be a count',
+    );
+    if (count == null) return null;
+    holds[holding] = count;
+  }
+  return holds;
 }
 
 Offer? _readOffer(

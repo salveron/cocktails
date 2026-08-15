@@ -14,6 +14,7 @@ Nothing crosses destinations. `_Destination`, `_current` private to `app.dart`; 
 **One provider: request to reveal named row on named destination, consumed by serving screen.**
 
 - Request: **destination + name** (never index, offset, widget, entity). Name is ADR 13 currency; name is all list needs.
+- **Amended: name nullable — a landing, not a jump.** Crossing into the bar already loaded has a destination and no row (ui-design#bars). Missing name is the whole telling, no second flag: shell clears the trail instead of pushing to it (reader chose the bar; nothing to return from), serving screen keeps its narrowings (nothing was named). `takeReveal` still answers `String?` and still clears, so no screen changed.
 - **Destinations module**: `lib/ui/destinations.dart` moves enum from `app.dart`, holds request provider. Same subject, same place; avoids circular import.
 - Request **nullable, one-shot**: serving screen clears it; return to destination later does not re-reveal.
 - **Shell watches only to switch destination**, learns nothing of row. `AppShell` becomes `Consumer` (whole change).

@@ -16,6 +16,16 @@ base class _WriteLog extends MemoryBarStore {
 
   final calls = <String>[];
 
+  /// Every bar whose bytes were asked for, so a test can show that counting a
+  /// shelf costs one read per bar and none for the one already resident.
+  final loads = <String>[];
+
+  @override
+  Future<LoadOutcome<BarPayload>> loadBar(String id) {
+    loads.add(id);
+    return super.loadBar(id);
+  }
+
   @override
   Future<void> saveBar(Bar bar, Collection collection) {
     calls.add('bar:${bar.id}');
@@ -57,8 +67,16 @@ void main() {
     recipes: [negroni],
   );
 
-  /// The one owned bar every test here runs over.
-  final bar = Bar(id: 'a1b2c3', name: 'Home bar', mode: BarMode.owner);
+  /// What the clock answers here, so every stamp a test meets is one it named.
+  final now = DateTime.utc(2026, 8, 14, 11, 30);
+
+  /// The one owned bar every test here runs over — summarised, as every bar on
+  /// a shelf this app has written once is.
+  final bar = Bar(
+    id: 'a1b2c3',
+    name: 'Home bar',
+    mode: BarMode.owner,
+  ).summarised(stored, at: now);
 
   BarPayload payloadOf(Collection collection, {FixedUnit? display}) =>
       (name: bar.name, display: display ?? bar.display, collection: collection);
@@ -68,7 +86,10 @@ void main() {
 
   ProviderContainer containerFor(MemoryBarStore store) {
     final container = ProviderContainer(
-      overrides: [barStoreProvider.overrideWithValue(store)],
+      overrides: [
+        barStoreProvider.overrideWithValue(store),
+        clockProvider.overrideWithValue(() => now),
+      ],
     );
     addTearDown(container.dispose);
     return container;
@@ -564,7 +585,11 @@ void main() {
     // The index is rewritten whole on every record edit, so a write that
     // carried only the open bar would silently drop every other one.
     test('the bars it is not editing stay on the shelf', () async {
-      final beach = Bar(id: 'd4e5f6', name: 'Beach bar', mode: BarMode.owner);
+      final beach = Bar(
+        id: 'd4e5f6',
+        name: 'Beach bar',
+        mode: BarMode.owner,
+      ).summarised(Collection(), at: now);
       final seeded = MemoryBarStore((bars: [bar, beach], openId: bar.id))
         ..barOutcomes[bar.id] = Loaded(payloadOf(stored));
       final container = await started(seeded);
@@ -774,11 +799,18 @@ recipes:
   /// A shelf of [bars] with the first open, each holding what [collections]
   /// gives it — the arrangement every crossing, rename and delete runs over.
   _WriteLog shelfOf(List<Bar> bars, Map<String, Collection> collections) {
-    final store = _WriteLog((bars: bars, openId: bars.first.id));
+    Collection held(Bar bar) => collections[bar.id] ?? Collection();
+    // Summarised as the index on a device that has run once already holds
+    // them, so no test but the migration's own meets the counting pass.
+    final store = _WriteLog((
+      bars: [
+        for (final bar in bars)
+          bar.summarised(held(bar), at: bar.isOwned ? now : null),
+      ],
+      openId: bars.first.id,
+    ));
     for (final bar in bars) {
-      store.barOutcomes[bar.id] = Loaded(
-        payloadFor(bar, collections[bar.id] ?? Collection()),
-      );
+      store.barOutcomes[bar.id] = Loaded(payloadFor(bar, held(bar)));
     }
     return store;
   }
@@ -921,7 +953,7 @@ recipes:
       final container = await started(store);
       await controllerOf(container).removeBar(bar.id);
       expect(store.snapshots[ExportPurpose.beforeDelete]?.$2, stored);
-      expect(container.read(barsProvider), [other]);
+      expect(container.read(barsProvider).map((bar) => bar.id), [other.id]);
     });
 
     test('the record goes before the file it names', () async {
@@ -974,45 +1006,95 @@ recipes:
   });
 
   group('what a bar holds', () {
-    test('a bar not on show is read for its counts', () async {
-      final container = await started(twoBars());
-      expect(await controllerOf(container).holdingsOfBar(other.id), {
-        Holding.recipe: 0,
-        Holding.ingredient: 1,
-        Holding.tag: 0,
-        Holding.unit: defaultUnits.length,
-      });
+    /// A record as an index written before summaries existed carries it.
+    Bar uncountedRecord(Bar counted) => Bar(
+      id: counted.id,
+      name: counted.name,
+      mode: counted.mode,
+      display: counted.display,
+      offers: counted.offers,
+      source: counted.source,
+      refreshed: counted.refreshed,
+    );
+
+    /// That shelf whole: two bars, neither counted, which is what the startup
+    /// pass is there to meet.
+    _WriteLog uncounted() {
+      final store = _WriteLog((
+        bars: [uncountedRecord(bar), uncountedRecord(other)],
+        openId: bar.id,
+      ));
+      store.barOutcomes[bar.id] = Loaded(payloadFor(bar, stored));
+      store.barOutcomes[other.id] = Loaded(payloadFor(other, otherCollection));
+      return store;
+    }
+
+    test('a summarised shelf is left alone and read for nothing', () async {
+      final store = twoBars();
+      final container = await started(store);
+      expect(store.calls, isEmpty, reason: 'no index rewritten');
+      expect(container.read(barsProvider).first.holds, holdingsOf(stored));
+    });
+
+    test('an index carrying no counts gains them at startup', () async {
+      final store = uncounted();
+      final container = await started(store);
+      expect(container.read(barsProvider).map((bar) => bar.holds), [
+        holdingsOf(stored),
+        holdingsOf(otherCollection),
+      ]);
+      expect(store.calls, ['shelf'], reason: 'written back once, for all bars');
+      expect(store.savedShelf?.bars.first.holds, holdingsOf(stored));
+    });
+
+    test('counting a bar is not dating an edit to it', () async {
+      final container = await started(uncounted());
+      // Nobody edited these bars; the app merely counted what was already
+      // there, and a stamp invented here would date an edit that never was.
+      expect(container.read(barsProvider).map((bar) => bar.updated), [
+        isNull,
+        isNull,
+      ]);
     });
 
     test('the bar on show is counted where it already stands', () async {
-      final store = twoBars();
+      final store = uncounted();
       final container = await started(store);
-      // Resident already (ADR 20): asking costs no read at all, so a store
-      // that has forgotten the file still answers.
-      store.barOutcomes.remove(bar.id);
-      expect(
-        await controllerOf(container).holdingsOfBar(bar.id),
-        holdingsOf(stored),
-      );
+      expect(container.read(barsProvider).first.holds, holdingsOf(stored));
+      // Resident from the startup load (ADR 20), so counting it costs no
+      // read of its own: one each, and the open bar's is the one it opened by.
+      expect(store.loads, [bar.id, other.id]);
     });
 
-    test('a file that will not read has no counts to give', () async {
-      final store = twoBars();
+    test('a file that will not read leaves the bar uncounted', () async {
+      final store = uncounted();
       store.barOutcomes[other.id] = Corrupt([issueAt(4)]);
       final container = await started(store);
-      expect(await controllerOf(container).holdingsOfBar(other.id), isNull);
+      // Absent rather than a row of zeroes: the card says it could not be read
+      // instead of claiming the bar holds nothing.
+      expect(container.read(barsProvider).last.holds, isNull);
     });
 
-    test('a torn file falls back to what its backup holds', () async {
-      final store = twoBars();
+    test('a torn file is counted from what its backup holds', () async {
+      final store = uncounted();
       store.barOutcomes[other.id] = Corrupt([
         issueAt(4),
       ], recovered: payloadFor(other, otherCollection));
       final container = await started(store);
       expect(
-        await controllerOf(container).holdingsOfBar(other.id),
+        container.read(barsProvider).last.holds,
         holdingsOf(otherCollection),
       );
+    });
+
+    test('an edit recounts the bar and dates it', () async {
+      final container = await started();
+      await container
+          .read(barWriterProvider)!
+          .upsertIngredient(Ingredient('rye'));
+      final written = container.read(barsProvider).single;
+      expect(written.holds?[Holding.ingredient], 3);
+      expect(written.updated, now);
     });
   });
 

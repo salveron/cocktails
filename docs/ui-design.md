@@ -61,14 +61,30 @@ it has always meant.
   Deleting the open bar is why: it leaves the reader on the list they are already on, where the app 
   choosing the next bar for them would be an arbitrary one.
 - **One card a bar, expanded in place** — the recipe card's own gesture 
-  ([recipes screen](#recipes-screen)). Closed it is the name; opened it is what the bar holds, kind by 
-  kind, and the buttons for everything done to it: **Open bar**, **Rename**, **Delete**, later Share 
-  and Refresh. The screen that lists bars is the screen that manages them, and no second place holds 
-  half of it. **A card opens onto counts, never contents**: the list reads the index alone (ADR 20), 
-  so opening one costs the same single decode reaching a bar has always cost, and no second collection 
-  is ever resident. Buttons rather than a ⋮ because the card already opens to hold them.
-- **The bar on show offers no Open bar**, which is how the list says which one it is. No check, no 
-  fill, no badge — an absent control is read the way the guest bar's missing destination is.
+  ([recipes screen](#recipes-screen)). Closed it is the name, whether the bar is loaded, and how 
+  current it is; opened it is what the bar holds, kind by kind, and the way in. The screen that lists 
+  bars is the screen that manages them, and no second place holds half of it. **A card opens onto 
+  counts, never contents**: the list reads the index alone (ADR 20), and since the counts are on the 
+  record the card opens instantly and no second collection is ever resident.
+- **Rename and Delete sit behind the row's ⋮**, the control the inventory and both tag lists already 
+  use for exactly this. Buttons on the card was the first shape, on the grounds that the card already 
+  opened to hold them; the ⋮ wins now that it is reachable **without** opening the card, which is 
+  what a reader wants for the two operations that do not care what the bar holds. **Open bar** stays 
+  a button: it is the one thing the card is opened *for*. A guest bar is offered no Rename — its name 
+  is its owner's and every refresh brings it back (ADR 23).
+- **The subtitle says standing, never ownership**: "Loaded" on the bar the app has read, then 
+  "Updated 3 hours ago" for an owner's own edit or "Synced 2 days ago" for a guest's last answer from 
+  its source (FR-BAR-5). Coarse on purpose — the question it settles is whether to refresh, which no 
+  count of seconds makes clearer. A bar the device has never dated says nothing rather than guessing: 
+  an index written before stamps existed has no date to give, and "just now" would be a lie about it.
+- **Whose bar it is is a chip beside the ⋮** — "Yours" or "Guest" — read the way the inventory row's 
+  stock chip is. Its colours come off scheme roles rather than the fixed hues, because those are the 
+  one traffic light: a bar wearing green would say it was in stock (see [colours](#tag-and-stock-colours)).
+- **Open bar is offered on every bar, the loaded one included.** It used to be absent there, as the 
+  way the list said which bar was on show — but the subtitle says that now, in words, and an absent 
+  control that means "you are here" reads as one that is broken. On the bar already loaded there is 
+  nothing to read again, so it simply puts the reader where the crossing would have left them: the 
+  recipes, and no way back to the list, a bar the reader chose being nothing to return from.
 - **A tap opens the card; it never switches.** ui-design's first draft had the card itself do the 
   crossing, which put a bar's every narrowing one stray tap from being thrown away. The crossing is 
   now its own button, and the reader lands in the bar rather than back on the gear.

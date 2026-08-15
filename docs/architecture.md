@@ -185,8 +185,8 @@ format: 2
 open: 5f2c9a           # the bar on show; the key stays, valueless, where none is
 
 bars:
-  - {id: 5f2c9a, name: Home bar, mode: owner, display: part, offers: [{via: lan}]}
-  - {id: b3e1d7, name: Home bar, mode: guest, display: ml, refreshed: "2026-08-09T18:22:04.000Z", source: {via: lan, at: _cocktails._tcp/x, from: Home bar (b3e)}}
+  - {id: 5f2c9a, name: Home bar, mode: owner, display: part, offers: [{via: lan}], updated: "2026-08-14T09:12:00.000Z", holds: {recipe: 12, ingredient: 30, tag: 8, unit: 7}}
+  - {id: b3e1d7, name: Home bar, mode: guest, display: ml, refreshed: "2026-08-09T18:22:04.000Z", holds: {recipe: 40, ingredient: 55, tag: 3, unit: 7}, source: {via: lan, at: _cocktails._tcp/x, from: Home bar (b3e)}}
 ```
 
 One record, one line: the halves a mode rules out are left off as every default is, and a timestamp
@@ -195,7 +195,11 @@ is quoted because its colons would otherwise end the scalar in flow context.
 `id` is opaque, minted here, unique within the index and never written to a bar's own file. `mode` 
 is `owner`|`guest`; `via` is `file`|`lan`|`cloud`, `at` the transport's own business, `from` what to 
 call the source where one is read. `offers` is an owner's, one entry per way a bar is shared, 
-carrying the guests it names where the way can (FR-BAR-6); `source` and `refreshed` are a guest's.
+carrying the guests it names where the way can (FR-BAR-6); `source` and `refreshed` are a guest's,
+`updated` an owner's. `holds` is what the bar list reads it by, one count per `Holding` under a token
+of its own — optional, like `updated`: a record written before summaries existed carries neither, and
+the startup load counts that bar once and writes the index back (ADR 20). A `holds` missing a kind is
+dropped whole rather than read as a bar that holds none of it.
 
 ## Domain computations
 

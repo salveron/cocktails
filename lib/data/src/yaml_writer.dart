@@ -109,7 +109,9 @@ String encodeShelf(Records records) {
 /// default is, so an owner carries no source and a guest no offers.
 List<String> _barEntry(Bar bar) {
   final refreshed = bar.refreshed;
+  final updated = bar.updated;
   final source = bar.source;
+  final holds = bar.holds;
   return [
     _flowMap([
       'id: ${_scalar(bar.id, inFlow: true)}',
@@ -119,13 +121,23 @@ List<String> _barEntry(Bar bar) {
       if (bar.offers.isNotEmpty)
         'offers: [${bar.offers.map(_offer).join(', ')}]',
       // Quoted: a timestamp's colons would end the scalar in flow context.
-      if (refreshed != null)
-        'refreshed: '
-            '${_scalar(refreshed.toUtc().toIso8601String(), inFlow: true)}',
+      if (refreshed != null) 'refreshed: ${_stamp(refreshed)}',
+      if (updated != null) 'updated: ${_stamp(updated)}',
+      if (holds != null) 'holds: ${_holds(holds)}',
       if (source != null) 'source: ${_source(source)}',
     ]),
   ];
 }
+
+String _stamp(DateTime at) =>
+    _scalar(at.toUtc().toIso8601String(), inFlow: true);
+
+/// Every kind, in [Holding]'s own order and including the zeroes: a summary
+/// left half-written is one a reader cannot tell from a bar that holds none.
+String _holds(Map<Holding, int> holds) => _flowMap([
+  for (final holding in Holding.values)
+    '${holding.token}: ${holds[holding] ?? 0}',
+]);
 
 String _offer(Offer offer) => _flowMap([
   'via: ${offer.via.token}',

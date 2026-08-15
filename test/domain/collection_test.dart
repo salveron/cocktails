@@ -1000,5 +1000,14 @@ void main() {
         ['recipe', 'ingredient', 'tag', 'unit'],
       );
     });
+
+    test('and written to the index under a token of its own (ADR 21)', () {
+      // Declared rather than the identifier or the noun: a summary already in
+      // an index must go on reading the same after either is renamed.
+      expect(
+        [for (final holding in Holding.values) holding.token],
+        ['recipe', 'ingredient', 'tag', 'unit'],
+      );
+    });
   });
 }

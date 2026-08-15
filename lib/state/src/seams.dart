@@ -14,6 +14,9 @@ final barStoreProvider = Provider<BarStore>(
   (ref) => throw UnimplementedError('barStoreProvider must be overridden'),
 );
 
+/// The clock a bar's stamps are read off — a seam so a test names the time.
+final clockProvider = Provider<DateTime Function()>((ref) => DateTime.now);
+
 /// Takes an export's opaque location; `text/plain`, Android knowing no YAML.
 final sharerProvider = Provider<Future<void> Function(String)>(
   (ref) =>

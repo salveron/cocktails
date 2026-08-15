@@ -121,9 +121,14 @@ List<Override> _overrides(
   Future<String?> Function()? picker,
 ) => [
   barStoreProvider.overrideWithValue(store ?? MemoryBarStore.of(testBar())),
+  clockProvider.overrideWithValue(() => testNow),
   if (sharer != null) sharerProvider.overrideWithValue(sharer),
   if (picker != null) filePickerProvider.overrideWithValue(picker),
 ];
+
+/// What the clock answers under test, so anything a screen dates reads the
+/// same on every run.
+final testNow = DateTime.utc(2026, 8, 14, 12);
 
 /// [widget] under those overrides, meeting the startup load itself — which is
 /// what the app does and what only the app does.

@@ -77,6 +77,16 @@ Milestones in dependency order. Scope: [requirements.md](requirements.md); desig
 - [x] **M32** — Shelf in state. Delivers: ShelfController, collectionProvider derived, openBarProvider, barWriterProvider (null for guest), export/import on open bar only, amend [ADR 23](adr/23-nothing-writes-a-guest-bar.md). Depends: M31.
 - [x] **M33** — Bars screen. Delivers: [ui-design.md](ui-design.md#bars), Switch bar in gear, openBar/addOwnedBar/renameBar/removeBar, card expands, holdingsOf/Holding enum, loadIssues (FR-BAR-1/2). Depends: M32.
 - [x] **M33a** — Load answers once. Delivers: collectionProvider as plain Provider, spinner moved to _Home, no AsyncData wrapper, loadIssuesProvider as Notifier, Bar.copyWith narrowed, widget test harness updated. Depends: M33.
+- [x] **M33b** — The bar list says more, and says it at once. Delivers: `Bar.updated` and `Bar.holds`
+  on the record with `Bar.summarised` their one writer, both optional keys on the index and neither
+  in a bar's file; the startup pass that counts a shelf written before summaries existed; the card
+  subtitle (Loaded · Updated/Synced, coarse, silent where undated); the owner/guest chip off scheme
+  roles (`barModeColors`); Rename and Delete behind the row's ⋮ with Rename absent on a guest bar;
+  Open bar offered on every bar, a landing rather than a jump on the one already loaded
+  (`Reveals.land`, nullable `Reveal.name`); `clockProvider`; `holdingsOfBar` and the card's
+  `FutureBuilder` gone. Amends [ADR 19](adr/19-a-destination-sends-the-reader-to-another.md),
+  [ADR 20](adr/20-the-app-holds-many-bars.md) — which had refused the index summary — and
+  [ADR 21](adr/21-the-file-carries-one-bar.md). Depends: M33a.
 - [ ] **M34** — Guest bar is read-only. Delivers: two destinations, optimizer absent, no edit offered (FR-BAR-3/4), export works, Amounts screen unit-only. Depends: M33a.
 
 ## Phase 8 — A bar travels by file

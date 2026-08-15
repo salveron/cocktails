@@ -226,6 +226,15 @@ List<ValidationIssue> _checkRecord(Bar bar, List<Object> basePath) {
       ),
     );
   }
+  if (!bar.isOwned && bar.updated != null) {
+    issues.add(
+      ValidationIssue(
+        [...basePath, 'updated'],
+        ValidationIssueKind.malformedValue,
+        'A guest bar changes only when it refreshes: "${bar.name}"',
+      ),
+    );
+  }
   final vias = <Transport>{};
   for (var o = 0; o < bar.offers.length; o++) {
     final via = bar.offers[o].via;
