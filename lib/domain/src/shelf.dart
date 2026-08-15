@@ -36,6 +36,11 @@ enum Transport {
       enumFromToken(values, text, (v) => v.token);
 }
 
+/// Why a source did not answer (FR-BAR-5). Closed, so an adapter maps its own
+/// errors onto it and the wording stays the UI's (ADR-22) — which is why it
+/// sits here rather than beside the channel raising it: `ui/` reads the domain.
+enum UnreachableReason { offline, notFound, withdrawn }
+
 /// One way an owner shares a bar, naming its guests where the transport can
 /// name them and empty where it cannot (FR-BAR-6).
 typedef Offer = ({Transport via, List<String> guests});

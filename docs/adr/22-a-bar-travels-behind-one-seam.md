@@ -26,7 +26,10 @@ composition root.** Shapes in [components.md](../components.md#the-sharing-seam)
   the same thing again. Only the adapter reads the address; nothing above `data/` builds one.
 - **A fetch answers, never throws**: what arrived, what failed the import's own judgement
   (FR-DAT-4), or that the source could not be reached — offline, not found, or withdrawn, a closed
-  set so the wording stays the UI's (FR-BAR-5).
+  set so the wording stays the UI's (FR-BAR-5). A fourth answer is *no answer*: the file
+  transport's fetch is a picker the reader may dismiss, and standing down is neither a refusal nor
+  a source that went silent. `UnreachableReason` lives in the domain rather than beside the
+  channel, `ui/` being what puts it into words and reading no further down than there.
 - **Three interfaces, not one**: every transport fetches; only some offer and withdraw; only one
   finds. A way that cannot do a thing carries no method for it, so the file channel is honestly
   one method wide.

@@ -8,42 +8,7 @@ import 'package:file_selector/file_selector.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// Records what reached the store and in what order: a bar's file must land
-/// before the index names it, and its record must go before the file is
-/// dropped, or a crash between the two leaves a bar that opens onto nothing.
-base class _WriteLog extends MemoryBarStore {
-  _WriteLog(super.records);
-
-  final calls = <String>[];
-
-  /// Every bar whose bytes were asked for, so a test can show that counting a
-  /// shelf costs one read per bar and none for the one already resident.
-  final loads = <String>[];
-
-  @override
-  Future<LoadOutcome<BarPayload>> loadBar(String id) {
-    loads.add(id);
-    return super.loadBar(id);
-  }
-
-  @override
-  Future<void> saveBar(Bar bar, Collection collection) {
-    calls.add('bar:${bar.id}');
-    return super.saveBar(bar, collection);
-  }
-
-  @override
-  Future<void> saveShelf(Records records) {
-    calls.add('shelf');
-    return super.saveShelf(records);
-  }
-
-  @override
-  Future<void> removeBar(String id) {
-    calls.add('remove:$id');
-    return super.removeBar(id);
-  }
-}
+import 'write_log.dart';
 
 void main() {
   final negroni = Recipe(
@@ -798,11 +763,11 @@ recipes:
 
   /// A shelf of [bars] with the first open, each holding what [collections]
   /// gives it — the arrangement every crossing, rename and delete runs over.
-  _WriteLog shelfOf(List<Bar> bars, Map<String, Collection> collections) {
+  WriteLog shelfOf(List<Bar> bars, Map<String, Collection> collections) {
     Collection held(Bar bar) => collections[bar.id] ?? Collection();
     // Summarised as the index on a device that has run once already holds
     // them, so no test but the migration's own meets the counting pass.
-    final store = _WriteLog((
+    final store = WriteLog((
       bars: [
         for (final bar in bars)
           bar.summarised(held(bar), at: bar.isOwned ? now : null),
@@ -815,7 +780,7 @@ recipes:
     return store;
   }
 
-  _WriteLog twoBars() =>
+  WriteLog twoBars() =>
       shelfOf([bar, other], {bar.id: stored, other.id: otherCollection});
 
   group('crossing to another bar', () {
@@ -1019,8 +984,8 @@ recipes:
 
     /// That shelf whole: two bars, neither counted, which is what the startup
     /// pass is there to meet.
-    _WriteLog uncounted() {
-      final store = _WriteLog((
+    WriteLog uncounted() {
+      final store = WriteLog((
         bars: [uncountedRecord(bar), uncountedRecord(other)],
         openId: bar.id,
       ));
@@ -1100,7 +1065,7 @@ recipes:
 
   group('a shelf with nothing on it', () {
     test('an index listing no bars founds none (ADR 20)', () async {
-      final store = _WriteLog((bars: const [], openId: null));
+      final store = WriteLog((bars: const [], openId: null));
       final container = await started(store);
       // A reader who deleted their last bar meets the bar list, where a device
       // holding no index at all is given one to write into.
@@ -1110,7 +1075,7 @@ recipes:
     });
 
     test('no index at all is a first run and is given a bar', () async {
-      final store = _WriteLog(null);
+      final store = WriteLog(null);
       final container = await started(store);
       expect(container.read(barsProvider), hasLength(1));
       expect(container.read(openBarProvider), isNotNull);

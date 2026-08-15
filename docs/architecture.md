@@ -70,11 +70,13 @@ Three ways a bar travels (FR-BAR-7/8/9) behind one seam
 transport needs to ask again, kept with the guest bar so it refreshes from the thing it was added 
 from. A fetch answers a value, never an exception: what arrived, what stopped it being read (the 
 import's own judgement, FR-DAT-4), or that the source could not be reached — offline, not found, or 
-withdrawn — which leaves the bar readable as it stood and says which (FR-BAR-5).
+withdrawn — which leaves the bar readable as it stood and says which (FR-BAR-5). It may also answer 
+nothing at all, where the reader was asked and stood down.
 
-- **File** (FR-BAR-7): the source is the reader. A refresh opens the document picker, so a 
-  file-sourced bar cannot be told from any other file picked for it — what arrives replaces what 
-  stood, and the pick is the judgement. Nothing to withdraw, nothing announced.
+- **File** (FR-BAR-7): the source is the reader, and holds no address to keep. A refresh opens the 
+  document picker, so a file-sourced bar cannot be told from any other file picked for it — what 
+  arrives replaces what stood, and the pick is the judgement; a picker dismissed leaves the bar 
+  exactly as it was, having failed at nothing. Nothing to withdraw, nothing announced.
 - **LAN** (FR-BAR-8): an owner registers one DNS-SD service per offered bar and serves that bar over 
   a `dart:io` HTTP server on an unguessable path; a guest browses the service type, adds what it 
   finds and refreshes by GET. Discovery costs a package, the transfer none (ADR 22). Server and 

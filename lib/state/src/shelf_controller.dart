@@ -7,6 +7,7 @@ import 'package:cocktails/domain/domain.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'bar_writer.dart';
+import 'channels.dart';
 import 'seams.dart';
 
 /// The root: `ui/` reads through the derived providers and mutates through
@@ -198,6 +199,74 @@ final class ShelfController extends AsyncNotifier<Shelf> {
     await ref.read(barStoreProvider).saveBar(bar, collection);
     _report(const []);
     await _publish(shelf.withBar(bar).opening(bar.id, collection));
+  }
+
+  /// FR-BAR-3/7: another owner's bar, added from what they shared rather than
+  /// imported into one of this device's own — the same file's other road.
+  /// Read-only from here (ADR 23); the file's own display is kept, an
+  /// establishing being where the reader has no pick yet (ADR 21).
+  Future<void> addGuestBar(BarSource source, BarPayload payload) async {
+    final shelf = await future;
+    final bar = Bar(
+      id: newBarId(),
+      name: payload.name,
+      mode: BarMode.guest,
+      display: payload.display,
+      source: source,
+      refreshed: _now(),
+    ).summarised(payload.collection);
+    await ref.read(barStoreProvider).saveBar(bar, payload.collection);
+    _report(const []);
+    await _publish(shelf.withBar(bar).opening(bar.id, payload.collection));
+  }
+
+  /// FR-BAR-5: asks a guest bar's source again, whatever way it came. Off the
+  /// gesture — no screen awaits this, and what the ask is doing is met in
+  /// `refreshesProvider`. An owned bar carries no source and is left alone.
+  Future<void> refresh(String id) async {
+    final shelf = await future;
+    final source = shelf.barWithId(id)?.source;
+    if (source == null) return;
+    final refreshes = ref.read(refreshesProvider.notifier);
+    final token = refreshes.ask(id);
+    // A source naming a transport this build has no adapter for cannot be
+    // reached at all — an index carrying `cloud` before its channel lands.
+    final channel = ref.read(channelsProvider)[source.via];
+    final outcome = channel == null
+        ? Unreachable(UnreachableReason.notFound)
+        : await channel.fetch(source);
+    switch (outcome) {
+      // The reader dismissed the picker: nothing was asked, so nothing failed.
+      case null:
+        refreshes.settled(id, token);
+      case Refused(:final issues):
+        refreshes.settled(
+          id,
+          token,
+          RefreshRefused(_described(issues), _now()),
+        );
+      case Unreachable(:final why):
+        refreshes.settled(id, token, RefreshUnreachable(why, _now()));
+      case Fetched(:final payload):
+        await _land(id, token, payload);
+    }
+  }
+
+  /// What a refresh that answered comes to, the bar left exactly as it stood
+  /// where it did not (FR-BAR-5).
+  Future<void> _land(String id, int token, BarPayload payload) async {
+    final shelf = await future;
+    if (!ref.read(refreshesProvider.notifier).settled(id, token)) return;
+    final refreshed = shelf.refreshedWith(id, payload, _now());
+    // Null where the bar was deleted while the fetch was out.
+    final bar = refreshed.barWithId(id);
+    if (bar == null) return;
+    // `_publish` writes the bar on show and no other, so a refresh landing
+    // behind the reader reaches its own file here (ADR 20).
+    if (id != refreshed.openId) {
+      await ref.read(barStoreProvider).saveBar(bar, payload.collection);
+    }
+    await _publish(refreshed);
   }
 
   /// An owned bar, summarised and stamped from the moment it is founded, so no

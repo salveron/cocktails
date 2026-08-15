@@ -100,7 +100,7 @@ Milestones in dependency order. Scope: [requirements.md](requirements.md); desig
 
 ## Phase 8 — A bar travels by file
 
-- [ ] **M35** — Sharing seam. Delivers: [ADR 22](adr/22-a-bar-travels-behind-one-seam.md), BarChannel, FetchOutcome, channelsProvider, refreshesProvider, file channel first (FR-BAR-7). Depends: M34.
+- [x] **M35** — Sharing seam. Delivers: [ADR 22](adr/22-a-bar-travels-behind-one-seam.md), BarChannel, FetchOutcome, channelsProvider, refreshesProvider, file channel first (FR-BAR-7). Depends: M34.
 - [ ] **M36** — One file, two destinations. Delivers: review, BarPayload, replace owned or found guest (FR-BAR-7), refresh by picker (FR-BAR-5). Depends: M35.
 
 ## Phase 9 — A bar travels over the LAN

@@ -594,40 +594,39 @@ sealed class FetchOutcome {}
 final class Fetched extends FetchOutcome { final BarPayload payload; }
 final class Refused extends FetchOutcome { final List<SourcedIssue> issues; }   // FR-DAT-4
 final class Unreachable extends FetchOutcome { final UnreachableReason why; }   // FR-BAR-5
-enum UnreachableReason { offline, notFound, withdrawn }
-typedef Found = ({String name, String discriminator, BarSource source});
 
 abstract interface class BarChannel {         // every transport answers this much
   Transport get transport;
-  Future<FetchOutcome> fetch(BarSource source);         // the add, and every refresh after
-}
-abstract interface class BarOfferings {       // the owner's side, where a way has one
-  Future<BarSource> offer(Bar bar, Collection collection);   // answers what a guest would keep
-  Future<void> withdraw(String barId);                  // FR-BAR-6
-}
-abstract interface class BarFinder {          // discovery, where a way has any
-  Stream<List<Found>> nearby();                         // FR-BAR-8
+  Future<FetchOutcome?> fetch(BarSource source);        // the add, and every refresh after
 }
 ```
 
-The three endings ([architecture.md](architecture.md#sharing)) are three values a caller must handle 
-rather than an exception it may forget; `UnreachableReason` is closed, so an adapter maps its own 
-errors onto it and the wording stays the UI's. `BarSource` is minted by the side that knows the 
-transport — `offer` answers one for the owner to pass on, `nearby` carries one per entry — so 
-nothing above `data/` ever builds an address, and `Found.discriminator` is there because two bars on 
-one network may carry one name.
+The endings ([architecture.md](architecture.md#sharing)) are values a caller must handle rather than 
+an exception it may forget, and a null one is *no fetch happened*: the file transport's picker 
+dismissed, which is neither a refusal nor a source gone silent. `UnreachableReason` is closed, so an 
+adapter maps its own errors onto it and the wording stays the UI's — and it sits in the domain 
+beside `Transport`, `ui/` being what words it and reading no further down than there. `BarSource` is 
+minted by the side that knows the transport, so nothing above `data/` ever builds an address; the 
+file transport has none to build, and `FileBarChannel.source` is the one empty address every 
+file-sourced bar keeps.
 
-The file channel implements `BarChannel` alone: its `fetch` is the picker's text decoded, so a 
-refresh is the reader handing over a newer file and there is nothing to offer or withdraw (FR-BAR-7). 
-The LAN channel implements all three (FR-BAR-8). No cloud channel exists yet and the registry has no 
-entry for that transport, which is how FR-BAR-9 waits without blocking anything.
+The owner's side — `BarOfferings` (offer/withdraw, FR-BAR-6) and `BarFinder` (`nearby`, FR-BAR-8) — 
+lands with the LAN channel that first implements them, along with the `Found` entry a browse 
+answers. The file channel implements `BarChannel` alone: its `fetch` is the picker's text decoded, 
+so a refresh is the reader handing over a newer file and there is nothing to offer or withdraw 
+(FR-BAR-7). No cloud channel exists yet and the registry has no entry for that transport, which is 
+how FR-BAR-9 waits without blocking anything.
 
 ## State contracts
 
 `barStoreProvider` overridden in `main.dart` with the file store, tests with the memory one 
 (device-free seam). `channelsProvider` is the same seam for the transports — `Map<Transport, 
-BarChannel>`, built at the composition root and replaced wholesale by fakes, so nothing above it 
-learns what a network is (ADR 22). `clockProvider` is the state layer's one clock, stamping when a 
+BarChannel>`, composed from the seams beside it rather than overridden at the composition root, the 
+file channel needing only `filePickerProvider` and no platform fact `main.dart` holds. A test 
+replaces the map wholesale with fakes, or overrides the picker to exercise the real channel; either 
+way nothing above it learns what a network is (ADR 22). A transport absent from the map has no 
+adapter in this build, which is what a `refresh` meets as `Unreachable`. `clockProvider` is the 
+state layer's one clock, stamping when a 
 refresh landed (FR-BAR-5) and existing so that the domain needs none of its own. 
 `sharerProvider` is the one file naming `share_plus`: it takes the opaque location `export()` 
 answered with and hands it to the system's sheet, so a widget test overrides it with a recorder and 
@@ -791,8 +790,10 @@ Refreshing and sharing are the app's first work outliving the gesture that start
 **fifth kind of state**: not collection, not derived, not screen-local, not one screen's request of 
 another, but a job the reader may walk away from. Both live in `channels.dart`.
 
-`refreshesProvider` — `Map<String, RefreshState>` by bar id: reaching, or what it last failed with 
-and when (FR-BAR-5). No screen awaits a refresh, which is what NFR-2's *a refresh never holds up the 
+`refreshesProvider` — `Map<String, RefreshState>` by bar id: `Reaching`, or what it last failed with 
+and when — `RefreshRefused` carrying issues already described (`ui/` never meets a `SourcedIssue`) 
+and `RefreshUnreachable` the closed reason it words itself (FR-BAR-5). A bar with no entry has 
+nothing out and nothing to be met. No screen awaits a refresh, which is what NFR-2's *a refresh never holds up the 
 bar on show* comes to in practice: the reader goes on reading and editing while one is out, and the 
 screens are told only through this map. A late answer is dropped where its bar is gone or a newer 
 ask has been made (each carries a token, only the newest lands); a guest bar's collection has no 
@@ -817,7 +818,7 @@ Performance facts (no over-engineering):
 
 ## Data flows
 
-1. **Startup**: `main` overrides `barStoreProvider` and `channelsProvider` → 
+1. **Startup**: `main` overrides `barStoreProvider` → 
    `ShelfController.build()` reads the index and opens the bar it names → `Loaded` seeds state, 
    `Corrupt` seeds that bar's recovered backup + surfaces issues, no index at all runs the format-1 
    migration ([architecture.md](architecture.md#storage-isolation)) or mints one empty owned bar.
@@ -849,9 +850,12 @@ Performance facts (no over-engineering):
 8. **Adding a guest bar** (FR-BAR-3): a source — picked, or found nearby — reaches `channel.fetch` 
    → `Fetched` becomes a bar with a minted id, the payload's name and display, and the source kept 
    for next time; `Refused` reads as an import's issues do, `Unreachable` says which of the three.
-9. **Refreshing** (FR-BAR-5): `refresh(id)` marks the bar reaching and returns at once → the fetch 
-   runs off the gesture → `refreshedWith` replaces collection, name and time and the store writes 
-   that bar's file → a failure leaves the bar as it stood, held in `refreshesProvider` to be met.
+9. **Refreshing** (FR-BAR-5): `refresh(id)` marks the bar reaching and is never awaited by a screen 
+   → the fetch runs off the gesture → `refreshedWith` replaces collection, name and time; the bar on 
+   show is written by `_publish` as any edit is, and any other bar's file by `refresh` itself, only 
+   one collection ever being resident (ADR 20) → a failure leaves the bar as it stood, held in 
+   `refreshesProvider` to be met. Each ask carries a token: an answer arriving behind a newer ask, 
+   or for a bar deleted meanwhile, is dropped whole rather than landing on top of it.
 10. **Sharing** (FR-BAR-6): an offer on a bar's record starts the adapter and removing it stops the 
     adapter; `sharingProvider` is the one place the two are kept in step, so nothing is announced 
     that the shelf does not say is shared (NFR-5).
