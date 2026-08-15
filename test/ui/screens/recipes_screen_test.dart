@@ -453,7 +453,7 @@ void main() {
       await pumpRecipes(tester, untriedCollection);
       await pickTag(tester, 'tiki');
       expect(
-        find.text('No recipe here matches every tag you picked.'),
+        find.text('No recipe here matches every tag picked.'),
         findsOneWidget,
       );
     });
@@ -586,7 +586,7 @@ void main() {
       await pickTag(tester, 'tiki');
       expect(
         find.text(
-          'No recipe here matches gin as its base and every tag you picked.',
+          'No recipe here matches gin as its base and every tag picked.',
         ),
         findsOneWidget,
       );
@@ -771,7 +771,7 @@ void main() {
     ) async {
       await pumpRecipes(tester);
       await roll(tester);
-      expect(find.text('Nothing here you can make right now.'), findsOneWidget);
+      expect(find.text('Nothing here can be made right now.'), findsOneWidget);
       expect(openCards(tester, names), isEmpty);
     });
 

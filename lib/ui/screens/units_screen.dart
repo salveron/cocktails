@@ -12,6 +12,9 @@ import '../widgets/vocabulary_dialogs.dart';
 /// The measurement vocabulary (FR-VOC-5), edited in place: a row per unit and
 /// one Save for the screen, so two units can trade names in a single edit.
 /// Designed in docs/ui-design.md#units.
+///
+/// Owned bars only: Settings dims the row leading here on a guest one, which is
+/// what lets the Save below take the writer as non-null (FR-BAR-4).
 class UnitsScreen extends ConsumerWidget {
   const UnitsScreen({super.key});
 

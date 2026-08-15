@@ -177,7 +177,7 @@ Future<bool> confirmDiscard(BuildContext context, String title) =>
     confirmDialog(
       context,
       title: title,
-      message: 'Your edits will be lost.',
+      message: 'Edits will be lost.',
       cancel: 'Keep editing',
       confirm: 'Discard',
     );

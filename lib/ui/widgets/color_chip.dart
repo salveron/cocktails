@@ -120,7 +120,7 @@ class BarModeChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ColorChip(switch (mode) {
-    BarMode.owner => 'Yours',
+    BarMode.owner => 'Owned',
     BarMode.guest => 'Guest',
   }, swatch: barModeColors(mode, Theme.of(context).colorScheme));
 }

@@ -714,7 +714,9 @@ seven writes. The platform seams sit in `seams.dart` beside it, one provider eac
 **The write surface is separate from the controller** ([ADR 23](adr/23-nothing-writes-a-guest-bar.md)): 
 `barWriterProvider` answers a `BarWriter?` — every collection mutation, and null on a guest bar, so 
 the null a screen may get back is the same fact that hides the control (FR-BAR-4) and nothing has to 
-remember a rule. `setUnits` is the one mutation on it taking a whole vocabulary rather than an entry: 
+remember a rule. **Built:** a screen reads it once in `build` and passes the non-null writer down to 
+whatever it hands a control, so the control and the write are the same decision rather than two that 
+could disagree — and there is no `!` left in `ui/` to be wrong about it. `setUnits` is the one mutation on it taking a whole vocabulary rather than an entry: 
 the units screen edits every row at once, and a rename among them must reach the recipe lines in the 
 same edit ([ui-design.md](ui-design.md#units)).
 
@@ -755,6 +757,12 @@ outside the screen is what would hoist them, and the random pick (FR-DIS-5) turn
 one: the draw is made *by* the list, over the rows it is already showing, so the search never had to 
 leave `VocabularyList` and no narrowing had to be named twice. What a screen supplies is the draw 
 itself; what it gets back is a name.
+
+`destinationsOf(BarMode)` sits beside it in `ui/destinations.dart` and answers what the bottom bar 
+offers: three on an owned bar, the two that read on a guest (FR-BAR-4). It lives there rather than in 
+the state layer because `Destination` is the shell's own enum and `state/` never imports `ui/`. **The 
+shell indexes the stack and the bar by position in that list**, never by `Destination.index` — the two 
+agree only while every bar offers every destination, and a guest offers two.
 
 `revealProvider` is the one provider outside this layer, and the fourth kind of state in the app: not 
 collection, not derived, not screen-local, but one screen's request of another 

@@ -16,7 +16,7 @@ String _countOf(Purchase purchase) =>
 /// What the switch widens the search to, spelt out where two words on it
 /// cannot (FR-DIS-7, ADR 16).
 const _lowMeans =
-    'Buy the bottles running low alongside the ones you are out of.';
+    'Buys the bottles running low alongside the ones out of stock.';
 
 /// What to buy next (FR-DIS-6, FR-DIS-7, FR-DIS-10): the baskets of exactly the
 /// budget's worth of bottles, best first, narrowed to the categories picked,
@@ -173,8 +173,8 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
         icon: Icons.shopping_cart_outlined,
         title: 'Nothing to shop for',
         message: _restocking
-            ? 'Every bottle your recipes ask for is fully in stock.'
-            : 'Every recipe you have can be made from what is on the shelf.',
+            ? 'Every bottle the recipes ask for is fully in stock.'
+            : 'Every recipe here can be made from what is on the shelf.',
       );
     }
     final narrowing = filter?.narrowing;

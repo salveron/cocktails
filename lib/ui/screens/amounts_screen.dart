@@ -119,18 +119,24 @@ class _AmountsFormState extends ConsumerState<_AmountsForm> {
       for (final sized in _sizedUnits)
         if (_typed(sized) == null) sized: 'Must be a number above zero',
     };
+    // The sizes are the owner's and the pick the reader's, so a guest bar is
+    // offered the pick alone (FR-BAR-3): no rows, and nothing of the sizes to
+    // be dirty about.
+    final writer = ref.watch(barWriterProvider);
     return EditorScaffold(
       title: 'Amounts',
-      dirty: _entered != widget.collection.settings || _display != _saved,
+      dirty:
+          (writer != null && _entered != widget.collection.settings) ||
+          _display != _saved,
       discardTitle: 'Discard these amounts?',
       onSave: issues.isEmpty && unread.isEmpty
-          ? () => unawaited(_save())
+          ? () => unawaited(_save(writer))
           : null,
       children: [
         Text(
           'Amounts in "$partUnit", "$mlUnit" and "$ozUnit" read in the unit '
           'picked here; every other unit reads as entered. Nothing converted '
-          'is written — a recipe keeps every line as you typed it.',
+          'is written — a recipe keeps every line as it was entered.',
           style: TextStyle(
             color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),
@@ -145,39 +151,45 @@ class _AmountsFormState extends ConsumerState<_AmountsForm> {
           showSelectedIcon: false,
           onSelectionChanged: (picked) => _pick(picked.single),
         ),
-        const SizedBox(height: 16),
-        // A table, so both rows' fields stand in line whatever the units around
-        // them are spelled like — and go on doing so under a reader's larger
-        // text, which no width written here would survive.
-        Table(
-          columnWidths: const {
-            0: IntrinsicColumnWidth(),
-            1: FlexColumnWidth(),
-            2: IntrinsicColumnWidth(),
-          },
-          defaultVerticalAlignment: TableCellVerticalAlignment.baseline,
-          textBaseline: TextBaseline.alphabetic,
-          children: [
-            for (final sized in _sizedUnits)
-              _ratioRow(
-                row: _row(sized),
-                field: _fields[sized]!,
-                error: unread[sized] ?? refused[sized],
-                onEdit: () => _edit(sized),
-              ),
-          ],
-        ),
+        if (writer != null) ...[
+          const SizedBox(height: 16),
+          // A table, so both rows' fields stand in line whatever the units
+          // around them are spelled like — and go on doing so under a reader's
+          // larger text, which no width written here would survive.
+          _sizes(unread, refused),
+        ],
       ],
     );
   }
 
+  Widget _sizes(
+    Map<FixedUnit, String> unread,
+    Map<FixedUnit, String> refused,
+  ) => Table(
+    columnWidths: const {
+      0: IntrinsicColumnWidth(),
+      1: FlexColumnWidth(),
+      2: IntrinsicColumnWidth(),
+    },
+    defaultVerticalAlignment: TableCellVerticalAlignment.baseline,
+    textBaseline: TextBaseline.alphabetic,
+    children: [
+      for (final sized in _sizedUnits)
+        _ratioRow(
+          row: _row(sized),
+          field: _fields[sized]!,
+          error: unread[sized] ?? refused[sized],
+          onEdit: () => _edit(sized),
+        ),
+    ],
+  );
+
   /// Two writes, because the sizes go to the collection's file and the pick to
   /// the bar's record (ADR 21); each is a no-op where nothing moved. Two
   /// surfaces with them: the sizes are the owner's, the pick the reader's on a
-  /// guest bar as on their own (FR-BAR-3), so a guest bar is offered the pick
-  /// alone.
-  Future<void> _save() async {
-    await ref.read(barWriterProvider)!.setSettings(_entered);
+  /// guest bar as on their own (FR-BAR-3), so a guest saves the pick alone.
+  Future<void> _save(BarWriter? writer) async {
+    await writer?.setSettings(_entered);
     await ref.read(shelfProvider.notifier).setDisplay(_display);
     if (mounted) Navigator.of(context).pop();
   }

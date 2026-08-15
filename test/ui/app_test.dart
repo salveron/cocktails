@@ -34,7 +34,7 @@ void main() {
 
     testWidgets('says so when the store cannot be read at all', (tester) async {
       await pumpApp(tester, store: _FailingStore());
-      expect(find.text('Your data could not be opened'), findsOneWidget);
+      expect(find.text('The saved data could not be opened'), findsOneWidget);
       expect(find.textContaining('disk on fire'), findsOneWidget);
       expect(find.byType(NavigationBar), findsNothing);
     });

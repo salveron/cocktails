@@ -1,5 +1,5 @@
-/// Material 3 app frame: what the app opens on, three bottom-bar destinations,
-/// settings gear.
+/// Material 3 app frame: what the app opens on, the bottom-bar destinations the
+/// open bar offers, settings gear.
 library;
 
 import 'package:cocktails/state/state.dart';
@@ -46,7 +46,7 @@ class _Home extends ConsumerWidget {
       return Scaffold(
         body: EmptyState(
           icon: Icons.error_outline,
-          title: 'Your data could not be opened',
+          title: 'The saved data could not be opened',
           message: '$failure',
         ),
       );
@@ -66,9 +66,10 @@ class _Home extends ConsumerWidget {
   }
 }
 
-/// The screen behind [destination], told whether it is the one on show: all
-/// three stay alive below, and the optimizer is the one computation that must
-/// not run for a screen nobody is looking at (ui-design.md#shopping-screen).
+/// The screen behind [destination], told whether it is the one on show: the
+/// bar's own all stay alive below, and the optimizer is the one computation
+/// that must not run unwatched (ui-design.md#shopping-screen) — nor be built at
+/// all on a guest bar, which is offered no shopping to compute (FR-BAR-4).
 Widget _screenOf(Destination destination, {required bool showing}) =>
     switch (destination) {
       Destination.recipes => const RecipesScreen(),
@@ -85,6 +86,7 @@ class AppShell extends ConsumerStatefulWidget {
 }
 
 class _AppShellState extends ConsumerState<AppShell> {
+  /// Named, never an index: the position is the offered list's (FR-BAR-4).
   Destination _current = Destination.recipes;
 
   /// What jumps have left, latest last — destinations, never their states
@@ -94,6 +96,9 @@ class _AppShellState extends ConsumerState<AppShell> {
 
   @override
   Widget build(BuildContext context) {
+    // Non-null: `_Home` stands above this and draws the list where none is open.
+    final open = ref.watch(openBarProvider)!;
+    final offered = destinationsOf(open.mode);
     // Watched only to switch: which row was asked for is the serving screen's,
     // and this hears nothing of it.
     ref.listen(revealProvider, (_, request) {
@@ -102,7 +107,7 @@ class _AppShellState extends ConsumerState<AppShell> {
       // a destination is a landing, and a reader who has just crossed into a
       // bar has nothing here to return from (docs/ui-design.md#bars).
       if (request.name == null) {
-        _choose(request.destination.index);
+        _land(request.destination);
       } else {
         _jumpTo(request.destination);
       }
@@ -117,13 +122,9 @@ class _AppShellState extends ConsumerState<AppShell> {
       child: Scaffold(
         appBar: AppBar(
           // The bar's name leads the title, the destination answering the
-          // smaller question once the app holds more than one collection
-          // (docs/ui-design.md#bars). Nothing else marks the bar, and the
-          // pushed screens above this one keep their own plain titles.
-          title: Text(switch (ref.watch(openBarProvider)) {
-            final bar? => "${bar.name}'s ${_current.label}",
-            null => _current.label,
-          }),
+          // smaller question (docs/ui-design.md#bars). Nothing else marks the
+          // bar, and the pushed screens above keep their own plain titles.
+          title: Text("${open.name}'s ${_current.label}"),
           actions: [
             IconButton(
               icon: const Icon(Icons.settings_outlined),
@@ -139,9 +140,9 @@ class _AppShellState extends ConsumerState<AppShell> {
             const LoadIssues(),
             Expanded(
               child: IndexedStack(
-                index: _current.index,
+                index: offered.indexOf(_current),
                 children: [
-                  for (final destination in Destination.values)
+                  for (final destination in offered)
                     _screenOf(destination, showing: destination == _current),
                 ],
               ),
@@ -149,10 +150,10 @@ class _AppShellState extends ConsumerState<AppShell> {
           ],
         ),
         bottomNavigationBar: NavigationBar(
-          selectedIndex: _current.index,
-          onDestinationSelected: _choose,
+          selectedIndex: offered.indexOf(_current),
+          onDestinationSelected: (index) => _land(offered[index]),
           destinations: [
-            for (final destination in Destination.values)
+            for (final destination in offered)
               NavigationDestination(
                 icon: Icon(destination.icon),
                 selectedIcon: Icon(destination.selectedIcon),
@@ -178,8 +179,8 @@ class _AppShellState extends ConsumerState<AppShell> {
 
   /// A destination the reader chose has nothing to return *from*, so the trail
   /// goes with the tap: back never undoes a move they made themselves.
-  void _choose(int index) => setState(() {
+  void _land(Destination destination) => setState(() {
     _trail.clear();
-    _current = Destination.values[index];
+    _current = destination;
   });
 }

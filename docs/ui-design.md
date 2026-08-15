@@ -48,10 +48,13 @@ Screen/shell design. Modules [components.md](components.md), requirements [requi
 
 ## Bars
 
-Behind the gear, **Switch bar…** — a row that travels. Not the app bar's own slot, not a drawer, not 
-a fourth destination: switching is rarer than reaching a recipe and rarer than the gear itself, so it 
-sits where the app already keeps what is not a destination, and the bottom bar goes on meaning what 
-it has always meant.
+Behind the gear, **Change bar** — a row that travels, and the **last** one on the Settings list. Not 
+the app bar's own slot, not a drawer, not a fourth destination: switching is rarer than reaching a 
+recipe and rarer than the gear itself, so it sits where the app already keeps what is not a 
+destination, and the bottom bar goes on meaning what it has always meant. Last because it is the way 
+*out* of this bar rather than anything in it — everything above it acts on the bar in hand, and a row 
+that changes which bar that is belongs after them, not before. It carries no ellipsis: the chevron 
+already says a screen follows, and "…" on top of it says the same thing twice.
 
 - **The app opens on the bar it was left in**, `openId` outliving the run 
   ([ADR 20](adr/20-the-app-holds-many-bars.md)), so a reader who keeps one bar never comes here 
@@ -70,14 +73,18 @@ it has always meant.
   use for exactly this. Buttons on the card was the first shape, on the grounds that the card already 
   opened to hold them; the ⋮ wins now that it is reachable **without** opening the card, which is 
   what a reader wants for the two operations that do not care what the bar holds. **Open bar** stays 
-  a button: it is the one thing the card is opened *for*. A guest bar is offered no Rename — its name 
+  a **filled tonal** button on the **right** of the body: it is the one thing the card is opened 
+  *for*, so it carries the weight the card's one commit deserves and stands where every dialog in 
+  the app puts its own. Right rather than left because the eye leaves a card at its trailing edge, 
+  and filled rather than flat because a card that opens to offer one action should not make that 
+  action the quietest thing on it. A guest bar is offered no Rename — its name 
   is its owner's and every refresh brings it back (ADR 23).
 - **The subtitle says standing, never ownership**: "Loaded" on the bar the app has read, then 
   "Updated 3 hours ago" for an owner's own edit or "Synced 2 days ago" for a guest's last answer from 
   its source (FR-BAR-5). Coarse on purpose — the question it settles is whether to refresh, which no 
   count of seconds makes clearer. A bar the device has never dated says nothing rather than guessing: 
   an index written before stamps existed has no date to give, and "just now" would be a lie about it.
-- **Whose bar it is is a chip beside the ⋮** — "Yours" or "Guest" — read the way the inventory row's 
+- **Whose bar it is is a chip beside the ⋮** — "Owned" or "Guest" — read the way the inventory row's 
   stock chip is. Its colours come off scheme roles rather than the fixed hues, because those are the 
   one traffic light: a bar wearing green would say it was in stock (see [colours](#tag-and-stock-colours)).
 - **Open bar is offered on every bar, the loaded one included.** It used to be absent there, as the 
@@ -90,12 +97,29 @@ it has always meant.
   now its own button, and the reader lands in the bar rather than back on the gear.
 - **The bar's name leads the title** — "Home bar's Recipes", "Anna's Ingredients". The destination 
   named alone was what the app bar carried while there was one collection; with several it answers 
-  the smaller question. The three destinations carry it and nothing else does: Settings, the 
+  the smaller question. The bar's own destinations carry it and nothing else does: Settings, the 
   vocabularies and the forms keep their own plain titles, being one push above a title that has just 
   said which bar this is. Nothing else marks the bar: no subtitle, no strip.
 - **A guest bar is told by the bottom bar's shape**, not by a badge (FR-BAR-4). Two destinations 
   where an owned bar has three is a difference read at a glance and read from the row the reader 
-  navigates by, which is where they are looking in any case.
+  navigates by, which is where they are looking in any case. The shell indexes the stack by position 
+  in the offered list rather than by the enum, so the two cannot drift apart on a bar that offers 
+  fewer.
+- **Everything that writes is absent on a guest, never refused** (FR-BAR-4). One fact does it — 
+  `barWriterProvider` answering null ([components.md](components.md#state-contracts)) — and every 
+  control is built from it: no add button on either list, no ⋮ on an inventory row, no Edit or Delete 
+  on a recipe card, and a row tap that no longer rotates the stock. **Scale & convert survives**, 
+  being a way of reading the owner's line rather than a change to it, as do search, the narrowings, 
+  the orders, the random pick and the jumps. A ⋮ with nothing left in it draws nothing rather than 
+  opening onto an empty menu — the rule lives in `RowMenu` itself, so a row builds the actions its 
+  bar allows and never asks whether any survived.
+- **The Settings rows that would write dim rather than vanish** — Tags, Units and Import, greyed 
+  whole and leading nowhere. Absent was the alternative and reads worse here than on the bottom bar: 
+  a destination that is missing is a shape, where a *menu row* that is missing is indistinguishable 
+  from one the reader has forgotten the name of. Dimmed, the list goes on saying what the app does 
+  with a bar of one's own. Amounts stays live (the pick is the reader's on any bar), Export stays 
+  live (a guest already holds what the file would carry, FR-DAT-1), and Change bar stays live, being 
+  the way out.
 - **Swipe down to refresh** (FR-BAR-5), on a guest bar's lists and nowhere else — the standard 
   gesture for "ask the source again", and the reason the shell carries no refresh control and no 
   as-of. How stale a bar is reads on the card that lists it; on the bar itself, being one gesture 
@@ -328,6 +352,10 @@ one dimmed sentence, the global unit, then two rows. Nothing else.
   it is the same choice made for the whole bar rather than for one card. One Save, two writes: the 
   sizes are the owner's and go to the collection, the pick is the reader's and goes to the bar's 
   record ([ADR 21](adr/21-the-file-carries-one-bar.md)), so two bars may read in different units.
+- **A guest bar is offered the pick alone** (FR-BAR-3). The unit amounts read in is a preference for 
+  reading someone else's collection; what a part and an ounce are worth is the owner's, the recipes 
+  having been written against those. So the rows go and the `SegmentedButton` stays, and Save writes 
+  the record without touching the file.
 - **Two rows, a sentence each** — "1 part = [30] ml", the number their only field. The global unit 
   leads, *except* ml: "1 ml = 0.0333 part" is a number no one reads or types back, so under ml each 
   row leads with the unit it sizes — which is the pair the file itself stores, making that pick a 
@@ -362,6 +390,11 @@ screen, not the row that starts it.
 - **"as one text file" is the subtitle doing a paragraph's job.** A dimmed sentence saying the 
   collection is plain text is what the screen carried that the rows do not; folded into the subtitle 
   it survives at the size the fact is worth, which is smaller than the paragraph made it look.
+- **Every caption is one line.** Six rows whose subtitles wrapped read as twelve, and the wrap fell 
+  where the phone's width happened to land rather than where the sense broke. Cut to fit, the list 
+  scans as a list. Dropping them altogether was weighed and refused: **Units** and **Amounts** are 
+  the pair no title tells apart — one is the vocabulary a line is written in, the other what a part 
+  and an ounce are worth — and a caption is the only thing standing between them.
 - **An empty collection exports anyway.** A file carrying `format: 1` and empty sections is a 
   template, not an error, and the screen has no reason to know which it is. It imports on the same 
   terms, reading as the nothing it holds.

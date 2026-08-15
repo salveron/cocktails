@@ -55,7 +55,7 @@ void main() {
   Future<void> openBars(WidgetTester tester, {BarStore? store}) async {
     await pumpApp(tester, store: store ?? twoBars());
     await tap(tester, find.byTooltip('Settings'));
-    await tap(tester, find.text('Switch bar…'));
+    await tap(tester, find.text('Change bar'));
   }
 
   /// Opens the card of the bar named [name].
@@ -110,10 +110,10 @@ void main() {
       tester,
     ) async {
       await openBars(tester, store: shelfOf([home, ada], {}));
-      expect(find.text('Yours'), findsOneWidget);
+      expect(find.text('Owned'), findsOneWidget);
       expect(find.text('Guest'), findsOneWidget);
       // Neither wears a reading off the traffic light, which means stock.
-      expect(chipColor(tester, 'Yours'), isNot(chipColor(tester, 'Guest')));
+      expect(chipColor(tester, 'Owned'), isNot(chipColor(tester, 'Guest')));
     });
 
     testWidgets('a card opens onto what its bar holds', (tester) async {
@@ -227,7 +227,7 @@ void main() {
       await pumpApp(tester, store: twoBars());
       await typeInto(tester, find.byType(TextField).first, 'Negroni');
       await tap(tester, find.byTooltip('Settings'));
-      await tap(tester, find.text('Switch bar…'));
+      await tap(tester, find.text('Change bar'));
       await openCard(tester, 'Anna');
       await tap(tester, find.text('Open bar'));
       // The subtree is keyed by the open bar, so the search went with it.
@@ -244,7 +244,7 @@ void main() {
       await pumpApp(tester, store: twoBars());
       await goTo(tester, 'Inventory');
       await tap(tester, find.byTooltip('Settings'));
-      await tap(tester, find.text('Switch bar…'));
+      await tap(tester, find.text('Change bar'));
       await openCard(tester, 'Home bar');
       await tap(tester, find.text('Open bar'));
       // Nothing was read again, and the reader lands where the crossing would
@@ -257,7 +257,7 @@ void main() {
       await pumpApp(tester, store: twoBars());
       await goTo(tester, 'Shopping');
       await tap(tester, find.byTooltip('Settings'));
-      await tap(tester, find.text('Switch bar…'));
+      await tap(tester, find.text('Change bar'));
       await openCard(tester, 'Home bar');
       await tap(tester, find.text('Open bar'));
       // A landing is not a jump: the reader chose the bar, so back is left

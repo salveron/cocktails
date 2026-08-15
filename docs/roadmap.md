@@ -87,7 +87,16 @@ Milestones in dependency order. Scope: [requirements.md](requirements.md); desig
   `FutureBuilder` gone. Amends [ADR 19](adr/19-a-destination-sends-the-reader-to-another.md),
   [ADR 20](adr/20-the-app-holds-many-bars.md) — which had refused the index summary — and
   [ADR 21](adr/21-the-file-carries-one-bar.md). Depends: M33a.
-- [ ] **M34** — Guest bar is read-only. Delivers: two destinations, optimizer absent, no edit offered (FR-BAR-3/4), export works, Amounts screen unit-only. Depends: M33a.
+- [x] **M34** — Guest bar is read-only. Delivers: `destinationsOf(BarMode)` with the shell indexing
+  by offered position rather than by the enum; the optimizer absent on a guest rather than empty;
+  every write control built from `barWriterProvider` being null, so no add button, no ⋮ on an
+  inventory row, no Edit/Delete on a recipe, and no stock rotation — Scale & convert, the dice, the
+  narrowings and the jumps all surviving; `RowMenu` drawing nothing when empty; Settings' Tags,
+  Units and Import dimmed and leading nowhere while Amounts, Export and Change bar stay live;
+  Amounts offering a guest the pick alone; export working on a guest (FR-DAT-1); no `!` on the
+  writer left in `ui/`. Also: Change bar moved last and de-ellipsised, every Settings caption cut to
+  one line, "Yours" → "Owned", Open bar filled tonal and right-aligned, and the second person gone
+  from the UI's copy. Depends: M33a.
 
 ## Phase 8 — A bar travels by file
 

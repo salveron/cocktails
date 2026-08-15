@@ -88,7 +88,7 @@ ListFilter<T>? tagFilter<T>({
   final chosen = {for (final tag in wornInOrder(vocabulary, picked)) tag.name};
   final reasons = [
     ?leading?.narrowing,
-    if (chosen.isNotEmpty) 'every tag you picked',
+    if (chosen.isNotEmpty) 'every tag picked',
   ];
   return (
     row: Padding(
@@ -219,15 +219,21 @@ class RowMenu extends StatelessWidget {
 
   final Map<String, VoidCallback> actions;
 
+  /// Nothing at all where nothing is offered, so a guest bar's rows lose the ⋮
+  /// rather than gaining one that opens onto an empty menu (FR-BAR-4). Here
+  /// rather than in each caller: a row builds the actions its bar allows and
+  /// says nothing about whether any survived.
   @override
-  Widget build(BuildContext context) => PopupMenuButton<VoidCallback>(
-    tooltip: 'More',
-    onSelected: (action) => action(),
-    itemBuilder: (context) => [
-      for (final action in actions.entries)
-        PopupMenuItem(value: action.value, child: Text(action.key)),
-    ],
-  );
+  Widget build(BuildContext context) => actions.isEmpty
+      ? const SizedBox.shrink()
+      : PopupMenuButton<VoidCallback>(
+          tooltip: 'More',
+          onSelected: (action) => action(),
+          itemBuilder: (context) => [
+            for (final action in actions.entries)
+              PopupMenuItem(value: action.value, child: Text(action.key)),
+          ],
+        );
 }
 
 /// Shared list template: search, sort, filter, empty state, add button.

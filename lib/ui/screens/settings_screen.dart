@@ -19,49 +19,62 @@ class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) => Scaffold(
-    appBar: AppBar(title: const Text('Settings')),
-    body: ListView(
-      children: [
-        const _Entry.opens(
-          icon: Icons.liquor_outlined,
-          title: 'Switch bar…',
-          subtitle: 'The bars this device holds, and what each one is',
-          page: BarsScreen(),
-        ),
-        const _Entry.opens(
-          icon: Icons.label_outline,
-          title: 'Tags',
-          subtitle: 'Recipe and ingredient labels, and their colours',
-          page: TagsScreen(),
-        ),
-        const _Entry.opens(
-          icon: Icons.straighten_outlined,
-          title: 'Units',
-          subtitle: 'What a recipe line is measured in, and its plural',
-          page: UnitsScreen(),
-        ),
-        const _Entry.opens(
-          icon: Icons.swap_horiz,
-          title: 'Amounts',
-          subtitle: 'The unit amounts read in, and what each is worth',
-          page: AmountsScreen(),
-        ),
-        _Entry.acts(
-          icon: Icons.ios_share,
-          title: 'Export',
-          subtitle: 'Share everything as one text file',
-          act: () => unawaited(_export(context, ref)),
-        ),
-        _Entry.acts(
-          icon: Icons.file_open_outlined,
-          title: 'Import',
-          subtitle: 'Replace everything from one text file',
-          act: () => unawaited(_import(context, ref)),
-        ),
-      ],
-    ),
-  );
+  Widget build(BuildContext context, WidgetRef ref) {
+    // What may be written to the open bar, and null on a guest one. The rows
+    // that would change the owner's collection stay where they are and go
+    // quiet: dimmed, leading nowhere (FR-BAR-4).
+    final writable = ref.watch(barWriterProvider) != null;
+    return Scaffold(
+      appBar: AppBar(title: const Text('Settings')),
+      body: ListView(
+        children: [
+          _Entry.opens(
+            icon: Icons.label_outline,
+            title: 'Tags',
+            subtitle: 'Labels and their colours',
+            page: const TagsScreen(),
+            enabled: writable,
+          ),
+          _Entry.opens(
+            icon: Icons.straighten_outlined,
+            title: 'Units',
+            subtitle: 'What lines are measured in',
+            page: const UnitsScreen(),
+            enabled: writable,
+          ),
+          // The pick is the reader's on any bar, so this one never dims; what
+          // it offers there is the pick alone (FR-BAR-3).
+          const _Entry.opens(
+            icon: Icons.swap_horiz,
+            title: 'Amounts',
+            subtitle: 'How amounts read and convert',
+            page: AmountsScreen(),
+          ),
+          // A guest already holds what the file would carry (FR-DAT-1).
+          _Entry.acts(
+            icon: Icons.ios_share,
+            title: 'Export',
+            subtitle: 'Share all as one text file',
+            act: () => unawaited(_export(context, ref)),
+          ),
+          _Entry.acts(
+            icon: Icons.file_open_outlined,
+            title: 'Import',
+            subtitle: 'Replace all from a text file',
+            act: () => unawaited(_import(context, ref)),
+            enabled: writable,
+          ),
+          // Last, being the way out of this bar rather than anything in it.
+          const _Entry.opens(
+            icon: Icons.liquor_outlined,
+            title: 'Change bar',
+            subtitle: 'Every bar this device holds',
+            page: BarsScreen(),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 /// Runs [action] and answers whether it got through, [refusal] leading the
@@ -208,7 +221,7 @@ class _Refused extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         Text(
-          'Nothing has changed. Your collection is exactly as it was.',
+          'Nothing has changed. The collection stands as it was.',
           style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
         ),
         const SizedBox(height: 16),
@@ -241,7 +254,7 @@ class _HoldingsState extends State<_Holdings> {
       Padding(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
         child: Text(
-          'Replaces everything you have now. A copy of it is kept first.',
+          'Replaces everything on the shelf now. A copy is kept first.',
           style: TextStyle(
             color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),
@@ -328,13 +341,17 @@ BulletRun _run(Iterable<String> names, {String? label, bool sorted = true}) =>
 
 /// One row of the menu: what it is, and what a tap does with it. A row that
 /// travels wears the chevron saying so; a row that acts where it stands
-/// carries none, which is the whole of the telling.
+/// carries none, which is the whole of the telling. A row [enabled] is false on
+/// dims whole — icon, title, caption and chevron together — and answers no tap:
+/// the reader sees what the app does with a bar of their own without being
+/// walked into a screen that would refuse them (FR-BAR-4).
 class _Entry extends StatelessWidget {
   const _Entry.opens({
     required this.icon,
     required this.title,
     required this.subtitle,
     required this.page,
+    this.enabled = true,
   }) : act = null;
 
   const _Entry.acts({
@@ -342,6 +359,7 @@ class _Entry extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.act,
+    this.enabled = true,
   }) : page = null;
 
   final IconData icon;
@@ -349,9 +367,11 @@ class _Entry extends StatelessWidget {
   final String subtitle;
   final Widget? page;
   final VoidCallback? act;
+  final bool enabled;
 
   @override
   Widget build(BuildContext context) => ListTile(
+    enabled: enabled,
     leading: Icon(icon),
     title: Text(title),
     subtitle: Text(subtitle),

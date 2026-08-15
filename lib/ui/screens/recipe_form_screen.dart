@@ -15,6 +15,10 @@ import '../widgets/vocabulary_list.dart';
 /// name, the ingredient lines typed in the file's own grammar, the tag picker,
 /// the notes. Pops the saved name once saved. Designed in
 /// docs/ui-design.md#recipe-form.
+///
+/// Owned bars only: a guest offers neither the add button nor the Edit that
+/// reach here, which is what lets the Save take the writer as non-null
+/// (FR-BAR-4).
 class RecipeFormScreen extends ConsumerStatefulWidget {
   const RecipeFormScreen({
     required this.units,
@@ -218,7 +222,7 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
   Future<bool> _offerToAdd(List<String> names) => confirmDialog(
     context,
     title: 'Add missing ingredients?',
-    message: 'These are not in your ingredients yet:',
+    message: 'These are not in the ingredients yet:',
     bullets: names,
     footer: 'Saving adds them, out of stock.',
     cancel: 'Cancel',

@@ -25,9 +25,7 @@ class _LoadIssuesState extends ConsumerState<LoadIssues> {
     }
     return MaterialBanner(
       leading: const Icon(Icons.warning_amber_outlined),
-      content: Text(
-        'Some of your saved data could not be read:\n${issues.join('\n')}',
-      ),
+      content: Text('Some saved data could not be read:\n${issues.join('\n')}'),
       actions: [
         TextButton(
           onPressed: () => setState(() => _dismissed = issues),

@@ -514,7 +514,7 @@ void main() {
       await pickTag(tester, 'citrus');
       await pickTag(tester, 'syrup');
       expect(
-        find.text('No ingredient here matches every tag you picked.'),
+        find.text('No ingredient here matches every tag picked.'),
         findsOneWidget,
       );
       expect(find.textContaining('Add "'), findsNothing);
@@ -526,7 +526,7 @@ void main() {
       await search(tester, 'gin');
       expect(
         find.text(
-          'No ingredient here answers to "gin" and matches every tag you '
+          'No ingredient here answers to "gin" and matches every tag '
           'picked.',
         ),
         findsOneWidget,

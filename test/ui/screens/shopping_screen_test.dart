@@ -268,9 +268,7 @@ void main() {
         ),
       );
       expect(
-        find.text(
-          'Every recipe you have can be made from what is on the shelf.',
-        ),
+        find.text('Every recipe here can be made from what is on the shelf.'),
         findsOneWidget,
       );
       await toggleLow(tester);
@@ -407,7 +405,7 @@ void main() {
       await pickTag(tester, 'clean');
       expect(
         find.text(
-          'No single bottle here unlocks a recipe matching every tag you '
+          'No single bottle here unlocks a recipe matching every tag '
           'picked.',
         ),
         findsOneWidget,
@@ -422,7 +420,7 @@ void main() {
       await pickTag(tester, 'sour');
       expect(
         find.text(
-          'No single bottle here unlocks a recipe matching every tag you '
+          'No single bottle here unlocks a recipe matching every tag '
           'picked.',
         ),
         findsOneWidget,

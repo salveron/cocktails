@@ -47,6 +47,10 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
   Widget build(BuildContext context) {
     ref.listen(revealProvider, (_, request) => _serve(request));
     final collection = ref.watch(collectionProvider);
+    // Null on a guest bar, and the whole of the rule: every control that would
+    // write is built from it, so none can be offered where there is nothing to
+    // write with (FR-BAR-4, ADR 23).
+    final writer = ref.watch(barWriterProvider);
     final vocabulary = sortedByName(collection.ingredientTags);
     // Read through the build that carries it, so no later one reveals again.
     final revealing = _revealing;
@@ -55,8 +59,10 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
       entries: collection.ingredients,
       nameOf: (ingredient) => ingredient.name,
       spellingsOf: (ingredient) => ingredient.spellings,
-      rowOf: (ingredient) => _row(collection, vocabulary, ingredient),
-      onAdd: (query) => _add(collection, vocabulary, query),
+      rowOf: (ingredient) => _row(writer, collection, vocabulary, ingredient),
+      onAdd: writer == null
+          ? null
+          : (query) => _add(writer, collection, vocabulary, query),
       reveal: revealing,
       noun: 'ingredient',
       plural: 'ingredients',
@@ -74,14 +80,18 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
         icon: Icons.inventory_2_outlined,
         title: 'No ingredients yet',
         message:
-            'Every ingredient your recipes use is listed here, with what you '
-            'have in stock.',
+            'Every ingredient the recipes here use is listed, with what is '
+            'in stock.',
       ),
     );
   }
 
-  /// Row tap toggles stock (in → low → out → in); vocab actions use ⋮.
+  /// Row tap toggles stock (in → low → out → in); vocab actions use ⋮. On a
+  /// guest bar the stock is the owner's reading of their own shelf, so the row
+  /// keeps its chip and loses both — a tap that changed it would be the reader
+  /// judging one bar by another (FR-BAR-4).
   VocabularyRow _row(
+    BarWriter? writer,
     Collection collection,
     List<Tag> vocabulary,
     Ingredient ingredient,
@@ -95,21 +105,24 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
       mainAxisSize: MainAxisSize.min,
       children: [
         StockChip(ingredient.stock),
-        RowMenu({
-          'Edit': () => unawaited(_edit(collection, vocabulary, ingredient)),
-          'Delete': () => unawaited(_delete(collection, ingredient)),
-        }),
+        if (writer != null)
+          RowMenu({
+            'Edit': () =>
+                unawaited(_edit(writer, collection, vocabulary, ingredient)),
+            'Delete': () => unawaited(_delete(writer, collection, ingredient)),
+          }),
       ],
     ),
-    onTap: () => unawaited(
-      ref
-          .read(barWriterProvider)!
-          .setStock(ingredient.name, ingredient.stock.next),
-    ),
+    onTap: writer == null
+        ? null
+        : () => unawaited(
+            writer.setStock(ingredient.name, ingredient.stock.next),
+          ),
   );
 
   /// Returns true after adding; clears picked tags along with search.
   Future<bool> _add(
+    BarWriter writer,
     Collection collection,
     List<Tag> vocabulary,
     String query,
@@ -123,17 +136,16 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
       initial: query,
     );
     if (added == null || !context.mounted) return false;
-    await ref
-        .read(barWriterProvider)!
-        .upsertIngredient(
-          Ingredient(added.name, aliases: added.aliases, tags: added.tags),
-        );
+    await writer.upsertIngredient(
+      Ingredient(added.name, aliases: added.aliases, tags: added.tags),
+    );
     if (mounted) setState(_picked.clear);
     return true;
   }
 
   /// Atomic upsert: name, aliases and tags edited together; stock unchanged.
   Future<void> _edit(
+    BarWriter writer,
     Collection collection,
     List<Tag> vocabulary,
     Ingredient ingredient,
@@ -149,19 +161,21 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
       initial: ingredient.name,
     );
     if (edited == null || !context.mounted) return;
-    await ref
-        .read(barWriterProvider)!
-        .upsertIngredient(
-          ingredient.copyWith(
-            name: edited.name,
-            aliases: edited.aliases,
-            tags: edited.tags,
-          ),
-          replacing: ingredient.name,
-        );
+    await writer.upsertIngredient(
+      ingredient.copyWith(
+        name: edited.name,
+        aliases: edited.aliases,
+        tags: edited.tags,
+      ),
+      replacing: ingredient.name,
+    );
   }
 
-  Future<void> _delete(Collection collection, Ingredient ingredient) async {
+  Future<void> _delete(
+    BarWriter writer,
+    Collection collection,
+    Ingredient ingredient,
+  ) async {
     final confirmed = await confirmDelete(
       context,
       what: ingredient.name,
@@ -169,7 +183,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
       blockedByNoun: 'recipes',
     );
     if (!confirmed || !context.mounted) return;
-    await ref.read(barWriterProvider)!.removeIngredient(ingredient.name);
+    await writer.removeIngredient(ingredient.name);
   }
 }
 

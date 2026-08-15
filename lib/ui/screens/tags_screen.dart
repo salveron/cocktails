@@ -13,6 +13,9 @@ import '../widgets/vocabulary_list.dart';
 /// Both tag vocabularies, a tab each — add, rename with propagation, colour,
 /// and reference-blocked delete (FR-VOC-1/3/4). Designed in
 /// docs/ui-design.md#tags-screen.
+///
+/// Owned bars only: Settings dims the row leading here on a guest one, which is
+/// what lets every write below take the writer as non-null (FR-BAR-4).
 class TagsScreen extends ConsumerWidget {
   const TagsScreen({super.key});
 

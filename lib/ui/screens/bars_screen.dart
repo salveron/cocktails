@@ -127,13 +127,15 @@ class _BarsScreenState extends ConsumerState<BarsScreen> {
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
       _counts(bar),
-      OverflowBar(
-        children: [
-          TextButton(
-            onPressed: () => unawaited(_open(bar)),
-            child: const Text('Open bar'),
-          ),
-        ],
+      const SizedBox(height: 8),
+      // Right, where the card's one commit belongs and where every dialog in
+      // the app puts its own; filled tonal, being the thing the card opens for.
+      Align(
+        alignment: Alignment.centerRight,
+        child: FilledButton.tonal(
+          onPressed: () => unawaited(_open(bar)),
+          child: const Text('Open bar'),
+        ),
       ),
     ],
   );
@@ -176,7 +178,7 @@ class _BarsScreenState extends ConsumerState<BarsScreen> {
     final name = await promptForName(
       context,
       title: 'New bar',
-      hintText: "What you'll call it",
+      hintText: 'What to name it',
     );
     if (name == null) return;
     await ref.read(shelfProvider.notifier).addOwnedBar(name);
@@ -187,7 +189,7 @@ class _BarsScreenState extends ConsumerState<BarsScreen> {
     final name = await promptForName(
       context,
       title: 'Rename bar',
-      hintText: "What you'll call it",
+      hintText: 'What to name it',
       initial: bar.name,
     );
     if (name == null) return;

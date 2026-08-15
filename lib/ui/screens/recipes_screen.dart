@@ -117,6 +117,9 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
     ref.listen(revealProvider, (_, request) => _serve(request));
     final collection = ref.watch(collectionProvider);
     final vocabulary = sortedByName(collection.recipeTags);
+    // Null on a guest bar; every control that writes is built from it, so the
+    // reading half of the screen goes on untouched (FR-BAR-4, ADR 23).
+    final writer = ref.watch(barWriterProvider);
     // Read through the build that carries it, so no later one reveals again.
     final revealing = _revealing;
     _revealing = null;
@@ -124,9 +127,16 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
       entries: collection.recipes,
       nameOf: (recipe) => recipe.name,
       spellingsOf: (recipe) => _spellings(collection, recipe),
-      rowOf: (recipe) =>
-          _row(collection, vocabulary, recipe, availability[recipe.name]),
-      onAdd: (query) => _add(collection.units, query),
+      rowOf: (recipe) => _row(
+        writer,
+        collection,
+        vocabulary,
+        recipe,
+        availability[recipe.name],
+      ),
+      onAdd: writer == null
+          ? null
+          : (query) => _add(writer, collection.units, query),
       reveal: revealing,
       noun: 'recipe',
       plural: 'recipes',
@@ -153,8 +163,8 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
         icon: Icons.local_bar_outlined,
         title: 'No recipes yet',
         message:
-            'Recipes you add appear here, marked with what you can make '
-            'from the bottles you have.',
+            'Recipes added here appear in this list, marked with what can be '
+            'made from the bottles in stock.',
       ),
     );
   }
@@ -170,6 +180,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
   /// [availability] is derived from the collection this row is built from, so
   /// there; an absent one draws no chip rather than standing on an assertion.
   VocabularyRow _row(
+    BarWriter? writer,
     Collection collection,
     List<Tag> vocabulary,
     Recipe recipe,
@@ -223,11 +234,15 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
           if (availability != null) AvailabilityChip(availability),
           RowMenu({
             // Only where there are amounts to transform: the choice is the
-            // open card's, and dies with it.
+            // open card's, and dies with it. It survives a guest bar, scaling
+            // being a way of reading the owner's line rather than a change to
+            // it (FR-BAR-4).
             if (expanded)
               'Scale & convert': () => unawaited(_scale(recipe, resting)),
-            'Edit': () => unawaited(_edit(collection.units, recipe)),
-            'Delete': () => unawaited(_delete(recipe)),
+            if (writer != null) ...{
+              'Edit': () => unawaited(_edit(writer, collection.units, recipe)),
+              'Delete': () => unawaited(_delete(writer, recipe)),
+            },
           }),
         ],
       ),
@@ -250,7 +265,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
     );
     if (drawn == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Nothing here you can make right now.')),
+        const SnackBar(content: Text('Nothing here can be made right now.')),
       );
       return null;
     }
@@ -319,7 +334,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
   /// The form, and every narrowing let go along with the search once it saves:
   /// a recipe wearing none of the picked tags, or built on another spirit,
   /// would otherwise land out of sight.
-  Future<bool> _add(List<Unit> units, String query) async {
+  Future<bool> _add(BarWriter writer, List<Unit> units, String query) async {
     final saved = await _openForm(units: units, initialName: query);
     if (saved != null && mounted) {
       setState(() {
@@ -342,7 +357,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
   ];
 
   /// On rename, move expansion state from old name to new name.
-  Future<void> _edit(List<Unit> units, Recipe recipe) async {
+  Future<void> _edit(BarWriter writer, List<Unit> units, Recipe recipe) async {
     final saved = await _openForm(units: units, original: recipe);
     if (saved == null || saved == recipe.name || !mounted) return;
     setState(() {
@@ -374,7 +389,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
   }
 
   /// Delete: never blocked since nothing references recipes.
-  Future<void> _delete(Recipe recipe) async {
+  Future<void> _delete(BarWriter writer, Recipe recipe) async {
     final confirmed = await confirmDelete(
       context,
       what: recipe.name,
@@ -382,7 +397,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
       blockedByNoun: 'recipes',
     );
     if (!confirmed || !mounted) return;
-    await ref.read(barWriterProvider)!.removeRecipe(recipe.name);
+    await writer.removeRecipe(recipe.name);
     if (mounted) {
       setState(() {
         _expanded.remove(recipe.name);

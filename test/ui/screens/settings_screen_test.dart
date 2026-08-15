@@ -149,7 +149,7 @@ recipes:
       expect(find.text('2 tags'), findsOneWidget);
       expect(find.text('7 units'), findsOneWidget);
       expect(
-        find.textContaining('Replaces everything you have now'),
+        find.textContaining('Replaces everything on the shelf now'),
         findsOneWidget,
       );
       expect(store.saveCount, 0);

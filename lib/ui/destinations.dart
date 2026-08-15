@@ -2,6 +2,7 @@
 /// another (docs/adr/19-a-destination-sends-the-reader-to-another.md).
 library;
 
+import 'package:cocktails/domain/domain.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -17,6 +18,12 @@ enum Destination {
   final IconData icon;
   final IconData selectedIcon;
 }
+
+/// Bottom-bar order, indexed by position and never by the enum (FR-BAR-4).
+List<Destination> destinationsOf(BarMode mode) => switch (mode) {
+  BarMode.owner => Destination.values,
+  BarMode.guest => const [Destination.recipes, Destination.inventory],
+};
 
 /// A destination and a row to reveal there — never an index, a widget or an
 /// entity, and the name the entry's own, whatever spelling the sender held. A

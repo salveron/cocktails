@@ -88,6 +88,19 @@ final recipeCollection = Collection(
 Bar testBar({String name = 'Home bar', FixedUnit display = FixedUnit.part}) =>
     Bar(id: 'test01', name: name, mode: BarMode.owner, display: display);
 
+/// Another owner's, read as it stood at its last refresh (FR-BAR-3) — the
+/// counterpart to [testBar], so one screen can be judged in both modes. The
+/// source is what makes it a guest at all: a bar with none is refused.
+Bar guestBar({String name = "Ada's bar", FixedUnit display = FixedUnit.part}) =>
+    Bar(
+      id: 'guest1',
+      name: name,
+      mode: BarMode.guest,
+      display: display,
+      source: const BarSource(via: Transport.file, at: 'ada.yaml', from: 'Ada'),
+      refreshed: testNow.subtract(const Duration(days: 2)),
+    );
+
 /// A store whose bar file did not decode, recovered onto [fixtureCollection].
 MemoryBarStore corruptStore() {
   final bar = testBar();
@@ -188,8 +201,9 @@ Future<MemoryBarStore> pumpOver(
   Widget screen,
   Collection collection, {
   FixedUnit display = FixedUnit.part,
+  Bar? bar,
 }) async {
-  final store = MemoryBarStore.of(testBar(display: display), collection);
+  final store = MemoryBarStore.of(bar ?? testBar(display: display), collection);
   await pumpScreen(tester, screen, store: store);
   return store;
 }
