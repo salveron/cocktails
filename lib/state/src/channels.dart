@@ -8,18 +8,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'seams.dart';
 
-/// The ways a bar travels, by transport — composed from the seams beside it
-/// and replaced wholesale by fakes, so nothing above learns what a network is.
-/// A transport absent here has no adapter in this build, which is how
-/// `Transport.cloud` waits without blocking anything (ADR 22).
+/// The ways a bar travels, by transport — composed from the seams beside it and
+/// replaced wholesale by fakes, so nothing above learns what a network is. One
+/// absent here has no adapter in this build, which is how `Transport.cloud`
+/// waits (ADR 22).
 final channelsProvider = Provider<Map<Transport, BarChannel>>(
   (ref) => Map.unmodifiable({
     Transport.file: FileBarChannel(ref.watch(filePickerProvider)),
   }),
 );
 
-/// What a bar added from a picked file is kept under — republished so that no
-/// screen founding one ever builds an address (ADR 22).
+/// What a file-picked bar is kept under: no screen builds an address (ADR 22).
 const fileSource = FileBarChannel.source;
 
 /// What a bar's refresh is doing, or what its last one came to (FR-BAR-5).
@@ -32,7 +31,7 @@ final class Reaching extends RefreshState {
   const Reaching();
 }
 
-/// Judged as an import is, and worded as the startup banner words one (FR-DAT-4).
+/// Judged as an import is, worded as the startup banner words one (FR-DAT-4).
 final class RefreshRefused extends RefreshState {
   final List<String> issues;
   final DateTime at;
@@ -66,6 +65,12 @@ final class Refreshes extends Notifier<Map<String, RefreshState>> {
   @override
   Map<String, RefreshState> build() => const {};
 
+  /// For a caller holding the notifier across an `await` of its own.
+  RefreshState? standing(String id) => state[id];
+
+  /// The reader has heard it — from the banner or from the screen that asked.
+  void told(String id) => _stand(id, null);
+
   /// Marks [id] reaching, clearing what its last ask came to, and answers the
   /// token this one is known by.
   int ask(String id) {
@@ -85,6 +90,7 @@ final class Refreshes extends Notifier<Map<String, RefreshState>> {
   }
 
   void _stand(String id, RefreshState? standing) {
+    if (standing == null && !state.containsKey(id)) return;
     final next = {...state}..remove(id);
     if (standing != null) next[id] = standing;
     state = Map.unmodifiable(next);

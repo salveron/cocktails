@@ -136,22 +136,23 @@ void main() {
     );
     final now = DateTime.utc(2026, 8, 12, 9);
 
-    test('takes the owner\'s name and collection, and stamps the answer', () {
+    test('takes the owner\'s collection, and stamps the answer', () {
       final shelf = shelfOf(
         openId: 'b3e1d7',
         collection: _gin,
       ).refreshedWith('b3e1d7', payload, now);
-      expect(shelf.open?.name, 'Ada\'s cocktails');
       expect(shelf.open?.refreshed, now);
       expect(shelf.collection, _rum);
     });
 
-    test('never the reading unit, which is the reader\'s (ADR 21)', () {
+    test('never the name or the unit, which are the reader\'s (ADR 21)', () {
+      final standing = guestBar(display: FixedUnit.ml);
       final shelf = Shelf(
-        bars: [guestBar(display: FixedUnit.ml)],
+        bars: [standing],
         openId: 'b3e1d7',
       ).refreshedWith('b3e1d7', payload, now);
       expect(shelf.open?.display, FixedUnit.ml);
+      expect(shelf.open?.name, standing.name);
     });
 
     test('a bar that is not the one open keeps the resident collection', () {
@@ -160,7 +161,7 @@ void main() {
         collection: _gin,
       ).refreshedWith('b3e1d7', payload, now);
       expect(shelf.collection, _gin);
-      expect(shelf.barWithId('b3e1d7')?.name, 'Ada\'s cocktails');
+      expect(shelf.barWithId('b3e1d7')?.holds, holdingsOf(_rum));
       expect(shelf.barWithId('b3e1d7')?.refreshed, now);
     });
 

@@ -96,9 +96,9 @@ class _BarsScreenState extends ConsumerState<BarsScreen> {
         children: [
           BarModeChip(bar.mode),
           RowMenu({
-            // A guest bar's name is its owner's and every refresh brings it
-            // back, so the rename is absent rather than refused (ADR 23).
-            if (bar.isOwned) 'Rename': () => unawaited(_rename(bar)),
+            // Offered on a guest bar too: what a bar is called here is the
+            // reader's, as the unit it reads in is (FR-BAR-3, ADR 21).
+            'Rename': () => unawaited(_rename(bar)),
             'Delete': () => unawaited(_delete(bar)),
           }),
         ],
@@ -177,9 +177,9 @@ class _BarsScreenState extends ConsumerState<BarsScreen> {
   /// form rather than a dialog, the file roads needing what a file holds put in
   /// front of the reader first — and it leaves for the new bar itself, a bar
   /// being opened by the making of it.
-  Future<void> _add() => Navigator.of(
-    context,
-  ).push(MaterialPageRoute<void>(builder: (_) => const BarFormScreen()));
+  Future<void> _add() => Navigator.of(context).push(
+    MaterialPageRoute<void>(builder: (_) => const BarFormScreen.founding()),
+  );
 
   Future<void> _rename(Bar bar) async {
     final name = await promptForName(
@@ -192,8 +192,8 @@ class _BarsScreenState extends ConsumerState<BarsScreen> {
     await ref.read(shelfProvider.notifier).renameBar(bar.id, name);
   }
 
-  /// FR-BAR-2: confirmed, and the copy said out loud — the same promise the
-  /// import review makes before replacing a collection.
+  /// FR-BAR-2: confirmed, and the copy said out loud — the same promise an
+  /// import makes before replacing a collection.
   Future<void> _delete(Bar bar) async {
     final agreed = await confirmDialog(
       context,

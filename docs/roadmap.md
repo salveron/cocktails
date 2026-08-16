@@ -111,6 +111,20 @@ Milestones in dependency order. Scope: [requirements.md](requirements.md); desig
   file; swipe-to-refresh on a guest bar's lists including an empty one (`VocabularyList.onRefresh`,
   `refreshOf`) and the `RefreshFailure` banner beside `LoadIssues` in `banners.dart`; shared
   `SectionLabel`/`FieldNote`, and `fileOf`/`damagedFile` in the widget harness. Depends: M35.
+- [x] **M36a** — A guest bar is the reader's to name, and one form reads every arriving file.
+  Delivers: the bar's name joins the reading unit as the reader's — `renameBar` on a guest bar,
+  `Bar.refreshedAt` unable to reach a name at all, and the file's `name:` a starting value like
+  `display`, amending [ADR 21](adr/21-the-file-carries-one-bar.md) and
+  [ADR 23](adr/23-nothing-writes-a-guest-bar.md); `addGuestBar(name, source, payload)` and
+  `replaceOpen(name, payload)` taking it from the caller. The import review folds into
+  `BarFormScreen`, now `.founding()` and `.importing(review)` — one file, the same three questions,
+  the roads a segmented **Owned | Guest** or **Replace | Guest** and Save the one commit, with the
+  suggested name following the road until the reader writes their own and **Choose another file**
+  where From another file stood. Settings' Import row becomes **Refresh** on a guest bar (FR-BAR-5),
+  reporting in a snackbar and marking the answer `told` so the banner cannot repeat it
+  (`Refreshes.standing`/`told`, `refreshSaid`); `banners.dart` becomes `telling.dart`, the one home
+  for what the app could not do, `wentThrough` included. Owned/Guest chips move onto the traffic
+  light — green and amber. Depends: M36.
 
 ## Phase 9 — A bar travels over the LAN
 

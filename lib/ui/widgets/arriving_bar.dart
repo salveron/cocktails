@@ -1,6 +1,6 @@
 /// A bar arriving by file: the pick, what it turned out to hold, and why it
-/// could not be read — the import review's two roads and the new-bar form's own
-/// pick meeting one file the same way (FR-DAT-4, FR-BAR-7). The readings are
+/// could not be read — one file read the same way wherever it was picked, on
+/// the one form that agrees to it (FR-DAT-4, FR-BAR-7). The readings are
 /// columns, so the screen showing one owns the scrolling.
 library;
 

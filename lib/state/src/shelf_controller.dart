@@ -152,10 +152,10 @@ final class ShelfController extends AsyncNotifier<Shelf> {
     Rejected(:final issues) => (bar: null, issues: _described(issues)),
   };
 
-  /// Replaces the open bar with a picked file, copying what stood first
-  /// (FR-DAT-3). Owned bars only — the same file is *added* as a guest bar
-  /// instead (FR-BAR-7).
-  Future<void> replaceOpen(BarPayload payload) async {
+  /// Replaces the open bar's contents with a picked file's, copying what stood
+  /// first (FR-DAT-3). Owned bars only — the same file is *added* as a guest bar
+  /// instead (FR-BAR-7). [name] is the reader's, as a bar's name always is.
+  Future<void> replaceOpen(String name, BarPayload payload) async {
     // Awaited first: the copy must be of what stood rather than of nothing.
     final shelf = await future;
     final bar = shelf.open;
@@ -169,7 +169,7 @@ final class ShelfController extends AsyncNotifier<Shelf> {
         );
     await _publish(
       shelf
-          .withBar(bar.copyWith(name: payload.name, display: payload.display))
+          .withBar(bar.copyWith(name: name, display: payload.display))
           .withCollection(payload.collection, _now()),
     );
   }
@@ -200,19 +200,20 @@ final class ShelfController extends AsyncNotifier<Shelf> {
   }
 
   /// FR-BAR-3/7: another owner's bar, added from what they shared rather than
-  /// imported into one of this device's own — the same file's other road.
-  /// Read-only (ADR 23), the source kept so a refresh asks again (FR-BAR-5).
-  Future<void> addGuestBar(BarSource source, BarPayload payload) => _found(
-    Bar(
-      id: newBarId(),
-      name: payload.name,
-      mode: BarMode.guest,
-      display: payload.display,
-      source: source,
-      refreshed: _now(),
-    ).summarised(payload.collection),
-    payload.collection,
-  );
+  /// imported into this device's own — the same file's other road, named by the
+  /// reader as any is. Read-only (ADR 23), the source kept for a refresh.
+  Future<void> addGuestBar(String name, BarSource source, BarPayload payload) =>
+      _found(
+        Bar(
+          id: newBarId(),
+          name: name,
+          mode: BarMode.guest,
+          display: payload.display,
+          source: source,
+          refreshed: _now(),
+        ).summarised(payload.collection),
+        payload.collection,
+      );
 
   /// The founding both roads take: the bar's file before the index naming it,
   /// a crash between the two otherwise leaving a bar that opens onto nothing.
@@ -283,12 +284,13 @@ final class ShelfController extends AsyncNotifier<Shelf> {
 
   DateTime _now() => ref.read(clockProvider)();
 
-  /// FR-BAR-2. A guest bar's name is its owner's and arrives with every refresh
-  /// (FR-BAR-5), so a rename there would be thrown away by the next one.
+  /// FR-BAR-2/3: what the bar is called here — the reader's on a guest bar as
+  /// on their own, a label on someone else's collection rather than an edit to
+  /// it, and kept across every refresh as the reading unit is (ADR 21).
   Future<void> renameBar(String id, String name) async {
     final shelf = await future;
     final bar = shelf.barWithId(id);
-    if (bar == null || !bar.isOwned || bar.name == name) return;
+    if (bar == null || bar.name == name) return;
     await _publish(shelf.withBar(bar.copyWith(name: name)));
   }
 

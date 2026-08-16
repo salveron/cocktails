@@ -45,9 +45,10 @@ enum UnreachableReason { offline, notFound, withdrawn }
 /// name them and empty where it cannot (FR-BAR-6).
 typedef Offer = ({Transport via, List<String> guests});
 
-/// What a bar's file carries (ADR-21): the owner's name for it, the reading
-/// unit whoever establishes it starts from, and the collection. Mode, source,
-/// refresh time and id are the device's and never travel.
+/// What a bar's file carries (ADR-21): the collection, and the name and reading
+/// unit whoever establishes a bar from it starts out with — both theirs from
+/// then on, so neither returns on a refresh. Mode, source, refresh time and id
+/// are the device's and never travel.
 typedef BarPayload = ({String name, FixedUnit display, Collection collection});
 
 /// Where a guest bar refreshes from (FR-BAR-5). [at] is the transport's own
@@ -136,10 +137,11 @@ final class Bar {
     holds: holds,
   );
 
-  /// FR-BAR-5: the owner's name and contents as they just arrived, and when the
-  /// source answered. The one writer of [refreshed], so a stamp cannot be
-  /// dropped by a copy that meant to keep it.
-  Bar refreshedAt(String name, Collection collection, DateTime at) => Bar(
+  /// FR-BAR-5: the owner's contents as they just arrived, and when the source
+  /// answered. The one writer of [refreshed], so a stamp cannot be dropped by a
+  /// copy that meant to keep it. [name] and [display] are the reader's and are
+  /// physically unreachable from here, so no refresh can lose either (ADR-21).
+  Bar refreshedAt(Collection collection, DateTime at) => Bar(
     id: id,
     name: name,
     mode: mode,

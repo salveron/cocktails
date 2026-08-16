@@ -77,9 +77,11 @@ nothing at all, where the reader was asked and stood down.
   document picker, so a file-sourced bar cannot be told from any other file picked for it — what 
   arrives replaces what stood, and the pick is the judgement; a picker dismissed leaves the bar 
   exactly as it was, having failed at nothing. Nothing to withdraw, nothing announced. **One picked 
-  file has three destinations**, and which one it takes is settled where it was picked: the open 
-  bar's contents replaced (FR-DAT-3), a new bar of the reader's own founded from it (FR-BAR-2), or 
-  a guest bar founded beside it (FR-BAR-7). Only the last keeps the source.
+  file has three destinations**, and which one it takes is settled on the one form that reads it: 
+  the open bar's contents replaced (FR-DAT-3), a new bar of the reader's own founded from it 
+  (FR-BAR-2), or a guest bar founded beside it (FR-BAR-7). Only the last keeps the source; none of 
+  the three takes the file's name for the bar's, that being the reader's to leave or change 
+  ([ADR 21](adr/21-the-file-carries-one-bar.md)).
 - **LAN** (FR-BAR-8): an owner registers one DNS-SD service per offered bar and serves that bar over 
   a `dart:io` HTTP server on an unguessable path; a guest browses the service type, adds what it 
   finds and refreshes by GET. Discovery costs a package, the transfer none (ADR 22). Server and 
@@ -150,12 +152,14 @@ Rules:
   exception to unknown keys below; nothing else reads it, the device's own format-1 file being 
   migrated through that same route.
 - `name`: the bar's own, under the same value rules as every other name and under no uniqueness rule 
-  at all (FR-BAR-1). Required; a format-1 file has none and is named by the reader adding it.
+  at all (FR-BAR-1). Required; a format-1 file has none and is named by the reader adding it. Read 
+  where a bar is founded from the file and nowhere else — like `display`, it is what the reader 
+  starts from rather than what the bar is called ([ADR 21](adr/21-the-file-carries-one-bar.md)).
 - `units`: measurement vocabulary ([ADR 09](adr/09-units-are-a-vocabulary.md)). `plural` 
   omitted where same as name. Absent = shipped seven (`part ml oz dash barspoon drop piece`). 
   Present = whole vocabulary. All spellings unique under fold; `part`/`ml`/`oz` required.
-- `settings`: `part_ml` and `oz_ml` are the owner's, `display` the reader's — of the whole file it 
-  alone is not taken when a guest bar refreshes (FR-BAR-5, [ADR 21](adr/21-the-file-carries-one-bar.md)).
+- `settings`: `part_ml` and `oz_ml` are the owner's, `display` the reader's — it and `name` are what 
+  a guest bar's refresh does not take (FR-BAR-5, [ADR 21](adr/21-the-file-carries-one-bar.md)).
 - Ingredient entries: `name` required; `stock` = `in`|`low`|`out` (default); `tags` and 
   `aliases` (optional). Names and aliases: one namespace, unique under fold, no commas. 
   References resolve by any spelling, stored under entry's name.
@@ -237,9 +241,9 @@ dropped whole rather than read as a bar that holds none of it.
   ([ADR 17](adr/17-the-fixed-units-interconvert.md)). ×1 in the bar's own unit = the card at 
   rest. Rounded to 2 decimals.
 - **A refresh lands whole** (FR-BAR-5): what arrives is judged as an imported file is (FR-DAT-4), and 
-  only then replaces the guest bar's collection, name and refresh time together. Nothing is merged 
-  and nothing compared; the bar's `display` survives by never having been in the payload, and what 
-  fails to pass leaves the bar exactly as it was.
+  only then replaces the guest bar's collection and refresh time together. Nothing is merged and 
+  nothing compared; the bar's `display` survives by never having been in the payload and its `name` 
+  by being out of `refreshedAt`'s reach, and what fails to pass leaves the bar exactly as it was.
 
 ## Platform facts
 

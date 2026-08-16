@@ -543,7 +543,7 @@ final class Collection {
 /// The four kinds a collection is summed up by, recipes first: a reader tells
 /// one collection from another by what it makes long before by the vocabulary
 /// serving it. One home for the kinds, their order and what each is called, so
-/// a bar card and an import review read alike.
+/// a bar card and an arriving file read alike.
 enum Holding {
   recipe('recipe'),
   ingredient('ingredient'),

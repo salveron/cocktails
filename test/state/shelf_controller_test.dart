@@ -456,12 +456,13 @@ void main() {
 
     test('an import moves both, so both are written', () async {
       final container = await started();
-      await controllerOf(container).replaceOpen((
-        name: 'Ada\'s bar',
+      await controllerOf(container).replaceOpen('Ada\'s bar', (
+        name: 'unread',
         display: FixedUnit.ml,
         collection: Collection(ingredients: [Ingredient('rye')]),
       ));
       expect(store.saved?.ingredientNamed('rye'), isNotNull);
+      // The name is the reader's, so the file's own is never read here.
       expect(store.savedShelf?.bars.single.name, 'Ada\'s bar');
       expect(container.read(openBarProvider)?.display, FixedUnit.ml);
     });
@@ -501,9 +502,10 @@ void main() {
     test('an import leaves a guest bar exactly as it stood', () async {
       final seeded = MemoryBarStore.of(visiting, stored);
       final container = await started(seeded);
-      await controllerOf(
-        container,
-      ).replaceOpen(payloadOf(Collection(ingredients: [Ingredient('rye')])));
+      await controllerOf(container).replaceOpen(
+        'Mine now',
+        payloadOf(Collection(ingredients: [Ingredient('rye')])),
+      );
       expect(collectionOf(container), stored);
       expect(seeded.savedBars, isEmpty);
       expect(seeded.snapshots, isEmpty, reason: 'no copy was staged either');
@@ -697,7 +699,7 @@ recipes:
     test('replacing keeps a copy of what it replaced first '
         '(FR-DAT-3)', () async {
       final container = await started();
-      await controllerOf(container).replaceOpen(payloadOf(incoming));
+      await controllerOf(container).replaceOpen(bar.name, payloadOf(incoming));
       // The copy is the collection that stood before, never the one arriving.
       expect(store.snapshots[ExportPurpose.beforeImport]?.$2, stored);
       expect(collectionOf(container), incoming);
@@ -707,7 +709,7 @@ recipes:
     test('the copy it keeps is not the one an export shares', () async {
       final container = await started();
       await controllerOf(container).export();
-      await controllerOf(container).replaceOpen(payloadOf(incoming));
+      await controllerOf(container).replaceOpen(bar.name, payloadOf(incoming));
       // Two copies, two purposes: the export slot still holds what went out to
       // a reader, so an import cannot write over it.
       expect(store.snapshots[ExportPurpose.share]?.$2, stored);
@@ -716,7 +718,7 @@ recipes:
 
     test('a replace asked for before the load waits for it', () async {
       final container = containerFor(store);
-      await controllerOf(container).replaceOpen(payloadOf(incoming));
+      await controllerOf(container).replaceOpen(bar.name, payloadOf(incoming));
       // Not the empty collection the copy would hold had it run before the
       // load.
       expect(store.snapshots[ExportPurpose.beforeImport]?.$2, stored);
@@ -920,14 +922,17 @@ recipes:
       expect(container.read(openBarProvider)?.id, bar.id);
     });
 
-    test('a guest bar keeps the name its owner gave it', () async {
+    /// FR-BAR-3: what a bar is called here is the reader's on a guest bar as on
+    /// one of their own — a label on someone else's collection, and no refresh
+    /// takes it back (ADR 21).
+    test('a guest bar is renamed like any other', () async {
       final store = shelfOf([bar, guest], {bar.id: stored});
       final container = await started(store);
       await controllerOf(container).renameBar(guest.id, 'Mine now');
-      // A refresh replaces the name wholesale (FR-BAR-5), so a rename here
-      // would be thrown away by the next one.
-      expect(container.read(barsProvider).last.name, guest.name);
-      expect(store.calls, isEmpty);
+      expect(container.read(barsProvider).last.name, 'Mine now');
+      // The record moved; the owner's collection was not touched to do it.
+      expect(store.savedShelf?.bars.last.name, 'Mine now');
+      expect(store.savedBars[guest.id], isNull);
     });
 
     test('the name it already carries writes nothing', () async {

@@ -173,7 +173,7 @@ BulletRun bulletRun(Iterable<String> names, {String? label}) => (
 );
 
 /// Every name a [VocabularyRow]'s body counts, bulleted under the run it falls
-/// in — the import review's vocabularies (ADR 07) and a basket's two halves
+/// in — an arriving file's vocabularies (ADR 07) and a basket's two halves
 /// alike. An empty run is left out rather than standing as a heading over
 /// nothing.
 class BulletRuns extends StatelessWidget {

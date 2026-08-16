@@ -34,12 +34,13 @@ Two tag vocabularies separate; one name may exist in both (different meanings).
   its contents is (FR-DAT-3).
 - **FR-BAR-3** A guest bar is another owner's, added from what they shared (FR-BAR-7/8/9) and read 
   as it stood at its last refresh. Everything in it is theirs — recipes, stock, tags, units — and 
-  the reader adds nothing of their own: not a stock level, not a note, not a tag. Which unit amounts 
-  read in is the one thing that stays the reader's, theirs to pick on a guest bar as on one of their 
-  own (FR-SET-1): a preference for reading someone else's collection, not a change to it. What a 
-  part and an ounce are worth there stays the owner's — the recipes were written against those. The 
-  bar is removed whenever they like, touching nothing the owner holds. A device may hold guest bars 
-  and own none.
+  the reader adds nothing of their own: not a stock level, not a note, not a tag. Two things stay 
+  the reader's, neither of them a change to the collection: **which unit amounts read in** 
+  (FR-SET-1), a preference for reading someone else's recipes, and **what the bar is called on this 
+  device**, a label on the shelf it stands on. Both are theirs to set on a guest bar exactly as on 
+  one of their own, and no refresh moves either. What a part and an ounce are worth there stays the 
+  owner's — the recipes were written against those. The bar is removed whenever they like, touching 
+  nothing the owner holds. A device may hold guest bars and own none.
 - **FR-BAR-4** A guest bar offers its recipes and its inventory and nothing else: the shopping 
   optimizer and all that belongs to it (FR-DIS-6, FR-DIS-7, FR-DIS-10) is absent there rather than 
   empty. On those two everything that reads works and nothing that writes exists — no creating, 
@@ -48,14 +49,16 @@ Two tag vocabularies separate; one name may exist in both (different meanings).
   between the two (FR-DIS-9) and scaling all work as on an owned bar, over the owner's recipes and 
   the owner's stock. Export works too (FR-DAT-1) — a guest already holds what the file would carry.
 - **FR-BAR-5** A guest bar refreshes from the source it was added from, wholesale: what arrives 
-  replaces what stood and nothing is merged, save which unit amounts read in — that pick alone is 
-  the reader's (FR-SET-1) and no refresh moves it, where the sizes behind it arrive with everything 
-  else (FR-BAR-3). What arrives is judged first as an imported file is (FR-DAT-4) — what fails to 
-  pass leaves the bar exactly as it was. When it last refreshed is readable where its bar is listed, 
-  and asking again is offered wherever the bar is read; everything the app says of it, availability 
-  included, is as of the last answer. A source that cannot be reached — no network, off the network, 
-  or withdrawn (FR-BAR-6) — leaves the bar readable at that moment and says why it did not refresh. 
-  Nothing expires and nothing empties itself: what is too old is the reader's to judge.
+  replaces what stood and nothing is merged, save the two that are the reader's — which unit amounts 
+  read in and what the bar is called here (FR-BAR-3, FR-SET-1). Neither moves; the sizes behind the 
+  unit and the owner's own name for the bar arrive with everything else, and that name is read only 
+  where a bar is founded from what arrived. What arrives is judged first as an imported file is 
+  (FR-DAT-4) — what fails to pass leaves the bar exactly as it was. When it last refreshed is 
+  readable where its bar is listed, and asking again is offered wherever the bar is read; everything 
+  the app says of it, availability included, is as of the last answer. A source that cannot be 
+  reached — no network, off the network, or withdrawn (FR-BAR-6) — leaves the bar readable at that 
+  moment and says why it did not refresh. Nothing expires and nothing empties itself: what is too 
+  old is the reader's to judge.
 - **FR-BAR-6** Each owned bar is shared separately, by any of the three ways below and any 
   combination of them; a bar is shared whole or not at all, and sharing one says nothing about the 
   rest. Whichever way it travels a guest reads the same thing (FR-BAR-3). The owner sees what they 

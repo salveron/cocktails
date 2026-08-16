@@ -133,7 +133,7 @@ void main() {
       expect(find.text('2 tags'), findsOneWidget);
       expect(find.text('7 units'), findsOneWidget);
       expect(
-        find.textContaining('in place of everything "Home bar" holds now'),
+        find.textContaining('In place of everything "Home bar" holds now'),
         findsOneWidget,
       );
       expect(store.saveCount, 0);
@@ -225,7 +225,9 @@ void main() {
     testWidgets('the replace lands, keeping a copy of what it replaced '
         '(FR-DAT-3)', (tester) async {
       final store = await importOver(tester, () async => pickedFile);
-      await tap(tester, find.text('Replace'));
+      // Replace is the road the screen opens on, the file having been picked
+      // from the open bar's own gear.
+      await tap(tester, find.text('Save'));
       expect(store.saved, recipeCollection);
       expect(
         store.snapshots[ExportPurpose.beforeImport]?.$2,
@@ -237,7 +239,8 @@ void main() {
     testWidgets('the other road founds a bar of its own and leaves nothing '
         'behind (FR-BAR-7)', (tester) async {
       final store = await importOver(tester, () async => pickedFile);
-      await tap(tester, find.text('Add as guest'));
+      await tap(tester, find.text('Guest'));
+      await tap(tester, find.text('Save'));
       // The bar that stood is untouched — same name, same contents, still on
       // the shelf beside the one that just arrived.
       final shelf = store.savedShelf!;
@@ -251,19 +254,75 @@ void main() {
       expect(store.savedBars[testBar().id], isNull);
       // Nothing was replaced, so nothing was copied out of the way first.
       expect(store.snapshots, isEmpty);
-      expect(find.text('"Ada\'s bar" added as a guest bar.'), findsOneWidget);
+      // The reader lands in the bar that just arrived, which says it better
+      // than a sentence would; only the road that puts them back where they
+      // started speaks.
+      expect(find.byType(SnackBar), findsNothing);
     });
 
-    testWidgets('both roads are named, and the bars they each land on', (
+    testWidgets('both roads are offered, and the chosen one says what it '
+        'does', (tester) async {
+      await importOver(tester, () async => pickedFile);
+      expect(find.text('Replace'), findsOneWidget);
+      expect(find.text('Guest'), findsOneWidget);
+      await tap(tester, find.text('Guest'));
+      expect(find.textContaining('read to here and read-only'), findsOneWidget);
+      expect(find.textContaining('In place of everything'), findsNothing);
+    });
+
+    /// The file's own name is a starting value on the road that founds a bar,
+    /// and no suggestion at all on the road that leaves one standing (ADR 21).
+    testWidgets('the name follows the road until the reader writes one', (
       tester,
     ) async {
       await importOver(tester, () async => pickedFile);
-      expect(find.text('Replace'), findsOneWidget);
-      expect(find.text('Add as guest'), findsOneWidget);
       expect(
-        find.textContaining('leaves "Home bar" alone and founds "Ada\'s bar"'),
-        findsOneWidget,
+        tester.widget<TextField>(barNameField).controller?.text,
+        'Home bar',
       );
+      await tap(tester, find.text('Guest'));
+      expect(
+        tester.widget<TextField>(barNameField).controller?.text,
+        "Ada's bar",
+      );
+      await typeInto(tester, barNameField, 'Cellar');
+      await tap(tester, find.text('Replace'));
+      expect(tester.widget<TextField>(barNameField).controller?.text, 'Cellar');
+    });
+
+    testWidgets('one arrived at with a file is left without being asked', (
+      tester,
+    ) async {
+      await importOver(tester, () async => pickedFile);
+      await tap(tester, find.byTooltip('Back'));
+      // Nothing was typed and nothing chosen, so there is nothing to discard:
+      // the pick that opened this screen is not an edit the reader made on it.
+      expect(find.text('Discard this import?'), findsNothing);
+      expect(find.widgetWithText(AppBar, 'Settings'), findsOneWidget);
+    });
+
+    testWidgets('another file may be chosen in place of the one on show', (
+      tester,
+    ) async {
+      var second = false;
+      await pumpScreen(
+        tester,
+        const SettingsScreen(),
+        store: MemoryBarStore.of(testBar(), fixtureCollection),
+        picker: () async {
+          final answer = second ? fileOf(Collection()) : pickedFile;
+          second = true;
+          return answer;
+        },
+      );
+      await tap(tester, find.text('Import'));
+      expect(find.text('3 recipes'), findsOneWidget);
+      await tap(tester, find.text('Choose another file'));
+      expect(find.text('0 recipes'), findsOneWidget);
+      expect(find.text('3 recipes'), findsNothing);
+      // Nothing to empty here: the file is what the screen is for, and the way
+      // out of one is the way back.
+      expect(find.byTooltip('Leave it empty'), findsNothing);
     });
 
     testWidgets('a file the rules refuse changes nothing, and says what and '
@@ -274,7 +333,8 @@ void main() {
       expect(find.textContaining('line '), findsOneWidget);
       // Nothing to agree to, and nothing agreed to.
       expect(find.text('Replace'), findsNothing);
-      expect(find.text('Add as guest'), findsNothing);
+      expect(find.text('Guest'), findsNothing);
+      expect(saveEnabled(tester), isFalse);
       expect(store.saveCount, 0);
       expect(store.snapshots, isEmpty);
     });
@@ -285,7 +345,7 @@ void main() {
       await importOver(tester, () async => 'not a cocktail in sight');
       expect(find.text('This file cannot be read'), findsOneWidget);
       expect(find.text('Replace'), findsNothing);
-      expect(find.text('Add as guest'), findsNothing);
+      expect(find.text('Guest'), findsNothing);
     });
 
     testWidgets('a reader who picks nothing has done nothing', (tester) async {
@@ -316,9 +376,9 @@ void main() {
         picker: () async => pickedFile,
       );
       await tap(tester, find.text('Import'));
-      await tap(tester, find.text('Replace'));
+      await tap(tester, find.text('Save'));
       expect(find.textContaining('Could not import'), findsOneWidget);
-      // Still on the review: leaving for a collection that never reached the
+      // Still on the form: leaving for a collection that never reached the
       // disk would read as a replace that worked.
       expect(find.widgetWithText(AppBar, 'Import'), findsOneWidget);
     });
@@ -333,14 +393,14 @@ void main() {
       );
       await tap(tester, find.byTooltip('Settings'));
       await tap(tester, find.text('Import'));
-      await tap(tester, find.text('Replace'));
+      await tap(tester, find.text('Save'));
       // Two screens back, where what was imported is: a list of recipes that
       // were not there a moment ago is the answer no sentence improves on.
       expect(find.widgetWithText(AppBar, 'Import'), findsNothing);
       expect(find.widgetWithText(AppBar, 'Settings'), findsNothing);
-      // Under the imported bar's name, not the one that stood: a file carries a
-      // whole bar (ADR 21), so the name rode in with the contents.
-      expect(shellTitle('Recipes', bar: "Ada's bar"), findsOneWidget);
+      // Under the name it already had: an import replaces what a bar holds,
+      // and what it is called is the reader's (ADR 21).
+      expect(shellTitle('Recipes', bar: 'Home bar'), findsOneWidget);
       expect(find.text('Whiskey Sour'), findsOneWidget);
       expect(find.text('3 recipes imported.'), findsOneWidget);
     });

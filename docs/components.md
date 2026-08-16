@@ -65,20 +65,29 @@ lib/
                                #   file (ADR 19). The one provider outside the state layer
     theme.dart                 # the seed colour, the two schemes, `dimmedInk` — the one
                                #   dim, worn by a hint and by a bottle the bar lacks
-    palette.dart               # the fixed hues — stock signals and the tag palette —
-                               #   and the swatches built from scheme roles instead:
-                               #   `neutralSwatch`, the ground a chip meaning nothing by
-                               #   its colour stands on (ADR 12), and `barModeColors`,
-                               #   which must read as neither tag nor traffic light
+    palette.dart               # the fixed hues — the tag palette, and the one traffic
+                               #   light worn by stock, by availability and by whose bar
+                               #   it is (`barModeColors`) — beside `neutralSwatch`, the
+                               #   ground a chip meaning nothing by its colour stands on
+                               #   (ADR 12), which is off scheme roles for that reason
     screens/                   # one file per destination, plus settings, tags, units,
                                #   amounts, recipe form, bars — the list that is also
                                #   home wherever none is open — and the owner's view of
                                #   what a bar is shared by, that last shaped by
-                               #   ui-design.md once it is settled. settings_screen
-                               #   holds both halves of the data exchange and the import
-                               #   review its pick pushes, so one file keeps them from
-                               #   drifting apart (ADR 18)
-    widgets/                   # empty_state, search_field, load_issues,
+                               #   ui-design.md once it is settled. settings_screen holds
+                               #   both halves of the data exchange (ADR 18) and, on a
+                               #   guest bar, the refresh that stands in its import's
+                               #   place; bar_form_screen is where a file picked at either
+                               #   end is read and agreed to, founding and importing being
+                               #   one form reached two ways
+    widgets/                   # empty_state, search_field,
+                               #   telling — how the app says what it could not do: the
+                               #     load and refresh banners over every destination, the
+                               #     one wording of what a refresh came to, and the
+                               #     snackbar a refused action speaks through
+                               #   arriving_bar — one file arriving, read the same way
+                               #     wherever it was picked: the pick, the counts, the
+                               #     refusal, and the pull a guest bar's lists answer
                                #   color_chip — the pill, chip, dot, the run of dots a name
                                #     or a basket's recipe wears, the dotted name itself, and
                                #     `chipRadius`, the corner a chip and its ink round to
@@ -651,34 +660,37 @@ typedef ImportReview = ({BarPayload? bar, List<String> issues});   // never both
 
 ImportReview review(String text);        // pure: decode, described, nothing touched
 Future<String> export();                           // the open bar's copy (FR-DAT-1)
-Future<void> replaceOpen(BarPayload bar);          // the copy, then the replace (FR-DAT-3)
+Future<void> replaceOpen(String name, BarPayload bar);      // the copy, then the replace (FR-DAT-3)
 Future<void> setDisplay(FixedUnit display);        // the reader's, guest bar included
 Future<void> openBar(String id);                   // FR-BAR-1, the switch
 Future<void> addOwnedBar(String name, {BarPayload? from});  // FR-BAR-2, empty or from a file
-Future<void> renameBar(String id, String name);    // FR-BAR-2, owned bars only
+Future<void> renameBar(String id, String name);    // FR-BAR-2/3, any bar: the name is the reader's
 Future<void> removeBar(String id);                 // FR-BAR-2, after its own export
-Future<void> addGuestBar(BarSource source, BarPayload bar);        // FR-BAR-3/7/8/9
+Future<void> addGuestBar(String name, BarSource source, BarPayload bar);   // FR-BAR-3/7/8/9
 Future<void> refresh(String barId);                // FR-BAR-5; never awaited by a screen
 ```
 
 All of them take **one call site each**, which is why they sit here rather than on the writer — see
 [ADR 23](adr/23-nothing-writes-a-guest-bar.md), where the count is the whole argument. `export`
-and `setDisplay` work on a guest bar (FR-DAT-1, FR-BAR-3); `replaceOpen` refuses one, FR-DAT-3
-importing "into an owned bar" and FR-BAR-7 giving the same file its other road, and `renameBar`
-refuses one because a refresh replaces the name wholesale (FR-BAR-5) and would throw the rename away.
+and `setDisplay` work on a guest bar (FR-DAT-1, FR-BAR-3), and so does `renameBar`: what a bar is
+called on this device is the reader's, on someone else's bar as on their own, and a refresh cannot
+reach it ([ADR 21](adr/21-the-file-carries-one-bar.md)). `replaceOpen` refuses a guest bar, FR-DAT-3
+importing "into an owned bar" and FR-BAR-7 giving the same file its other road.
 
 **One picked file can become three things**, and the two that found a bar share `_found` — the bar's
-file before the index naming it, then the shelf opened onto it. `addOwnedBar`'s `from` is FR-BAR-2's
-"created from a file": the contents and the reading unit arrive, the *name* stays the reader's, and
-no source is kept, so nothing about such a bar refreshes. `addGuestBar` keeps both the owner's name
-and the source. `fileSource` is `channels.dart`'s republication of `FileBarChannel.source`, so a
-screen founding a guest bar from a pick names a transport and never builds an address (ADR 22) —
-`ui/` may not import `data/` at all.
+file before the index naming it, then the shelf opened onto it. All three take the name from the
+caller and never off the payload: the file's `name:` is a starting value the screen puts in a field,
+and what the reader leaves there is what the bar is called (ADR 21). `addOwnedBar`'s `from` is
+FR-BAR-2's "created from a file": the contents and the reading unit arrive and no source is kept, so
+nothing about such a bar refreshes. `addGuestBar` keeps the source, which is what a refresh asks
+again. `fileSource` is `channels.dart`'s republication of `FileBarChannel.source`, so a screen
+founding a guest bar from a pick names a transport and never builds an address (ADR 22) — `ui/` may
+not import `data/` at all.
 
 **What a bar holds rides on its record**, so listing bars reads the index and nothing else (ADR 20)
 and no second `Collection` ever reaches `ui/`. `Bar.holds` is `holdingsOf(Collection)` in the domain,
 keyed by the `Holding` enum that is also the one home for the four kinds, their order and their nouns
-(the import review names the same four); `Bar.updated` dates the change beside it. Both are written
+(an arriving file's cards name the same four); `Bar.updated` dates the change beside it. Both are written
 by `Bar.summarised` and — for a guest's refresh — `Bar.refreshedAt`, and by nothing else, which is
 what keeps the count from falling a step behind the contents: every route a collection takes ends in
 one of them, `ShelfEdits.withCollection` included.
@@ -694,8 +706,9 @@ editing: the repair writes no `updated`, a stamp invented there dating an edit n
 the controller's rather than the screen's because `ui/` never imports `data/`. `_described` is the 
 one rendering of a `SourcedIssue`, shared with the startup banner and with a channel's refusal, so a 
 file that fails at load, one that fails at import and a fetch that fails on arrival are worded 
-alike. It answers a whole `BarPayload`, which is what lets one picked file take either road FR-BAR-7 
-offers — replacing an owned bar, the file's `display` landing with the rest, or founding a guest one.
+alike. It answers a whole `BarPayload`, which is what lets one picked file take any road FR-BAR-7 and 
+FR-DAT-3 offer — replacing an owned bar, founding one, or founding a guest bar — each caller saying 
+what becomes of its three parts.
 
 `ShelfController.build()` performs the startup load and is the only writable provider: it reads the 
 index, opens the bar it names, and reports what failed — a `Corrupt` bar starts on its recovered 
@@ -798,7 +811,8 @@ Refreshing and sharing are the app's first work outliving the gesture that start
 another, but a job the reader may walk away from. Both live in `channels.dart`.
 
 `refreshesProvider` — `Map<String, RefreshState>` by bar id: `Reaching`, or what it last failed with 
-and when — `RefreshRefused` carrying issues already described (`ui/` never meets a `SourcedIssue`) 
+and when, until it is `told`, which is what dismissing the banner and reporting it in a snackbar 
+both come to — `RefreshRefused` carrying issues already described (`ui/` never meets a `SourcedIssue`) 
 and `RefreshUnreachable` the closed reason it words itself (FR-BAR-5). A bar with no entry has 
 nothing out and nothing to be met. No screen awaits a refresh, which is what NFR-2's *a refresh never holds up the 
 bar on show* comes to in practice: the reader goes on reading and editing while one is out, and the 
@@ -838,10 +852,12 @@ Performance facts (no over-engineering):
    and returns the location; the screen passes that to `sharerProvider` and says nothing unless it 
    throws. A guest bar exports exactly as an owned one does (FR-BAR-4).
 5. **Import** (FR-DAT-3/4): `filePickerProvider` answers with a document's text → `review` decodes 
-   it → the pushed review shows the issues, or what the file holds and the two things that can be 
-   done with it (FR-BAR-7) → `replaceOpen` keeps the `beforeImport` copy, publishes, saves; 
-   `addGuestBar` mints an id and writes a new bar instead → the screen leaves for the collection 
-   (ui-design.md#data).
+   it → the pushed `BarFormScreen.importing` shows the issues, or what the file holds and the two 
+   roads open to it (FR-BAR-7) → `replaceOpen` keeps the `beforeImport` copy, publishes, saves; 
+   `addGuestBar` mints an id and writes a new bar instead → the screen leaves for the collection, 
+   Replace alone saying what it did (ui-design.md#data). It is the same screen `BarFormScreen.founding` 
+   builds: one file, one form, the entry deciding only whether the owner's road founds a bar or 
+   replaces the open one.
 6. **Reaching a row** (FR-DIS-9): a name tapped on one destination resolves to the entry's own 
    (`bottleNamed`) and reaches `revealProvider.ask` → the shell switches and records what it left → 
    the serving screen clears the request, its own picks and the open cards, and hands the name to 
@@ -855,19 +871,22 @@ Performance facts (no over-engineering):
    already loaded has nothing to read again, so it asks `Reveals.land` for the recipes instead and
    pops to the same place (ADR 19).
 8. **Adding a guest bar** (FR-BAR-3): a source — picked, or found nearby — reaches `channel.fetch` 
-   → `Fetched` becomes a bar with a minted id, the payload's name and display, and the source kept 
-   for next time; `Refused` reads as an import's issues do, `Unreachable` says which of the three. 
-   The new-bar form is the other way in: it picks and `review`s the file itself, so the reader sees 
-   the counts before choosing Owned or Guest, and only the chosen road reaches the controller.
+   → `Fetched` becomes a bar with a minted id, the name the reader left in the form, the payload's 
+   display, and the source kept for next time; `Refused` reads as an import's issues do, 
+   `Unreachable` says which of the three. The form picks and `review`s the file itself, so the 
+   reader sees the counts before choosing a road, and only the chosen road reaches the controller.
 9. **Refreshing** (FR-BAR-5): `refresh(id)` marks the bar reaching and is never awaited by a screen 
-   → the fetch runs off the gesture → `refreshedWith` replaces collection, name and time; the bar on 
-   show is written by `_publish` as any edit is, and any other bar's file by `refresh` itself, only 
-   one collection ever being resident (ADR 20) → a failure leaves the bar as it stood, held in 
-   `refreshesProvider` to be met. Each ask carries a token: an answer arriving behind a newer ask, 
-   or for a bar deleted meanwhile, is dropped whole rather than landing on top of it. The gesture 
-   is `VocabularyList.onRefresh`, non-null only on a guest bar (`refreshOf`), and the answer is met 
-   by the `RefreshFailure` banner over the destinations — the pull awaits the fetch only to retract 
-   its own spinner, which is not a screen holding up the bar on show.
+   → the fetch runs off the gesture → `refreshedWith` replaces collection and time, never the name 
+   or the reading unit the reader picked (ADR 21); the bar on show is written by `_publish` as any 
+   edit is, and any other bar's file by `refresh` itself, only one collection ever being resident 
+   (ADR 20) → a failure leaves the bar as it stood, held in `refreshesProvider` to be met. Each ask 
+   carries a token: an answer arriving behind a newer ask, or for a bar deleted meanwhile, is 
+   dropped whole rather than landing on top of it. The gesture is `VocabularyList.onRefresh`, 
+   non-null only on a guest bar (`refreshOf`), and the answer is met by the `RefreshFailure` banner 
+   over the destinations — the pull awaits the fetch only to retract its own spinner, which is not a 
+   screen holding up the bar on show. Settings' **Refresh** row asks the same way from behind that 
+   banner, so it reads the answer itself (`Refreshes.standing`), says it in a snackbar and marks it 
+   `told` — one answer, one telling, whichever of the two the reader met.
 10. **Sharing** (FR-BAR-6): an offer on a bar's record starts the adapter and removing it stops the 
     adapter; `sharingProvider` is the one place the two are kept in step, so nothing is announced 
     that the shelf does not say is shared (NFR-5).

@@ -16,9 +16,10 @@ refresh throws it away.
 Not everything on that notifier is a collection edit, and the count is what separates them. Export
 (FR-DAT-1), import (FR-DAT-3) and the reading unit (FR-SET-1) have **one call site each**, and each
 is already settled by a requirement rather than by this decision: a guest bar exports like any other,
-the reading unit is expressly the reader's on a guest bar as on their own (FR-BAR-3), and import is
-"into an owned bar" in FR-DAT-3's own words — the same file becomes a *guest* bar by the other road
-(FR-BAR-7) instead. Sixteen call sites need a structure; one call site needs a line.
+the reading unit — and, since, the bar's name ([ADR 21](21-the-file-carries-one-bar.md)) — is
+expressly the reader's on a guest bar as on their own (FR-BAR-3), and import is "into an owned bar"
+in FR-DAT-3's own words — the same file becomes a *guest* bar by the other road (FR-BAR-7) instead.
+Sixteen call sites need a structure; one call site needs a line.
 
 The app has no compiler-enforced boundaries (ADR 04): Dart's privacy is file-scoped, and
 `test/architecture_test.dart` is what stands in for a compiler.
@@ -75,5 +76,8 @@ guest bar has no shopping destination and the optimizer is never asked for one (
   and the same non-vacuity discipline applies: the new rule is exercised on constructed input.
 - Vision's likes and dislikes would be a reader's datum about someone else's recipe, not an edit to
   their collection — so it would sit beside `display` on the bar record, kept across a refresh by
-  the same mechanism, and this decision would hold. What it would move is
+  the same mechanism, and this decision would hold. The bar's own name went exactly that way
+  ([ADR 21](21-the-file-carries-one-bar.md)): a reader's datum *about* someone else's bar, on the
+  record rather than in the collection, renamed through `renameBar` like any other bar's and
+  unreachable from the refresh that replaces the contents. What it would move is
   [ADR 22](22-a-bar-travels-behind-one-seam.md)'s seam, which fetches and nothing else.

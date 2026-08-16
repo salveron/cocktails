@@ -77,16 +77,21 @@ already says a screen follows, and "…" on top of it says the same thing twice.
   *for*, so it carries the weight the card's one commit deserves and stands where every dialog in 
   the app puts its own. Right rather than left because the eye leaves a card at its trailing edge, 
   and filled rather than flat because a card that opens to offer one action should not make that 
-  action the quietest thing on it. A guest bar is offered no Rename — its name 
-  is its owner's and every refresh brings it back (ADR 23).
+  action the quietest thing on it. **Rename is offered on a guest bar too**: what a bar is called 
+  on this device is the reader's, exactly as the unit it reads in is (FR-BAR-3), and no refresh 
+  takes their name back ([ADR 21](adr/21-the-file-carries-one-bar.md)). The owner's name for it is 
+  where the field starts and nothing more.
 - **The subtitle says standing, never ownership**: "Loaded" on the bar the app has read, then 
   "Updated 3 hours ago" for an owner's own edit or "Synced 2 days ago" for a guest's last answer from 
   its source (FR-BAR-5). Coarse on purpose — the question it settles is whether to refresh, which no 
   count of seconds makes clearer. A bar the device has never dated says nothing rather than guessing: 
   an index written before stamps existed has no date to give, and "just now" would be a lie about it.
 - **Whose bar it is is a chip beside the ⋮** — "Owned" or "Guest" — read the way the inventory row's 
-  stock chip is. Its colours come off scheme roles rather than the fixed hues, because those are the 
-  one traffic light: a bar wearing green would say it was in stock (see [colours](#tag-and-stock-colours)).
+  stock chip is, and on the same traffic light: **green** for owned, **amber** for guest (see 
+  [colours](#tag-and-stock-colours)). Scheme roles came first, on the grounds that a mode is no 
+  reading on that light; the hues win because the light is not really about stock but about what 
+  the app will let a reader do here, and a guest bar is precisely the amber case — everything that 
+  writes is missing from it (FR-BAR-4). The words carry the meaning either way, as on every chip.
 - **Open bar is offered on every bar, the loaded one included.** It used to be absent there, as the 
   way the list said which bar was on show — but the subtitle says that now, in words, and an absent 
   control that means "you are here" reads as one that is broken. On the bar already loaded there is 
@@ -113,13 +118,17 @@ already says a screen follows, and "…" on top of it says the same thing twice.
   the orders, the random pick and the jumps. A ⋮ with nothing left in it draws nothing rather than 
   opening onto an empty menu — the rule lives in `RowMenu` itself, so a row builds the actions its 
   bar allows and never asks whether any survived.
-- **The Settings rows that would write dim rather than vanish** — Tags, Units and Import, greyed 
-  whole and leading nowhere. Absent was the alternative and reads worse here than on the bottom bar: 
+- **The Settings rows that would write dim rather than vanish** — Tags and Units, greyed whole and 
+  leading nowhere. Absent was the alternative and reads worse here than on the bottom bar: 
   a destination that is missing is a shape, where a *menu row* that is missing is indistinguishable 
   from one the reader has forgotten the name of. Dimmed, the list goes on saying what the app does 
   with a bar of one's own. Amounts stays live (the pick is the reader's on any bar), Export stays 
   live (a guest already holds what the file would carry, FR-DAT-1), and Change bar stays live, being 
-  the way out.
+  the way out. **Import is not dimmed but replaced**: the file row reads the other way round on a 
+  guest bar, where it is **Refresh** — "ask its source for a newer copy" (FR-BAR-5) — the same 
+  exchange from the other side rather than a row with nothing behind it. Dimming was what stood 
+  here, and it was the one row where the greyed version said something false: this bar does have 
+  business with a file, just not the one an owned bar has.
 - **Swipe down to refresh** (FR-BAR-5), on a guest bar's lists and nowhere else — the standard 
   gesture for "ask the source again", and the reason the shell carries no refresh control and no 
   as-of. How stale a bar is reads on the card that lists it; on the bar itself, being one gesture 
@@ -136,32 +145,48 @@ already says a screen follows, and "…" on top of it says the same thing twice.
 ### New bar
 
 **A pushed form, not a dialog** — the name field first, then where the bar's contents come from, 
-then whose bar it is. A dialog carried the name and nothing else, which was right while an owned 
+then what becomes of it. A dialog carried the name and nothing else, which was right while an owned 
 bar was the only thing this button could make; a picked file has to be *read* before it is agreed 
-to (the counts, the refusals) and has two destinations to choose between (FR-BAR-7), and neither 
-fits over a list. Save rides the app bar, where every other commit in the app sits, and back asks 
+to (the counts, the refusals) and has destinations to choose between (FR-BAR-7), and neither fits 
+over a list. Save rides the app bar, where every other commit in the app sits, and back asks 
 before dropping what was typed — the recipe form's own frame (`editor_form.dart`).
+
+**It is the same screen [Import](#data) pushes.** One file, the same three questions — what to call 
+it, what it holds, where it goes — so founding and importing are one form reached two ways rather 
+than two screens drifting apart. What differs is the entry: founding starts with no file and the 
+roads **Owned | Guest**, importing starts with the file already picked and the roads 
+**Replace | Guest**, Replace being the same road as Owned at the other end of a bar's life. The 
+name field autofocuses only where the reader has typing to do — on the import entry the screen is 
+there to be read, and a keyboard over it argues with that.
 
 - **From import is a button, not a row**: the form is not a menu, and the pick is the one thing on 
   it that leaves the screen. It is where **Find nearby** will stand when the LAN transport lands 
   (FR-BAR-8), which is the other reason the section is "Contents" rather than "From a file".
-- **A file picked in is shown before it is agreed to** — the same cards the import review draws, 
-  read the same way, since it is the same question about the same file. A file that will not read 
-  shows its issues and offers no road: founding an empty bar in its place would be a lie about what 
-  became of it. The clear beside the button is the way back to an empty bar, and the way out of a 
-  refused file.
-- **Owned or Guest is a segmented choice under the counts**, and only once a file is in hand: there 
-  is nothing to be a guest *of* until one is. Owned is a copy, this device's own to edit, with 
-  nothing linking it back — FR-BAR-2's "created from a file". Guest is the owner's, read-only, 
-  refreshed by a newer file they send (FR-BAR-3/5/7).
-- **The name field goes quiet on the guest road** and reads the owner's, with a line saying why: a 
-  guest bar's name is its owner's and every refresh brings it back (FR-BAR-5), so a name typed 
-  there would be thrown away by the next one. Dimmed rather than hidden — a field that vanishes on 
-  a toggle makes the form jump under the finger — and what the reader typed is given back if they 
-  choose Owned again.
-- **A file names the bar where the reader has not.** The file carries a name (ADR 21) and it is a 
-  better default than an empty field; a name already typed is left standing, the reader having 
-  already answered the question.
+- **A file picked in is shown before it is agreed to** — the cards, the counts and the refusals of 
+  [Import](#data), which is not a resemblance but the same screen. A file that will not read shows 
+  its issues and offers no road: founding an empty bar in its place would be a lie about what became 
+  of it.
+- **The road is a segmented choice, and it appears only once a file is in hand**: there is nothing 
+  to be a guest *of* until one is. It sits with the other controls, above the counts rather than 
+  after them — the form reads name, contents, road, and then ends on what the file holds, which is 
+  the one thing on the screen that is read rather than answered. **Owned** is a copy, this device's 
+  own to edit, with nothing linking it back — FR-BAR-2's "created from a file". **Replace** is that 
+  same road onto a bar that already exists (FR-DAT-3). **Guest** is the owner's, read-only, 
+  refreshed by a newer file they send (FR-BAR-3/5/7). Under it, one line saying what the chosen 
+  road will do, and to which bar by name.
+- **The name is the reader's on every road**, the guest one included: what a bar is called on this 
+  device is theirs to choose exactly as the unit it reads in is (FR-BAR-3), and no refresh takes it 
+  back. The field went quiet and read the owner's while a refresh still renamed the bar; with that 
+  gone there is nothing left to dim, and the road a file takes no longer decides who names what.
+- **A name the road suggests gives way; a name the reader typed stands.** The file's own name 
+  (ADR 21) is a better default than an empty field, and the bar being replaced is a better one than 
+  the file's — an import is not a rename. So the suggestion follows the toggle, and the moment the 
+  reader writes over it, it is theirs and the toggle stops touching it. Clearing the file takes back 
+  the name that came in with it: a bar of nothing is the reader's own to name.
+- **Choose another file** sits where From import was, once one is in hand — the way out of a file 
+  that would not read, and the way to a better one. The clear beside it is offered only where there 
+  is something to be cleared *to*: founding falls back to an empty bar, where an import has no such 
+  thing to fall back on and is left by the back arrow instead.
 
 ## Searchable lists
 
@@ -436,8 +461,11 @@ screen, not the row that starts it.
 - **An empty collection exports anyway.** A file carrying `format: 1` and empty sections is a 
   template, not an error, and the screen has no reason to know which it is. It imports on the same 
   terms, reading as the nothing it holds.
-- **Import** (FR-DAT-3) opens the system's picker and pushes what came back. One screen carries both 
-  outcomes: a pick has two of them, and giving each its own shape would make one act look like two.
+- **Import** (FR-DAT-3) opens the system's picker and pushes what came back onto the 
+  [New bar](#new-bar) form, the file already in hand. One screen carries both outcomes: a pick has 
+  two of them, and giving each its own shape would make one act look like two. It is the *same* 
+  screen a bar is founded on — a file arriving asks the same three questions wherever the reader 
+  picked it, and two screens asking them apart is how the two answers drift.
 - **What the file holds stands in for its name**, and opens. Recipes, ingredients, tags and units, 
   recipes first — a reader tells one file from another by its recipes long before by its units. 
   Android hands over no filename worth showing 
@@ -452,36 +480,46 @@ screen, not the row that starts it.
   early. The two tag vocabularies share one count but keep their own runs in the body, labelled, 
   since one name may stand in both ([ADR 07](adr/07-tag-colour.md)); an empty run is left out rather 
   than heading nothing, and a kind the file holds none of offers no chevron and answers no tap.
-- **Both roads ride the app bar**, where every other commit in the app sits (`editor_form.dart`). 
-  What either act is worth is carried by a body spelling out everything arriving, not by the size 
-  of the button agreeing to it — and a button pinned under a list a reader is meant to read first 
-  argues with the reading. **Replace** puts the file in place of everything the open bar holds, a 
-  copy kept first (FR-DAT-3); **Add as guest** leaves that bar alone and founds one of its own 
-  beside it (FR-BAR-7). Above the cards, the one thing the counts cannot say: which bar each road 
-  ends up holding this, both named. No numbers there — the cards have them, and a second set beside 
-  them reads as a discrepancy rather than a reassurance.
-- **The review is reached from an owned bar alone**, Import being dimmed on a guest whose 
-  collection is not this device's to replace (FR-BAR-4). So Replace is offered without asking whose 
-  bar is on show, and a device holding only guest bars reaches the guest road through 
+- **The roads are a segmented choice, and Save is the commit** — the form's own shape 
+  (`editor_form.dart`), where two app-bar buttons stood before. **Replace** puts the file in place 
+  of everything the open bar holds, a copy kept first (FR-DAT-3); **Guest** leaves that bar alone 
+  and founds one of its own beside it (FR-BAR-7). Two commits in the app bar made the screen an 
+  either/or with no state, which read as a dialog wearing a page; a road *chosen* and then agreed 
+  to is one question at a time, and it is the shape the reader already met founding a bar. Under 
+  the choice, the one thing the counts cannot say: what the road on show will do, and to which bar 
+  by name. No numbers there — the cards have them, and a second set beside them reads as a 
+  discrepancy rather than a reassurance.
+- **Import is reached from an owned bar alone**, the row reading **Refresh** on a guest whose 
+  collection is not this device's to replace (FR-BAR-4, FR-BAR-5). So Replace is offered without 
+  asking whose bar is on show, and a device holding only guest bars reaches the guest road through 
   [New bar](#new-bar) instead — which is where it belongs in any case, an arriving bar being a new 
   bar rather than an edit to one.
 - **A refused file offers nothing to agree to.** The issues as the startup banner words them, 
   `line N:` and all (FR-DAT-4), under the one sentence that matters — nothing has changed. A file the 
   app cannot read holds nothing to import, so there is no button to grey out.
-- **Either road leaves for the collection**, popping Settings along with the review: what arrived 
-  is two screens back, and a list of recipes that were not there a moment ago says more than any 
-  sentence. Both say what landed as they go, which is where an import parts from an export — a 
-  share cannot know its outcome, an import knows exactly.
+- **Either road leaves for the collection**, popping Settings along with the form: what arrived is 
+  two screens back, and a list of recipes that were not there a moment ago says more than any 
+  sentence. **Only Replace says what landed** — it is the road that puts the reader back where they 
+  started, where nothing about the screen has changed but its contents. The two that found a bar 
+  land the reader *in* a bar that was not there a moment ago, which no sentence improves on. That 
+  an import can speak at all is where it parts from an export: a share cannot know its outcome.
 - **Only a failure speaks otherwise.** A picker that will not open, a file that cannot be read, a 
-  replace that cannot be written; a reader who picks nothing has done nothing, and a refused file has 
-  the screen to say so on. A failed replace stays on the review, leaving for a collection that never 
-  reached the disk being a lie about what happened.
+  road that cannot be written; a reader who picks nothing has done nothing, and a refused file has 
+  the screen to say so on. A road that did not go through stays on the form, leaving for a 
+  collection that never reached the disk being a lie about what happened.
+- **Refresh, in the same row's place on a guest bar** (FR-BAR-5), asks the source again — the pull's 
+  own question put where a reader who went looking for it will look, and the only way to ask on a 
+  bar whose lists are too short to pull. It **says what it came to right there**: the banner that 
+  carries a failed refresh stands behind this screen unread, so the answer arrives as a snackbar 
+  and is marked told, and the banner does not repeat it on the way back. A refresh that landed says 
+  so too — the reader is looking at a menu, not at the lists that would otherwise be the answer.
 
 ## Tag and stock colours
 
-Each token: fill + ink pair (one per theme) in `palette.dart`. One traffic light (stock, 
-availability). Fill: chip/dot colour. Ink: text/pick ring. `switch` exhaustive 
-([ADR 07](adr/07-tag-colour.md)).
+Each token: fill + ink pair (one per theme) in `palette.dart`. One traffic light — stock, 
+availability, and whose bar it is (FR-BAR-3): green where the app is fully open to the reader, 
+amber where it is not, red where nothing can be made. Fill: chip/dot colour. Ink: text/pick ring. 
+`switch` exhaustive ([ADR 07](adr/07-tag-colour.md)).
 
 `neutralSwatch` is the exception and the reason the rest are fixed: built from scheme roles 
 (`surfaceContainerHighest`/`onSurfaceVariant`), it can read as neither a tag colour nor a signal, 

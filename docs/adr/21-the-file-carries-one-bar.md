@@ -24,7 +24,13 @@ stay on the device. The reading unit leaves the collection and lives on the bar.
 
 - **`name:` at the top of the file.** A guest needs something to call the bar, Android hands over no
   filename worth showing (ADR 18), and the owner is the one who named it — a refresh takes the new
-  name with everything else.
+  name with everything else. **Amended:** it does not. The name turned out to be the reading unit's
+  twin rather than the collection's — a label this device puts on a bar, not a fact about what the
+  bar holds — so it is the reader's to change (FR-BAR-2/3), and no refresh moves it. The file's
+  `name:` is what whoever founds a bar from it *starts* with, exactly as `display` is, and is read
+  nowhere else. What made the difference: a guest bar the reader renamed had that name thrown away
+  by the next refresh, silently, with nothing they could do about it — the one place in the app
+  where a reader's own typing was overwritten by someone else's.
 - **Mode, source, refresh time and id are never in the file.** Mode is the relationship between this
   device and the bar, not a property of the bar, and the same file makes either kind (FR-BAR-7).
   Source and refresh time are this device's record of how and when it got the bar. An id in the file
@@ -42,9 +48,12 @@ stay on the device. The reading unit leaves the collection and lives on the bar.
   physically cannot ride in the payload, so no refresh can lose it and no code has to remember not
   to take it. It still travels in the file, inside `settings:` where a reader expects it, as a
   starting value for whoever establishes a bar from it.
-- **Establishing takes the file's `display`; refreshing keeps the bar's.** One difference, at two
-  call sites, spelled by the type: a decode answers a `BarPayload` and the caller says what becomes
-  of each of its three parts.
+- **Establishing takes the file's `name:` and `display`; refreshing keeps the bar's.** One
+  difference, at two call sites, spelled by the type: a decode answers a `BarPayload` and the caller
+  says what becomes of each of its three parts. `Bar.refreshedAt` cannot reach either — it takes the
+  collection and the stamp and nothing else — so no refresh can lose a reader's pick by forgetting
+  to keep it. Founding is where a name is chosen, and the caller passes one in: `addOwnedBar`,
+  `addGuestBar` and `replaceOpen` all take the name beside the payload.
 - **Format 1 is read on import and written back as 2**, its `made:` ignored rather than reported.
   The device's own format-1 store is migrated by that same route, so there is one reader of the old
   format rather than two.
@@ -76,6 +85,8 @@ stay on the device. The reading unit leaves the collection and lives on the bar.
 - `Settings` is two fields, and `displayMeasure` takes the pick as a parameter beside them.
 - The bar's name and reading unit stand in two files at once, the bar's own and the index. The index
   is the authority; the file's copies are read only where a bar is established or the index rebuilt.
+  On a guest bar the two disagree from the first rename onward, and that is the correct reading: the
+  file says what its owner calls the bar, the index says what this reader calls it.
 - The shareable copy is named from the bar, so a guest holding three of them can tell them apart
   ([architecture.md](../architecture.md#platform-facts)).
 - A refresh from a file cannot tell one file from another: the file carries no id, and the reader's

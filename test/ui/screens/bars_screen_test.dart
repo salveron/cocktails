@@ -113,7 +113,8 @@ void main() {
       await openBars(tester, store: shelfOf([home, ada], {}));
       expect(find.text('Owned'), findsOneWidget);
       expect(find.text('Guest'), findsOneWidget);
-      // Neither wears a reading off the traffic light, which means stock.
+      // Each wears its own reading off the app's one traffic light, which
+      // `palette_test.dart` is where the two are pinned to.
       expect(chipColor(tester, 'Owned'), isNot(chipColor(tester, 'Guest')));
     });
 
@@ -157,12 +158,14 @@ void main() {
       expect(rowMenu('Anna'), findsOneWidget);
     });
 
-    testWidgets('a guest bar is offered no rename, its name being its '
-        "owner's (ADR 23)", (tester) async {
+    testWidgets('a guest bar is renamed like any other, what it is called '
+        "here being the reader's (FR-BAR-3)", (tester) async {
       await openBars(tester, store: shelfOf([home, ada], {}));
-      await tap(tester, rowMenu("Ada's bar"));
-      expect(find.text('Rename'), findsNothing);
-      expect(find.text('Delete'), findsOneWidget);
+      await chooseOnRow(tester, "Ada's bar", 'Rename');
+      await type(tester, 'The Ada Room');
+      await tap(tester, find.text('Save'));
+      expect(find.text('The Ada Room'), findsOneWidget);
+      expect(find.text("Ada's bar"), findsNothing);
     });
 
     testWidgets('a card closed again puts away what it held open', (

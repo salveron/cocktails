@@ -164,12 +164,12 @@ void main() {
     test('refreshedAt is the one writer of the stamp (FR-BAR-5)', () {
       final now = DateTime.utc(2026, 3, 1, 18);
       final bar = guestBar(refreshed: anHourAgo);
-      final landed = bar.refreshedAt('Ada\'s bar, renamed', _twoBottles, now);
+      final landed = bar.refreshedAt(_twoBottles, now);
       expect(landed.refreshed, now);
-      expect(landed.name, 'Ada\'s bar, renamed');
       expect(landed.holds, holdingsOf(_twoBottles));
-      // The reader's pick outlives what the owner sent (ADR 21), and where the
-      // bar refreshes from is untouched by having refreshed.
+      // The reader's two picks outlive what the owner sent (ADR 21), and where
+      // the bar refreshes from is untouched by having refreshed.
+      expect(landed.name, bar.name);
       expect(landed.display, bar.display);
       expect(landed.source, bar.source);
     });

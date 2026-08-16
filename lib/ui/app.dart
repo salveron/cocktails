@@ -14,7 +14,7 @@ import 'screens/settings_screen.dart';
 import 'screens/shopping_screen.dart';
 import 'theme.dart';
 import 'widgets/empty_state.dart';
-import 'widgets/banners.dart';
+import 'widgets/telling.dart';
 
 class CocktailsApp extends StatelessWidget {
   const CocktailsApp({super.key});

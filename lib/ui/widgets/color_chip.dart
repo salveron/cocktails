@@ -122,7 +122,7 @@ class BarModeChip extends StatelessWidget {
   Widget build(BuildContext context) => ColorChip(switch (mode) {
     BarMode.owner => 'Owned',
     BarMode.guest => 'Guest',
-  }, swatch: barModeColors(mode, Theme.of(context).colorScheme));
+  }, swatch: barModeColors(mode, Theme.of(context).brightness));
 }
 
 /// What the bottles make of a recipe, on its list row (FR-DIS-1).

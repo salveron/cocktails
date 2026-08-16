@@ -101,6 +101,25 @@ void main() {
       }
     });
 
+    /// FR-BAR-3/4: the same light asked of the bar rather than of a bottle in
+    /// it — green where everything the app offers is offered, amber where a bar
+    /// is someone else's and half of it is not.
+    test('whose bar it is reads on the one traffic light', () {
+      StockLevel signalOf(BarMode mode) => switch (mode) {
+        BarMode.owner => StockLevel.in_,
+        BarMode.guest => StockLevel.low,
+      };
+      for (final mode in BarMode.values) {
+        for (final brightness in Brightness.values) {
+          expect(
+            barModeColors(mode, brightness),
+            stockColors(signalOf(mode), brightness),
+            reason: '${mode.token} in $brightness',
+          );
+        }
+      }
+    });
+
     test('no tag colour reads as a stock signal', () {
       for (final tag in palette.entries) {
         for (final signal in signals.entries) {

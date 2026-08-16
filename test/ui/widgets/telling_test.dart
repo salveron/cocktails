@@ -1,4 +1,4 @@
-import 'package:cocktails/ui/widgets/banners.dart';
+import 'package:cocktails/ui/widgets/telling.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 

@@ -1,13 +1,13 @@
 import 'dart:async';
 
-import 'package:cocktails/domain/domain.dart';
 import 'package:cocktails/state/state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../widgets/arriving_bar.dart';
-import '../widgets/vocabulary_list.dart';
+import '../widgets/telling.dart';
 import 'amounts_screen.dart';
+import 'bar_form_screen.dart';
 import 'bars_screen.dart';
 import 'tags_screen.dart';
 import 'units_screen.dart';
@@ -58,13 +58,23 @@ class SettingsScreen extends ConsumerWidget {
             subtitle: 'Share all as one text file',
             act: () => unawaited(_export(context, ref)),
           ),
-          _Entry.acts(
-            icon: Icons.file_open_outlined,
-            title: 'Import',
-            subtitle: 'Replace all from a text file',
-            act: () => unawaited(_import(context, ref)),
-            enabled: writable,
-          ),
+          // The one file row, read by mode: an owned bar takes a file in, a
+          // guest asks its source for a newer one (FR-BAR-5/7). The same
+          // exchange from either side, so neither dims to make room.
+          if (writable)
+            _Entry.acts(
+              icon: Icons.file_open_outlined,
+              title: 'Import',
+              subtitle: 'Replace all, or add as a guest',
+              act: () => unawaited(_import(context, ref)),
+            )
+          else
+            _Entry.acts(
+              icon: Icons.refresh,
+              title: 'Refresh',
+              subtitle: 'Ask its source for a newer copy',
+              act: () => unawaited(_refresh(context, ref)),
+            ),
           // Last, being the way out of this bar rather than anything in it.
           const _Entry.opens(
             icon: Icons.liquor_outlined,
@@ -78,187 +88,55 @@ class SettingsScreen extends ConsumerWidget {
   }
 }
 
-/// Runs [action] and answers whether it got through, [refusal] leading the
-/// snackbar where it did not. Every failure speaks, not only the `Exception`s:
-/// nothing awaits some of these, so what is not caught here reaches a reader as
-/// nothing happening at all, which is the one outcome worse than a refusal.
-Future<bool> _wentThrough(
-  ScaffoldMessengerState messenger,
-  String refusal,
-  Future<void> Function() action,
-) async {
-  try {
-    await action();
-    return true;
-  } catch (error) {
-    messenger.showSnackBar(SnackBar(content: Text('$refusal: $error')));
-    return false;
-  }
-}
-
 /// Writes the copy and hands it to the system's sheet (FR-DAT-1). The sheet
 /// opening is the whole answer, so only a failure speaks — and a reader who
 /// dismisses the sheet has done nothing, which is not one.
 Future<void> _export(BuildContext context, WidgetRef ref) async {
   final sharer = ref.read(sharerProvider);
   final shelf = ref.read(shelfProvider.notifier);
-  await _wentThrough(
+  await wentThrough(
     ScaffoldMessenger.of(context),
     'Could not export',
     () async => sharer(await shelf.export()),
   );
 }
 
+/// FR-BAR-5: a guest bar's source asked again from the gear — the pull's own
+/// question, put where a reader who came looking for it will look. What it came
+/// to is said here and marked told, the banner that would carry it standing
+/// behind this screen unread.
+Future<void> _refresh(BuildContext context, WidgetRef ref) async {
+  final messenger = ScaffoldMessenger.of(context);
+  final shelf = ref.read(shelfProvider.notifier);
+  final refreshes = ref.read(refreshesProvider.notifier);
+  final bar = ref.read(openBarProvider);
+  if (bar == null) return;
+  await shelf.refresh(bar.id);
+  // Gone where the reader left while the source was being asked; the banner
+  // carries what it came to instead, which is what it is there for.
+  if (!context.mounted) return;
+  final landed = ref.read(openBarProvider)?.refreshed != bar.refreshed;
+  // Nothing to say where the reader dismissed the picker: the source was never
+  // asked, so neither an answer nor a failure is one.
+  final said =
+      refreshSaid(refreshes.standing(bar.id), bar.name) ??
+      (landed ? 'Refreshed.' : null);
+  if (said == null) return;
+  refreshes.told(bar.id);
+  messenger.showSnackBar(SnackBar(content: Text(said)));
+}
+
 /// Takes a file off the system's picker and puts what is in it in front of the
-/// reader (FR-DAT-3/4). Nothing is touched here: the review is where a road is
-/// agreed to.
+/// reader (FR-DAT-3/4). Nothing is touched here: the form is where a road is
+/// agreed to, and it is the same form a bar is founded on — one file, the same
+/// three questions, whichever end it was picked from (FR-BAR-7).
 Future<void> _import(BuildContext context, WidgetRef ref) async {
   final navigator = Navigator.of(context);
   final picked = await pickBar(context, ref);
   if (picked == null) return;
   await navigator.push(
-    MaterialPageRoute<void>(builder: (_) => _ImportReview(picked)),
+    MaterialPageRoute<void>(builder: (_) => BarFormScreen.importing(picked)),
   );
-}
-
-/// Runs [road] and leaves for the collection itself: what arrived is two
-/// screens back, and the reader's own list is the answer no sentence improves
-/// on. Unlike a share, this knows what it did, so it says so too — the
-/// messenger is the app's, so the word outlives both pops. A road that could
-/// not be taken stays on the review, leaving for a collection that never
-/// reached the disk being a lie about what happened.
-Future<void> _took(
-  BuildContext context,
-  String refusal,
-  String Function() said,
-  Future<void> Function() road,
-) async {
-  final messenger = ScaffoldMessenger.of(context);
-  final navigator = Navigator.of(context);
-  if (!await _wentThrough(messenger, refusal, road)) return;
-  navigator.popUntil((route) => route.isFirst);
-  messenger.showSnackBar(SnackBar(content: Text(said())));
-}
-
-/// What a picked file turned out to be, and where its two roads are agreed to
-/// (FR-DAT-3/4, FR-BAR-7). Pushed rather than shown over the list, the room a
-/// confirmation and a report need arriving after the pick rather than before
-/// it. Both roads ride the app bar, where every other commit in the app sits
-/// (`editor_form.dart`); the weight of either is carried by a body that spells
-/// out everything arriving, not by the size of the button agreeing to it.
-///
-/// Reached from an owned bar alone — Import dims on a guest, whose collection
-/// is not this device's to replace (FR-BAR-4) — so Replace is offered without
-/// asking whose bar is on show.
-class _ImportReview extends ConsumerWidget {
-  const _ImportReview(this.review);
-
-  final ImportReview review;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    // The whole bar is taken; the body reads its collection, what else the file
-    // carries being the two roads it can take, and theirs (FR-BAR-7).
-    final incoming = review.bar;
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Import'),
-        actions: [
-          // A file the app cannot read holds nothing to take either road with.
-          if (incoming != null) ...[
-            TextButton(
-              onPressed: () => unawaited(_addGuest(context, ref, incoming)),
-              child: const Text('Add as guest'),
-            ),
-            TextButton(
-              onPressed: () => unawaited(_replace(context, ref, incoming)),
-              child: const Text('Replace'),
-            ),
-          ],
-        ],
-      ),
-      body: ListView(
-        padding: const EdgeInsets.only(bottom: 16),
-        children: incoming == null
-            ? [
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: RefusedFile(
-                    review.issues,
-                    standing:
-                        'Nothing has changed. The collection stands as it was.',
-                  ),
-                ),
-              ]
-            : [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                  child: _Roads(incoming.name),
-                ),
-                BarHoldings(incoming.collection),
-              ],
-      ),
-    );
-  }
-
-  /// FR-DAT-3: the open bar keeps its name and its place and takes these
-  /// contents, a copy of what stood kept first.
-  Future<void> _replace(
-    BuildContext context,
-    WidgetRef ref,
-    BarPayload incoming,
-  ) => _took(
-    context,
-    'Could not import',
-    () => '${counted(incoming.collection.recipes.length, 'recipe')} imported.',
-    () => ref.read(shelfProvider.notifier).replaceOpen(incoming),
-  );
-
-  /// FR-BAR-7's other road: a bar of its own, the owner's to name and refresh,
-  /// and nothing on the shelf is touched to make room for it.
-  Future<void> _addGuest(
-    BuildContext context,
-    WidgetRef ref,
-    BarPayload incoming,
-  ) => _took(
-    context,
-    'Could not add that bar',
-    () => '"${incoming.name}" added as a guest bar.',
-    () => ref.read(shelfProvider.notifier).addGuestBar(fileSource, incoming),
-  );
-}
-
-/// The one thing the counts cannot say: what each road does with them. No
-/// numbers here — the cards have them, and a second set beside them reads as a
-/// discrepancy rather than a reassurance. Both bars are named, the two roads
-/// differing in exactly which one ends up holding this.
-class _Roads extends ConsumerWidget {
-  const _Roads(this.arriving);
-
-  final String arriving;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    // Non-null: the gear this was reached through is the open bar's own.
-    final open = ref.watch(openBarProvider)!.name;
-    return DefaultTextStyle.merge(
-      style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Replace puts this in place of everything "$open" holds now. '
-            'A copy is kept first.',
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Add as guest leaves "$open" alone and founds "$arriving" beside '
-            'it, read-only.',
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 /// One row of the menu: what it is, and what a tap does with it. A row that
@@ -276,13 +154,15 @@ class _Entry extends StatelessWidget {
     this.enabled = true,
   }) : act = null;
 
+  /// A row that acts is drawn only where the act is on offer, so none of them
+  /// dims: what a guest bar cannot do it is not asked to refuse.
   const _Entry.acts({
     required this.icon,
     required this.title,
     required this.subtitle,
     required this.act,
-    this.enabled = true,
-  }) : page = null;
+  }) : page = null,
+       enabled = true;
 
   final IconData icon;
   final String title;

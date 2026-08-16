@@ -159,11 +159,12 @@ void main() {
       final container = await started();
       await controllerOf(
         container,
-      ).addGuestBar(source, payloadOf(arrived, name: "Bo's bar"));
+      ).addGuestBar("Bo's bar", source, payloadOf(arrived, name: "Ada's bar"));
       final shelf = container.read(shelfProvider).requireValue;
       expect(shelf.bars, hasLength(2));
       final added = shelf.open!;
       expect(added.mode, BarMode.guest);
+      // What it is called here is the reader's, not the file's (FR-BAR-3).
       expect(added.name, "Bo's bar");
       expect(added.source, source);
       expect(added.refreshed, now);
@@ -178,7 +179,7 @@ void main() {
       final container = await started();
       await controllerOf(
         container,
-      ).addGuestBar(source, payloadOf(arrived, display: FixedUnit.ml));
+      ).addGuestBar('Ada', source, payloadOf(arrived, display: FixedUnit.ml));
       expect(
         container.read(shelfProvider).requireValue.open!.display,
         FixedUnit.ml,
@@ -196,7 +197,9 @@ void main() {
       ));
       final container = await started(logged);
       logged.calls.clear();
-      await controllerOf(container).addGuestBar(source, payloadOf(arrived));
+      await controllerOf(
+        container,
+      ).addGuestBar('Ada', source, payloadOf(arrived));
       final added = container.read(shelfProvider).requireValue.open!;
       expect(logged.calls, ['bar:${added.id}', 'shelf']);
       expect(logged.savedBars[added.id]?.$2, arrived);
@@ -207,7 +210,9 @@ void main() {
     /// listed without them.
     test('it is counted from the moment it is added', () async {
       final container = await started();
-      await controllerOf(container).addGuestBar(source, payloadOf(arrived));
+      await controllerOf(
+        container,
+      ).addGuestBar('Ada', source, payloadOf(arrived));
       final added = container.read(shelfProvider).requireValue.open!;
       expect(added.holds, holdingsOf(arrived));
       // A guest's contents change only when its source answers.
@@ -216,7 +221,7 @@ void main() {
   });
 
   group('refreshing', () {
-    test('what arrives replaces the collection and the name', () async {
+    test('what arrives replaces the collection, never the name', () async {
       final seeded = holding(guest.id);
       final container = await started(seeded);
       final refreshing = controllerOf(container).refresh(guest.id);
@@ -227,8 +232,10 @@ void main() {
       );
       await refreshing;
       expect(container.read(collectionProvider), arrived);
-      expect(barOf(container, guest.id).name, 'The Ada Room');
       expect(barOf(container, guest.id).refreshed, now);
+      // The reader named this bar; what the owner calls theirs is not news
+      // enough to rename it (FR-BAR-3, ADR 21).
+      expect(barOf(container, guest.id).name, guest.name);
       expect(refreshOf(container, guest.id), isNull);
       // What landed outlives the session: the bar on show is written as any
       // edit to it is, and the index restamped beside it.
@@ -236,11 +243,11 @@ void main() {
       final listed = seeded.savedShelf!.bars.firstWhere(
         (bar) => bar.id == guest.id,
       );
-      expect(listed.name, 'The Ada Room');
+      expect(listed.name, guest.name);
       expect(listed.refreshed, now);
     });
 
-    /// The reader's pick outlives every refresh (FR-SET-1, ADR 21).
+    /// The reader's picks outlive every refresh (FR-SET-1, ADR 21).
     test('the reading unit stays the reader\'s', () async {
       final container = await started(holding(guest.id));
       await refreshed(
@@ -391,12 +398,13 @@ void main() {
       final second = controller.refresh(guest.id);
       await pumpEventQueue();
       expect(channel.out, hasLength(2));
-      channel.out[1].complete(Fetched(payloadOf(arrived, name: 'Newer')));
+      channel.out[1].complete(Fetched(payloadOf(arrived)));
       await second;
-      channel.out[0].complete(Fetched(payloadOf(stored, name: 'Older')));
+      channel.out[0].complete(Fetched(payloadOf(stored)));
       await first;
-      expect(barOf(container, guest.id).name, 'Newer');
+      // The contents of the newer answer, and the counts that go with them.
       expect(container.read(collectionProvider), arrived);
+      expect(barOf(container, guest.id).holds, holdingsOf(arrived));
     });
 
     test('a late failure never lands on top of one that succeeded', () async {

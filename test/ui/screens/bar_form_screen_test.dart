@@ -139,6 +139,10 @@ void main() {
       await tap(tester, find.byTooltip('Leave it empty'));
       expect(find.text('3 recipes'), findsNothing);
       expect(find.text('Guest'), findsNothing);
+      // The name arrived with the file and leaves with it: a bar of nothing is
+      // the reader's own to name.
+      expect(tester.widget<TextField>(barNameField).controller?.text, isEmpty);
+      await typeInto(tester, barNameField, 'Cellar');
       await tap(tester, find.text('Save'));
       expect(founded(store).collection, Collection());
     });
@@ -201,26 +205,20 @@ void main() {
       expect(find.text('Shopping'), findsNothing);
     });
 
-    testWidgets('the name goes quiet and reads the owner\'s', (tester) async {
-      await withFile(tester, sharedFile);
-      await typeInto(tester, barNameField, 'Cellar');
-      await tap(tester, find.text('Guest'));
-      final field = tester.widget<TextField>(barNameField);
-      expect(field.enabled, isFalse);
-      expect(field.controller?.text, "Ada's bar");
-      expect(find.textContaining("keeps its owner's name"), findsOneWidget);
-    });
-
-    testWidgets('undoing the choice gives the reader their name back', (
+    /// FR-BAR-3: what a bar is called here is the reader's on a guest bar as on
+    /// one of their own, and no refresh takes it back (ADR 21).
+    testWidgets('the name is theirs to choose, on this road as on the other', (
       tester,
     ) async {
-      await withFile(tester, sharedFile);
+      final store = await withFile(tester, sharedFile);
       await typeInto(tester, barNameField, 'Cellar');
       await tap(tester, find.text('Guest'));
-      await tap(tester, find.text('Owned'));
-      final field = tester.widget<TextField>(barNameField);
-      expect(field.enabled, isTrue);
-      expect(field.controller?.text, 'Cellar');
+      // Null is the field's own default, which is live: nothing dims it.
+      expect(tester.widget<TextField>(barNameField).enabled ?? true, isTrue);
+      await tap(tester, find.text('Save'));
+      final made = founded(store);
+      expect(made.bar.mode, BarMode.guest);
+      expect(made.bar.name, 'Cellar');
     });
 
     testWidgets('nothing on the shelf is moved to make room', (tester) async {

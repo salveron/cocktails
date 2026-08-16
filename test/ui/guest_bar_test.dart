@@ -190,12 +190,16 @@ void main() {
         fixtureCollection,
         bar: guestBar(),
       );
-      for (final row in ['Tags', 'Units', 'Import']) {
+      for (final row in ['Tags', 'Units']) {
         expect(live(tester, row), isFalse, reason: row);
       }
       for (final row in ['Amounts', 'Export', 'Change bar']) {
         expect(live(tester, row), isTrue, reason: row);
       }
+      // The file row is not dimmed but read the other way round: this bar takes
+      // no file in, and asks its source for one instead (FR-BAR-5).
+      expect(find.text('Import'), findsNothing);
+      expect(live(tester, 'Refresh'), isTrue);
     });
 
     testWidgets('and a dimmed row leads nowhere', (tester) async {
@@ -216,6 +220,8 @@ void main() {
       for (final row in ['Tags', 'Units', 'Amounts', 'Export', 'Import']) {
         expect(live(tester, row), isTrue, reason: row);
       }
+      // Nothing to ask: an owned bar has no source (FR-BAR-5).
+      expect(find.text('Refresh'), findsNothing);
     });
 
     /// A guest already holds what the file would carry (FR-DAT-1).
@@ -376,6 +382,50 @@ void main() {
       await pull(tester);
       expect(find.byType(MaterialBanner), findsNothing);
       expect(find.text('Whiskey Sour'), findsOneWidget);
+    });
+
+    /// The same ask from the gear, where the row an owned bar imports through
+    /// stands: a reader who went looking for it finds it in the menu, and there
+    /// is no list under them to pull on.
+    group('from the gear', () {
+      Future<void> askThere(WidgetTester tester) async {
+        await tap(tester, find.byTooltip('Settings'));
+        await tap(tester, find.text('Refresh'));
+      }
+
+      testWidgets('it lands, and says so where the lists cannot', (
+        tester,
+      ) async {
+        await pumpShell(
+          tester,
+          guestBar(),
+          picker: () async => fileOf(fixtureCollection),
+        );
+        await askThere(tester);
+        expect(find.text('Refreshed.'), findsOneWidget);
+        await tap(tester, find.byTooltip('Back'));
+        expect(find.text('Negroni'), findsOneWidget);
+      });
+
+      /// One answer, one telling: the banner would carry this where the reader
+      /// pulled for it, and has nothing left to say once the snackbar has.
+      testWidgets('what it came to is said here and not again behind', (
+        tester,
+      ) async {
+        await pumpShell(tester, guestBar(), picker: () async => damagedFile);
+        await askThere(tester);
+        expect(find.textContaining('could not be read'), findsOneWidget);
+        expect(find.textContaining('rye'), findsOneWidget);
+        await tap(tester, find.byTooltip('Back'));
+        expect(find.byType(MaterialBanner), findsNothing);
+        expect(find.text('Whiskey Sour'), findsOneWidget);
+      });
+
+      testWidgets('a reader who picks nothing is told nothing', (tester) async {
+        await pumpShell(tester, guestBar(), picker: () async => null);
+        await askThere(tester);
+        expect(find.byType(SnackBar), findsNothing);
+      });
     });
   });
 }
