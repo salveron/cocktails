@@ -9,10 +9,11 @@ RecipeLine _line(List<String> ingredients, {LineMark? mark}) =>
     RecipeLine(const Amount(1), 'part', ingredients, mark: mark);
 
 /// A shelf short in every way a jump has to cope with: baskets to open on the
-/// shopping screen, a line naming one bottle by an alias and offering a second
-/// beside it, and tags on both vocabularies — so a jump has narrowings to clear
-/// whichever way it goes. At a budget of two, `campari + sweet vermouth` is the
-/// one basket worth buying, and it unlocks both of the recipes waiting on it.
+/// shopping screen, a line naming one ingredient by an alias and offering a
+/// second beside it, and tags on both vocabularies — so a jump has narrowings
+/// to clear whichever way it goes. At a budget of two, `campari + sweet
+/// vermouth` is the one basket worth buying, and it unlocks both of the recipes
+/// waiting on it.
 final reachingCollection = Collection(
   ingredients: [
     Ingredient('gin', stock: StockLevel.in_, tags: const ['spirit']),
@@ -84,8 +85,8 @@ Future<void> pumpShell(WidgetTester tester, [Collection? collection]) =>
       store: MemoryBarStore.of(testBar(), collection ?? reachingCollection),
     );
 
-/// Opens the one basket worth buying two bottles, whose card then names both
-/// bottles and both recipes.
+/// Opens the one basket worth buying two ingredients, whose card then names
+/// both ingredients and both recipes.
 Future<void> openBasket(WidgetTester tester) async {
   await goTo(tester, 'Shopping');
   await tap(tester, find.text('2'));
@@ -110,11 +111,13 @@ void main() {
       expect(cardOpen(tester, 'Negroni'), isTrue);
     });
 
-    testWidgets('a basket\'s bottle opens on the Inventory', (tester) async {
+    testWidgets('a basket\'s ingredient opens on the Ingredients screen', (
+      tester,
+    ) async {
       await pumpShell(tester);
       await openBasket(tester);
       await tap(tester, bullet('sweet vermouth'));
-      expect(showing(tester), 'Inventory');
+      expect(showing(tester), 'Ingredients');
       expect(find.text('sweet vermouth'), findsOneWidget);
     });
 
@@ -130,13 +133,15 @@ void main() {
       ]);
     });
 
-    testWidgets('a line reaches its bottle on the Inventory', (tester) async {
+    testWidgets('a line reaches its ingredient on the Ingredients screen', (
+      tester,
+    ) async {
       await pumpShell(tester);
       await openRecipe(tester, 'Negroni');
       // The name alone: the measure before it and the mark after are inert.
       await tester.tapOnText(find.textRange.ofSubstring('gin'));
       await tester.pumpAndSettle();
-      expect(showing(tester), 'Inventory');
+      expect(showing(tester), 'Ingredients');
       expect(find.text('gin'), findsOneWidget);
     });
 
@@ -147,18 +152,18 @@ void main() {
       await openRecipe(tester, 'Sidecar');
       await tester.tapOnText(find.textRange.ofSubstring('rye'));
       await tester.pumpAndSettle();
-      expect(showing(tester), 'Inventory');
+      expect(showing(tester), 'Ingredients');
     });
 
-    testWidgets('a line spelling a bottle otherwise reaches its own row', (
+    testWidgets('a line spelling an ingredient otherwise reaches its own row', (
       tester,
     ) async {
       await pumpShell(tester);
       await openRecipe(tester, 'Sidecar');
       await tester.tapOnText(find.textRange.ofSubstring('brandy'));
       await tester.pumpAndSettle();
-      // The line says "brandy", the vocabulary keeps the bottle under "cognac",
-      // and a list finds its rows under their own names (ADR 10).
+      // The line says "brandy", the vocabulary keeps the ingredient under
+      // "cognac", and a list finds its rows under their own names (ADR 10).
       expect(find.text('cognac'), findsOneWidget);
       expect(find.text('brandy'), findsNothing);
     });
@@ -247,7 +252,7 @@ void main() {
       await tap(tester, bullet('Negroni'));
       await tester.tapOnText(find.textRange.ofSubstring('gin'));
       await tester.pumpAndSettle();
-      expect(showing(tester), 'Inventory');
+      expect(showing(tester), 'Ingredients');
       await systemBack(tester);
       expect(showing(tester), 'Recipes');
       await systemBack(tester);
@@ -260,11 +265,11 @@ void main() {
       await pumpShell(tester);
       await openBasket(tester);
       await tap(tester, bullet('Negroni'));
-      await goTo(tester, 'Inventory');
+      await goTo(tester, 'Ingredients');
       await systemBack(tester);
       // The jump's way back went with the tap, so this is left for the route
       // the shell stands on rather than undoing a move the reader made.
-      expect(showing(tester), 'Inventory');
+      expect(showing(tester), 'Ingredients');
     });
 
     testWidgets('the same row asked for twice is revealed twice', (

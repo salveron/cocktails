@@ -36,7 +36,7 @@ typedef _BasePick = ({String? spirit});
 
 /// How a substitution group reads on a card — prose, where the grammar and the
 /// file keep the separator (ADR 11). Italic on the open card, so a word made of
-/// two letters is still seen between the bottles it stands between.
+/// two letters is still seen between the ingredients it stands between.
 const _or = ' or ';
 const _italic = TextStyle(fontStyle: FontStyle.italic);
 
@@ -166,21 +166,23 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
         title: 'No recipes yet',
         message:
             'Recipes added here appear in this list, marked with what can be '
-            'made from the bottles in stock.',
+            'made from the ingredients in stock.',
       ),
     );
   }
 
-  /// Sends the reader to the bottle a line names, on the Inventory (FR-DIS-9).
-  /// Under the bottle's own name: a line may spell it any way the vocabulary
-  /// answers to (ADR 10), and a list finds its rows under theirs.
-  void _reach(Collection collection, String bottle) => ref
+  /// Sends the reader to the ingredient a line names, on the Ingredients screen
+  /// (FR-DIS-9). Under the ingredient's own name: a line may spell it any way
+  /// the vocabulary answers to (ADR 10), and a list finds its rows under
+  /// theirs.
+  void _reach(Collection collection, String ingredient) => ref
       .read(revealProvider.notifier)
-      .ask(Destination.inventory, collection.bottleNamed(bottle));
+      .ask(Destination.ingredients, collection.spellingOf(ingredient));
 
-  /// Compact or full when tapped; full hides summary since details appear below.
-  /// [availability] is derived from the collection this row is built from, so
-  /// there; an absent one draws no chip rather than standing on an assertion.
+  /// Compact or full when tapped; full hides summary since details appear
+  /// below. [availability] is derived from the collection this row is built
+  /// from, so there; an absent one draws no chip rather than standing on an
+  /// assertion.
   VocabularyRow _row(
     BarWriter? writer,
     Collection collection,
@@ -227,7 +229,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
               recipe: recipe,
               view: view,
               resting: resting,
-              onReach: (bottle) => _reach(collection, bottle),
+              onReach: (ingredient) => _reach(collection, ingredient),
             )
           : null,
       trailing: Row(
@@ -279,9 +281,9 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
   }
 
   /// The base spirit chip and what it keeps (FR-DIS-4, ADR 12). A pick gone
-  /// stale — the bottle renamed, deleted, or its last base mark cleared — is
-  /// absent from what the collection offers, and so stops narrowing rather than
-  /// emptying the list. Nothing marked anywhere leaves nothing to offer.
+  /// stale — the ingredient renamed, deleted, or its last base mark cleared —
+  /// is absent from what the collection offers, and so stops narrowing rather
+  /// than emptying the list. Nothing marked anywhere leaves nothing to offer.
   ListFilter<Recipe>? _baseFilter(Collection collection) {
     final spirits = baseSpirits(collection);
     if (spirits.isEmpty) return null;
@@ -306,15 +308,15 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
   }
 
   /// The pick as the collection spells it now, or null where it no longer
-  /// stands among [spirits]. A bottle answers under its own name, so a rename
-  /// changing only its case goes on narrowing (ADR 08) and the chip reads the
-  /// new spelling; one renamed in earnest stops.
+  /// stands among [spirits]. An ingredient answers under its own name, so a
+  /// rename changing only its case goes on narrowing (ADR 08) and the chip
+  /// reads the new spelling; one renamed in earnest stops.
   _BasePick? _standingPick(Collection collection, List<String> spirits) {
     final pick = _base;
     if (pick == null) return null;
     final picked = pick.spirit;
     if (picked == null) return pick;
-    final spirit = collection.bottleNamed(picked);
+    final spirit = collection.spellingOf(picked);
     return spirits.contains(spirit) ? (spirit: spirit) : null;
   }
 
@@ -348,9 +350,9 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
   }
 
   /// What a search reaches a recipe by: its name, and every spelling of every
-  /// bottle it is built from (FR-DIS-2, FR-VOC-6). A line is held under its
-  /// bottle's own name (ADR 10), so the vocabulary is what widens it to the
-  /// rest — and a line naming no bottle still answers to what it says.
+  /// ingredient it is built from (FR-DIS-2, FR-VOC-6). A line is held under its
+  /// ingredient's own name (ADR 10), so the vocabulary is what widens it to the
+  /// rest — and a line naming no ingredient still answers to what it says.
   static List<String> _spellings(Collection collection, Recipe recipe) => [
     recipe.name,
     for (final line in recipe.lines)
@@ -411,9 +413,9 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
 
 /// What the list is narrowed to, and the menu settling it: any base, no base,
 /// or one of the spirits the collection is built on (FR-DIS-4, ADR 12). Shaped
-/// like the tag chips it stands among, but neutral — a bottle's name is neither
-/// a tag nor a signal, and the chip names its own dimension so it cannot be
-/// read as a tag that happens to be called "Base".
+/// like the tag chips it stands among, but neutral — an ingredient's name is
+/// neither a tag nor a signal, and the chip names its own dimension so it
+/// cannot be read as a tag that happens to be called "Base".
 ///
 /// The menu carries its pick wrapped, since a bare null selection is how
 /// [PopupMenuButton] reports a menu dismissed — and "Any base" is a null pick.
@@ -492,8 +494,8 @@ class _Details extends StatelessWidget {
   /// read otherwise; the bar's pick is the notifier's to watch, not a card's.
   final _AmountView resting;
 
-  /// Where a bottle named on a line is kept (FR-DIS-9).
-  final void Function(String bottle) onReach;
+  /// Where an ingredient named on a line is kept (FR-DIS-9).
+  final void Function(String ingredient) onReach;
 
   @override
   Widget build(BuildContext context) {
@@ -536,20 +538,20 @@ class _Details extends StatelessWidget {
   }
 }
 
-/// One line: the measure, the bottles it may be built from, the mark — then a
-/// dot where the line is short (FR-DIS-1). An optional line is marked too: the
-/// dot reports the bottle, and the line's own "(optional)" says it does not
-/// count against the verdict. Where a group has something on hand, the
+/// One line: the measure, the ingredients it may be built from, the mark — then
+/// a dot where the line is short (FR-DIS-1). An optional line is marked too:
+/// the dot reports the ingredient, and the line's own "(optional)" says it does
+/// not count against the verdict. Where a group has something on hand, the
 /// alternatives that are out fall to [dimmedInk], the ink an unfilled field's
 /// hint wears, so the eye lands on the one to reach for; where it has nothing,
-/// none dims and the dot carries it alone (ADR 11).
-/// A [transformed] card italicises the measure, the only part of the line that
-/// is then not what the recipe says.
+/// none dims and the dot carries it alone (ADR 11). A [transformed] card
+/// italicises the measure, the only part of the line that is then not what the
+/// recipe says.
 ///
-/// Each bottle it names reaches its row on the Inventory (FR-DIS-9, ADR 19) —
-/// the name alone, so a group offers one target per alternative where a whole
-/// line could only ever offer the first. The measure, the "or" and the mark
-/// stay inert, naming nothing that is kept anywhere.
+/// Each ingredient it names reaches its row on the Ingredients screen
+/// (FR-DIS-9, ADR 19) — the name alone, so a group offers one target per
+/// alternative where a whole line could only ever offer the first. The measure,
+/// the "or" and the mark stay inert, naming nothing that is kept anywhere.
 class _Line extends StatefulWidget {
   const _Line(
     this.line, {
@@ -563,17 +565,17 @@ class _Line extends StatefulWidget {
   final String measure;
   final Collection collection;
   final bool transformed;
-  final void Function(String bottle) onReach;
+  final void Function(String ingredient) onReach;
 
   @override
   State<_Line> createState() => _LineState();
 }
 
 class _LineState extends State<_Line> {
-  /// One per bottle the line names. A recognizer outlives the build that spans
-  /// it and has to be let go by hand, so they are kept here rather than made
-  /// afresh each time; a line naming fewer than it did leaves a spare, which
-  /// costs nothing and goes with the card.
+  /// One per ingredient the line names. A recognizer outlives the build that
+  /// spans it and has to be let go by hand, so they are kept here rather than
+  /// made afresh each time; a line naming fewer than it did leaves a spare,
+  /// which costs nothing and goes with the card.
   final _taps = <TapGestureRecognizer>[];
 
   @override
@@ -584,13 +586,13 @@ class _LineState extends State<_Line> {
     super.dispose();
   }
 
-  /// The recognizer for the bottle at [index], aimed afresh: the line it spans
-  /// may have been re-edited under it.
-  TapGestureRecognizer _tap(int index, String bottle) {
+  /// The recognizer for the ingredient at [index], aimed afresh: the line it
+  /// spans may have been re-edited under it.
+  TapGestureRecognizer _tap(int index, String ingredient) {
     while (_taps.length <= index) {
       _taps.add(TapGestureRecognizer());
     }
-    return _taps[index]..onTap = () => widget.onReach(bottle);
+    return _taps[index]..onTap = () => widget.onReach(ingredient);
   }
 
   @override

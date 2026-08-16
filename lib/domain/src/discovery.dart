@@ -8,20 +8,20 @@ import 'availability.dart';
 import 'names.dart';
 import 'collection.dart';
 
-/// Every bottle a base line of [recipe] names — several, base being a mark on
-/// the line (ADR 06) and a line naming more than one (ADR 11); or none at all.
+/// Every ingredient a base line of [recipe] names — several, base being a mark
+/// on the line (ADR 06) and a line naming more than one (ADR 11); or none.
 Set<String> basesOf(Recipe recipe) => {
   for (final line in recipe.lines)
     if (line.isBase) ...line.ingredients,
 };
 
-/// The spirits the collection narrows by, A→Z: one per bottle, named before it
-/// is weighed for repetition, so two spellings of one bottle are one spirit.
+/// The spirits the collection narrows by, A→Z: one per ingredient, named
+/// before it is weighed for repetition, so two spellings are one spirit.
 List<String> baseSpirits(Collection collection) {
   final seen = <String>{};
   final named = [
     for (final recipe in collection.recipes)
-      for (final spirit in basesOf(recipe)) collection.bottleNamed(spirit),
+      for (final spirit in basesOf(recipe)) collection.spellingOf(spirit),
   ];
   return [
     for (final spirit in named)

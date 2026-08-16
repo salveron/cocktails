@@ -7,9 +7,9 @@ import 'package:flutter/material.dart';
 
 typedef Swatch = ({Color fill, Color ink});
 
-/// The one traffic light — worn by a bottle, by the recipe it holds up, and by
-/// the bar all of it stands in. Fixed hues, not scheme roles, to avoid signal
-/// confusion.
+/// The one traffic light — worn by an ingredient, by the recipe it holds up,
+/// and by the bar all of it stands in. Fixed hues, not scheme roles, to avoid
+/// signal confusion.
 const _green = (pale: Color(0xFFC8E6C9), deep: Color(0xFF1B5E20));
 const _amber = (pale: Color(0xFFFFECB3), deep: Color(0xFF6B4E00));
 const _red = (pale: Color(0xFFFFCDD2), deep: Color(0xFFB71C1C));
@@ -49,8 +49,8 @@ Swatch barModeColors(BarMode mode, Brightness brightness) =>
       BarMode.guest => _amber,
     }, brightness);
 
-/// What a chip carrying no signal stands on — the base filter, naming a bottle
-/// rather than a level (ADR 12). Scheme roles precisely because every other
+/// What a chip carrying no signal stands on — the base filter, naming an
+/// ingredient rather than a level (ADR 12). Scheme roles because every other
 /// swatch is a fixed hue: this reads as neither tag nor traffic light.
 Swatch neutralSwatch(ColorScheme colors) =>
     (fill: colors.surfaceContainerHighest, ink: colors.onSurfaceVariant);

@@ -1,6 +1,6 @@
 import 'package:cocktails/data/data.dart';
 import 'package:cocktails/ui/app.dart';
-import 'package:cocktails/ui/screens/inventory_screen.dart';
+import 'package:cocktails/ui/screens/ingredients_screen.dart';
 import 'package:cocktails/ui/screens/recipes_screen.dart';
 import 'package:cocktails/ui/screens/shopping_screen.dart';
 import 'package:flutter/material.dart';
@@ -47,7 +47,7 @@ void main() {
       await pumpApp(tester);
       expect(shellTitle('Recipes'), findsOneWidget);
       expect(find.byType(RecipesScreen), findsOneWidget);
-      for (final label in ['Recipes', 'Inventory', 'Shopping']) {
+      for (final label in ['Recipes', 'Ingredients', 'Shopping']) {
         expect(find.widgetWithText(NavigationBar, label), findsOneWidget);
       }
     });
@@ -56,10 +56,10 @@ void main() {
       tester,
     ) async {
       await pumpApp(tester);
-      await tester.tap(find.text('Inventory'));
+      await tester.tap(find.text('Ingredients'));
       await tester.pumpAndSettle();
-      expect(shellTitle('Inventory'), findsOneWidget);
-      expect(find.byType(InventoryScreen), findsOneWidget);
+      expect(shellTitle('Ingredients'), findsOneWidget);
+      expect(find.byType(IngredientsScreen), findsOneWidget);
       expect(find.byType(RecipesScreen), findsNothing);
     });
 
@@ -90,14 +90,14 @@ void main() {
         store: MemoryBarStore.of(testBar(), fixtureCollection),
       );
       final shell = tester.state(find.byType(AppShell));
-      await tester.tap(find.text('Inventory'));
+      await tester.tap(find.text('Ingredients'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('gin'));
       await tester.pumpAndSettle();
       // A stock tap moves the collection, not the record: the subtree keyed by
       // the open bar is what a crossing tears down, and nothing else may.
       expect(tester.state(find.byType(AppShell)), same(shell));
-      expect(shellTitle('Inventory'), findsOneWidget);
+      expect(shellTitle('Ingredients'), findsOneWidget);
     });
 
     testWidgets('the gear opens settings, and back returns to the shell', (

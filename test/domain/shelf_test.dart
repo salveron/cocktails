@@ -15,7 +15,7 @@ final anHourAgo = DateTime.utc(2026, 8, 9, 18, 22, 4);
 
 /// Something for a summary to count, small enough that the four numbers it
 /// answers with can be read at a glance.
-final _twoBottles = Collection(
+final _twoIngredients = Collection(
   ingredients: [Ingredient('gin'), Ingredient('campari')],
 );
 
@@ -164,9 +164,9 @@ void main() {
     test('refreshedAt is the one writer of the stamp (FR-BAR-5)', () {
       final now = DateTime.utc(2026, 3, 1, 18);
       final bar = guestBar(refreshed: anHourAgo);
-      final landed = bar.refreshedAt(_twoBottles, now);
+      final landed = bar.refreshedAt(_twoIngredients, now);
       expect(landed.refreshed, now);
-      expect(landed.holds, holdingsOf(_twoBottles));
+      expect(landed.holds, holdingsOf(_twoIngredients));
       // The reader's two picks outlive what the owner sent (ADR 21), and where
       // the bar refreshes from is untouched by having refreshed.
       expect(landed.name, bar.name);
@@ -176,20 +176,20 @@ void main() {
 
     test('summarised counts the contents and dates them', () {
       final at = DateTime.utc(2026, 3, 1, 18);
-      final bar = ownedBar().summarised(_twoBottles, at: at);
-      expect(bar.holds, holdingsOf(_twoBottles));
+      final bar = ownedBar().summarised(_twoIngredients, at: at);
+      expect(bar.holds, holdingsOf(_twoIngredients));
       expect(bar.updated, at);
     });
 
     test('a first summary is a count, not an edit, and dates nothing', () {
-      final bar = ownedBar().summarised(_twoBottles);
-      expect(bar.holds, holdingsOf(_twoBottles));
+      final bar = ownedBar().summarised(_twoIngredients);
+      expect(bar.holds, holdingsOf(_twoIngredients));
       expect(bar.updated, isNull);
     });
 
     test('neither stamp is a copy\'s to move', () {
       final at = DateTime.utc(2026, 3, 1, 18);
-      final bar = ownedBar().summarised(_twoBottles, at: at);
+      final bar = ownedBar().summarised(_twoIngredients, at: at);
       final renamed = bar.copyWith(name: 'Beach bar');
       expect(renamed.updated, at);
       expect(renamed.holds, bar.holds);
@@ -197,7 +197,7 @@ void main() {
 
     test('a summary cannot be changed from outside', () {
       expect(
-        () => ownedBar().summarised(_twoBottles).holds!.clear(),
+        () => ownedBar().summarised(_twoIngredients).holds!.clear(),
         throwsUnsupportedError,
       );
     });
@@ -206,8 +206,8 @@ void main() {
       'two bars counted apart compare equal, and a bar uncounted does not',
       () {
         expect(
-          ownedBar().summarised(_twoBottles),
-          ownedBar().summarised(_twoBottles),
+          ownedBar().summarised(_twoIngredients),
+          ownedBar().summarised(_twoIngredients),
         );
         expect(ownedBar().summarised(Collection()), isNot(ownedBar()));
       },

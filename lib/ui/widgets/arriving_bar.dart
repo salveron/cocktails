@@ -107,6 +107,7 @@ class _BarHoldingsState extends State<BarHoldings> {
     final open = _open.contains(holding.kind);
     final empty = holding.count == 0;
     return VocabularyRow(
+      margin: const EdgeInsets.symmetric(vertical: 4),
       title: Text(counted(holding.count, holding.kind.noun)),
       subtitle: open || empty
           ? null
@@ -147,9 +148,8 @@ final class _Holding {
 const _lineNames = 24;
 
 /// What the file amounts to, in [Holding]'s own order and under its own nouns —
-/// the same four a bar card counts. Each kind is named and ordered within itself
-/// as the screen managing it does, so a card here reads as the list it stands
-/// for (`inventory_screen.dart`, `tags_screen.dart`, `units_screen.dart`).
+/// the same four a bar card counts. Each kind is named and ordered as the
+/// screen managing it does, so a card here reads as the list it stands for.
 List<_Holding> _holdingsOf(Collection collection) => [
   for (final kind in Holding.values)
     _Holding(kind, switch (kind) {

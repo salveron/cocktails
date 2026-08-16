@@ -9,7 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 /// Public where this was `app.dart`'s own: a screen names the one it sends to.
 enum Destination {
   recipes('Recipes', Icons.local_bar_outlined, Icons.local_bar),
-  inventory('Inventory', Icons.inventory_2_outlined, Icons.inventory_2),
+  ingredients('Ingredients', Icons.inventory_2_outlined, Icons.inventory_2),
   shopping('Shopping', Icons.shopping_cart_outlined, Icons.shopping_cart);
 
   const Destination(this.label, this.icon, this.selectedIcon);
@@ -22,7 +22,7 @@ enum Destination {
 /// Bottom-bar order, indexed by position and never by the enum (FR-BAR-4).
 List<Destination> destinationsOf(BarMode mode) => switch (mode) {
   BarMode.owner => Destination.values,
-  BarMode.guest => const [Destination.recipes, Destination.inventory],
+  BarMode.guest => const [Destination.recipes, Destination.ingredients],
 };
 
 /// A destination and a row to reveal there — never an index, a widget or an

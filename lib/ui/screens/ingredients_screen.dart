@@ -13,30 +13,30 @@ import '../widgets/vocabulary_dialogs.dart';
 import '../widgets/vocabulary_list.dart';
 
 /// Every ingredient and what is left of it — searchable by name and by tag, one
-/// tap per stock change (FR-INV-1/2/3) — and the vocabulary itself: add, edit,
-/// delete (FR-VOC-1). It also serves what another screen asks for, a bottle
+/// tap per stock change (FR-ING-1/2/3) — and the vocabulary itself: add, edit,
+/// delete (FR-VOC-1). It also serves what another screen asks for, an ingredient
 /// being named on both the others (FR-DIS-9). Designed in
-/// docs/ui-design.md#inventory-screen.
-class InventoryScreen extends ConsumerStatefulWidget {
-  const InventoryScreen({super.key});
+/// docs/ui-design.md#ingredients-screen.
+class IngredientsScreen extends ConsumerStatefulWidget {
+  const IngredientsScreen({super.key});
 
   @override
-  ConsumerState<InventoryScreen> createState() => _InventoryScreenState();
+  ConsumerState<IngredientsScreen> createState() => _IngredientsScreenState();
 }
 
-class _InventoryScreenState extends ConsumerState<InventoryScreen> {
+class _IngredientsScreenState extends ConsumerState<IngredientsScreen> {
   final _picked = <String>{};
 
-  /// The bottle another destination asked for, held for the one build that
+  /// The ingredient another destination asked for, held for the one build that
   /// hands it to the list and let go there (ADR 19).
   String? _revealing;
 
   void _toggle(String tag) => setState(() => _picked.toggle(tag));
 
-  /// The tag picks go with the request: a reader who named a bottle asked to
+  /// The tag picks go with the request: a reader who named an ingredient asked to
   /// see it, not to be told why they cannot (ADR 19).
   void _serve(Reveal? request) {
-    final name = takeReveal(ref, request, Destination.inventory);
+    final name = takeReveal(ref, request, Destination.ingredients);
     if (name == null) return;
     setState(() {
       _picked.clear();

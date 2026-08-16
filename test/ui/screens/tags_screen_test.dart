@@ -201,7 +201,7 @@ void main() {
       expect(store.saveCount, 0);
     });
 
-    testWidgets('an ingredient tag is blocked by the bottles wearing it', (
+    testWidgets('an ingredient tag is blocked by the ingredients wearing it', (
       tester,
     ) async {
       await pumpTags(tester);

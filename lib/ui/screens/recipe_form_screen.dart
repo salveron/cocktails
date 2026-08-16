@@ -133,7 +133,7 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
   ];
 
   /// Parsed recipe and fieldOf map for aligning issues with fields. Lines are
-  /// kept as typed: "gin" against "Gin" and an alias against the bottle it
+  /// kept as typed: "gin" against "Gin" and an alias against the ingredient it
   /// names both settle on the way to the collection (ADR 08, ADR 10), so the
   /// form judges what it sees and stores what the vocabulary calls it.
   ({Recipe recipe, List<int> fieldOf}) _entered(List<Tag> vocabulary) {
@@ -181,10 +181,11 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
     ]);
   }
 
-  /// Names no bottle answers to, in line order (deduplicated). Asked of the
+  /// Names no ingredient answers to, in line order (deduplicated). Asked of the
   /// vocabulary rather than read back out of the issues: a line may name
-  /// several bottles (ADR 11) and its issues all share one path, so which of
-  /// them is missing is a question about the collection, not about the report.
+  /// several ingredients (ADR 11) and its issues all share one path, so which
+  /// of them is missing is a question about the collection, not about the
+  /// report.
   static List<String> _missing(Collection collection, Recipe recipe) => {
     for (final line in recipe.lines)
       for (final ingredient in line.ingredients)
@@ -229,7 +230,7 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
     confirm: 'Add and save',
   );
 
-  /// Atomic edit: new bottles + recipe + handling old name.
+  /// Atomic edit: new ingredients + recipe + handling old name.
   Future<void> _commit(Recipe recipe, List<Ingredient> adding) async {
     await ref
         .read(barWriterProvider)!

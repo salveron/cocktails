@@ -8,7 +8,7 @@ import 'package:cocktails/data/data.dart';
 import 'package:cocktails/domain/domain.dart';
 import 'package:cocktails/ui/destinations.dart';
 import 'package:cocktails/ui/screens/amounts_screen.dart';
-import 'package:cocktails/ui/screens/inventory_screen.dart';
+import 'package:cocktails/ui/screens/ingredients_screen.dart';
 import 'package:cocktails/ui/screens/recipes_screen.dart';
 import 'package:cocktails/ui/screens/settings_screen.dart';
 import 'package:cocktails/ui/screens/tags_screen.dart';
@@ -49,7 +49,7 @@ void main() {
       expect(destinationsOf(BarMode.owner), Destination.values);
       expect(destinationsOf(BarMode.guest), [
         Destination.recipes,
-        Destination.inventory,
+        Destination.ingredients,
       ]);
     });
 
@@ -57,13 +57,13 @@ void main() {
       tester,
     ) async {
       await pumpShell(tester, guestBar());
-      expect(barDestinations(tester), ['Recipes', 'Inventory']);
+      expect(barDestinations(tester), ['Recipes', 'Ingredients']);
       expect(find.byType(NavigationBar), findsOneWidget);
     });
 
     testWidgets('an owned bar keeps all three', (tester) async {
       await pumpShell(tester, testBar());
-      expect(barDestinations(tester), ['Recipes', 'Inventory', 'Shopping']);
+      expect(barDestinations(tester), ['Recipes', 'Ingredients', 'Shopping']);
     });
 
     /// The stack is indexed by position in the offered list, never by the
@@ -73,9 +73,9 @@ void main() {
       tester,
     ) async {
       await pumpShell(tester, guestBar());
-      await goTo(tester, 'Inventory');
-      expect(showing(tester), 'Inventory');
-      expect(find.byType(InventoryScreen), findsOneWidget);
+      await goTo(tester, 'Ingredients');
+      expect(showing(tester), 'Ingredients');
+      expect(find.byType(IngredientsScreen), findsOneWidget);
       await goTo(tester, 'Recipes');
       expect(showing(tester), 'Recipes');
     });
@@ -132,10 +132,12 @@ void main() {
       expect(find.text('Delete'), findsNothing);
     });
 
-    testWidgets('the inventory offers no way to add a bottle', (tester) async {
+    testWidgets('the ingredients screen offers no way to add an ingredient', (
+      tester,
+    ) async {
       await pumpOver(
         tester,
-        const InventoryScreen(),
+        const IngredientsScreen(),
         fixtureCollection,
         bar: guestBar(),
       );
@@ -148,10 +150,12 @@ void main() {
 
     /// The stock is the owner's reading of their own shelf: a tap that moved it
     /// would be the reader judging one bar by another.
-    testWidgets('and tapping a bottle does not move its stock', (tester) async {
+    testWidgets('and tapping an ingredient does not move its stock', (
+      tester,
+    ) async {
       final store = await pumpOver(
         tester,
-        const InventoryScreen(),
+        const IngredientsScreen(),
         fixtureCollection,
         bar: guestBar(),
       );
@@ -162,7 +166,7 @@ void main() {
     });
 
     testWidgets('an owned bar still offers every one of them', (tester) async {
-      await pumpOver(tester, const InventoryScreen(), fixtureCollection);
+      await pumpOver(tester, const IngredientsScreen(), fixtureCollection);
       expect(
         find.widgetWithIcon(FloatingActionButton, Icons.add),
         findsOneWidget,
@@ -301,7 +305,7 @@ void main() {
       await pumpShell(tester, guestBar());
       expect(find.byType(RefreshIndicator), findsOneWidget);
       // Both of a guest's destinations, not just the one it opens on.
-      await goTo(tester, 'Inventory');
+      await goTo(tester, 'Ingredients');
       expect(find.byType(RefreshIndicator), findsOneWidget);
       // An owned bar has no source to ask, so the gesture is not offered — and
       // the shell needs no refresh control of its own either.

@@ -3,8 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'shelf_test.dart' show aSource, anHourAgo, guestBar, ownedBar;
 
-/// The required line every recipe now needs (FR-REC-2), so a fixture about
-/// some other rule does not trip that one. Its bottle is declared alongside.
+/// The required line every recipe now needs (FR-REC-2), so a fixture about some
+/// other rule does not trip that one. Its ingredient is declared alongside.
 const _gin = RecipeLine(Amount(1), 'part', ['gin']);
 
 /// The spellings a line may measure in, as a recipe check asks for them.
@@ -379,7 +379,7 @@ void main() {
       expect(issues.single.kind, ValidationIssueKind.duplicateName);
     });
 
-    test('a line may name a bottle by an alias', () {
+    test('a line may name an ingredient by an alias', () {
       expect(
         validateCollection(
           ingredients: [
@@ -668,7 +668,7 @@ void main() {
       ]);
     });
 
-    test('every alternative must name a bottle (ADR 11)', () {
+    test('every alternative must name an ingredient (ADR 11)', () {
       final issues = validateRecipe(
         Recipe(
           'Sidecar',
@@ -685,7 +685,7 @@ void main() {
       expect(issues.single.message, 'Unknown ingredient: "vodka"');
     });
 
-    test('a group every bottle of which is known is clean', () {
+    test('a group every ingredient of which is known is clean', () {
       expect(
         validateRecipe(
           Recipe(
@@ -725,7 +725,7 @@ void main() {
       ]);
     });
 
-    test('naming one bottle twice is a slip, not a choice', () {
+    test('naming one ingredient twice is a slip, not a choice', () {
       final issues = validateRecipe(
         Recipe(
           'Sidecar',

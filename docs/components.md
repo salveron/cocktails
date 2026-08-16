@@ -64,7 +64,7 @@ lib/
                                #   another to reveal a named row — the same subject, so one
                                #   file (ADR 19). The one provider outside the state layer
     theme.dart                 # the seed colour, the two schemes, `dimmedInk` — the one
-                               #   dim, worn by a hint and by a bottle the bar lacks
+                               #   dim, worn by a hint and by an ingredient the bar lacks
     palette.dart               # the fixed hues — the tag palette, and the one traffic
                                #   light worn by stock, by availability and by whose bar
                                #   it is (`barModeColors`) — beside `neutralSwatch`, the
@@ -98,9 +98,11 @@ lib/
                                #     taking the row without the list), the draw one of them
                                #     offers over the rows on show, the row another destination
                                #     asks it to reveal (ADR 19), the bulleted runs a card body
-                               #     names things in, byName, Set.toggle, and counted — how
-                               #     many of a thing there are, in words. The one file that
-                               #     knows a list scrolls (ADR 13)
+                               #     names things in, the row itself and the margin it is
+                               #     inset by — the lists' own by default, overridden by a
+                               #     form that pads its page already — byName, Set.toggle,
+                               #     and counted — how many of a thing there are, in words.
+                               #     The one file that knows a list scrolls (ADR 13)
                                #   vocabulary_dialogs — entry (name, aliases, colour, tags),
                                #     a bare name where only that is asked for, delete,
                                #     discard, plus VocabularyEntry and the one reading of
@@ -233,7 +235,7 @@ Two identity conventions:
 - **One name however it is capitalised** ([ADR 08](adr/08-names-ignore-case.md)). Every comparison — 
   uniqueness, lookup, reference resolution, delete blocking, rename — goes through `nameKey`; the 
   spelling stored is the spelling shown. Lookup maps are keyed by the fold, so resolution stays O(1).
-- **A bottle answers to more than one name** ([ADR 10](adr/10-ingredient-aliases.md)). 
+- **An ingredient answers to more than one name** ([ADR 10](adr/10-ingredient-aliases.md)). 
   `Ingredient.aliases` holds them and `Ingredient.spellings` is the name and the aliases together — 
   one namespace, unique under the fold, indexed by `ingredientNamed` so no caller learns an alias 
   exists. A reference is stored under the entry's own name, `withCanonicalIngredientNames` being the 
@@ -287,7 +289,7 @@ enum TagColor { teal('teal'), … slate('slate'); … }        // ADR 07, open t
 (FR-REC-8); `isBase` and `isOptional` are getters over it, and `marked(LineMark?)` is what
 sets and clears it — `copyWith` cannot, since null is its "keep what you have".
 
-**A line names one or more bottles** ([ADR 11](adr/11-substitutions-on-the-line.md)).
+**A line names one or more ingredients** ([ADR 11](adr/11-substitutions-on-the-line.md)).
 `RecipeLine.ingredients` is a never-empty `List<String>` with no singular accessor, so every reader
 decides for itself what a group means rather than quietly taking the first. It is the one entity
 list left unwrapped: `List.unmodifiable` would cost the `const` constructor the grammar leans on.
@@ -296,7 +298,7 @@ list left unwrapped: `List.unmodifiable` would cost the `const` constructor the 
 
 ```dart
 Ingredient? ingredientNamed(String name);
-String bottleNamed(String name);      // that entry's own spelling; unknown names stand
+String spellingOf(String name);      // that entry's own spelling; unknown names stand
 Recipe? recipeNamed(String name);
 List<Tag> tagsOf(TagKind kind);
 bool hasTag(TagKind kind, String name);
@@ -336,7 +338,7 @@ so `collection.dart` holds shape and invariants:
 Collection withSettings(Settings settings);
 typedef UnitEdit = ({Unit unit, String? was});        // the row and the name it came from
 Collection withUnits(List<UnitEdit> edits);                // the whole vocabulary, renames propagated
-Collection withCanonicalIngredientNames();                 // every line under its bottle's own name
+Collection withCanonicalIngredientNames();                 // every line under its ingredient's own name
 Collection withIngredient(Ingredient ingredient, {String? replacing});   // add, replace, rename
 Collection withoutIngredient(String name);
 Collection withStock(String ingredient, StockLevel stock);
@@ -462,12 +464,12 @@ Recipe? randomCanMake(Iterable<Recipe> candidates, Map<String, Availability> ava
     Random random, {String? besides});                // discovery.dart — FR-DIS-5
 
 const budgets = [1, 2, 3];                            // what the optimizer offers (FR-DIS-6)
-final class Purchase { List<String> bottles; List<String> unlocks; }   // both A→Z
+final class Purchase { List<String> ingredients; List<String> unlocks; }   // both A→Z
 List<Purchase> purchasesWithin(Collection collection, int budget,               // FR-DIS-6
     {int most = 25, bool restocking = false});                        // FR-DIS-7, ADR 16
 ```
 
-`canMake` is the one reading of what the bar can manage now — low still being a bottle, and a
+`canMake` is the one reading of what the bar can manage now — low still being something on hand, and a
 recipe the pass has yet to judge reading as missing, the rank the list's order already gives it.
 The optimizer (FR-DIS-6) asks the same question, so it asks it here. `randomCanMake` draws over
 *candidates handed to it* rather than over the collection: the caller is the list, and what it hands
@@ -476,29 +478,29 @@ is the recipe already standing — skipped while another can be made, so a secon
 and compared by name fold like every name (ADR 08).
 
 Base spirit is a predicate, not a placement ([ADR 12](adr/12-base-spirit-narrows.md)): `basesOf` 
-takes every alternative of every base line, so a marked group answers under each bottle it names, 
-and `baseSpirits` folds those into what the filter offers — resolved through `Collection.bottleNamed` 
-*before* being weighed for repetition, so two spellings of one bottle are one spirit; A→Z. 
-`bottleNamed` is also how a screen holding a pick reads it against a changed vocabulary, so a 
-bottle merely recased goes on narrowing; it is the one home for "this name, under the entry's own", 
+takes every alternative of every base line, so a marked group answers under each ingredient it names, 
+and `baseSpirits` folds those into what the filter offers — resolved through `Collection.spellingOf` 
+*before* being weighed for repetition, so two spellings of one ingredient are one spirit; A→Z. 
+`spellingOf` is also how a screen holding a pick reads it against a changed vocabulary, so an 
+ingredient merely recased goes on narrowing; it is the one home for "this name, under the entry's own", 
 which the optimizer, `withCanonicalIngredientNames` and delete blocking all ask for too. Comparison 
 runs through `names.dart`, which stays unexported — no screen folds a name itself.
 
 `purchasesWithin` answers FR-DIS-6 ([ADR 15](adr/15-the-optimizer-answers-with-the-best-few.md)); 
 the algorithm is in [architecture.md](architecture.md#domain-computations). It returns the best 
-`most` baskets *of each size*, not the best `most` overall, so a one-bottle win is never crowded 
-out by the three-bottle baskets that almost always unlock more — which is what will let the screen 
+`most` baskets *of each size*, not the best `most` overall, so a one-ingredient win is never crowded 
+out by the three-ingredient baskets that almost always unlock more — which is what will let the screen 
 ask for one size at a time off a single search.
 
 `restocking` is what "short" means ([ADR 16](adr/16-the-optimizer-buys-what-is-running-low.md), 
-FR-DIS-7): off, a line standing at out; on, a line short of full stock, so the bottles running low 
+FR-DIS-7): off, a line standing at out; on, a line short of full stock, so the ingredients running low 
 join the pool and the goal becomes ready rather than merely makeable. Decided in one place — the 
 whole search below reads "short", never "out" — which is why it costs the algorithm nothing. 
 `canMake` does not move: the traffic light, the recipe order and the random pick all go on reading 
 low as makeable, and it is the optimizer's own goal that shifts.
 
 One search at `budgets.last` answers every smaller budget as well: what it holds at a size or under 
-*is* that budget's own answer. A wider budget widens the pool, but only with bottles no recipe is 
+*is* that budget's own answer. A wider budget widens the pool, but only with ingredients no recipe is 
 short of on their own — they close nothing alone, so a basket carrying one is dropped as a passenger 
 whatever the budget was. That is what lets the screen search once and read a size off the result 
 ([ui-design.md](ui-design.md#shopping-screen)); it is pinned by test rather than asserted here.
@@ -575,7 +577,7 @@ creates cross-layer coupling [ADR 02](adr/02-persistence-and-export-format.md) a
    never cascades to spurious reference errors).
 5. Resolve `ValidationIssue.path` against parse tree for line numbers.
 6. Build `Collection` (cannot throw; duplicates ruled out), then `withCanonicalIngredientNames` — a
-   hand-edited line naming a bottle by an alias is held under the bottle's own name (ADR 10) — and 
+   hand-edited line naming an ingredient by an alias is held under the ingredient's own name (ADR 10) — and 
    answer a `BarPayload`: the collection, the file's `name`, and the `display` read out of 
    `settings`. Who keeps which of the three is the caller's, and it is where an import and a refresh 
    differ (ADR 21). A format-1 file carries no name and its `made:` was dropped at step 3.
@@ -743,7 +745,7 @@ Each mutation is one line over a `CollectionEdits` derivation. All run through a
 await the startup load, derive, publish, save the open bar. The three `upsert…`s with `replacing` 
 compose several derivations (whole form/dialog reaches disk as one collection, the rename it leaves 
 behind included). `upsertRecipe` ends on `withCanonicalIngredientNames`, so a line typed in any 
-spelling — another case, an alias — lands under the bottle it names, the bottles that same edit adds 
+spelling — another case, an alias — lands under the ingredient it names, the ingredients that same edit adds 
 included (ADR 08, ADR 10); the recipe form therefore stores what it was given rather than resolving 
 names itself. Awaiting the load makes edits during startup land on the loaded bar rather than 
 replace it. An edit that leaves the collection unchanged is not saved (no backup waste). UI never 
@@ -767,7 +769,7 @@ home ([ui-design.md](ui-design.md#bars)).
 `availabilityProvider` — `Map<String, Availability>` by recipe name, `availabilityOf` over every 
 recipe on each collection change; empty until the load lands. One pass serves the list's chips and, later, 
 the availability filter, the random pick and the optimizer. Per-line marks read `stockOfLine` 
-directly (the map answers per recipe, the card asks per line), and `stockOf` per bottle beneath it — 
+directly (the map answers per recipe, the card asks per line), and `stockOf` per ingredient beneath it — 
 so a card dims the alternatives it lacks against the same rule the verdict was reached by (ADR 11).
 
 Filter, search and order are presentation: widget state where the list is drawn, never persisted and 
@@ -799,7 +801,7 @@ enum's own index, which is the one place a variable destination list is felt.
 `budgets.last` so the screen reads one size off the one answer. `autoDispose`, and watched only 
 while the shopping screen is the destination on show: the shell tells each destination whether it 
 is (`ShoppingScreen.showing`), since `IndexedStack` keeps them alive and a stock tap on the 
-inventory would otherwise fire a search nobody is reading. The answer is let go with the screen and 
+ingredients screen would otherwise fire a search nobody is reading. The answer is let go with the screen and 
 made afresh on return — the search costs ~100ms at NFR-2 scale, which is a moment on arriving at a 
 screen and a stutter on every tap of another. On a guest bar the destination is absent, so nothing 
 watches it at all (FR-BAR-4).
@@ -859,7 +861,7 @@ Performance facts (no over-engineering):
    builds: one file, one form, the entry deciding only whether the owner's road founds a bar or 
    replaces the open one.
 6. **Reaching a row** (FR-DIS-9): a name tapped on one destination resolves to the entry's own 
-   (`bottleNamed`) and reaches `revealProvider.ask` → the shell switches and records what it left → 
+   (`spellingOf`) and reaches `revealProvider.ask` → the shell switches and records what it left → 
    the serving screen clears the request, its own picks and the open cards, and hands the name to 
    `VocabularyList` for one build → the list clears its search and order, goes home, then scrolls to 
    the row and washes it (ADR 13, ADR 19).

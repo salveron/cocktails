@@ -1,5 +1,5 @@
-/// The one list every vocabulary is drawn as — the inventory and both tag tabs
-/// alike (docs/ui-design.md#vocabulary-editing).
+/// The one list every vocabulary is drawn as — the ingredients and both tag
+/// tabs alike (docs/ui-design.md#vocabulary-editing).
 library;
 
 import 'dart:async';
@@ -61,17 +61,17 @@ typedef ListDraw<T> = ({
   String? Function(List<T> onShow) draw,
 });
 
-/// The tag row a list narrows by — the inventory's bottles and the recipes
-/// alike (FR-INV-3, FR-DIS-3): chips that double as the legend for the dots on
-/// the rows, and an entry kept only where it wears every one picked. A
-/// vocabulary with nothing in it has no row and narrows nothing.
+/// The tag row a list narrows by — the ingredients and the recipes alike
+/// (FR-ING-3, FR-DIS-3): chips that double as the legend for the dots on the
+/// rows, and an entry kept only where it wears every one picked. A vocabulary
+/// with nothing in it has no row and narrows nothing.
 ///
 /// [picked] is read against [vocabulary] through `wornInOrder` rather than
 /// trusted, so a tag deleted or renamed elsewhere stops narrowing rather than
-/// emptying the list, while one renamed only in its case goes on narrowing
-/// (ADR 08). That is the one home for reading picks against a vocabulary — the
-/// shopping card marks its recipes with the picks they answer off the same rule,
-/// so nothing is ever dotted by a pick that has stopped narrowing.
+/// emptying the list, while one renamed only in its case goes on narrowing (ADR
+/// 08). That is the one home for reading picks against a vocabulary — the
+/// shopping card marks its recipes with the picks they answer off the same
+/// rule, so nothing is ever dotted by a pick that has stopped narrowing.
 ///
 /// [leading] is a narrowing the screen builds itself — the recipes' base spirit
 /// (ADR 12). Its row stands first among the chips, in the one scroller, and its
@@ -116,8 +116,14 @@ class VocabularyRow extends StatelessWidget {
     this.trailing,
     this.body,
     this.onTap,
+    this.margin = listMargin,
     super.key,
   });
+
+  /// What a list insets its rows by, and what a form standing them among its
+  /// own fields overrides — a form pads its whole page already, so a row
+  /// keeping this would sit narrower than every field above it.
+  static const listMargin = EdgeInsets.symmetric(horizontal: 16, vertical: 4);
 
   final Widget title;
   final Widget? subtitle;
@@ -125,6 +131,7 @@ class VocabularyRow extends StatelessWidget {
 
   final Widget? trailing;
   final VoidCallback? onTap;
+  final EdgeInsets margin;
 
   @override
   Widget build(BuildContext context) {
@@ -136,7 +143,7 @@ class VocabularyRow extends StatelessWidget {
       onTap: onTap,
     );
     return Card.filled(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      margin: margin,
       color: Theme.of(context).colorScheme.surfaceContainer,
       clipBehavior: Clip.antiAlias,
       child: body == null
@@ -265,8 +272,8 @@ class VocabularyList<T> extends StatefulWidget {
   final VocabularyRow Function(T entry) rowOf;
 
   /// Every spelling the search matches an entry by — the name alone where a
-  /// screen names none. A bottle answers to its aliases too (ADR 10), and is
-  /// still found under the one name its row reads under.
+  /// screen names none. An ingredient answers to its aliases too (ADR 10), and
+  /// is still found under the one name its row reads under.
   final List<String> Function(T entry)? spellingsOf;
 
   final ListOrders<T> orders;
@@ -708,7 +715,7 @@ class _NoMatch extends StatelessWidget {
 
   /// Reason message: blames search and/or filter. "Answers to" rather than "is
   /// called": a query reaches an entry's other spellings too, and on the
-  /// recipes the bottles it is built from (FR-VOC-6, FR-DIS-2).
+  /// recipes the ingredients it is built from (FR-VOC-6, FR-DIS-2).
   String get _reason {
     final narrowing = this.narrowing;
     final causes = [

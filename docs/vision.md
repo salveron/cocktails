@@ -11,12 +11,12 @@ one person's where a channel was everyone's.
 
 ## Product idea
 
-One app: recipe collection + home-bar inventory.
+One app: recipe collection + home-bar ingredients.
 
 - **Structured recipes** — ingredients with measurements, tags, free-text notes.
-- **Live availability** — inventory determines automatically which recipes are makeable.
+- **Live availability** — stock determines automatically which recipes are makeable.
 - **Discovery** — search, filter by ingredient/tag/base spirit; shopping optimizer finds 
-  which 2–3 bottles unlock the most new drinks.
+  which 2–3 ingredients unlock the most new drinks.
 - **Portable data** — export/import one human-readable text file; bulk work outside the app.
 - **Bars of one's own, and others' to read** — the device holds several: each owned bar the
   reader's to keep and to share, each guest bar someone else's, read as it last arrived.

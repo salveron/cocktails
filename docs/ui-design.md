@@ -4,7 +4,7 @@ Screen/shell design. Modules [components.md](components.md), requirements [requi
 
 ## App shell
 
-- **Destinations per the bar** in Material 3 `NavigationBar` (NFR-1): Recipes, Inventory and 
+- **Destinations per the bar** in Material 3 `NavigationBar` (NFR-1): Recipes, Ingredients and 
   Shopping on an owned bar, the first two on a guest one (FR-BAR-4). The stack is indexed by 
   position in the list that bar offers, never by the enum's own index 
   ([components.md](components.md#state-contracts)). Material wants three to five and gets two here — 
@@ -15,12 +15,12 @@ Screen/shell design. Modules [components.md](components.md), requirements [requi
   the one on show — staying alive is free for two of the three, and not for the 
   [shopping screen](#shopping-screen).
 - **Theme**: seed colour, platform-picked light/dark. `dimmedInk` (`onSurfaceVariant` at 60%) is 
-  the one dim: a hint, so empty ≠ filled; a bottle a group offers that the bar lacks. One home, so 
+  the one dim: a hint, so empty ≠ filled; an ingredient a group offers that the bar lacks. One home, so 
   the two cannot drift.
 - **A name reaches its own row on another destination** (FR-DIS-9, 
   [ADR 19](adr/19-a-destination-sends-the-reader-to-another.md)): one tap, on a basket's recipes and 
-  bottles and on the bottles a recipe line names. **Nothing marks a name as a way out** — the ripple 
-  under the finger is the whole of it, as the inventory row's own tap is (FR-INV-2). An arrow 
+  ingredients and on the ingredients a recipe line names. **Nothing marks a name as a way out** — the ripple 
+  under the finger is the whole of it, as the ingredients row's own tap is (FR-ING-2). An arrow 
   per row was weighed and refused: the trailing slot already carries the tag dots and the stock dots, 
   and a widget repeated down every row is the clutter a per-line control was once reverted over. So 
   a run whose names lead somewhere reads exactly like one whose names do not — accepted, the two 
@@ -69,7 +69,7 @@ already says a screen follows, and "…" on top of it says the same thing twice.
   bars is the screen that manages them, and no second place holds half of it. **A card opens onto 
   counts, never contents**: the list reads the index alone (ADR 20), and since the counts are on the 
   record the card opens instantly and no second collection is ever resident.
-- **Rename and Delete sit behind the row's ⋮**, the control the inventory and both tag lists already 
+- **Rename and Delete sit behind the row's ⋮**, the control the ingredients and both tag lists already 
   use for exactly this. Buttons on the card was the first shape, on the grounds that the card already 
   opened to hold them; the ⋮ wins now that it is reachable **without** opening the card, which is 
   what a reader wants for the two operations that do not care what the bar holds. **Open bar** stays 
@@ -81,12 +81,16 @@ already says a screen follows, and "…" on top of it says the same thing twice.
   on this device is the reader's, exactly as the unit it reads in is (FR-BAR-3), and no refresh 
   takes their name back ([ADR 21](adr/21-the-file-carries-one-bar.md)). The owner's name for it is 
   where the field starts and nothing more.
-- **The subtitle says standing, never ownership**: "Loaded" on the bar the app has read, then 
-  "Updated 3 hours ago" for an owner's own edit or "Synced 2 days ago" for a guest's last answer from 
-  its source (FR-BAR-5). Coarse on purpose — the question it settles is whether to refresh, which no 
-  count of seconds makes clearer. A bar the device has never dated says nothing rather than guessing: 
-  an index written before stamps existed has no date to give, and "just now" would be a lie about it.
-- **Whose bar it is is a chip beside the ⋮** — "Owned" or "Guest" — read the way the inventory row's 
+- **The subtitle says how current, never ownership**: "Updated: 3 hours ago" for an owner's own edit 
+  or "Refreshed: 2 days ago" for a guest's last answer from its source (FR-BAR-5). Coarse on purpose 
+  — the question it settles is whether to refresh, which no count of seconds makes clearer. A bar the 
+  device has never dated says nothing rather than guessing: an index written before stamps existed 
+  has no date to give, and "just now" would be a lie about it. The label leads with a colon so the 
+  date reads as its answer rather than as more of the same sentence.
+- **No card says which bar is loaded.** "Loaded" stood on the open one while opening a card meant 
+  reading a file; cards have counted off the index since ([ADR 20](adr/20-the-app-holds-many-bars.md)), 
+  so the word marked nothing a reader could act on — and the open bar is the one they just came from.
+- **Whose bar it is is a chip beside the ⋮** — "Owned" or "Guest" — read the way the ingredients row's 
   stock chip is, and on the same traffic light: **green** for owned, **amber** for guest (see 
   [colours](#tag-and-stock-colours)). Scheme roles came first, on the grounds that a mode is no 
   reading on that light; the hues win because the light is not really about stock but about what 
@@ -112,7 +116,7 @@ already says a screen follows, and "…" on top of it says the same thing twice.
   fewer.
 - **Everything that writes is absent on a guest, never refused** (FR-BAR-4). One fact does it — 
   `barWriterProvider` answering null ([components.md](components.md#state-contracts)) — and every 
-  control is built from it: no add button on either list, no ⋮ on an inventory row, no Edit or Delete 
+  control is built from it: no add button on either list, no ⋮ on an ingredients row, no Edit or Delete 
   on a recipe card, and a row tap that no longer rotates the stock. **Scale & convert survives**, 
   being a way of reading the owner's line rather than a change to it, as do search, the narrowings, 
   the orders, the random pick and the jumps. A ⋮ with nothing left in it draws nothing rather than 
@@ -152,8 +156,8 @@ over a list. Save rides the app bar, where every other commit in the app sits, a
 before dropping what was typed — the recipe form's own frame (`editor_form.dart`).
 
 **It is the same screen [Import](#data) pushes.** One file, the same three questions — what to call 
-it, what it holds, where it goes — so founding and importing are one form reached two ways rather 
-than two screens drifting apart. What differs is the entry: founding starts with no file and the 
+it, what it holds, what mode it stands in — so founding and importing are one form reached two ways 
+rather than two screens drifting apart. What differs is the entry: founding starts with no file and the 
 roads **Owned | Guest**, importing starts with the file already picked and the roads 
 **Replace | Guest**, Replace being the same road as Owned at the other end of a bar's life. The 
 name field autofocuses only where the reader has typing to do — on the import entry the screen is 
@@ -161,19 +165,28 @@ there to be read, and a keyboard over it argues with that.
 
 - **From import is a button, not a row**: the form is not a menu, and the pick is the one thing on 
   it that leaves the screen. It is where **Find nearby** will stand when the LAN transport lands 
-  (FR-BAR-8), which is the other reason the section is "Contents" rather than "From a file".
+  (FR-BAR-8). It carries no heading of its own: the button says what it does, the note under it says 
+  what standing without one means, and a third voice over both would only repeat them.
 - **A file picked in is shown before it is agreed to** — the cards, the counts and the refusals of 
   [Import](#data), which is not a resemblance but the same screen. A file that will not read shows 
   its issues and offers no road: founding an empty bar in its place would be a lie about what became 
   of it.
-- **The road is a segmented choice, and it appears only once a file is in hand**: there is nothing 
-  to be a guest *of* until one is. It sits with the other controls, above the counts rather than 
-  after them — the form reads name, contents, road, and then ends on what the file holds, which is 
-  the one thing on the screen that is read rather than answered. **Owned** is a copy, this device's 
-  own to edit, with nothing linking it back — FR-BAR-2's "created from a file". **Replace** is that 
-  same road onto a bar that already exists (FR-DAT-3). **Guest** is the owner's, read-only, 
-  refreshed by a newer file they send (FR-BAR-3/5/7). Under it, one line saying what the chosen 
-  road will do, and to which bar by name.
+- **The road is a segmented choice under "Mode", and it appears only once a file is in hand**: there 
+  is nothing to be a guest *of* until one is. It sits with the other controls, above the counts rather 
+  than after them — the form reads name, file, mode, and then ends on **Contents**, what the file 
+  holds, which is the one thing on the screen that is read rather than answered. **Owned** is a copy, 
+  this device's own to edit, with nothing linking it back — FR-BAR-2's "created from a file". 
+  **Replace** is that same road onto a bar that already exists (FR-DAT-3). **Guest** is the owner's, 
+  read-only, refreshed by a newer file they send (FR-BAR-3/5/7).
+- **"Mode" is the one word the question is asked in**, here and on the chip the bar list reads it 
+  back under (FR-BAR-3) — it stood as "Whose bar" founding and "Where it goes" importing, which made 
+  one choice look like two. The segments differ by entry (Owned or Replace) because the road does; 
+  the question does not.
+- **One line under it says what the chosen road will do**, and only that. It named the bar it would 
+  replace and spelled out that a guest bar is "read to here" — a sentence carrying a word with two 
+  pronunciations, over two lines, in the place a reader is deciding. Each now fits a line: a copy to 
+  edit here that nothing refreshes, everything this bar holds replaced with a copy kept, or the 
+  owner's copy read-only and refreshed from their file.
 - **The name is the reader's on every road**, the guest one included: what a bar is called on this 
   device is theirs to choose exactly as the unit it reads in is (FR-BAR-3), and no refresh takes it 
   back. The field went quiet and read the owner's while a refresh still renamed the bar; with that 
@@ -191,8 +204,8 @@ there to be read, and a keyboard over it argues with that.
 ## Searchable lists
 
 `SearchField` pinned above (NFR-1). `matchesQuery`: case-insensitive, anywhere, no surrounding space.
-Applies to inventory (FR-INV-1) and recipes (FR-DIS-2) identically. Entries answering multiple names 
-(FR-VOC-6): match on any, show under entry's name — a recipe answers to its bottles' spellings too, 
+Applies to the ingredients (FR-ING-1) and recipes (FR-DIS-2) identically. Entries answering multiple names 
+(FR-VOC-6): match on any, show under entry's name — a recipe answers to its ingredients' spellings too, 
 so a query reaches what it is built from. Hence "answers to", not "is called", when nothing matches. 
 Filter and order alike are widget state, never persisted, never on the collection's side.
 
@@ -217,7 +230,7 @@ learns nothing about where a row stands.
 ## Vocabulary editing
 
 `VocabularyList`: search, sort orders, three faces, add button. Screen provides row display, 
-tap handler, sort key. Inventory: stock chip + stock order. Tags: tag + palette order. 
+tap handler, sort key. Ingredients: stock chip + stock order. Tags: tag + palette order. 
 Optional filter row narrows by custom predicate.
 
 Same two dialogs for ingredients and tags:
@@ -238,20 +251,20 @@ Successful add clears search. Recipes add pushes [recipe form](#recipe-form).
 
 - **Card in-place expansion** (single tap, NFR-1). Independent, collapse same tap. 
   Two open side-by-side, scroll stable.
-- **Compact**: name + tags (dots, inventory idiom) + ingredient names (`·`-joined, ellipsized), 
+- **Compact**: name + tags (dots, the ingredients idiom) + ingredient names (`·`-joined, ellipsized), 
   a group reading as prose within one slot. Amounts on expand.
 - **Expanded**: tags as chips, lines as `formatRecipeLine` writes, notes. Empty sections absent.
 - **Edit/delete** behind ⋮ (menu pairs with availability chip). Delete confirms. 
   Rename keeps card open.
-- **Filter row** under search: the base chip, then recipe tags as chips — the inventory's row 
+- **Filter row** under search: the base chip, then recipe tags as chips — the ingredients' row 
   exactly (FR-DIS-3, `tagFilter`, which takes the base chip as its leading filter so one scroller 
   carries both and one message joins their reasons). Narrows to recipes wearing *all* picked tags; 
   combines with search. Add clears every pick. Availability filters through the order it opens in, 
   not a chip.
 - **Base chip** (FR-DIS-4, [ADR 12](adr/12-base-spirit-narrows.md)): reads `Base: Any` / `Base: Gin` 
-  / `Base: None` — the dimension named, so it cannot be read as a tag called "Base", and the bottle 
+  / `Base: None` — the dimension named, so it cannot be read as a tag called "Base", and the ingredient 
   in the vocabulary's own spelling. Tapping opens **Any base**, **No base**, then every base spirit 
-  A→Z, the one in force ticked. `neutralSwatch`, since a bottle's name is neither tag nor signal; 
+  A→Z, the one in force ticked. `neutralSwatch`, since an ingredient's name is neither tag nor signal; 
   the arrow says the tap opens a menu. Ringed like a picked tag while it narrows (**Any base** 
   alone is unringed), and ringed transparent otherwise — so it keeps a tag chip's height and 
   spacing either way, `chipRadius` rounding both alike. Absent where nothing marks a base; a pick 
@@ -279,12 +292,12 @@ Successful add clears search. Recipes add pushes [recipe form](#recipe-form).
   Trailing slot outside expanding body. List opens in this order (FR-DIS-8).
 - **Line marks**: stock dot after line if the line is low/out (tooltip shows level); no dot = in 
   stock. Optional lines dotted too (dot + "(optional)" together).
-- **Each bottle a line names reaches the Inventory** (FR-DIS-9): the name alone is the target, so a 
+- **Each ingredient a line names reaches the Ingredients screen** (FR-DIS-9): the name alone is the target, so a 
   substitution group offers one per alternative where a whole-line tap could only have named the 
   first. The measure, the "or" and the "(optional)" answer nothing — the one place in the app where 
   half a line responds, which is what naming a *row* rather than a line costs.
 - **Substitution groups** (FR-REC-9, [ADR 11](adr/11-substitutions-on-the-line.md)): read as prose 
-  — "cognac or vodka" — open and shut alike, where the file writes `/`. Bottles the bar lacks fall 
+  — "cognac or vodka" — open and shut alike, where the file writes `/`. Ingredients the bar lacks fall 
   to `dimmedInk`, but only while it holds one; a group short of everything dims nothing and takes 
   the dot, so the dot keeps meaning "this line is the problem". Dot follows the group's best 
   (`stockOfLine`). The "or" is italic on the open card — two letters between two names need it. 
@@ -303,34 +316,34 @@ Create/edit: pushed page, Save in app bar. Mirrors file order (name, lines, tags
 - **Save blocked** until name passes live checks and all lines parse. `validateRecipe` checks 
   whole on save. Per-field issues under field; list-level refusals via snackbar.
 - **Unknown ingredients**: if only issue, confirm to add (out, untagged). Aliases resolve first 
-  (no near-duplicates offered). A group offers only the alternatives no bottle answers to.
+  (no near-duplicates offered). A group offers only the alternatives no ingredient answers to.
 - **Tags**: chip picker (recipe vocab). **Notes**: multiline field, opens one line tall.
 - **Back**: untouched pops silently; dirty asks to discard. Whole entry → one disk save.
 
-## Inventory screen
+## Ingredients screen
 
 - **Opens on stock (fullest first)** (FR-DIS-8). One row per ingredient on filled card. 
   Rows stable during edit.
 - **Stock chip** (green/amber/red with words; no hue decode). Fixed hues.
-- **Row tap** cycles stock `in → low → out → in` (FR-INV-2).
+- **Row tap** cycles stock `in → low → out → in` (FR-ING-2).
 - **Edit/delete** behind ⋮. Edit dialog: name, aliases, tags. Whole entry → one save. 
-  New bottle starts out.
+  New ingredient starts out.
 - **Tags as dots** after name (vocab order; must match legend colour).
 - **Filter row** (legend): ingredient tags as chips (horizontal scroll). Picking narrows to 
-  bottles with *all* picked tags (combines with name search, FR-INV-3). Add clears picks.
+  ingredients with *all* picked tags (combines with name search, FR-ING-3). Add clears picks.
 - **Three faces**: empty, no match, list (third names narrowing source).
 
 ## Shopping screen
 
 - **Budget picks exactly N** (FR-DIS-6): `SegmentedButton` 1/2/3, reading the baskets of *that* many 
-  bottles rather than up to that many. The best few of each size come off one search 
-  ([ADR 15](adr/15-the-optimizer-answers-with-the-best-few.md)), so a one-bottle win is never buried 
-  under the three-bottle baskets that almost always unlock more.
+  ingredients rather than up to that many. The best few of each size come off one search 
+  ([ADR 15](adr/15-the-optimizer-answers-with-the-best-few.md)), so a one-ingredient win is never buried 
+  under the three-ingredient baskets that almost always unlock more.
 - **One search, not three**: the screen searches once at the largest budget and reads a size off the 
   answer, moving between sizes costing nothing. Why that is the same answer: 
   [components.md](components.md#computations).
 - **"Low too" switch** (FR-DIS-7, [ADR 16](adr/16-the-optimizer-buys-what-is-running-low.md)): what 
-  counts as short. Off, only what is out of stock; on, anything short of full stock, so the bottles 
+  counts as short. Off, only what is out of stock; on, anything short of full stock, so the ingredients 
   running low are bought beside the missing ones. Two words on the switch, the sentence in its tooltip 
   — the label is what a reader scans, not what teaches them.
 - **The tags say what to shop for** (FR-DIS-10): the [recipes screen](#recipes-screen)'s chip row, the 
@@ -352,14 +365,14 @@ Create/edit: pushed page, Save in app bar. Mirrors file order (name, lines, tags
   Segments sit at 48dp — a touch target's own floor, and `visualDensity` is what reaches them, 
   `minimumSize` being dropped on the way to a segment.
 - **Cards expand in place**, the [recipes screen](#recipes-screen)'s idiom: the title is 
-  `Shopping Cart #N` — where the basket ranks, `#1` being the best at the size in force — the bottles 
+  `Shopping Cart #N` — where the basket ranks, `#1` being the best at the size in force — the ingredients 
   the subtitle, `+`-joined and clipped, trailing the count in `onSurfaceVariant`. A number is no 
   signal, so no chip; and the headline being the rank, the count beside it is read as the ranking 
   rather than as a name no two of which are the same length.
-- **A basket is its bottles** (FR-DIS-6) **and the rank is only where it stands**, so an open card is 
-  remembered under the bottles: the budget moved away and back finds it open where it was, and `#1` at 
+- **A basket is its ingredients** (FR-DIS-6) **and the rank is only where it stands**, so an open card is 
+  remembered under the ingredients: the budget moved away and back finds it open where it was, and `#1` at 
   another size is another basket, shut.
-- **Nothing is named twice.** Open, the subtitle goes and the bottles read in the body instead — 
+- **Nothing is named twice.** Open, the subtitle goes and the ingredients read in the body instead — 
   labelled `Ingredients`, each at the level it stands at — beside `Unlocks` and every recipe in full. 
   Two labelled runs of bullets, which is how a card body names things on the [import review](#data) 
   and the same `BulletRuns` widget. `Buy` was weighed as the first label and refused: the controls row 
@@ -371,10 +384,10 @@ Create/edit: pushed page, Save in app bar. Mirrors file order (name, lines, tags
   nothing is marked at all while nothing narrows. Every tag a recipe wears was weighed and refused — 
   that is the recipe list's reading, where the dots are the row's own subject; on a basket it would 
   bury the answer among tags that had nothing to do with why the basket is here.
-- **Every name on an open basket leads somewhere** (FR-DIS-9): a bottle to the Inventory, a recipe to 
+- **Every name on an open basket leads somewhere** (FR-DIS-9): an ingredient to the Ingredients screen, a recipe to 
   the Recipes, one tap either way. The card behind stays open and keeps its budget, so back lands on 
   the basket the reader left rather than on a screen rebuilt from nothing.
-- **The stock dots are what the switch is worth reading**: restocking mixes a bottle merely running low 
+- **The stock dots are what the switch is worth reading**: restocking mixes an ingredient merely running low 
   with one there is none of, and the open card is where that is told. Plain, they all read out, which 
   is the same thing a recipe card says about a line it is short of.
 - **Three empty states**, told apart by why there is nothing: no recipes to be short of; nothing short 
@@ -466,7 +479,7 @@ screen, not the row that starts it.
   two of them, and giving each its own shape would make one act look like two. It is the *same* 
   screen a bar is founded on — a file arriving asks the same three questions wherever the reader 
   picked it, and two screens asking them apart is how the two answers drift.
-- **What the file holds stands in for its name**, and opens. Recipes, ingredients, tags and units, 
+- **The contents stand in for the file's name**, and open. Recipes, ingredients, tags and units, 
   recipes first — a reader tells one file from another by its recipes long before by its units. 
   Android hands over no filename worth showing 
   ([ADR 18](adr/18-data-crosses-the-edge-in-a-system-sheet.md)), and the collection is what is being 
@@ -474,12 +487,16 @@ screen, not the row that starts it.
   it, cut off at one line; tapped, the card gives every name it counted. **Nothing is cut short**: a 
   list that stopped at fifty is exactly where the entry a reader came looking for would have been.
 - **Each kind is named and ordered as the screen that manages it names and orders it** — the nouns 
-  and the A→Z of `inventory_screen.dart` and `tags_screen.dart`, and the declared order 
+  and the A→Z of `ingredients_screen.dart` and `tags_screen.dart`, and the declared order 
   `units_screen.dart` leaves standing, the fixed three coming first 
   ([ADR 17](adr/17-the-fixed-units-interconvert.md)). A card is then the list it stands for, read 
   early. The two tag vocabularies share one count but keep their own runs in the body, labelled, 
   since one name may stand in both ([ADR 07](adr/07-tag-colour.md)); an empty run is left out rather 
   than heading nothing, and a kind the file holds none of offers no chevron and answers no tap.
+- **The cards run to the width of the fields above them.** `VocabularyRow` insets itself for the 
+  lists it was written for, which on a form that already pads its own page left the counts standing 
+  narrower than the name field and the segments — a difference with nothing behind it. The row takes 
+  its margin as an argument, defaulted to the lists' own, so the inset is still said in one place.
 - **The roads are a segmented choice, and Save is the commit** — the form's own shape 
   (`editor_form.dart`), where two app-bar buttons stood before. **Replace** puts the file in place 
   of everything the open bar holds, a copy kept first (FR-DAT-3); **Guest** leaves that bar alone 

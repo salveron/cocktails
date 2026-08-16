@@ -124,7 +124,7 @@ ingredients:
   - {name: rich demerara syrup, tags: [syrup, homemade]}   # stock omitted = out
   - {name: egg white, stock: in}                           # untagged
 
-ingredient_tags:                       # what a bottle can be labelled
+ingredient_tags:                       # what an ingredient can be labelled
   - {name: citrus, color: sand}
   - {name: homemade, color: slate}
   - {name: syrup, color: indigo}
@@ -214,26 +214,26 @@ dropped whole rather than read as a bar that holds none of it.
 
 - **Availability** (required lines only): all `in` = makeable; none `out` but some `low` = makeable-low; 
   any `out` = missing. A line stands at its best-stocked alternative (`stockOfLine`, FR-REC-9). 
-  Derived provider, never stored. Lost bottles read as `out`.
+  Derived provider, never stored. Lost ingredients read as `out`.
 - **Base spirit** (FR-DIS-4, [ADR 12](adr/12-base-spirit-narrows.md)): a predicate, not a placement. 
-  Every alternative of every base line counts, so a group matches under each bottle it names; the 
+  Every alternative of every base line counts, so a group matches under each ingredient it names; the 
   spirits offered are read off the recipes, deduped by name key and read A→Z.
 - **Random pick** (FR-DIS-5): drawn from the rows on show, so every narrowing already holds; 
   `canMake` is the one reading of what counts (low does, unjudged does not), shared with the 
   optimizer below. The draw moves off the recipe already standing while another can be made, so a 
   second roll always answers differently.
 - **Optimizer** (FR-DIS-6, [ADR 15](adr/15-the-optimizer-answers-with-the-best-few.md)): a missing 
-  recipe's gap is not one set of bottles but a choice between several — any one alternative of a 
+  recipe's gap is not one set of ingredients but a choice between several — any one alternative of a 
   group closes its line (ADR 11) — so the ways of making it are the cross product over the lines it 
-  is short of, cut at N. The bottles worth weighing are exactly those gaps', and every basket of ≤ N 
+  is short of, cut at N. The ingredients worth weighing are exactly those gaps', and every basket of ≤ N 
   drawn from them is scored by the recipes some part of it closes. A basket must beat each of its 
   own smaller selves, or it *is* one of them carrying a passenger; a sub-basket's recipes being 
-  always a subset, comparing counts settles it. Ranked by recipes unlocked, then fewest bottles, 
+  always a subset, comparing counts settles it. Ranked by recipes unlocked, then fewest ingredients, 
   then A→Z. Zero-yield never arises — it cannot beat its own parts. What counts as short is the 
   one thing the reader sets ([ADR 16](adr/16-the-optimizer-buys-what-is-running-low.md)): out of 
-  stock, or anything short of full stock, which is what puts the bottles running low in the pool. 
+  stock, or anything short of full stock, which is what puts the ingredients running low in the pool. 
   Keeping the best few *of each size* is also what makes one search answer every budget, since the 
-  bottles a wider one adds close nothing on their own ([components.md](components.md#computations)).
+  ingredients a wider one adds close nothing on their own ([components.md](components.md#computations)).
 - **Line parsing**: shared parser/formatter, both routes (form, codec); takes unit vocabulary 
   (decides unit vs. name). Codec reads `units` first.
 - **Display transforms** (FR-REC-7, FR-SET-1): factor multiplies amounts (range ends together); 

@@ -24,7 +24,7 @@ void main() {
     mode: BarMode.owner,
   ).summarised(annaCollection, at: earlier);
 
-  /// A guest bar, so the mode chip and the sync line have something to say.
+  /// A guest bar, so the mode chip and the refresh line have something to say.
   final ada = Bar(
     id: 'ada001',
     name: "Ada's bar",
@@ -88,14 +88,13 @@ void main() {
       expect(find.text('Open bar'), findsNothing);
     });
 
-    testWidgets('the closed card says which bar is loaded, and how current', (
-      tester,
-    ) async {
+    testWidgets('the closed card says how current the bar is', (tester) async {
       await openBars(tester, store: shelfOf([home, anna, ada], {}));
-      expect(find.text('Loaded · Updated 3 hours ago'), findsOneWidget);
-      expect(find.text('Updated 3 hours ago'), findsOneWidget);
+      // The bar on show dates itself as every other does: opening one loads
+      // nothing a card could report, so no card says which is loaded.
+      expect(find.text('Updated: 3 hours ago'), findsNWidgets(2));
       // A guest bar dates its source's last answer, not an edit of its own.
-      expect(find.text('Synced 2 days ago'), findsOneWidget);
+      expect(find.text('Refreshed: 2 days ago'), findsOneWidget);
     });
 
     testWidgets('a bar never yet dated says nothing rather than guessing', (
@@ -246,7 +245,7 @@ void main() {
       tester,
     ) async {
       await pumpApp(tester, store: twoBars());
-      await goTo(tester, 'Inventory');
+      await goTo(tester, 'Ingredients');
       await tap(tester, find.byTooltip('Settings'));
       await tap(tester, find.text('Change bar'));
       await openCard(tester, 'Home bar');

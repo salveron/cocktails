@@ -1,16 +1,16 @@
-# ADR: A line may name more than one bottle
+# ADR: A line may name more than one ingredient
 
 **Status:** Accepted
 
 ## Context
 
-Recipes often work with any one of several bottles — cognac or vodka, lemon or lime. The pilot ruled
+Recipes often work with any one of several ingredients — cognac or vodka, lemon or lime. The pilot ruled
 substitutions out, so such a recipe was written twice or written wrong. Reversing that is a product
 decision; how it is written is this one. Decided before substitutions were built.
 
 ## Decision
 
-**A recipe line names one or more bottles; any one of them on hand makes the line.**
+**A recipe line names one or more ingredients; any one of them on hand makes the line.**
 
 - `RecipeLine.ingredients` is `List<String>`, never empty; no singular accessor.
 - Separator is `/` — `1 part cognac / vodka (base)`. Split after unit and mark decided; mark governs group.
@@ -24,8 +24,8 @@ decision; how it is written is this one. Decided before substitutions were built
 
 ## Alternatives considered
 
-- ` or ` separator: reserved English word from every bottle name (heavier than punctuation).
-- Conditional split (tail names no bottle): adding bottles silently changes meaning; needs vocabulary.
+- ` or ` separator: reserved English word from every ingredient name (heavier than punctuation).
+- Conditional split (tail names no ingredient): adding ingredients silently changes meaning; needs vocabulary.
 - `substitutes:` on ingredient: global choice, wrong per-recipe (ADR 06 moved base to line).
 - Amount per alternative: second measure to scale/convert; notes field covers this.
 - `List.unmodifiable`: breaks `const` constructor and grammar tests.
@@ -42,5 +42,5 @@ decision; how it is written is this one. Decided before substitutions were built
   base a predicate: a group matches under every alternative it names.
 - **The optimizer** must count a group as satisfied by any one purchase (FR-DIS-6) — which
   reshaped its search rather than adjusting it: what a missing recipe needs stops being one set of
-  bottles and becomes a choice between several, so the ways of making it are the cross product over
+  ingredients and becomes a choice between several, so the ways of making it are the cross product over
   the lines it is short of ([ADR 15](15-the-optimizer-answers-with-the-best-few.md)).

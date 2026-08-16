@@ -44,7 +44,7 @@ ParsedLine tryParseRecipeLine(String text, List<Unit> units) {
   if (measured == null) {
     return (line: null, problem: _shapeProblem(trimmed));
   }
-  // The mark came off first, so it governs the group, not one bottle of it.
+  // The mark came off first, so it governs the group, not one ingredient of it.
   final ingredients = measured.ingredient.split(_separator);
   if (ingredients.any((name) => name.isEmpty)) {
     return (

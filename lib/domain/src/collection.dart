@@ -14,7 +14,7 @@ enum StockLevel {
   final String token;
   const StockLevel(this.token);
 
-  /// Next step in a bottle's lifecycle (FR-INV-2).
+  /// Next step in an ingredient's lifecycle (FR-ING-2).
   /// Declaration order is the life; wire tokens are independent.
   StockLevel get next => values[(index + 1) % values.length];
 
@@ -92,7 +92,8 @@ final class Ingredient {
   final String name;
   final StockLevel stock;
 
-  /// Other spellings a bottle answers to (FR-VOC-6, ADR-10): for finding, not showing.
+  /// Other spellings an ingredient answers to (FR-VOC-6, ADR-10): for finding,
+  /// not showing.
   final List<String> aliases;
 
   /// Names from the ingredient-tag vocabulary (FR-VOC-4), optional.
@@ -465,9 +466,9 @@ final class Collection {
   /// The entry [name] names, any case, any spelling (ADR-08, ADR-10).
   Ingredient? ingredientNamed(String name) => _ingredientsByName[nameKey(name)];
 
-  /// [name] under the bottle's own spelling — what a reference is stored as and
-  /// an offering reads in. A name outside the vocabulary stands as it came.
-  String bottleNamed(String name) => ingredientNamed(name)?.name ?? name;
+  /// [name] under the ingredient's own spelling — what a reference is stored as
+  /// and an offering reads in. A name outside the vocabulary stands as it came.
+  String spellingOf(String name) => ingredientNamed(name)?.name ?? name;
 
   Recipe? recipeNamed(String name) => _recipesByName[nameKey(name)];
 

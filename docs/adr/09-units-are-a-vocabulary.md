@@ -16,7 +16,7 @@ were built.
 - `Unit` becomes an entity — a name and a plural, the plural empty where it reads the same as the
   name (`ml`, `oz`). A `units:` section holds them, seeded with today's seven; an absent section
   reads as those seven, so every file written before this loads unchanged.
-- `RecipeLine.unit` is the unit's name, as `ingredient` is the bottle's: a reference resolved
+- `RecipeLine.unit` is the unit's name, as `RecipeLine.ingredients` are the entries': a reference resolved
   against the vocabulary and folded like every other name ([ADR 08](08-names-ignore-case.md)).
   Rename propagates into every line; delete is blocked while a line uses it — FR-VOC-1's rule, with
   a fourth vocabulary under it.
@@ -37,7 +37,7 @@ were built.
   editable. `Settings.display` stays a two-valued enum: it chooses between the two fixed units, not
   among the vocabulary. A hand-edited file that drops one is reported, not repaired.
 - A line whose unit the vocabulary no longer holds prints as written and is reported as an unknown
-  unit — the treatment a line naming a lost bottle already gets.
+  unit — the treatment a line naming a lost ingredient already gets.
 - `format` stays `1` ([ADR 06](06-base-spirit-on-the-line.md): the schema is unreleased).
 
 ## Alternatives considered

@@ -342,7 +342,7 @@ void main() {
       );
       expect(
         _violations(
-          'ui/screens/inventory_screen.dart',
+          'ui/screens/ingredients_screen.dart',
           _imports([
             'package:cocktails/domain/domain.dart',
             'package:cocktails/state/state.dart',
@@ -395,7 +395,7 @@ void main() {
       expect(
         _violations(
           'state/src/derived.dart',
-          _imports(['package:cocktails/ui/screens/inventory_screen.dart']),
+          _imports(['package:cocktails/ui/screens/ingredients_screen.dart']),
         ),
         isNotEmpty,
       );
@@ -406,7 +406,7 @@ void main() {
       () {
         expect(
           _violations(
-            'ui/screens/inventory_screen.dart',
+            'ui/screens/ingredients_screen.dart',
             _imports(['package:cocktails/data/data.dart']),
           ),
           isNotEmpty,
@@ -502,7 +502,7 @@ void main() {
     test('a screen naming the raw write route is caught', () {
       expect(
         _writeRouteViolations(
-          'ui/screens/inventory_screen.dart',
+          'ui/screens/ingredients_screen.dart',
           'ref.read(shelfProvider.notifier).editCollection((c) => c);',
         ),
         isNotEmpty,

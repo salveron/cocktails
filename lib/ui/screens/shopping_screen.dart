@@ -8,7 +8,7 @@ import '../widgets/color_chip.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/vocabulary_list.dart';
 
-String _bottlesOf(Purchase purchase) => purchase.bottles.join(' + ');
+String _ingredientsOf(Purchase purchase) => purchase.ingredients.join(' + ');
 
 String _countOf(Purchase purchase) =>
     counted(purchase.unlocks.length, 'recipe');
@@ -16,19 +16,19 @@ String _countOf(Purchase purchase) =>
 /// What the switch widens the search to, spelt out where two words on it
 /// cannot (FR-DIS-7, ADR 16).
 const _lowMeans =
-    'Buys the bottles running low alongside the ones out of stock.';
+    'Buys the ingredients running low alongside the ones out of stock.';
 
 /// What to buy next (FR-DIS-6, FR-DIS-7, FR-DIS-10): the baskets of exactly the
-/// budget's worth of bottles, best first, narrowed to the categories picked,
-/// each opening onto what it unlocks. Designed in
+/// budget's worth of ingredients, best first, narrowed to the categories
+/// picked, each opening onto what it unlocks. Designed in
 /// docs/ui-design.md#shopping-screen.
 class ShoppingScreen extends ConsumerStatefulWidget {
   const ShoppingScreen({required this.showing, super.key});
 
   /// Whether this is the destination on show. The shell keeps all three alive,
   /// and the optimizer is the one computation that must not run for a screen
-  /// nobody is looking at — a stock tap on the inventory would otherwise fire
-  /// a search whose answer no one is reading.
+  /// nobody is looking at — a stock tap on the ingredients screen would
+  /// otherwise fire a search whose answer no one is reading.
   final bool showing;
 
   @override
@@ -38,7 +38,7 @@ class ShoppingScreen extends ConsumerStatefulWidget {
 class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
   int _budget = budgets.first;
 
-  /// Whether a bottle running low counts as short (ADR 16).
+  /// Whether an ingredient running low counts as short (ADR 16).
   bool _restocking = false;
 
   final _expanded = <String>{};
@@ -65,7 +65,7 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
     final onShow = [
       for (final (rank, purchase)
           in purchases
-              .where((purchase) => purchase.bottles.length == _budget)
+              .where((purchase) => purchase.ingredients.length == _budget)
               .indexed)
         if (filter?.test(purchase) ?? true) (rank: rank + 1, basket: purchase),
     ];
@@ -123,14 +123,14 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
     required List<Tag> lit,
     required Map<String, List<String>> worn,
   }) {
-    final bottles = _bottlesOf(purchase);
-    final expanded = _expanded.contains(bottles);
+    final ingredients = _ingredientsOf(purchase);
+    final expanded = _expanded.contains(ingredients);
     final theme = Theme.of(context);
     return VocabularyRow(
       title: Text('Shopping Cart #$rank'),
       subtitle: expanded
           ? null
-          : Text(bottles, maxLines: 1, overflow: TextOverflow.ellipsis),
+          : Text(ingredients, maxLines: 1, overflow: TextOverflow.ellipsis),
       trailing: Text(
         _countOf(purchase),
         style: theme.textTheme.labelMedium?.copyWith(
@@ -145,7 +145,7 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
               worn: worn,
             )
           : null,
-      onTap: () => setState(() => _expanded.toggle(bottles)),
+      onTap: () => setState(() => _expanded.toggle(ingredients)),
     );
   }
 
@@ -164,7 +164,7 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
         icon: Icons.local_bar_outlined,
         title: 'No recipes yet',
         message:
-            'Add a few recipes and the bottles that unlock the most of them '
+            'Add a few recipes and the ingredients that unlock the most of them '
             'appear here.',
       );
     }
@@ -173,15 +173,17 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
         icon: Icons.shopping_cart_outlined,
         title: 'Nothing to shop for',
         message: _restocking
-            ? 'Every bottle the recipes ask for is fully in stock.'
+            ? 'Every ingredient the recipes ask for is fully in stock.'
             : 'Every recipe here can be made from what is on the shelf.',
       );
     }
     final narrowing = filter?.narrowing;
-    final basket = _budget == 1 ? 'single bottle' : '$_budget-bottle basket';
+    final basket = _budget == 1
+        ? 'single ingredient'
+        : '$_budget-ingredient basket';
     final sizes = purchases
         .where((purchase) => filter?.test(purchase) ?? true)
-        .map((purchase) => purchase.bottles.length);
+        .map((purchase) => purchase.ingredients.length);
     final elsewhere = sizes.isEmpty
         ? null
         : sizes.reduce((a, b) => a < b ? a : b);
@@ -191,21 +193,21 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
       message: narrowing != null
           ? 'No $basket here unlocks a recipe matching $narrowing.'
           : _budget == 1
-          ? 'No single bottle unlocks a recipe on its own here.'
+          ? 'No single ingredient unlocks a recipe on its own here.'
           : 'Every $basket does no better than a smaller one inside it.',
       action: elsewhere == null
           ? null
           : FilledButton.tonal(
               onPressed: () => setState(() => _budget = elsewhere),
-              child: Text('Try ${counted(elsewhere, 'bottle')}'),
+              child: Text('Try ${counted(elsewhere, 'ingredient')}'),
             ),
     );
   }
 }
 
-/// The budget and what counts as short, on the one row above the list — the
-/// two things a reader sets, and the whole of what the answer below depends on.
-/// The switch says its meaning in two words and carries the rest as its tooltip.
+/// The budget and what counts as short, on the one row above the list — the two
+/// things a reader sets, and the whole of what the answer below depends on. The
+/// switch says its meaning in two words and carries the rest as its tooltip.
 class _Controls extends StatelessWidget {
   const _Controls({
     required this.budget,
@@ -240,7 +242,7 @@ class _Controls extends StatelessWidget {
                     ButtonSegment(
                       value: size,
                       label: Text('$size'),
-                      tooltip: counted(size, 'bottle'),
+                      tooltip: counted(size, 'ingredient'),
                     ),
                 ],
                 selected: {budget},
@@ -273,14 +275,16 @@ class _Controls extends StatelessWidget {
   }
 }
 
-/// The open card: what to buy, each bottle at the level it stands at, then
+/// The open card: what to buy, each ingredient at the level it stands at, then
 /// every recipe the basket unlocks, each marking the picks it answered
 /// (FR-DIS-10). The stock dots are what the switch is worth reading — with it
-/// on, a basket mixes bottles merely running low with ones there are none of.
+/// on, a basket mixes ingredients merely running low with ones there are none
+/// of.
 ///
 /// Every name here reaches the row it stands for, on the destination that keeps
-/// it (FR-DIS-9, ADR 19): a bottle the Inventory, a recipe the Recipes. A basket
-/// holds entries' own names, so nothing here resolves a spelling.
+/// it (FR-DIS-9, ADR 19): an ingredient the Ingredients screen, a recipe the
+/// Recipes. A basket holds entries' own names, so nothing here resolves a
+/// spelling.
 class _Basket extends ConsumerWidget {
   const _Basket({
     required this.collection,
@@ -302,10 +306,13 @@ class _Basket extends ConsumerWidget {
       (
         label: 'Ingredients',
         bullets: [
-          for (final bottle in purchase.bottles)
-            (name: bottle, trailing: StockDot(stockOf(collection, bottle))),
+          for (final ingredient in purchase.ingredients)
+            (
+              name: ingredient,
+              trailing: StockDot(stockOf(collection, ingredient)),
+            ),
         ],
-        onTap: (bottle) => reach(Destination.inventory, bottle),
+        onTap: (ingredient) => reach(Destination.ingredients, ingredient),
       ),
       (
         label: 'Unlocks',

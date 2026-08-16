@@ -8,7 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'destinations.dart';
 import 'screens/bars_screen.dart';
-import 'screens/inventory_screen.dart';
+import 'screens/ingredients_screen.dart';
 import 'screens/recipes_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/shopping_screen.dart';
@@ -71,11 +71,11 @@ class _Home extends ConsumerWidget {
 Widget _screenOf(Destination destination, {required bool showing}) =>
     switch (destination) {
       Destination.recipes => const RecipesScreen(),
-      Destination.inventory => const InventoryScreen(),
+      Destination.ingredients => const IngredientsScreen(),
       Destination.shopping => ShoppingScreen(showing: showing),
     };
 
-/// IndexedStack keeps destinations alive for scroll/search state preservation (NFR-1).
+/// IndexedStack keeps destinations alive: scroll and search state (NFR-1).
 class AppShell extends ConsumerStatefulWidget {
   const AppShell({super.key});
 

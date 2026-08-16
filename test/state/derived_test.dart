@@ -58,19 +58,25 @@ void main() {
       });
     });
 
-    test('one stock tap moves every recipe that bottle stands in', () async {
-      final container = await started(stored);
-      await container.read(barWriterProvider)!.setStock('gin', StockLevel.out);
-      expect(container.read(availabilityProvider), {
-        'Negroni': Availability.missing,
-        'Gin Shot': Availability.missing,
-      });
-    });
+    test(
+      'one stock tap moves every recipe that ingredient stands in',
+      () async {
+        final container = await started(stored);
+        await container
+            .read(barWriterProvider)!
+            .setStock('gin', StockLevel.out);
+        expect(container.read(availabilityProvider), {
+          'Negroni': Availability.missing,
+          'Gin Shot': Availability.missing,
+        });
+      },
+    );
   });
 
   group('purchasesProvider', () {
-    /// A bar out of both bottles: the pair unlocks both recipes and gin alone
-    /// unlocks one, so the one answer has to carry two sizes to be complete.
+    /// A bar out of both ingredients: the pair unlocks both recipes and gin
+    /// alone unlocks one, so the one answer has to carry two sizes to be
+    /// complete.
     final short = Collection(
       ingredients: [Ingredient('gin'), Ingredient('campari')],
       recipes: stored.recipes,
@@ -80,10 +86,13 @@ void main() {
       'searches at the largest budget, every size in the one answer',
       () async {
         final container = await started(short);
-        expect(container.read(purchasesProvider(false)).map((p) => p.bottles), [
-          ['campari', 'gin'],
-          ['gin'],
-        ]);
+        expect(
+          container.read(purchasesProvider(false)).map((p) => p.ingredients),
+          [
+            ['campari', 'gin'],
+            ['gin'],
+          ],
+        );
       },
     );
 
@@ -95,7 +104,9 @@ void main() {
         ),
       );
       expect(container.read(purchasesProvider(false)), isEmpty);
-      expect(container.read(purchasesProvider(true)).single.bottles, ['gin']);
+      expect(container.read(purchasesProvider(true)).single.ingredients, [
+        'gin',
+      ]);
     });
   });
 

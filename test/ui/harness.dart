@@ -309,7 +309,8 @@ Future<void> typeInto(WidgetTester tester, Finder target, String text) async {
 Future<void> type(WidgetTester tester, String text) =>
     typeInto(tester, dialogField, text);
 
-/// The one comma-separated field a bottle's other spellings are typed into.
+/// The one comma-separated field an ingredient's other spellings are typed
+/// into.
 final aliasesField = field('Also known as (comma-separated)');
 
 /// Types [text] into it.
@@ -397,19 +398,21 @@ String showing(WidgetTester tester) =>
         .split("'s ")
         .last;
 
-/// The whole title over [destination]: the bar's name, then the destination. One
-/// home for the possessive, so a test naming the destination alone cannot pass
-/// while the title says something else.
+/// The whole title over [destination]: the bar's name, then the destination.
+/// One home for the possessive, so a test naming the destination alone cannot
+/// pass while the title says something else.
 Finder shellTitle(String destination, {String bar = 'Home bar'}) =>
     find.widgetWithText(AppBar, "$bar's $destination");
 
-/// Taps the bottom bar's [label] — a destination the reader chose, never a jump.
+/// Taps the bottom bar's [label] — a destination the reader chose, never a
+/// jump.
 Future<void> goTo(WidgetTester tester, String label) => tap(
   tester,
   find.descendant(of: find.byType(NavigationBar), matching: find.text(label)),
 );
 
-/// A bulleted name in a card's body — a basket's bottles and its recipes alike.
+/// A bulleted name in a card's body — a basket's ingredients and its recipes
+/// alike.
 Finder bullet(String name) => find.text('• $name');
 
 /// Opens the orders the list can be read in, or shuts them again.
@@ -505,9 +508,9 @@ bool baseRinged(WidgetTester tester) =>
 Finder chipOf(WidgetTester tester, String label) =>
     find.ancestor(of: find.text(label), matching: find.byType(ColorChip));
 
-/// What that menu is offering, told apart from the list standing behind it — a
-/// bottle's name is on the card of every recipe built from it, so a reading not
-/// held to the menu would find both.
+/// What that menu is offering, told apart from the list standing behind it — an
+/// ingredient's name is on the card of every recipe built from it, so a reading
+/// not held to the menu would find both.
 final _baseMenu = find.byWidgetPredicate((widget) => widget is PopupMenuItem);
 
 /// Picks [label] out of that chip's menu — a spirit, "No base" or "Any base".
@@ -527,7 +530,7 @@ Future<List<String>> baseChoices(WidgetTester tester) async {
   ];
 }
 
-/// Toggles the tag [name] in a chip row — the inventory's filter or the
+/// Toggles the tag [name] in a chip row — the ingredients' filter or the
 /// recipe form's picker, which are the same row twice.
 Future<void> pickTag(WidgetTester tester, String name) => tap(
   tester,

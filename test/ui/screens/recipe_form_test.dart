@@ -95,7 +95,7 @@ void main() {
       expect(lineFields, findsOneWidget);
     });
 
-    testWidgets('a bottle typed in another case is that bottle', (
+    testWidgets('an ingredient typed in another case is that ingredient', (
       tester,
     ) async {
       final store = await pumpList(tester);
@@ -110,7 +110,7 @@ void main() {
       );
     });
 
-    testWidgets('a bottle named by an alias is that bottle (ADR 10)', (
+    testWidgets('an ingredient named by an alias is that ingredient (ADR 10)', (
       tester,
     ) async {
       final store = await pumpList(
@@ -124,7 +124,7 @@ void main() {
       await typeInto(tester, lineFields.first, '2 parts Jenever');
       await tap(tester, find.text('Save'));
       // The offer is not built for a name the vocabulary already answers to,
-      // so an alias can no longer create a near-duplicate bottle.
+      // so an alias can no longer create a near-duplicate ingredient.
       expect(find.text('Add missing ingredients?'), findsNothing);
       expect(
         store.saved!.recipeNamed('Martini')!.lines.single,
@@ -223,7 +223,7 @@ void main() {
       );
     });
 
-    testWidgets('only the alternatives no bottle answers to are offered', (
+    testWidgets('only the alternatives no ingredient answers to are offered', (
       tester,
     ) async {
       final store = await pumpList(tester);
@@ -243,7 +243,9 @@ void main() {
       ]);
     });
 
-    testWidgets('a group refuses the bottle it already names', (tester) async {
+    testWidgets('a group refuses the ingredient it already names', (
+      tester,
+    ) async {
       final store = await pumpList(tester);
       await openAdd(tester);
       await typeInto(tester, nameField, 'Sidecar');

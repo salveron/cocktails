@@ -70,7 +70,7 @@ ingredients:
   - {name: rich demerara syrup, tags: [syrup, homemade]}   # stock omitted = out
   - {name: egg white, stock: in}                           # untagged
 
-ingredient_tags:                       # what a bottle can be labelled
+ingredient_tags:                       # what an ingredient can be labelled
   - {name: citrus, color: sand}
   - {name: homemade, color: slate}
   - {name: syrup, color: indigo}
@@ -340,7 +340,7 @@ recipes: []
         '    lines: [2 dash bitters]\n',
       );
       // The word no longer measures anything, so it joins the name — and the
-      // bottle "dash bitters" is the one the file has no entry for.
+      // ingredient "dash bitters" is the one the file has no entry for.
       expectIssue(
         issues.single,
         ValidationIssueKind.unknownIngredient,
@@ -509,7 +509,7 @@ recipes: []
       );
     });
 
-    test('reads the spellings a bottle answers to (ADR 10)', () {
+    test('reads the spellings an ingredient answers to (ADR 10)', () {
       final collection = decoded(
         'format: 1\n'
         'ingredients:\n'

@@ -17,10 +17,10 @@ Recipe _recipe(String name, List<String> ingredients) =>
 Recipe _tagged(String name, String ingredient, List<String> tags) =>
     Recipe(name, tags: tags, lines: [_line(ingredient)]);
 
-/// A shelf short in both ways at once: three bottles there are none of, and one
-/// running low. Every budget answers, and each answers differently — and the
-/// switch moves the one-bottle answer off the missing bottle onto the low one,
-/// rather than merely lengthening the list.
+/// A shelf short in both ways at once: three ingredients there are none of, and
+/// one running low. Every budget answers, and each answers differently — and
+/// the switch moves the one-ingredient answer off the missing ingredient onto
+/// the low one, rather than merely lengthening the list.
 final shoppingCollection = Collection(
   ingredients: [
     Ingredient('gin', stock: StockLevel.in_),
@@ -37,8 +37,8 @@ final shoppingCollection = Collection(
   ],
 );
 
-/// Two recipes short of the same pair, so no single bottle answers and the
-/// two-bottle basket does.
+/// Two recipes short of the same pair, so no single ingredient answers and the
+/// two-ingredient basket does.
 final pairedCollection = Collection(
   ingredients: [
     Ingredient('gin', stock: StockLevel.in_),
@@ -51,8 +51,8 @@ final pairedCollection = Collection(
   ],
 );
 
-/// Three recipes short of a bottle each, so three baskets tie at one recipe
-/// apiece and the list has ranks to read.
+/// Three recipes short of an ingredient each, so three baskets tie at one
+/// recipe apiece and the list has ranks to read.
 final spreadCollection = Collection(
   ingredients: [
     Ingredient('white rum'),
@@ -66,12 +66,12 @@ final spreadCollection = Collection(
   ],
 );
 
-/// The spread shelf with categories over it: one basket per bottle at a budget
-/// of one, every pair of them at two, so a pick can be read against the ranks
-/// it did not touch. No recipe wears both `clean` and `tiki`, so only a basket
-/// bringing two of them answers to the pair; `sour` is worn by nothing, so the
-/// chips alone can empty every size; and `long` rides on a recipe beside `tiki`,
-/// so a dot can be told from every tag a recipe happens to wear.
+/// The spread shelf with categories over it: one basket per ingredient at a
+/// budget of one, every pair of them at two, so a pick can be read against the
+/// ranks it did not touch. No recipe wears both `clean` and `tiki`, so only a
+/// basket bringing two of them answers to the pair; `sour` is worn by nothing,
+/// so the chips alone can empty every size; and `long` rides on a recipe beside
+/// `tiki`, so a dot can be told from every tag a recipe happens to wear.
 final taggedCollection = Collection(
   ingredients: [
     Ingredient('white rum'),
@@ -126,9 +126,9 @@ Future<void> toggleLow(WidgetTester tester) => tap(tester, find.byType(Switch));
 Future<void> openCard(WidgetTester tester, [int rank = 1]) =>
     tap(tester, find.text('Shopping Cart #$rank'));
 
-/// Every bottle named on the open card, told apart from the recipes beside them
-/// by the dot each carries.
-Iterable<String> bottlesOnCard(WidgetTester tester) => tester
+/// Every ingredient named on the open card, told apart from the recipes beside
+/// them by the dot each carries.
+Iterable<String> ingredientsOnCard(WidgetTester tester) => tester
     .widgetList<Text>(
       find.descendant(
         of: find.ancestor(
@@ -142,7 +142,7 @@ Iterable<String> bottlesOnCard(WidgetTester tester) => tester
 
 void main() {
   group('shopping screen', () {
-    testWidgets('opens on the single bottles worth buying', (tester) async {
+    testWidgets('opens on the single ingredients worth buying', (tester) async {
       await pumpShopping(tester);
       expect(rowTexts(tester), ['Shopping Cart #1', 'white rum', '1 recipe']);
     });
@@ -182,13 +182,13 @@ void main() {
       ]);
     });
 
-    testWidgets('a card opens onto its bottles and every recipe', (
+    testWidgets('a card opens onto its ingredients and every recipe', (
       tester,
     ) async {
       await pumpShopping(tester);
       await pickBudget(tester, 3);
       await openCard(tester);
-      expect(bottlesOnCard(tester), [
+      expect(ingredientsOnCard(tester), [
         '• campari',
         '• sweet vermouth',
         '• white rum',
@@ -201,11 +201,11 @@ void main() {
       expect(
         find.text('campari + sweet vermouth + white rum'),
         findsNothing,
-        reason: 'the bottles read in the body rather than twice over',
+        reason: 'the ingredients read in the body rather than twice over',
       );
     });
 
-    testWidgets('an open card is remembered by its bottles, not its rank', (
+    testWidgets('an open card is remembered by its ingredients, not its rank', (
       tester,
     ) async {
       await pumpShopping(tester);
@@ -225,20 +225,20 @@ void main() {
       );
     });
 
-    testWidgets('an open card reads each bottle at the level it stands at', (
+    testWidgets('an open card reads each ingredient at the level it stands at', (
       tester,
     ) async {
       await pumpShopping(tester);
       await toggleLow(tester);
       await pickBudget(tester, 2);
-      // By its bottles rather than its rank: this is the one basket of the
+      // By its ingredients rather than its rank: this is the one basket of the
       // several at this size that holds both readings of short.
       await tap(tester, find.text('lime juice + white rum'));
       expect(
         tester.widgetList<StockDot>(find.byType(StockDot)).map((d) => d.stock),
         [StockLevel.low, StockLevel.out],
         reason:
-            'restocking mixes a bottle running low with one there is none of',
+            'restocking mixes an ingredient running low with one there is none of',
       );
     });
 
@@ -247,7 +247,7 @@ void main() {
     ) async {
       await pumpShopping(tester, pairedCollection);
       expect(find.text('Nothing worth buying in 1'), findsOneWidget);
-      await tap(tester, find.text('Try 2 bottles'));
+      await tap(tester, find.text('Try 2 ingredients'));
       expect(rowTexts(tester), [
         'Shopping Cart #1',
         'campari + sweet vermouth',
@@ -405,13 +405,13 @@ void main() {
       await pickTag(tester, 'clean');
       expect(
         find.text(
-          'No single bottle here unlocks a recipe matching every tag '
+          'No single ingredient here unlocks a recipe matching every tag '
           'picked.',
         ),
         findsOneWidget,
         reason: 'the size is not what emptied it',
       );
-      await tap(tester, find.text('Try 2 bottles'));
+      await tap(tester, find.text('Try 2 ingredients'));
       expect(cartsOn(tester), ['Shopping Cart #2', 'Shopping Cart #3']);
     });
 
@@ -420,7 +420,7 @@ void main() {
       await pickTag(tester, 'sour');
       expect(
         find.text(
-          'No single bottle here unlocks a recipe matching every tag '
+          'No single ingredient here unlocks a recipe matching every tag '
           'picked.',
         ),
         findsOneWidget,
@@ -435,7 +435,7 @@ void main() {
     testWidgets('an unnarrowed screen still blames the size', (tester) async {
       await pumpShopping(tester, pairedCollection);
       expect(
-        find.text('No single bottle unlocks a recipe on its own here.'),
+        find.text('No single ingredient unlocks a recipe on its own here.'),
         findsOneWidget,
       );
     });
@@ -494,7 +494,9 @@ void main() {
       );
     });
 
-    testWidgets('the bottles beside them keep their own dots', (tester) async {
+    testWidgets('the ingredients beside them keep their own dots', (
+      tester,
+    ) async {
       await pumpShopping(tester, taggedCollection);
       await pickTag(tester, 'tiki');
       await openCard(tester, 3);

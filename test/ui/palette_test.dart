@@ -101,9 +101,9 @@ void main() {
       }
     });
 
-    /// FR-BAR-3/4: the same light asked of the bar rather than of a bottle in
-    /// it — green where everything the app offers is offered, amber where a bar
-    /// is someone else's and half of it is not.
+    /// FR-BAR-3/4: the same light asked of the bar rather than of an ingredient
+    /// in it — green where everything the app offers is offered, amber where a
+    /// bar is someone else's and half of it is not.
     test('whose bar it is reads on the one traffic light', () {
       StockLevel signalOf(BarMode mode) => switch (mode) {
         BarMode.owner => StockLevel.in_,

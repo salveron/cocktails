@@ -33,7 +33,7 @@ built on either.
 - Hash-derived: rename silently repaints.
 - Scheme roles: collides with stock chips.
 - Colour outside collection: orphans on rename/delete.
-- Optional `neutral` default: grey on grey in inventory.
+- Optional `neutral` default: grey on grey in the ingredients list.
 
 ## Consequences
 

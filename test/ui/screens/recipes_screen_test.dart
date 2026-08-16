@@ -184,8 +184,8 @@ final untriedCollection = recipeCollection.withTag(
   const Tag('tiki', color: TagColor.teal),
 );
 
-/// A bottle answering to a second name, so a search can reach a recipe by a
-/// spelling no line of it holds (FR-VOC-6).
+/// An ingredient answering to a second name, so a search can reach a recipe by
+/// a spelling no line of it holds (FR-VOC-6).
 final aliasedCollection = recipeCollection.withIngredient(
   Ingredient('gin', aliases: const ['juniper']),
   replacing: 'gin',
@@ -207,9 +207,10 @@ String verdictOn(WidgetTester tester, String name) => tester
     )
     .data!;
 
-/// Two recipes of nothing but groups: one line for each way a group can read
-/// — a bottle on hand, only a low one, nothing at all — and one carrying a
-/// mark, so the mark is seen to govern the group rather than a bottle of it.
+/// Two recipes of nothing but groups: one line for each way a group can read —
+/// an ingredient on hand, only a low one, nothing at all — and one carrying a
+/// mark, so the mark is seen to govern the group rather than an ingredient of
+/// it.
 final substitutedCollection = Collection(
   ingredients: [
     Ingredient('campari', stock: StockLevel.low),
@@ -242,22 +243,22 @@ List<TextSpan> runsOn(WidgetTester tester, String line) =>
     (tester.widget<Text>(find.text(line)).textSpan! as TextSpan).children!
         .cast<TextSpan>();
 
-/// The bottles on the line reading [line] drawn in the dimmed ink — the ones a
-/// group offers that the bar cannot supply. They are the only runs carrying a
-/// colour of their own, so the colour is what tells them apart.
+/// The ingredients on the line reading [line] drawn in the dimmed ink — the
+/// ones a group offers that the bar cannot supply. They are the only runs
+/// carrying a colour of their own, so the colour is what tells them apart.
 List<String> dimmedOn(WidgetTester tester, String line) => [
   for (final run in runsOn(tester, line))
     if (run.style?.color != null) run.text!,
 ];
 
-/// The ink those bottles wear; fails the test where the line dims nothing.
+/// The ink those ingredients wear; fails the test where the line dims nothing.
 Color dimInkOn(WidgetTester tester, String line) => runsOn(
   tester,
   line,
 ).firstWhere((run) => run.style?.color != null).style!.color!;
 
 /// What the dot beside the line reading [line] reports, or null when that line
-/// carries none — which is how an in-stock bottle reads.
+/// carries none — which is how an in-stock ingredient reads.
 StockLevel? dotOnLine(WidgetTester tester, String line) {
   final dots = tester
       .widgetList<StockDot>(
@@ -324,7 +325,7 @@ void main() {
     });
 
     testWidgets('reads A to Z where nothing tells them apart', (tester) async {
-      // Every bottle is out, so every verdict is the same and the tie-break
+      // Every ingredient is out, so every verdict is the same and the tie-break
       // is the whole order, whatever order the file keeps.
       await pumpRecipes(tester);
       expect(namesOn(tester), names);
@@ -542,7 +543,7 @@ void main() {
       expect(find.byIcon(Icons.check), findsOneWidget);
     });
 
-    testWidgets('a marked group answers under every bottle it names', (
+    testWidgets('a marked group answers under every ingredient it names', (
       tester,
     ) async {
       await pumpRecipes(tester, substitutedCollection);
@@ -616,7 +617,7 @@ void main() {
       expect(namesOn(tester), ['Daiquiri', 'Whiskey Sour']);
     });
 
-    testWidgets('a bottle recased goes on narrowing, under its new name', (
+    testWidgets('an ingredient recased goes on narrowing, under its new name', (
       tester,
     ) async {
       await pumpRecipes(tester);
@@ -631,7 +632,8 @@ void main() {
           .upsertIngredient(Ingredient('Gin'), replacing: 'gin');
       await tester.pumpAndSettle();
 
-      // One bottle either way (ADR 08), so the pick is not a pick gone stale.
+      // One ingredient either way (ADR 08), so the pick is not a pick gone
+      // stale.
       expect(basePick(tester), 'Base: Gin');
       expect(namesOn(tester), ['Negroni']);
     });
@@ -703,7 +705,7 @@ void main() {
 
   group('random pick (FR-DIS-5)', () {
     /// Gin Shot is ready, Campari Shot low — the two a roll may land on — and
-    /// Negroni is short of a bottle, so the draw has something to refuse.
+    /// Negroni is short of an ingredient, so the draw has something to refuse.
     Future<void> pumpDrawable(WidgetTester tester) async {
       await pumpRecipes(tester, stockedCollection);
     }
@@ -880,7 +882,7 @@ void main() {
   });
 
   group('recipe search', () {
-    testWidgets('a bottle finds the recipes built on it (FR-DIS-2)', (
+    testWidgets('an ingredient finds the recipes built on it (FR-DIS-2)', (
       tester,
     ) async {
       await pumpRecipes(tester);
@@ -894,7 +896,9 @@ void main() {
       expect(namesOn(tester), ['Daiquiri', 'Whiskey Sour']);
     });
 
-    testWidgets('a bottle answers under its other names too', (tester) async {
+    testWidgets('an ingredient answers under its other names too', (
+      tester,
+    ) async {
       await pumpRecipes(tester, aliasedCollection);
       await search(tester, 'juniper');
       expect(namesOn(tester), ['Negroni']);
@@ -911,7 +915,7 @@ void main() {
       expect(find.textContaining('/'), findsNothing);
     });
 
-    testWidgets('the bottle the bar cannot supply dims, the other stands', (
+    testWidgets('the ingredient the bar cannot supply dims, the other stands', (
       tester,
     ) async {
       await pumpRecipes(tester, substitutedCollection);
@@ -939,7 +943,9 @@ void main() {
       expect(italicOn(tester, '1 part cognac or vodka'), ' or ');
     });
 
-    testWidgets('one bottle on hand leaves the line undotted', (tester) async {
+    testWidgets('one ingredient on hand leaves the line undotted', (
+      tester,
+    ) async {
       await pumpRecipes(tester, substitutedCollection);
       await tap(tester, find.text('Sidecar'));
       expect(dotOnLine(tester, '1 part cognac or vodka'), isNull);
@@ -964,7 +970,7 @@ void main() {
       );
     });
 
-    testWidgets('the mark governs the group, not a bottle of it', (
+    testWidgets('the mark governs the group, not an ingredient of it', (
       tester,
     ) async {
       await pumpRecipes(tester, substitutedCollection);
@@ -973,7 +979,7 @@ void main() {
       expect(dimmedOn(tester, '1 part gin or vodka (base)'), isEmpty);
     });
 
-    testWidgets('one bottle on hand makes the recipe (FR-DIS-1)', (
+    testWidgets('one ingredient on hand makes the recipe (FR-DIS-1)', (
       tester,
     ) async {
       await pumpRecipes(tester, substitutedCollection);
@@ -991,7 +997,7 @@ void main() {
       );
     });
 
-    testWidgets('a search reaches a recipe by any bottle of a group', (
+    testWidgets('a search reaches a recipe by any ingredient of a group', (
       tester,
     ) async {
       await pumpRecipes(tester, substitutedCollection);
@@ -1028,7 +1034,7 @@ void main() {
       expect(dotsOn(tester, 'Daiquiri'), isEmpty);
     });
 
-    testWidgets('wears the verdict of its own bottles (FR-DIS-1)', (
+    testWidgets('wears the verdict of its own ingredients (FR-DIS-1)', (
       tester,
     ) async {
       await pumpRecipes(tester, stockedCollection);
@@ -1214,7 +1220,7 @@ void main() {
       expect(italicOn(tester, '2 parts gin or vodka (base)'), '2 parts or ');
     });
 
-    testWidgets('a low bottle is still marked on a scaled line', (
+    testWidgets('a low ingredient is still marked on a scaled line', (
       tester,
     ) async {
       await pumpRecipes(tester, stockedCollection);

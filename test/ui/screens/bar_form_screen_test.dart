@@ -11,9 +11,9 @@ import 'package:flutter_test/flutter_test.dart';
 import '../harness.dart';
 
 void main() {
-  /// Three recipes and nine ingredients against the one recipe and two bottles
-  /// the app opens over, so nothing a card counts can be read off the store and
-  /// pass for the file's.
+  /// Three recipes and nine ingredients against the one recipe and two
+  /// ingredients the app opens over, so nothing a card counts can be read off
+  /// the store and pass for the file's.
   final sharedFile = fileOf(recipeCollection);
 
   /// The form as a reader reaches it, over a store holding [fixtureCollection]
@@ -94,9 +94,26 @@ void main() {
       expect(find.text('9 ingredients'), findsOneWidget);
       expect(find.text('2 tags'), findsOneWidget);
       expect(find.text('7 units'), findsOneWidget);
-      // Both roads offered, the reader's to choose (FR-BAR-7).
+      // Both roads offered, the reader's to choose (FR-BAR-7), under the one
+      // word both ends of the form ask the question in.
+      expect(find.text('Mode'), findsOneWidget);
       expect(find.text('Owned'), findsOneWidget);
       expect(find.text('Guest'), findsOneWidget);
+    });
+
+    testWidgets('what it holds stands as the contents of the bar being made', (
+      tester,
+    ) async {
+      await withFile(tester, sharedFile);
+      expect(find.text('Contents'), findsOneWidget);
+      // Full width, as every field above them: a card inset by its own list's
+      // margin here would read as narrower than the form it stands in.
+      final card = tester.widget<Card>(
+        find
+            .ancestor(of: find.text('3 recipes'), matching: find.byType(Card))
+            .first,
+      );
+      expect((card.margin! as EdgeInsets).horizontal, 0);
     });
 
     testWidgets('a name already typed is left standing', (tester) async {

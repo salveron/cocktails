@@ -54,7 +54,7 @@ void main() {
       );
     });
 
-    test('a bottle the vocabulary does not hold reads as out', () {
+    test('an ingredient the vocabulary does not hold reads as out', () {
       expect(
         of(const [
           RecipeLine(Amount(1), 'part', ['rye']),
@@ -68,10 +68,13 @@ void main() {
     StockLevel stockOf3(List<String> ingredients) =>
         stockOfLine(bar, RecipeLine(const Amount(1), 'part', ingredients));
 
-    test('one bottle on hand makes the line, whatever it stands beside', () {
-      expect(stockOf3(['sweet vermouth', 'gin']), StockLevel.in_);
-      expect(stockOf3(['gin', 'sweet vermouth']), StockLevel.in_);
-    });
+    test(
+      'one ingredient on hand makes the line, whatever it stands beside',
+      () {
+        expect(stockOf3(['sweet vermouth', 'gin']), StockLevel.in_);
+        expect(stockOf3(['gin', 'sweet vermouth']), StockLevel.in_);
+      },
+    );
 
     test('the best of what is left carries it', () {
       expect(stockOf3(['sweet vermouth', 'campari']), StockLevel.low);
@@ -81,13 +84,13 @@ void main() {
       expect(stockOf3(['sweet vermouth', 'rye']), StockLevel.out);
     });
 
-    test('one bottle answers as it always did', () {
+    test('one ingredient answers as it always did', () {
       expect(stockOf3(['campari']), StockLevel.low);
     });
   });
 
   group('availabilityOf over groups (ADR 11)', () {
-    test('a group with one bottle on hand makes the recipe', () {
+    test('a group with one ingredient on hand makes the recipe', () {
       expect(
         of(const [
           gin,
@@ -106,7 +109,7 @@ void main() {
       );
     });
 
-    test('a group short of every bottle is still missing', () {
+    test('a group short of every ingredient is still missing', () {
       expect(
         of(const [
           gin,
@@ -139,7 +142,7 @@ void main() {
       expect(stockOf(bar, 'rye'), StockLevel.out);
     });
 
-    test('a name written in another case is that bottle (ADR 08)', () {
+    test('a name written in another case is that ingredient (ADR 08)', () {
       expect(stockOf(bar, 'CAMPARI'), StockLevel.low);
     });
   });

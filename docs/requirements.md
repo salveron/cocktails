@@ -9,8 +9,8 @@ Direction: [vision.md](vision.md).
 |---|---|
 | Bar | One collection — vocabularies, stock, recipes, settings — under a name. Names are labels, not identity: two bars may carry one. Nothing crosses from one bar to the next (FR-BAR-1). |
 | Bar mode | **owner**: the reader's, written and shared. **guest**: another owner's, read as of its last refresh (FR-BAR-3). |
-| Ingredient | Generic name ("bourbon", "lemon juice") from user-managed vocabulary (recipes, inventory). Optional ingredient tags. No brands, no hierarchy. Substitution is per line, not per bottle (FR-REC-9). |
-| Base spirit | Spirit recipe is built on — marked on recipe line, not ingredient (bottle is base *in recipe* only, never by itself). Recipe may mark multiple. |
+| Ingredient | Generic name ("bourbon", "lemon juice") from user-managed vocabulary (recipes, stock). Optional ingredient tags. No brands, no hierarchy. Substitution is per line, not per ingredient (FR-REC-9). |
+| Base spirit | Spirit recipe is built on — marked on the recipe line, not on the entry (an ingredient is base *in a recipe* only, never by itself). Recipe may mark multiple. |
 | Stock level | Per ingredient: **in stock**, **running low**, **out** (default). |
 | Tag | Coloured label from user vocabulary (interest/style/category; replaces Telegram emojis). Two vocabularies: recipe tags, ingredient tags ([ADR 07](adr/07-tag-colour.md)); optional both sides. |
 | Unit | What a line measures in ("part", "dash"), from a user-managed vocabulary carrying a plural each ([ADR 09](adr/09-units-are-a-vocabulary.md)); part and ml are fixed members. |
@@ -18,7 +18,7 @@ Direction: [vision.md](vision.md).
 | Availability | Per recipe, required lines only: **makeable** (all in), **makeable-low** (none out, ≥1 low), **missing** (≥1 out). A line stands at its best-stocked alternative (FR-REC-9). First two = **can-make**. |
 
 Names unique within kind in one bar, ignoring case ([ADR 08](adr/08-names-ignore-case.md)). 
-Ingredient vocabulary covers aliases too (FR-VOC-6): every spelling names one bottle. 
+Ingredient vocabulary covers aliases too (FR-VOC-6): every spelling names one ingredient. 
 Two tag vocabularies separate; one name may exist in both (different meanings).
 
 ## Functional requirements
@@ -26,7 +26,7 @@ Two tag vocabularies separate; one name may exist in both (different meanings).
 ### Bars
 
 - **FR-BAR-1** The app holds any number of bars, each a collection of its own. Nothing crosses 
-  between them: a bottle, a tag or a unit in one is unknown to the next, and a search, a filter, a 
+  between them: an ingredient, a tag or a unit in one is unknown to the next, and a search, a filter, a 
   draw or a jump (FR-DIS-9) reaches no further than the bar it started in. One list holds them all, 
   owned and guest alike; one bar is on show at a time and every screen reads that one.
 - **FR-BAR-2** An owned bar is the reader's: created empty or from a file, renamed, written to, 
@@ -41,7 +41,7 @@ Two tag vocabularies separate; one name may exist in both (different meanings).
   one of their own, and no refresh moves either. What a part and an ounce are worth there stays the 
   owner's — the recipes were written against those. The bar is removed whenever they like, touching 
   nothing the owner holds. A device may hold guest bars and own none.
-- **FR-BAR-4** A guest bar offers its recipes and its inventory and nothing else: the shopping 
+- **FR-BAR-4** A guest bar offers its recipes and its ingredients and nothing else: the shopping 
   optimizer and all that belongs to it (FR-DIS-6, FR-DIS-7, FR-DIS-10) is absent there rather than 
   empty. On those two everything that reads works and nothing that writes exists — no creating, 
   editing or deleting, no stock toggle, no vocabulary change, and none of them offered rather than 
@@ -88,7 +88,7 @@ Two tag vocabularies separate; one name may exist in both (different meanings).
 - **FR-REC-7** Recipe view scales ×2/×3/×4 and reads one open recipe in other unit without 
   global toggle change (FR-SET-1). Display-only; range ends scale together; forgotten on close.
 - **FR-REC-8** Line may mark as base spirit (clearable). Base and optional mutually exclusive.
-- **FR-REC-9** Line may offer alternatives — bottles interchangeable *in that recipe* 
+- **FR-REC-9** Line may offer alternatives — ingredients interchangeable *in that recipe* 
   ([ADR 11](adr/11-substitutions-on-the-line.md)): one amount, one unit, one mark govern the group. 
   Any one on hand makes the line; only when all are out is it missing. Cards read them as prose, 
   dimming what the bar lacks while it holds something.
@@ -118,12 +118,13 @@ empty so no reference to it can mean two things.
 FR-VOC-2 left for FR-REC-8 in [ADR 06](adr/06-base-spirit-on-the-line.md); its number stays
 empty so no reference to it can mean two things.
 
-### Inventory
+### Ingredients
 
-- **FR-INV-1** Inventory lists all ingredients with stock level, searchable by any name 
+- **FR-ING-1** Ingredients screen lists all ingredients with stock level, searchable by any name 
   (FR-VOC-6); row reads under entry's own name.
-- **FR-INV-2** Stock level toggles with single tap per ingredient.
-- **FR-INV-3** Inventory shows ingredient tags in colour; can filter by them (combines with name search).
+- **FR-ING-2** Stock level toggles with single tap per ingredient.
+- **FR-ING-3** Ingredients screen shows ingredient tags in colour; can filter by them (combines with 
+  name search).
 
 ### Discovery
 
@@ -131,7 +132,7 @@ empty so no reference to it can mean two things.
   view marks each line running low/out.
 - **FR-DIS-2** Recipes searchable by name and by the ingredients they use — any spelling 
   (FR-VOC-6), the card still reading under the recipe's own name.
-- **FR-DIS-3** Recipe list filterable by tag(s), combining with the search (FR-INV-3's idiom on 
+- **FR-DIS-3** Recipe list filterable by tag(s), combining with the search (FR-ING-3's idiom on 
   the other list). Availability is not a filter: the availability order (FR-DIS-8) is what puts 
   the makeable first.
 - **FR-DIS-4** Recipe list narrowable by base spirit ([ADR 12](adr/12-base-spirit-narrows.md)): one 
@@ -142,26 +143,26 @@ empty so no reference to it can mean two things.
   opens that recipe alone and puts it on screen; a second draw moves off the one standing while 
   another can be made. Nothing makeable among them says so rather than doing nothing.
 - **FR-DIS-6** Optimizer: budget **N** (1–3); evaluates ≤N ingredient combos drawn from what 
-  recipes are short of; reports recipes becoming can-make, ranked by count, then by fewest bottles. 
+  recipes are short of; reports recipes becoming can-make, ranked by count, then by fewest ingredients. 
   Zero-yield hidden, and so is a combo unlocking no more than a smaller one inside it — every 
-  bottle offered earns its place. A substitution group counts as satisfied by any one purchase 
+  ingredient offered earns its place. A substitution group counts as satisfied by any one purchase 
   (FR-REC-9). The best few of each size are offered rather than every combo 
   ([ADR 15](adr/15-the-optimizer-answers-with-the-best-few.md)).
 - **FR-DIS-7** What counts as short is the reader's to say, through one switch 
   ([ADR 16](adr/16-the-optimizer-buys-what-is-running-low.md)): off, only what is out of stock — 
-  the bar can make what it is merely low on; on, anything short of full stock, so bottles running 
+  the bar can make what it is merely low on; on, anything short of full stock, so ingredients running 
   low are bought alongside missing ones and the goal becomes ready rather than merely makeable. 
-  Being shoppable is how a low bottle is reminded of; the optimizer keeps no separate restock list.
-- **FR-DIS-8** Lists (recipes, inventory, tags) readable in multiple orders: by name, by signal 
+  Being shoppable is how a low ingredient is reminded of; the optimizer keeps no separate restock list.
+- **FR-DIS-8** Lists (recipes, ingredients, tags) readable in multiple orders: by name, by signal 
   (availability, stock, colour). Picking current order reverses it. Default: recipes by availability, 
-  inventory by stock, tags by name (not persisted). Rows stable during edit.
+  ingredients by stock, tags by name (not persisted). Rows stable during edit.
 - **FR-DIS-9** A name on one destination reaches its own row on another 
   ([ADR 19](adr/19-a-destination-sends-the-reader-to-another.md)): a basket's recipes open on the 
-  Recipes, a basket's bottles and a recipe line's bottles on the Inventory. One tap, nothing marking 
+  Recipes, a basket's ingredients and a recipe line's ingredients on the Ingredients screen. One tap, nothing marking 
   the name as a way out. The row arrives open and alone where its list expands, revealed the way a 
   random pick is (FR-DIS-5), and every narrowing in the way — search, tags, base, order — is cleared 
-  first: a reader who named a row asked to see it, not to be told why they cannot. A line naming a 
-  bottle by any of its spellings reaches it under the vocabulary's own (FR-VOC-6), and each 
+  first: a reader who named a row asked to see it, not to be told why they cannot. A line naming an 
+  ingredient by any of its spellings reaches it under the vocabulary's own (FR-VOC-6), and each 
   alternative of a substitution group is its own target (FR-REC-9). Back undoes a jump and a chain of 
   them one at a time; a destination the reader chose themselves clears the way back.
 - **FR-DIS-10** Shopping baskets filterable by recipe tag — FR-DIS-3's idiom on the optimizer's 
@@ -217,7 +218,7 @@ See [vision.md](vision.md#future-directions):
 - PC/desktop app.
 - Judging one bar by another — a guest reads the owner's stock, never their own (FR-BAR-4).
 - The optimizer on a guest bar — shopping answers for the bar its reader stocks (FR-BAR-4).
-- Moving recipes or bottles between bars (nothing crosses, FR-BAR-1).
+- Moving recipes or ingredients between bars (nothing crosses, FR-BAR-1).
 - In-app Telegram parsing (migration via FR-DAT-3 outside app).
 - Formalized prep (ordered steps, technique vocab, filtering).
 - Search grammar for compound queries (several ingredients, logical operators).

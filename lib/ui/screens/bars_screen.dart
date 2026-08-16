@@ -55,7 +55,6 @@ class _BarsScreenState extends ConsumerState<BarsScreen> {
       if (open == null) _leave();
     });
     final bars = ref.watch(barsProvider);
-    final openId = ref.watch(openBarProvider)?.id;
     // One reading for the whole list, so no two cards date themselves apart.
     final now = ref.watch(clockProvider)();
     return Scaffold(
@@ -65,15 +64,12 @@ class _BarsScreenState extends ConsumerState<BarsScreen> {
               icon: Icons.liquor_outlined,
               title: 'No bars',
               message:
-                  'A bar holds one collection — its recipes, its bottles, and '
+                  'A bar holds one collection — its recipes, its ingredients, and '
                   'the tags and units they are written in.',
             )
           : ListView(
               padding: const EdgeInsets.only(top: 8, bottom: 88),
-              children: [
-                for (final bar in bars)
-                  _card(bar, now, isOpen: bar.id == openId),
-              ],
+              children: [for (final bar in bars) _card(bar, now)],
             ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => unawaited(_add()),
@@ -86,8 +82,8 @@ class _BarsScreenState extends ConsumerState<BarsScreen> {
   /// The name and how current the bar is while closed, what it holds once
   /// opened. Whose bar it is rides beside the ⋮ as a chip, the mode being what
   /// decides everything the bar offers (FR-BAR-3).
-  Widget _card(Bar bar, DateTime now, {required bool isOpen}) {
-    final standing = _standing(bar, now, isOpen: isOpen);
+  Widget _card(Bar bar, DateTime now) {
+    final standing = _standing(bar, now);
     return VocabularyRow(
       title: Text(bar.name),
       subtitle: standing == null ? null : Text(standing),
@@ -110,18 +106,15 @@ class _BarsScreenState extends ConsumerState<BarsScreen> {
     );
   }
 
-  /// Which bar is loaded, and how long ago it last became what it holds — an
-  /// owner's own edit, a guest's last answer from its source (FR-BAR-5). Null
-  /// where there is neither to say: a bar summarised before this device kept
-  /// stamps has no date to give, and says nothing rather than guessing one.
-  String? _standing(Bar bar, DateTime now, {required bool isOpen}) {
+  /// How long ago the bar last became what it holds — an owner's own edit, a
+  /// guest's last answer from its source (FR-BAR-5). Null where there is
+  /// nothing to say: a bar summarised before this device kept stamps has no
+  /// date to give, and says nothing rather than guessing one.
+  String? _standing(Bar bar, DateTime now) {
     final at = bar.isOwned ? bar.updated : bar.refreshed;
-    final parts = [
-      if (isOpen) 'Loaded',
-      if (at != null)
-        '${bar.isOwned ? 'Updated' : 'Synced'} ${_agoInWords(now, at)}',
-    ];
-    return parts.isEmpty ? null : parts.join(' · ');
+    if (at == null) return null;
+    final what = bar.isOwned ? 'Updated' : 'Refreshed';
+    return '$what: ${_agoInWords(now, at)}';
   }
 
   Widget _body(Bar bar) => Column(

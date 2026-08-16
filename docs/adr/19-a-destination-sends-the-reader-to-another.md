@@ -5,7 +5,7 @@ built at once.
 
 ## Context
 
-Basket names recipes unlocked; reader wants to know what else recipe is short of — 4 moves today (remember name, switch Recipes, search, open). Tap name on basket should make it 1 (FR-DIS-9). Recipe card names bottles per line; reader wants that bottle on Inventory (aliases, tags, stock). Same move, different screens. Channel designed generally.
+Basket names recipes unlocked; reader wants to know what else recipe is short of — 4 moves today (remember name, switch Recipes, search, open). Tap name on basket should make it 1 (FR-DIS-9). Recipe card names ingredients per line; reader wants that ingredient on the Ingredients screen (aliases, tags, stock). Same move, different screens. Channel designed generally.
 
 Nothing crosses destinations. `_Destination`, `_current` private to `app.dart`; three screens side by side in `IndexedStack`, never speak. Revealing row is `VocabularyList` alone; `ListDraw.draw` answers name, `_reach` turns to index off `_placed` (ADR 13; keeps scroll package contained). Row must be on-show to reveal: search, tag picks, base pick, order narrow/reorder; reveal of excluded row finds no index, silently does nothing.
 
@@ -21,7 +21,7 @@ Nothing crosses destinations. `_Destination`, `_current` private to `app.dart`; 
 - **Serving screen resets narrowing to default before reveal**: tag picks, base pick, search text, order. Reader asked to see row, not why cannot. `VocabularyList` gains name-to-reveal input alongside `draw`; both feed `_reveal` field; reset is part of serving.
 - **Row opened alone**, rest shut (like random pick). Jump is one answer not pile.
 - **Plain tap sends, no marking**. Amended on implementation: long press drafted first (jump as secondary). It's not — reaching name is commonest thing reader wants; name-carrying rows lead nowhere else; tap free. Ripple is feedback. Arrow weighed/refused (slot carries tag dots, stock dots); label refused with long press.
-- **Name crossing is entry's own**: line names bottle by any spelling (ADR 10), sender resolves with `collection.bottleNamed`. List finds rows by names; channel carrying spelling fails silently on unbuilt pairs.
+- **Name crossing is entry's own**: line names ingredient by any spelling (ADR 10), sender resolves with `collection.spellingOf`. List finds rows by names; channel carrying spelling fails silently on unbuilt pairs.
 - **Shell trail of destinations, back undoes jumps**: chain unwinds one-by-one; three rules: (a) only jump records; bottom-bar tap clears (reader who chose has nothing to return from); (b) destination **at most once, never on-show** (bounds at 2 for 3 destinations, loop cannot accumulate); (c) Settings (above shell) popped by back as always.
 
 ## Alternatives considered
@@ -41,12 +41,12 @@ Nothing crosses destinations. `_Destination`, `_current` private to `app.dart`; 
 - **`AppShell` gains history; back stops meaning "leave"**. Trail (destinations, not states) + `PopScope`. Weighed against no history (bottom bar is way back). Refused: jump is app moving reader; undo gesture shouldn't close.
 - **Back restores place, not narrowings**. Reveal clears search/picks/order; return doesn't restore; trail not state snapshot (refuses router). Softened: destinations alive, shopping screen found with budget/switch/cards as left.
 - **Arrival needs no signalling**: revealed row washes `secondaryContainer`→rest (FR-DIS-5, ADR 13); tap confirms via `InkWell`. Both free.
-- **Line reaches per bottle, not per line**: group offers several (ADR 11); line-wide target names first only. Each bottle own span/recognizer; measure, "or", mark stay inert (one place where part of line answers, part not).
+- **Line reaches per ingredient, not per line**: group offers several (ADR 11); line-wide target names first only. Each ingredient own span/recognizer; measure, "or", mark stay inert (one place where part of line answers, part not).
 - Channel general, must stay small. 3rd pair: 1 call site, no new type. Must not become router — reveal named row, no args/intent/history.
 
 ## Scope
 
-Both pairs were built at once (FR-DIS-9): a basket's recipes and its bottles, and a recipe line's
-bottles.
-The Inventory serves as the Recipes does, and the shopping screen only ever sends — nothing yet
+Both pairs were built at once (FR-DIS-9): a basket's recipes and its ingredients, and a recipe line's
+ingredients.
+The Ingredients screen serves as the Recipes does, and the shopping screen only ever sends — nothing yet
 names a basket, a basket being ranked rather than named.

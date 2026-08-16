@@ -1,4 +1,4 @@
-/// Recipe availability from on-hand bottles; derived on read (FR-DIS-1).
+/// Recipe availability from on-hand ingredients; derived on read (FR-DIS-1).
 library;
 
 import 'collection.dart';

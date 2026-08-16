@@ -97,7 +97,7 @@ String stockLabel(StockLevel stock) => switch (stock) {
   StockLevel.out => 'Out',
 };
 
-/// What is left of a bottle, on its inventory row.
+/// What is left of an ingredient, on its row.
 class StockChip extends StatelessWidget {
   const StockChip(this.stock, {super.key});
 
@@ -125,7 +125,7 @@ class BarModeChip extends StatelessWidget {
   }, swatch: barModeColors(mode, Theme.of(context).brightness));
 }
 
-/// What the bottles make of a recipe, on its list row (FR-DIS-1).
+/// What the ingredients make of a recipe, on its list row (FR-DIS-1).
 class AvailabilityChip extends StatelessWidget {
   const AvailabilityChip(this.availability, {super.key});
 
@@ -197,8 +197,8 @@ class TagDot extends StatelessWidget {
   );
 }
 
-/// A bottle beside a recipe line, where the chip's words would not fit; drawn
-/// only where there is something to report, so no dot reads as in stock.
+/// An ingredient beside a recipe line, where the chip's words would not fit;
+/// drawn only where there is something to report, so no dot reads as in stock.
 class StockDot extends StatelessWidget {
   const StockDot(this.stock, {super.key});
 

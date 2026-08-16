@@ -6,45 +6,48 @@ import 'availability.dart';
 import 'names.dart';
 import 'collection.dart';
 
-/// What a budget can be (FR-DIS-6) — one search at the largest answers them all.
+/// What a budget can be (FR-DIS-6) — one search at the largest answers them
+/// all.
 const budgets = [1, 2, 3];
 
 final class Purchase {
-  final List<String> bottles;
+  final List<String> ingredients;
   final List<String> unlocks;
 
-  Purchase(List<String> bottles, List<String> unlocks)
-    : bottles = List.unmodifiable(bottles),
+  Purchase(List<String> ingredients, List<String> unlocks)
+    : ingredients = List.unmodifiable(ingredients),
       unlocks = List.unmodifiable(unlocks);
 
   @override
   bool operator ==(Object other) =>
       other is Purchase &&
-      listEquals(other.bottles, bottles) &&
+      listEquals(other.ingredients, ingredients) &&
       listEquals(other.unlocks, unlocks);
 
   @override
   int get hashCode =>
-      Object.hash(Object.hashAll(bottles), Object.hashAll(unlocks));
+      Object.hash(Object.hashAll(ingredients), Object.hashAll(unlocks));
 
   @override
   String toString() =>
-      'Purchase(${bottles.join(' + ')} → ${unlocks.join(', ')})';
+      'Purchase(${ingredients.join(' + ')} → ${unlocks.join(', ')})';
 }
 
-/// The purchases of at most [budget] bottles worth making, most recipes first,
-/// then fewest bottles, then A→Z — the best [most] of each basket size, so a
-/// cheap win is never buried under the baskets one bottle bigger.
+/// The purchases of at most [budget] ingredients worth making, most recipes
+/// first, then fewest ingredients, then A→Z — the best [most] of each basket
+/// size, so a cheap win is never buried under the baskets one ingredient
+/// bigger.
 ///
-/// The bottles worth weighing are only those some recipe is actually short of,
-/// so the pool is the gaps' own bottles and the search is every basket drawn
-/// from it. That search is quick; what is not is dressing every basket it finds
-/// as an answer, and at a few hundred recipes it finds tens of thousands. So a
-/// basket is weighed by its count alone and only the ones kept are ever named.
+/// The ingredients worth weighing are only those some recipe is actually short
+/// of, so the pool is the gaps' own ingredients and the search is every basket
+/// drawn from it. That search is quick; what is not is dressing every basket it
+/// finds as an answer, and at a few hundred recipes it finds tens of thousands.
+/// So a basket is weighed by its count alone and only the ones kept are ever
+/// named.
 ///
 /// [restocking] is what counts as short (ADR 16): a line standing at out, or
-/// one short of full stock — which puts the bottles running low in the pool and
-/// makes the goal ready rather than merely makeable.
+/// one short of full stock — which puts the ingredients running low in the pool
+/// and makes the goal ready rather than merely makeable.
 List<Purchase> purchasesWithin(
   Collection collection,
   int budget, {
@@ -52,7 +55,7 @@ List<Purchase> purchasesWithin(
   bool restocking = false,
 }) {
   if (budget < 1) return const [];
-  final gaps = <({Set<String> bottles, String recipe})>[];
+  final gaps = <({Set<String> ingredients, String recipe})>[];
   final pool = <String>{};
   for (final recipe in collection.recipes) {
     for (final gap in _gapsOf(
@@ -61,25 +64,26 @@ List<Purchase> purchasesWithin(
       budget,
       restocking: restocking,
     )) {
-      gaps.add((bottles: gap, recipe: recipe.name));
+      gaps.add((ingredients: gap, recipe: recipe.name));
       pool.addAll(gap);
     }
   }
   if (gaps.isEmpty) return const [];
 
-  final bottles = pool.toList()..sort(compareNames);
-  final ids = {for (var i = 0; i < bottles.length; i++) bottles[i]: i};
-  final radix = bottles.length + 1;
+  final ingredients = pool.toList()..sort(compareNames);
+  final ids = {for (var i = 0; i < ingredients.length; i++) ingredients[i]: i};
+  final radix = ingredients.length + 1;
   final closes = <int, Set<String>>{};
   for (final gap in gaps) {
-    final part = [for (final bottle in gap.bottles) ids[bottle]!]..sort();
+    final part = [for (final ingredient in gap.ingredients) ids[ingredient]!]
+      ..sort();
     (closes[_packed(part, radix)] ??= <String>{}).add(gap.recipe);
   }
 
   final shelves = List.generate(budget + 1, (_) => <_Kept>[]);
   final yields = <int, int>{};
   final unlocks = <String>{};
-  for (final basket in _baskets(bottles.length, budget)) {
+  for (final basket in _baskets(ingredients.length, budget)) {
     _unlockedBy(unlocks, basket, closes, radix);
     final yield = unlocks.length;
     yields[_keyOfPart(basket, (1 << basket.length) - 1, radix)] = yield;
@@ -93,7 +97,7 @@ List<Purchase> purchasesWithin(
       _unlockedBy(unlocks, kept.basket, closes, radix);
       purchases.add(
         Purchase([
-          for (final id in kept.basket) bottles[id],
+          for (final id in kept.basket) ingredients[id],
         ], [...unlocks]..sort(compareNames)),
       );
     }
@@ -131,8 +135,8 @@ void _unlockedBy(
   }
 }
 
-/// Whether every bottle in [basket] pays its way: dropping any one of them has
-/// to cost a recipe. A basket unlocking no more than one of its own smaller
+/// Whether every ingredient in [basket] pays its way: dropping any one of them
+/// has to cost a recipe. A basket unlocking no more than one of its own smaller
 /// selves is that smaller one with a passenger — and since a sub-basket's
 /// recipes are always a subset, matching counts mean matching answers, so the
 /// count settles it. Baskets grow by size, so the smaller are already weighed.
@@ -165,7 +169,7 @@ List<Set<String>> _gapsOf(
     }
     short = true;
     final ways = {
-      for (final name in line.ingredients) collection.bottleNamed(name),
+      for (final name in line.ingredients) collection.spellingOf(name),
     };
     final grown = <String, Set<String>>{};
     for (final gap in gaps) {
@@ -180,10 +184,11 @@ List<Set<String>> _gapsOf(
   return short ? gaps : const [];
 }
 
-/// Every basket of 1..[budget] bottles out of a pool of [size], ids ascending
-/// — which, the pool being sorted, is also the order a basket reads in. One
-/// list is walked in place rather than built per basket: at NFR-2 scale these
-/// run to tens of thousands, and the caller only reads the one it is given.
+/// Every basket of 1..[budget] ingredients out of a pool of [size], ids
+/// ascending — which, the pool being sorted, is also the order a basket reads
+/// in. One list is walked in place rather than built per basket: at NFR-2 scale
+/// these run to tens of thousands, and the caller only reads the one it is
+/// given.
 Iterable<List<int>> _baskets(int size, int budget) sync* {
   for (var take = 1; take <= budget && take <= size; take++) {
     final basket = List<int>.generate(take, (i) => i);
@@ -208,8 +213,8 @@ Iterable<List<int>> _baskets(int size, int budget) sync* {
 int _packed(Iterable<int> ids, int radix) =>
     ids.fold(0, (key, id) => key * radix + id + 1);
 
-/// The same, over the bottles [mask] takes out of [basket] — built in place,
-/// this being the innermost step of the whole search.
+/// The same, over the ingredients [mask] takes out of [basket] — built in
+/// place, this being the innermost step of the whole search.
 int _keyOfPart(List<int> basket, int mask, int radix) {
   var key = 0;
   for (var i = 0; i < basket.length; i++) {
@@ -218,12 +223,12 @@ int _keyOfPart(List<int> basket, int mask, int radix) {
   return key;
 }
 
-/// One name per set of bottles, folded and ordered, so two spellings of the
+/// One name per set of ingredients, folded and ordered, so two spellings of the
 /// same gap are one key (ADR-08). Joined on the one character validation bars
 /// from a name (ADR-11) — on a space, {'lemon', 'juice'} and {'lemon juice'}
 /// would key alike.
-String _keyOf(Iterable<String> bottles) =>
-    (bottles.map(nameKey).toList()..sort()).join(alternativeSeparator);
+String _keyOf(Iterable<String> ingredients) =>
+    (ingredients.map(nameKey).toList()..sort()).join(alternativeSeparator);
 
 /// Most recipes first, then the smaller basket, then A→Z. Both baskets already
 /// read A→Z, so the tie-break walks them side by side — a key built per
@@ -231,10 +236,10 @@ String _keyOf(Iterable<String> bottles) =>
 int _bestFirst(Purchase a, Purchase b) {
   final byYield = b.unlocks.length.compareTo(a.unlocks.length);
   if (byYield != 0) return byYield;
-  final bySize = a.bottles.length.compareTo(b.bottles.length);
+  final bySize = a.ingredients.length.compareTo(b.ingredients.length);
   if (bySize != 0) return bySize;
-  for (var i = 0; i < a.bottles.length; i++) {
-    final byName = compareNames(a.bottles[i], b.bottles[i]);
+  for (var i = 0; i < a.ingredients.length; i++) {
+    final byName = compareNames(a.ingredients[i], b.ingredients[i]);
     if (byName != 0) return byName;
   }
   return 0;

@@ -254,7 +254,7 @@ void main() {
       final answer = await openIngredient(tester);
       await type(tester, 'sloe gin');
       const refused = {
-        // Another bottle's spelling, its own name, and itself twice — one
+        // Another ingredient's spelling, its own name, and itself twice — one
         // namespace, however the collision is reached.
         'genever': 'Duplicate ingredient name: "genever"',
         'sloe gin': 'Duplicate ingredient name: "sloe gin"',

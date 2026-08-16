@@ -99,7 +99,7 @@ void main() {
   );
 
   group('StockLevel.next', () {
-    test('follows a bottle: in -> low -> out -> in', () {
+    test('follows an ingredient: in -> low -> out -> in', () {
       expect(StockLevel.in_.next, StockLevel.low);
       expect(StockLevel.low.next, StockLevel.out);
       expect(StockLevel.out.next, StockLevel.in_);
@@ -831,7 +831,7 @@ void main() {
         );
       });
 
-      test('an alias answers for the bottle it belongs to (ADR 10)', () {
+      test('an alias answers for the ingredient it belongs to (ADR 10)', () {
         final collection = Collection(
           ingredients: [
             Ingredient(
@@ -876,7 +876,7 @@ void main() {
     });
 
     group('one namespace for every spelling (ADR 10)', () {
-      test('an alias may not repeat another bottle name', () {
+      test('an alias may not repeat another ingredient name', () {
         expect(
           () => Collection(
             ingredients: [
@@ -888,7 +888,7 @@ void main() {
         );
       });
 
-      test('nor another bottle alias', () {
+      test('nor another ingredient alias', () {
         expect(
           () => Collection(
             ingredients: [
@@ -911,16 +911,19 @@ void main() {
         );
       });
 
-      test('but two bottles may alias the same name in other vocabularies', () {
-        final collection = Collection(
-          ingredients: [
-            Ingredient('bourbon', aliases: const ['sour']),
-          ],
-          ingredientTags: const [Tag('sour', color: TagColor.sand)],
-          recipes: [Recipe('sour')],
-        );
-        expect(collection.ingredientNamed('sour')?.name, 'bourbon');
-      });
+      test(
+        'but two ingredients may alias the same name in other vocabularies',
+        () {
+          final collection = Collection(
+            ingredients: [
+              Ingredient('bourbon', aliases: const ['sour']),
+            ],
+            ingredientTags: const [Tag('sour', color: TagColor.sand)],
+            recipes: [Recipe('sour')],
+          );
+          expect(collection.ingredientNamed('sour')?.name, 'bourbon');
+        },
+      );
     });
   });
 

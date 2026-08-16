@@ -74,7 +74,7 @@ extension on TagKind {
       hint: 'Ingredient tag name',
       blockedByNoun: 'ingredients',
       blurb:
-          'A tag groups bottles that belong together — citrus, syrup, '
+          'A tag groups ingredients that belong together — citrus, syrup, '
           'homemade — and wears a colour of its own.',
     ),
   };

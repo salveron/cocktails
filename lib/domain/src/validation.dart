@@ -459,8 +459,8 @@ void _addProblems(
   }
 }
 
-/// The grammar's own text is reserved: no bottle spelling may end with a mark
-/// suffix, nor hold the separator that would split it in two (ADR-11).
+/// The grammar's own text is reserved: no ingredient spelling may end with a
+/// mark suffix, nor hold the separator that would split it in two (ADR-11).
 _Problem? _reservedTextProblem(String what, String name) {
   for (final suffix in reservedSuffixes) {
     if (name.endsWith(suffix)) {
@@ -559,7 +559,7 @@ List<ValidationIssue> _checkRecipe(
   for (var l = 0; l < recipe.lines.length; l++) {
     final line = recipe.lines[l];
     final amount = formatAmount(line.amount);
-    // Any one alternative makes the line, but each must name a bottle, and
+    // Any one alternative makes the line, but each must name an ingredient, and
     // naming one twice is a slip rather than a choice (ADR-11).
     final repeated = duplicateNameIndexes(line.ingredients).toSet();
     _addProblems(

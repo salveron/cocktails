@@ -36,7 +36,8 @@ extension CollectionEdits on Collection {
           );
   }
 
-  /// Every recipe line under bottle's own name; aliases/cases resolve (ADR-10).
+  /// Every recipe line under ingredient's own name; aliases/cases resolve
+  /// (ADR-10).
   Collection withCanonicalIngredientNames() {
     final canonical = <Recipe>[];
     var moved = false;
@@ -44,7 +45,7 @@ extension CollectionEdits on Collection {
       final resolved = _withLines(
         recipe,
         (line) => line.copyWith(
-          ingredients: [for (final name in line.ingredients) bottleNamed(name)],
+          ingredients: [for (final name in line.ingredients) spellingOf(name)],
         ),
       );
       moved |= !identical(resolved, recipe);
@@ -131,13 +132,12 @@ extension CollectionEdits on Collection {
   /// Recipe names blocking ingredient deletion, in collection order
   /// (FR-VOC-1, ADR-10).
   List<String> recipesUsingIngredient(String name) {
-    final wanted = bottleNamed(name);
+    final wanted = spellingOf(name);
     return [
       for (final recipe in recipes)
         if (recipe.lines.any(
-          (line) => line.ingredients.any(
-            (name) => bottleNamed(name).sameName(wanted),
-          ),
+          (line) =>
+              line.ingredients.any((name) => spellingOf(name).sameName(wanted)),
         ))
           recipe.name,
     ];

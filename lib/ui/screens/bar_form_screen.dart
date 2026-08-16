@@ -186,7 +186,9 @@ class _BarFormScreenState extends ConsumerState<BarFormScreen> {
           autofocus: !_importing,
           decoration: const InputDecoration(hintText: 'Bar name'),
         ),
-        const SectionLabel('Contents'),
+        // No heading: the button says what it does, and the note under it says
+        // what standing without one means.
+        const SizedBox(height: 16),
         _Source(
           picked: picked != null,
           onPick: () => unawaited(_pick()),
@@ -210,7 +212,7 @@ class _BarFormScreenState extends ConsumerState<BarFormScreen> {
             ),
           ),
         if (arriving != null) ...[
-          SectionLabel(_importing ? 'Where it goes' : 'Whose bar'),
+          const SectionLabel('Mode'),
           SegmentedButton<_Road>(
             segments: [
               ButtonSegment(
@@ -222,18 +224,15 @@ class _BarFormScreenState extends ConsumerState<BarFormScreen> {
             selected: {_road},
             onSelectionChanged: (chosen) => _chose(chosen.first),
           ),
+          // One line each: the choice is read at a glance or not at all.
           FieldNote(switch (_road) {
-            _Road.own =>
-              "A copy, this device's own to edit. Nothing links it back to the "
-                  'file.',
+            _Road.own => 'A copy to edit here. Nothing refreshes it.',
             _Road.replace =>
-              'In place of everything "$open" holds now. A copy of it is kept '
-                  'first.',
+              'Replace everything this bar holds now. A copy is kept.',
             _Road.guest =>
-              "The owner's, read to here and read-only. Refreshes from a newer "
-                  'file they send.',
+              "The owner's copy, read-only. Refreshed from their file.",
           }),
-          const SectionLabel('What the file holds'),
+          const SectionLabel('Contents'),
           BarHoldings(arriving.collection),
         ],
       ],

@@ -115,7 +115,7 @@ void main() {
     });
 
     test(
-      'it carries the amount and the unit, never the mark or the bottles',
+      'it carries the amount and the unit, never the mark or the ingredients',
       () {
         expect(read(gin, display: FixedUnit.ml, scale: 2), '90 ml');
         const group = RecipeLine(Amount(1), 'part', ['cognac', 'vodka']);

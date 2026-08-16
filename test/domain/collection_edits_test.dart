@@ -242,7 +242,7 @@ void main() {
       expect(renamed(collection, 'rye').recipeNamed('Negroni'), same(negroni));
     });
 
-    test('reaches a bottle standing as one alternative of a group', () {
+    test('reaches an ingredient standing as one alternative of a group', () {
       final grouped = collection.copyWith(
         recipes: [
           Recipe(
@@ -477,7 +477,7 @@ void main() {
   });
 
   group('withCanonicalIngredientNames (ADR 10)', () {
-    /// The vocabulary with one bottle answering to a second spelling.
+    /// The vocabulary with one ingredient answering to a second spelling.
     final aliased = collection.withIngredient(
       Ingredient('bourbon', stock: StockLevel.in_, aliases: const ['whiskey']),
     );
@@ -499,7 +499,7 @@ void main() {
           ],
         );
 
-    test('an alias becomes the bottle it names', () {
+    test('an alias becomes the ingredient it names', () {
       final canonical = naming(
         aliased,
         'whiskey',
@@ -515,7 +515,7 @@ void main() {
       expect(ingredientsOf(canonical, 'Old Fashioned'), ['bourbon']);
     });
 
-    test('a line naming no known bottle is left as written', () {
+    test('a line naming no known ingredient is left as written', () {
       final unknown = naming(aliased, 'rye');
       expect(unknown.withCanonicalIngredientNames(), same(unknown));
     });

@@ -336,55 +336,62 @@ void main() {
       expect(store.saveCount, 1);
     });
 
-    test('upsertRecipe stores every line under the bottle it names', () async {
-      final container = await started(
-        MemoryBarStore.of(
-          bar,
-          stored.withIngredient(
-            Ingredient(
-              'gin',
-              stock: StockLevel.in_,
-              aliases: const ['jenever'],
+    test(
+      'upsertRecipe stores every line under the ingredient it names',
+      () async {
+        final container = await started(
+          MemoryBarStore.of(
+            bar,
+            stored.withIngredient(
+              Ingredient(
+                'gin',
+                stock: StockLevel.in_,
+                aliases: const ['jenever'],
+              ),
             ),
           ),
-        ),
-      );
-      await writerOf(container).upsertRecipe(
-        Recipe(
-          'Gin Fizz',
-          lines: const [
-            RecipeLine(Amount(2), 'part', ['jenever']),
-            RecipeLine(Amount(1), 'part', ['CAMPARI']),
-          ],
-        ),
-      );
-      expect(
-        collectionOf(
-          container,
-        ).recipeNamed('Gin Fizz')!.lines.map((line) => line.ingredients.single),
-        ['gin', 'campari'],
-      );
-    });
+        );
+        await writerOf(container).upsertRecipe(
+          Recipe(
+            'Gin Fizz',
+            lines: const [
+              RecipeLine(Amount(2), 'part', ['jenever']),
+              RecipeLine(Amount(1), 'part', ['CAMPARI']),
+            ],
+          ),
+        );
+        expect(
+          collectionOf(container)
+              .recipeNamed('Gin Fizz')!
+              .lines
+              .map((line) => line.ingredients.single),
+          ['gin', 'campari'],
+        );
+      },
+    );
 
-    test('a bottle this edit introduces answers for its own line', () async {
-      final container = await started();
-      await writerOf(container).upsertRecipe(
-        Recipe(
-          'Sazerac',
-          lines: const [
-            RecipeLine(Amount(2), 'part', ['RYE']),
-          ],
-        ),
-        addingIngredients: [Ingredient('rye')],
-      );
-      expect(
-        collectionOf(
-          container,
-        ).recipeNamed('Sazerac')!.lines.single.ingredients.single,
-        'rye',
-      );
-      expect(store.saveCount, 1);
-    });
+    test(
+      'an ingredient this edit introduces answers for its own line',
+      () async {
+        final container = await started();
+        await writerOf(container).upsertRecipe(
+          Recipe(
+            'Sazerac',
+            lines: const [
+              RecipeLine(Amount(2), 'part', ['RYE']),
+            ],
+          ),
+          addingIngredients: [Ingredient('rye')],
+        );
+        expect(
+          collectionOf(
+            container,
+          ).recipeNamed('Sazerac')!.lines.single.ingredients.single,
+          'rye',
+        );
+        expect(store.saveCount, 1);
+      },
+    );
 
     test('upsertRecipe replacing a name renames in one edit', () async {
       final container = await started();

@@ -14,7 +14,7 @@ void main() {
   Recipe builtOn(List<RecipeLine> lines) => Recipe('Negroni', lines: lines);
 
   group('basesOf', () {
-    test('takes the bottles off base lines and no others', () {
+    test('takes the ingredients off base lines and no others', () {
       expect(basesOf(builtOn(const [gin, campari])), {'gin'});
     });
 
@@ -36,11 +36,13 @@ void main() {
   });
 
   group('baseSpirits', () {
-    Collection collection(List<Recipe> recipes, {List<Ingredient>? bottles}) =>
-        Collection(
-          ingredients: bottles ?? [Ingredient('gin'), Ingredient('white rum')],
-          recipes: recipes,
-        );
+    Collection collection(
+      List<Recipe> recipes, {
+      List<Ingredient>? ingredients,
+    }) => Collection(
+      ingredients: ingredients ?? [Ingredient('gin'), Ingredient('white rum')],
+      recipes: recipes,
+    );
 
     test('reads A→Z, ignoring case', () {
       expect(
@@ -54,7 +56,7 @@ void main() {
       );
     });
 
-    test('names a bottle once however many recipes are built on it', () {
+    test('names an ingredient once however many recipes are built on it', () {
       expect(
         baseSpirits(
           collection([
@@ -66,7 +68,7 @@ void main() {
       );
     });
 
-    test('names a bottle once across its spellings (ADR 10)', () {
+    test('names an ingredient once across its spellings (ADR 10)', () {
       expect(
         baseSpirits(
           collection(
@@ -81,7 +83,7 @@ void main() {
                 ],
               ),
             ],
-            bottles: [
+            ingredients: [
               Ingredient('gin', aliases: const ['london dry']),
             ],
           ),
@@ -99,7 +101,7 @@ void main() {
                 RecipeLine(Amount(1), 'part', ['GIN'], mark: LineMark.base),
               ]),
             ],
-            bottles: [Ingredient('Gin')],
+            ingredients: [Ingredient('Gin')],
           ),
         ),
         ['Gin'],
@@ -200,7 +202,7 @@ void main() {
       expect(marksBase(builtOn(const [rumOrVodka]), 'vodka'), isTrue);
     });
 
-    test('does not match a bottle the recipe only uses', () {
+    test('does not match an ingredient the recipe only uses', () {
       expect(marksBase(builtOn(const [gin, campari]), 'campari'), isFalse);
     });
 

@@ -111,8 +111,9 @@ final class YamlCodec {
       ),
     );
     if (issues.isNotEmpty) return null;
-    // A hand-edited file may name a bottle by an alias; the collection holds
-    // the canonical name, so the next save writes it back that way (ADR 10).
+    // A hand-edited file may name an ingredient by an alias; the collection
+    // holds the canonical name, so the next save writes it back that way (ADR
+    // 10).
     return (
       name: parts.name,
       display: parts.display,

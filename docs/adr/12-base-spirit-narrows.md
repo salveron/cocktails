@@ -13,7 +13,7 @@ FR-DIS-4 asked grouped browsing under base spirits (ADR 06). ADR 11's substituti
 - Chip in filter row: **Any base**, **No base**, all base spirits A→Z. Narrows with search, tags, order.
 - **No base** is a choice (recipes marking no base); otherwise unreachable by scrolling.
 - Group marked `(base)` matches **every** alternative: predicate with no single file location.
-- Spirits from recipes, never a separate vocabulary. Bottle is base while marked; names use fold (ADR 08).
+- Spirits from recipes, never a separate vocabulary. Ingredient is base while marked; names use fold (ADR 08).
 - Stale pick (renamed, deleted, or mark cleared): stop narrowing not emptying list (like tags).
 - Screen state only: nothing reaches file.
 

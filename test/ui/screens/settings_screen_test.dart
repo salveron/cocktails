@@ -133,7 +133,7 @@ void main() {
       expect(find.text('2 tags'), findsOneWidget);
       expect(find.text('7 units'), findsOneWidget);
       expect(
-        find.textContaining('In place of everything "Home bar" holds now'),
+        find.textContaining('Replace everything this bar holds now'),
         findsOneWidget,
       );
       expect(store.saveCount, 0);
@@ -266,8 +266,8 @@ void main() {
       expect(find.text('Replace'), findsOneWidget);
       expect(find.text('Guest'), findsOneWidget);
       await tap(tester, find.text('Guest'));
-      expect(find.textContaining('read to here and read-only'), findsOneWidget);
-      expect(find.textContaining('In place of everything'), findsNothing);
+      expect(find.textContaining('read-only'), findsOneWidget);
+      expect(find.textContaining('Replace everything'), findsNothing);
     });
 
     /// The file's own name is a starting value on the road that founds a bar,

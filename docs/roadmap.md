@@ -16,15 +16,15 @@ Milestones in dependency order. Scope: [requirements.md](requirements.md); desig
 - [x] **M8** — State wiring. Delivers: Riverpod collection provider, mutations persist, startup load. Depends: M7, M7a.
 - [x] **M9** — App shell. Delivers: navigation, theme, empty states. Depends: M8.
 
-## Phase 1 — Inventory & vocabularies
+## Phase 1 — Ingredients & vocabularies
 
-- [x] **M10** — Inventory screen. Delivers: ingredient list, search, stock toggle (FR-INV-1/2). Depends: M9.
+- [x] **M10** — Ingredients screen. Delivers: ingredient list, search, stock toggle (FR-ING-1/2). Depends: M9.
 - [x] **M10a** — Base spirit on line. Delivers: [ADR 06](adr/06-base-spirit-on-the-line.md), LineMark per line, (base)/(optional) exclusive (FR-REC-8). Depends: M10.
 - [x] **M11** — Ingredient management. Delivers: add, rename, delete with reference blocking (FR-VOC-1). Depends: M10.
 - [x] **M11a** — Tag colour. Delivers: [ADR 07](adr/07-tag-colour.md), colour on Tag, required on all tags (FR-VOC-3). Depends: M11.
-- [x] **M11b** — Ingredient tags. Delivers: recipe_tags and ingredient_tags as peers, per-vocabulary propagation (FR-VOC-3/4, FR-INV-3). Depends: M11a.
+- [x] **M11b** — Ingredient tags. Delivers: recipe_tags and ingredient_tags as peers, per-vocabulary propagation (FR-VOC-3/4, FR-ING-3). Depends: M11a.
 - [x] **M12** — Tag management. Delivers: add, rename, delete on both vocabularies in Settings; colour picker (FR-VOC-1/3). Depends: M11b.
-- [x] **M12a** — Ingredient tags on inventory. Delivers: colour dot per tag, filter-chip row combines with search (FR-INV-3). Depends: M12.
+- [x] **M12a** — Ingredient tags on the ingredients screen. Delivers: colour dot per tag, filter-chip row combines with search (FR-ING-3). Depends: M12.
 
 ## Phase 2 — Recipes
 
@@ -59,7 +59,7 @@ Milestones in dependency order. Scope: [requirements.md](requirements.md); desig
 
 ## Phase 5 — The basket, and reaching across screens
 
-- [x] **M26** — Basket card re-reads. Delivers: title `Shopping Cart #N`, bottles subtitle, body as BulletRuns, ranked by count (FR-DIS-6). Depends: M25a.
+- [x] **M26** — Basket card re-reads. Delivers: title `Shopping Cart #N`, ingredients subtitle, body as BulletRuns, ranked by count (FR-DIS-6). Depends: M25a.
 - [x] **M27** — Baskets narrow to category. Delivers: tagFilter row, basket answers tags of recipes unlocked (FR-DIS-10). Depends: M26.
 - [x] **M28** — Destination sends reader to another. Delivers: [ADR 19](adr/19-a-destination-sends-the-reader-to-another.md), destinations.dart, revealProvider, back undoes (FR-DIS-9). Depends: M27.
 
@@ -90,7 +90,7 @@ Milestones in dependency order. Scope: [requirements.md](requirements.md); desig
 - [x] **M34** — Guest bar is read-only. Delivers: `destinationsOf(BarMode)` with the shell indexing
   by offered position rather than by the enum; the optimizer absent on a guest rather than empty;
   every write control built from `barWriterProvider` being null, so no add button, no ⋮ on an
-  inventory row, no Edit/Delete on a recipe, and no stock rotation — Scale & convert, the dice, the
+  ingredients row, no Edit/Delete on a recipe, and no stock rotation — Scale & convert, the dice, the
   narrowings and the jumps all surviving; `RowMenu` drawing nothing when empty; Settings' Tags,
   Units and Import dimmed and leading nowhere while Amounts, Export and Change bar stay live;
   Amounts offering a guest the pick alone; export working on a guest (FR-DAT-1); no `!` on the
@@ -125,6 +125,17 @@ Milestones in dependency order. Scope: [requirements.md](requirements.md); desig
   (`Refreshes.standing`/`told`, `refreshSaid`); `banners.dart` becomes `telling.dart`, the one home
   for what the app could not do, `wentThrough` included. Owned/Guest chips move onto the traffic
   light — green and amber. Depends: M36.
+- [x] **M36b** — One word per thing. Delivers: **Ingredients** where Inventory stood — the screen
+  (`ingredients_screen.dart`, `IngredientsScreen`, `Destination.ingredients`), the requirements
+  section and its identifiers (FR-INV-1/2/3 → FR-ING-1/2/3), and every doc that named it; "ingredient"
+  where "bottle" stood throughout prose, user-facing text and code — `Purchase.ingredients` and
+  `Collection.spellingOf` where `bottles` and `bottleNamed` were. The arriving-file form asks its
+  mode under **Mode** at both entries rather than "Whose bar" and "Where it goes", ends on
+  **Contents** rather than "What the file holds", carries no heading over the file button, and says
+  what each road does in one line apiece — the guest one no longer spelling "read" two ways in one
+  sentence; its cards run to the width of the fields above them (`VocabularyRow.margin`). A bar card's
+  subtitle drops "Loaded", which marked nothing since counts came off the index (ADR 20), and dates
+  itself **Updated: 3 hours ago** or **Refreshed: 2 days ago**. Depends: M36a.
 
 ## Phase 9 — A bar travels over the LAN
 

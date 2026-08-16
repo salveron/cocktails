@@ -17,7 +17,7 @@ the optimizer were built on name lookups.
   refuse "Gin" beside "gin" — `Collection` throws, `validateCollection` reports — in all four vocabularies.
 - Resolution folds with it: `ingredientNamed`, `recipeNamed`, `hasTag`, the unknown-ingredient and
   unknown-tag rules, `recipesUsingIngredient`, `usersOfTag`, `wornInOrder`, and the rename rewriters.
-  A line reading "gin" resolves to the bottle "Gin" wherever it is read.
+  A line reading "gin" resolves to the ingredient "Gin" wherever it is read.
 - Spelling is data, not identity: an entry displays as it was written, and nothing rewrites what a
   file already holds. Value equality stays exact — `Ingredient('Gin') != Ingredient('gin')` — so a
   recapitalisation is a change the controller saves, while remaining a name the vocabulary already
@@ -30,7 +30,7 @@ the optimizer were built on name lookups.
 
 ## Alternatives considered
 
-- Fold in the recipe form only: fixes the reported symptom, leaves the inventory able to create the
+- Fold in the recipe form only: fixes the reported symptom, leaves the ingredients screen able to create the
   pair and the name field able to duplicate a recipe; two rules for one question.
 - Fold on write (store names lowercased): comparison becomes free, but the vocabulary loses
   "Campari" — how a name is capitalised is the user's to decide.
