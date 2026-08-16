@@ -194,7 +194,7 @@ format: 2
 open: 5f2c9a           # the bar on show; the key stays, valueless, where none is
 
 bars:
-  - {id: 5f2c9a, name: Home bar, mode: owner, display: part, offers: [{via: lan}], updated: "2026-08-14T09:12:00.000Z", holds: {recipe: 12, ingredient: 30, tag: 8, unit: 7}}
+  - {id: 5f2c9a, name: Home bar, mode: owner, display: part, shopping: {aim: true, budget: 2, low: false, most: 25, optional: false}, offers: [{via: lan}], updated: "2026-08-14T09:12:00.000Z", holds: {recipe: 12, ingredient: 30, tag: 8, unit: 7}}
   - {id: b3e1d7, name: Home bar, mode: guest, display: ml, refreshed: "2026-08-09T18:22:04.000Z", holds: {recipe: 40, ingredient: 55, tag: 3, unit: 7}, source: {via: lan, at: _cocktails._tcp/x, from: Home bar (b3e)}}
 ```
 
@@ -209,6 +209,12 @@ carrying the guests it names where the way can (FR-BAR-6); `source` and `refresh
 of its own — optional, like `updated`: a record written before summaries existed carries neither, and
 the startup load counts that bar once and writes the index back (ADR 20). A `holds` missing a kind is
 dropped whole rather than read as a bar that holds none of it.
+
+`shopping` is what the optimizer is asked (FR-SET-2, [ADR 24](adr/24-the-tags-may-aim-the-optimizer.md)) 
+— the reader's, which is why it is here rather than in the bar's own file. Left off entirely while 
+nothing in it has moved, and written whole once anything has: absent means the defaults, so a record 
+written before it existed reads as the answer the app gave then and no migration runs. `budget` and 
+`most` must be values their screen offers, `validateShelf` refusing an index that says otherwise.
 
 ## Domain computations
 

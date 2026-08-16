@@ -13,8 +13,9 @@ import '../widgets/vocabulary_dialogs.dart';
 /// one Save for the screen, so two units can trade names in a single edit.
 /// Designed in docs/ui-design.md#units.
 ///
-/// Owned bars only: Settings dims the row leading here on a guest one, which is
-/// what lets the Save below take the writer as non-null (FR-BAR-4).
+/// On a guest bar it reads and no more (FR-BAR-4): the rows go quiet, the spare
+/// one and the deletes go, and the Save with them — which is also what lets the
+/// Save below take the writer as non-null.
 class UnitsScreen extends ConsumerWidget {
   const UnitsScreen({super.key});
 
@@ -59,6 +60,7 @@ class _UnitsFormState extends ConsumerState<_UnitsForm> {
   @override
   Widget build(BuildContext context) {
     final entered = _rows.entered;
+    final writable = ref.watch(barWriterProvider) != null;
     // The vocabulary's own rules judge the rows, so a name the file would
     // refuse is a name this screen refuses (ADR 05).
     final issues = validateCollection(
@@ -75,23 +77,28 @@ class _UnitsFormState extends ConsumerState<_UnitsForm> {
     );
     return EditorScaffold(
       title: 'Units',
+      readOnly: !writable,
       dirty: _dirty,
       discardTitle: 'Discard these units?',
       onSave: issues.isEmpty ? () => unawaited(_save(entered)) : null,
       children: [
         Text(
-          'A plural left empty reads like the name. '
-          '"$partUnit", "$mlUnit" and "$ozUnit" cannot be renamed or deleted — '
-          'amounts convert between them.',
+          writable
+              ? 'A plural left empty reads like the name. "$partUnit", '
+                    '"$mlUnit" and "$ozUnit" cannot be renamed or deleted — '
+                    'amounts convert between them.'
+              : "The owner's units. A plural left empty reads like the name.",
           style: TextStyle(
             color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),
         ),
         const SizedBox(height: 16),
         const _HeaderRow(),
-        for (final row in _rows.rows)
+        // The spare row is an invitation, so it goes with the writing.
+        for (final row in writable ? _rows.rows : entered)
           _Fields(
             row,
+            writable: writable,
             nameError: problems[(row, false)],
             pluralError: problems[(row, true)],
             onDelete: () => unawaited(_delete(row)),
@@ -183,12 +190,14 @@ const _trailingWidth = 48.0;
 class _Fields extends StatelessWidget {
   const _Fields(
     this.row, {
+    required this.writable,
     required this.nameError,
     required this.pluralError,
     required this.onDelete,
   });
 
   final _UnitRow row;
+  final bool writable;
   final String? nameError;
   final String? pluralError;
   final VoidCallback onDelete;
@@ -202,7 +211,7 @@ class _Fields extends StatelessWidget {
         Expanded(
           child: TextField(
             controller: row.name,
-            enabled: !row.locked,
+            enabled: writable && !row.locked,
             decoration: InputDecoration(hintText: 'Unit', errorText: nameError),
           ),
         ),
@@ -210,6 +219,7 @@ class _Fields extends StatelessWidget {
         Expanded(
           child: TextField(
             controller: row.plural,
+            enabled: writable,
             decoration: InputDecoration(
               // Empty reads like the name, so the name is what it stands for.
               hintText: row.name.isBlank ? 'Plural' : row.name.typed,
@@ -223,6 +233,9 @@ class _Fields extends StatelessWidget {
   );
 
   Widget? _trailing(BuildContext context) {
+    // Nothing on a guest bar: the lock marks the two units nobody may rename,
+    // and worn by every row it would be saying something else (ADR 17).
+    if (!writable) return null;
     if (row.locked) {
       return Tooltip(
         message: 'Fixed unit',

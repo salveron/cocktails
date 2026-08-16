@@ -127,6 +127,7 @@ Bar? _readBar(YamlNode node, List<Object> path, List<ValidationIssue> issues) {
     'updated',
     'holds',
     'source',
+    'shopping',
   };
   _checkKeys(node, keys, path, issues);
   final id = _readText(node, 'id', path, issues, required: true);
@@ -166,11 +167,61 @@ Bar? _readBar(YamlNode node, List<Object> path, List<ValidationIssue> issues) {
     name: name,
     mode: mode,
     display: display,
+    shopping: _readShopping(node.nodes['shopping'], [
+      ...path,
+      'shopping',
+    ], issues),
     offers: offers,
     source: source,
     refreshed: refreshed,
     updated: updated,
     holds: _readHolds(node.nodes['holds'], [...path, 'holds'], issues),
+  );
+}
+
+/// What the optimizer is asked, key by key over the defaults (FR-SET-2, ADR
+/// 24): a record written before any of it could be set carries none of them and
+/// reads as the answer the app gave then. Whether the numbers make sense is
+/// `validateShelf`'s, this being the one place they are merely read.
+Shopping _readShopping(
+  YamlNode? node,
+  List<Object> path,
+  List<ValidationIssue> issues,
+) {
+  const standing = Shopping();
+  if (node == null) return standing;
+  if (node is! YamlMap) {
+    _report(issues, path, 'shopping must be a mapping', node);
+    return standing;
+  }
+  const keys = {'aim', 'budget', 'low', 'most', 'optional'};
+  _checkKeys(node, keys, path, issues);
+  bool flag(String key, bool standing) =>
+      _readValue<bool>(
+        node,
+        key,
+        path,
+        issues,
+        parse: (value) => value is bool ? value : null,
+        requirement: '$key must be true or false',
+      ) ??
+      standing;
+  int count(String key, int standing) =>
+      _readValue<int>(
+        node,
+        key,
+        path,
+        issues,
+        parse: (value) => value is int ? value : null,
+        requirement: '$key must be a number',
+      ) ??
+      standing;
+  return Shopping(
+    aiming: flag('aim', standing.aiming),
+    budget: count('budget', standing.budget),
+    restocking: flag('low', standing.restocking),
+    most: count('most', standing.most),
+    buyingOptional: flag('optional', standing.buyingOptional),
   );
 }
 

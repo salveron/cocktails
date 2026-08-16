@@ -13,6 +13,35 @@ void main() {
 
   Recipe builtOn(List<RecipeLine> lines) => Recipe('Negroni', lines: lines);
 
+  group('recipesWearing (FR-DIS-10, ADR 24)', () {
+    final collection = Collection(
+      ingredients: [Ingredient('gin')],
+      recipeTags: [Tag('tiki', color: TagColor.teal)],
+      recipes: [
+        Recipe('Mai Tai', tags: const ['tiki'], lines: const [gin]),
+        Recipe('Negroni', tags: const ['classic'], lines: const [gin]),
+        Recipe('Zombie', tags: const ['tiki', 'classic'], lines: const [gin]),
+        Recipe('Water', lines: const [gin]),
+      ],
+    );
+
+    test('takes a recipe wearing any one of them, not every one', () {
+      expect(recipesWearing(collection, const ['tiki', 'classic']), {
+        'Mai Tai',
+        'Negroni',
+        'Zombie',
+      });
+    });
+
+    test('reaches a recipe however either spells the tag (ADR 08)', () {
+      expect(recipesWearing(collection, const ['TIKI']), {'Mai Tai', 'Zombie'});
+    });
+
+    test('nothing picked wears nothing', () {
+      expect(recipesWearing(collection, const []), isEmpty);
+    });
+  });
+
   group('basesOf', () {
     test('takes the ingredients off base lines and no others', () {
       expect(basesOf(builtOn(const [gin, campari])), {'gin'});

@@ -69,6 +69,11 @@ guest bar has no shopping destination and the optimizer is never asked for one (
   ([components.md](../components.md#work-in-flight)).
 - Screens that write become `null`-aware at one point each, which is the same line that decides
   whether to draw the control.
+- **The read-only screen arrived**, which is what the fourth alternative was refused for: the tags,
+  the units and the amounts now open on a guest bar and read there (FR-BAR-4). Nothing about this
+  decision moved to allow it — the same null both blocks the write and hides the control, so each of
+  the three grew one `writable` and spent it on what it draws. Which is the case for having built it
+  this way rather than hiding the screens in the shell.
 - Import sits with export on the data seam rather than on the writer ([ADR 18](18-data-crosses-the-edge-in-a-system-sheet.md)),
   so the one exchange stays one subject and `replaceOpen` refuses a guest bar itself. What draws or
   hides its row reads the same `openBarProvider` mode every other control does.

@@ -87,7 +87,9 @@ void main() {
       () async {
         final container = await started(short);
         expect(
-          container.read(purchasesProvider(false)).map((p) => p.ingredients),
+          container
+              .read(purchasesProvider(ShoppingAsk(restocking: false)))
+              .map((p) => p.ingredients),
           [
             ['campari', 'gin'],
             ['gin'],
@@ -103,10 +105,17 @@ void main() {
           recipes: [stored.recipes.last],
         ),
       );
-      expect(container.read(purchasesProvider(false)), isEmpty);
-      expect(container.read(purchasesProvider(true)).single.ingredients, [
-        'gin',
-      ]);
+      expect(
+        container.read(purchasesProvider(ShoppingAsk(restocking: false))),
+        isEmpty,
+      );
+      expect(
+        container
+            .read(purchasesProvider(ShoppingAsk(restocking: true)))
+            .single
+            .ingredients,
+        ['gin'],
+      );
     });
   });
 

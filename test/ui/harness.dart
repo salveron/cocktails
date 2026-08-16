@@ -85,8 +85,17 @@ final recipeCollection = Collection(
 
 /// The one bar every widget test runs over: owned, so nothing is hidden for
 /// being a guest's, and reading in parts.
-Bar testBar({String name = 'Home bar', FixedUnit display = FixedUnit.part}) =>
-    Bar(id: 'test01', name: name, mode: BarMode.owner, display: display);
+Bar testBar({
+  String name = 'Home bar',
+  FixedUnit display = FixedUnit.part,
+  Shopping shopping = const Shopping(),
+}) => Bar(
+  id: 'test01',
+  name: name,
+  mode: BarMode.owner,
+  display: display,
+  shopping: shopping,
+);
 
 /// Another owner's, read as it stood at its last refresh (FR-BAR-3) — the
 /// counterpart to [testBar], so one screen can be judged in both modes. The

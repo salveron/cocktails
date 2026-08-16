@@ -11,6 +11,7 @@ import 'package:cocktails/ui/screens/amounts_screen.dart';
 import 'package:cocktails/ui/screens/ingredients_screen.dart';
 import 'package:cocktails/ui/screens/recipes_screen.dart';
 import 'package:cocktails/ui/screens/settings_screen.dart';
+import 'package:cocktails/ui/screens/shopping_settings_screen.dart';
 import 'package:cocktails/ui/screens/tags_screen.dart';
 import 'package:cocktails/ui/screens/units_screen.dart';
 import 'package:cocktails/ui/widgets/vocabulary_list.dart';
@@ -185,7 +186,7 @@ void main() {
         )
         .enabled;
 
-    testWidgets('the rows that would write dim rather than vanish', (
+    testWidgets('what reads stays live, and only Shopping dims', (
       tester,
     ) async {
       await pumpOver(
@@ -194,34 +195,44 @@ void main() {
         fixtureCollection,
         bar: guestBar(),
       );
-      for (final row in ['Tags', 'Units']) {
-        expect(live(tester, row), isFalse, reason: row);
-      }
-      for (final row in ['Amounts', 'Export', 'Change bar']) {
+      // The owner's vocabularies and sizes are the guest's to read (FR-BAR-4),
+      // so every row leading to one opens; the optimizer is absent there, so
+      // its settings are the one thing with nothing to say.
+      for (final row in ['Tags', 'Units', 'Amounts', 'Export', 'Change bar']) {
         expect(live(tester, row), isTrue, reason: row);
       }
+      expect(live(tester, 'Shopping'), isFalse);
       // The file row is not dimmed but read the other way round: this bar takes
       // no file in, and asks its source for one instead (FR-BAR-5).
       expect(find.text('Import'), findsNothing);
       expect(live(tester, 'Refresh'), isTrue);
     });
 
-    testWidgets('and a dimmed row leads nowhere', (tester) async {
+    testWidgets('the live rows open and the dimmed one leads nowhere', (
+      tester,
+    ) async {
       await pumpOver(
         tester,
         const SettingsScreen(),
         fixtureCollection,
         bar: guestBar(),
       );
+      await tap(tester, find.text('Shopping'));
+      expect(find.byType(ShoppingSettingsScreen), findsNothing);
       await tap(tester, find.text('Tags'));
-      expect(find.byType(TagsScreen), findsNothing);
-      await tap(tester, find.text('Units'));
-      expect(find.byType(UnitsScreen), findsNothing);
+      expect(find.byType(TagsScreen), findsOneWidget);
     });
 
     testWidgets('every row is live on an owned bar', (tester) async {
       await pumpOver(tester, const SettingsScreen(), fixtureCollection);
-      for (final row in ['Tags', 'Units', 'Amounts', 'Export', 'Import']) {
+      for (final row in [
+        'Tags',
+        'Units',
+        'Amounts',
+        'Shopping',
+        'Export',
+        'Import',
+      ]) {
         expect(live(tester, row), isTrue, reason: row);
       }
       // Nothing to ask: an owned bar has no source (FR-BAR-5).
@@ -242,10 +253,89 @@ void main() {
     });
   });
 
+  // FR-BAR-4: the owner's vocabularies are the guest's to read. What goes is
+  // every way in to changing one, and none of them is left to be refused.
+  group('tags on a guest bar', () {
+    testWidgets('reads and offers no way to write', (tester) async {
+      await pumpOver(
+        tester,
+        const TagsScreen(),
+        fixtureCollection,
+        bar: guestBar(),
+      );
+      expect(find.text('classic'), findsOneWidget);
+      expect(find.byTooltip('Add recipe tag'), findsNothing);
+      expect(rowMenu('classic'), findsNothing);
+      await tap(tester, find.text('classic'));
+      expect(
+        find.byType(TextField),
+        findsOneWidget,
+        reason: 'the search alone — a tapped row opened no edit',
+      );
+    });
+
+    testWidgets('the search still narrows the owner\'s tags', (tester) async {
+      await pumpOver(
+        tester,
+        const TagsScreen(),
+        fixtureCollection,
+        bar: guestBar(),
+      );
+      await typeInto(tester, find.byType(TextField), 'zzz');
+      expect(find.text('Nothing matches'), findsOneWidget);
+      expect(
+        find.textContaining('Add "zzz"'),
+        findsNothing,
+        reason: 'nothing to add on someone else\'s bar',
+      );
+    });
+
+    testWidgets('an owned bar offers all three ways in', (tester) async {
+      await pumpOver(tester, const TagsScreen(), fixtureCollection);
+      expect(find.byTooltip('Add recipe tag'), findsOneWidget);
+      expect(rowMenu('classic'), findsOneWidget);
+    });
+  });
+
+  group('units on a guest bar', () {
+    testWidgets('the rows read and nothing writes them', (tester) async {
+      await pumpOver(
+        tester,
+        const UnitsScreen(),
+        fixtureCollection,
+        bar: guestBar(),
+      );
+      final fields = tester.widgetList<TextField>(find.byType(TextField));
+      // A name and a plural per unit, and no spare row inviting another.
+      expect(fields, hasLength(defaultUnits.length * 2));
+      expect(fields.every((field) => field.enabled ?? true), isFalse);
+      expect(find.text('Save'), findsNothing);
+      expect(find.byTooltip('Delete'), findsNothing);
+      expect(
+        find.byTooltip('Fixed unit'),
+        findsNothing,
+        reason: 'the lock marks the three nobody renames, not every row',
+      );
+    });
+
+    testWidgets('an owned bar keeps its spare row, its Save and its locks', (
+      tester,
+    ) async {
+      await pumpOver(tester, const UnitsScreen(), fixtureCollection);
+      expect(
+        find.byType(TextField),
+        findsNWidgets((defaultUnits.length + 1) * 2),
+      );
+      expect(find.text('Save'), findsOneWidget);
+      expect(find.byTooltip('Fixed unit'), findsNWidgets(3));
+    });
+  });
+
   group('amounts on a guest bar', () {
     /// The pick is a preference for reading someone else's collection; the
-    /// sizes are the owner's, the recipes having been written against them.
-    testWidgets('the pick is offered and the sizes are not', (tester) async {
+    /// sizes are the owner's, the recipes having been written against them —
+    /// so both are on show and only one of them moves.
+    testWidgets('the sizes read and refuse the finger', (tester) async {
       await pumpOver(
         tester,
         const AmountsScreen(),
@@ -253,13 +343,17 @@ void main() {
         bar: guestBar(),
       );
       expect(find.byType(SegmentedButton<FixedUnit>), findsOneWidget);
-      expect(find.byType(TextField), findsNothing);
+      final fields = tester.widgetList<TextField>(find.byType(TextField));
+      expect(fields, hasLength(2));
+      expect(fields.every((field) => field.enabled ?? true), isFalse);
     });
 
-    testWidgets('an owned bar is offered both', (tester) async {
+    testWidgets('an owned bar may type in them', (tester) async {
       await pumpOver(tester, const AmountsScreen(), fixtureCollection);
       expect(find.byType(SegmentedButton<FixedUnit>), findsOneWidget);
-      expect(find.byType(TextField), findsNWidgets(2));
+      final fields = tester.widgetList<TextField>(find.byType(TextField));
+      expect(fields, hasLength(2));
+      expect(fields.every((field) => field.enabled ?? true), isTrue);
     });
 
     testWidgets('picking one saves it and leaves the collection alone', (
@@ -271,7 +365,14 @@ void main() {
         fixtureCollection,
         bar: guestBar(),
       );
-      await tap(tester, find.text('ml'));
+      // The rows name ml too, so the segment is reached through its button.
+      await tap(
+        tester,
+        find.descendant(
+          of: find.byType(SegmentedButton<FixedUnit>),
+          matching: find.text('ml'),
+        ),
+      );
       await tap(tester, find.text('Save'));
       expect(store.savedShelf!.bars.single.display, FixedUnit.ml);
       expect(store.saved, isNull, reason: "the owner's file is untouched");

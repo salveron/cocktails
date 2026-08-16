@@ -347,19 +347,30 @@ Create/edit: pushed page, Save in app bar. Mirrors file order (name, lines, tags
   running low are bought beside the missing ones. Two words on the switch, the sentence in its tooltip 
   — the label is what a reader scans, not what teaches them.
 - **The tags say what to shop for** (FR-DIS-10): the [recipes screen](#recipes-screen)'s chip row, the 
-  same `tagFilter`, on its own row under the controls — a basket answering to the tags of every recipe 
-  it unlocks, so a pick keeps only the baskets shopping for that category. Under the controls rather 
-  than among them: the budget and the switch say how much to buy, the chips what for, and the `Wrap` 
-  holding the two is already what keeps them off the edge. Always on show rather than behind an icon — 
-  a narrowing that gaps the numbering has to be readable beside the gap it makes.
-- **A basket is ranked among all of its size**, so a narrowed screen reads `#1, #4, #7`. The number 
-  *is* the ranking, so renumbering what is on show would call the fourth-best basket the best; the gap 
-  is what says a filter is doing something.
-- **The tags narrow what was found, not what is looked for.** The search is not re-run per pick, it 
-  being the screen's one expensive computation — so a basket the optimizer already cut for ranking 
-  poorly overall never reaches the chips, and a niche tag can come up empty while a good basket for it 
-  exists ([ADR 15](adr/15-the-optimizer-answers-with-the-best-few.md)). Narrowing the *recipes* the 
-  search runs over would answer better, at a search per pick and a renumbering of every basket.
+  same `tagFilter`, on its own row under the controls. Under the controls rather than among them: the 
+  budget and the switch say how much to buy, the chips what for, and the `Wrap` holding the two is 
+  already what keeps them off the edge. Always on show rather than behind an icon — a narrowing that 
+  gaps the numbering has to be readable beside the gap it makes.
+- **A chip is read one of two ways** ([Shopping settings](#shopping) picks which, 
+  [ADR 24](adr/24-the-tags-may-aim-the-optimizer.md)), and the numbering is what says which is in 
+  force.
+  - **Sifting**, the default: the search runs over everything and the chips keep what answers them — a 
+    basket answering to the tags of every recipe it unlocks, so a pick keeps the baskets shopping for 
+    that category. A basket is ranked among all of its size, so a narrowed screen reads `#1, #4, #7`: 
+    the number *is* the ranking, renumbering would call the fourth-best basket the best, and the gap 
+    is what says a chip is doing something. The cost is [ADR 15](adr/15-the-optimizer-answers-with-the-best-few.md)'s — 
+    a basket already cut for ranking poorly overall never reaches the chips, so a niche tag can read 
+    empty while a good basket for it exists. **Baskets** on the settings screen is the relief.
+  - **Aiming**: the picks go *into* the search, which weighs a basket by how many of the recipes it 
+    unlocks wear any of them. One scoring a nothing is dropped by the rule that already dropped a zero 
+    yield, so every basket on show answers the picks and the numbering runs unbroken. Costs no more 
+    than sifting: the pool is the gaps' own ingredients either way, and only the weighing moves.
+- **The card is the same under both.** A basket still names every recipe it closes and counts them 
+  all — aiming moves which baskets are on show and where they rank, never what one says of itself, so 
+  the tagged recipes simply gather at the top of the list wearing the dots they already wore.
+- **The picks re-key the search only while aiming.** Sifting, a chip tap must not re-run the screen's 
+  one expensive computation, so the tags stay out of the provider's key there and go into it here 
+  ([components.md](components.md#state-contracts)).
 - **Both controls on one row** above the list, and a `Wrap` rather than a `Row`: a phone too narrow, 
   or a reader's larger text, drops the switch to a second line instead of carrying it off the edge. 
   Segments sit at 48dp — a touch target's own floor, and `visualDensity` is what reaches them, 
@@ -406,6 +417,9 @@ Behind Settings. Tab per vocab (Recipe, Ingredient, FR-VOC-4). Tag drawn as chip
 (name on full-strength colour). Opens A→Z; palette order also offered (FR-DIS-8).
 - **Row tap** opens edit (name, colour together, one save). Neither tab knows its kind 
   (domain tells via `TagKind`).
+- **A guest bar reads it** (FR-BAR-4): the search, the tabs and the orders all stand; the add button, 
+  the ⋮ and the tap that opened an edit all go, none of them left to be refused. The empty state stops 
+  describing what a tag is for — that reads as an invitation, and there is none to take up.
 
 ## Units
 
@@ -417,6 +431,11 @@ Behind Settings. Form, not `VocabularyList` (no search/sort). Rows editable in p
 - **Delete blocked** while lines use it (names recipes). Unused row goes on save; 
   discard restores.
 - **Validation** same as import: errors under field, Save blocked.
+- **A guest bar reads the rows** (FR-BAR-4): every field goes quiet, and the spare row, the deletes 
+  and the Save go with them — an invitation, three refusals and a button that would never light. The 
+  lock goes too: it marks the three nobody may rename, and worn by every row it would say something 
+  else. `EditorScaffold` takes `readOnly` for this, which is not `onSave: null` — that is nothing 
+  valid to save *yet*, and it dims the button rather than dropping it.
 
 ## Amounts
 
@@ -428,10 +447,11 @@ one dimmed sentence, the global unit, then two rows. Nothing else.
   it is the same choice made for the whole bar rather than for one card. One Save, two writes: the 
   sizes are the owner's and go to the collection, the pick is the reader's and goes to the bar's 
   record ([ADR 21](adr/21-the-file-carries-one-bar.md)), so two bars may read in different units.
-- **A guest bar is offered the pick alone** (FR-BAR-3). The unit amounts read in is a preference for 
-  reading someone else's collection; what a part and an ounce are worth is the owner's, the recipes 
-  having been written against those. So the rows go and the `SegmentedButton` stays, and Save writes 
-  the record without touching the file.
+- **A guest bar reads the rows and moves the pick** (FR-BAR-3). The unit amounts read in is a 
+  preference for reading someone else's collection; what a part and an ounce are worth is the owner's, 
+  the recipes having been written against those. So both are on show, the fields go quiet, and Save 
+  writes the record without touching the file. The rows carry no error there either: one nobody may 
+  type in cannot be wrong, and the owner's sizes are not this reader's to be told off for.
 - **Two rows, a sentence each** — "1 part = [30] ml", the number their only field. The global unit 
   leads, *except* ml: "1 ml = 0.0333 part" is a number no one reads or types back, so under ml each 
   row leads with the unit it sizes — which is the pair the file itself stores, making that pick a 
@@ -447,9 +467,32 @@ one dimmed sentence, the global unit, then two rows. Nothing else.
 - **Validation** same as import, plus what a size cannot say for itself: a ratio must be a number 
   above zero, zero having no inverse to store.
 
+## Shopping
+
+Behind Settings, below [Amounts](#amounts) — what the [shopping screen](#shopping-screen) is asked 
+and where it opens (FR-SET-2, [ADR 24](adr/24-the-tags-may-aim-the-optimizer.md)). The one row that 
+dims on a guest bar, the optimizer being absent there rather than empty (FR-BAR-4).
+
+- **No Save, and no `EditorScaffold`** — the one thing telling it from the two screens above. Nothing 
+  here can be half-entered: every control is a pick of a fixed few or a switch, so there is nothing to 
+  validate, nothing to discard, and a Save would only ever be a second tap. Each settles on the tap 
+  and goes to the bar's record.
+- **Five controls, which is what makes it a room.** [Data](#data)'s two rows sit on the Settings list 
+  because two rows are not a room; one switch would be less of one. The five: how a tag pick reads, 
+  how many baskets a size offers, and the budget, the reading of short and the optional lines.
+- **A section label, a control, a note.** The [bar form](#new-bar)'s shape: `SectionLabel` names the 
+  question, the control answers it, and a `FieldNote` says in one line what the answer does. The 
+  tag note turns with the pick, each reading getting its own line, the way that form's roads do.
+- **A switch reads as one of them**, its label at the section labels' weight with the switch on the 
+  same line — so the five read as five answers to five questions rather than as two kinds of control.
+- **Two of them are where the screen starts, not what it is.** The budget and "low too" seed the 
+  shopping screen's own controls, which move freely from there and write nothing back. Changing either 
+  here takes hold at once: the shell keeps that screen alive across a crossing, so waiting for a fresh 
+  one would leave a reader's own change unread until they left the bar.
+
 ## Data
 
-Rows on the Settings list itself, below [Amounts](#amounts) — the file leaving and the file coming 
+Rows on the Settings list itself, below [Shopping](#shopping) — the file leaving and the file coming 
 back, one exchange read twice ([ADR 18](adr/18-data-crosses-the-edge-in-a-system-sheet.md)). Not a 
 screen of their own: two rows are not a room, and a menu that exists to be passed through should not 
 gain a stop whose only content is the two rows behind it. What actually needs room — the 

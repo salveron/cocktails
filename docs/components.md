@@ -71,7 +71,8 @@ lib/
                                #   ground a chip meaning nothing by its colour stands on
                                #   (ADR 12), which is off scheme roles for that reason
     screens/                   # one file per destination, plus settings, tags, units,
-                               #   amounts, recipe form, bars — the list that is also
+                               #   amounts, shopping settings (FR-SET-2, ADR 24), recipe
+                               #   form, bars — the list that is also
                                #   home wherever none is open — and the owner's view of
                                #   what a bar is shared by, that last shaped by
                                #   ui-design.md once it is settled. settings_screen holds
@@ -174,6 +175,7 @@ final class Bar {
   final String name;             // a label: two bars may carry one (FR-BAR-1)
   final BarMode mode;
   final FixedUnit display;       // the reader's pick, outliving every refresh (FR-SET-1)
+  final Shopping shopping;       // the reader's too, and here for the same reason (FR-SET-2)
   final List<Offer> offers;      // an owner's, one per way it is shared (FR-BAR-6)
   final BarSource? source;       // a guest's, with…
   final DateTime? refreshed;     // …when that source last answered
@@ -463,10 +465,16 @@ bool canMake(Availability? availability);             // availability.dart — l
 Recipe? randomCanMake(Iterable<Recipe> candidates, Map<String, Availability> availability,
     Random random, {String? besides});                // discovery.dart — FR-DIS-5
 
+Set<String> recipesWearing(Collection collection, Iterable<String> tags);  // ADR 24 — a union
+
 const budgets = [1, 2, 3];                            // what the optimizer offers (FR-DIS-6)
+const basketCounts = [10, 25, 50];                    // how many of a size (FR-SET-2, ADR 15)
+final class Shopping { bool aiming; int budget; bool restocking;   // how it is asked (FR-SET-2)
+                       int most; bool buyingOptional; }
 final class Purchase { List<String> ingredients; List<String> unlocks; }   // both A→Z
 List<Purchase> purchasesWithin(Collection collection, int budget,               // FR-DIS-6
-    {int most = 25, bool restocking = false});                        // FR-DIS-7, ADR 16
+    {int most = 25, bool restocking = false,                          // FR-DIS-7, ADR 16
+     bool buyingOptional = false, Set<String>? scoring});             // FR-REC-3, ADR 24
 ```
 
 `canMake` is the one reading of what the bar can manage now — low still being something on hand, and a
@@ -797,8 +805,12 @@ order between them not matter. What the bar on show changes here is only how man
 are (FR-BAR-4): the shell indexes its stack by position in the list that bar offers, never by the 
 enum's own index, which is the one place a variable destination list is felt.
 
-`purchasesProvider` — `List<Purchase>` keyed on what counts as short (ADR 16), searched once at 
-`budgets.last` so the screen reads one size off the one answer. `autoDispose`, and watched only 
+`purchasesProvider` — `List<Purchase>` keyed on a `ShoppingAsk`: what counts as short (ADR 16), and 
+the tags the search is aimed at, empty while the chips sift ([ADR 24](adr/24-the-tags-may-aim-the-optimizer.md)). 
+A value class rather than a record, a record holding a list comparing by identity — two equal asks 
+would be two searches. The rest of what the optimizer is asked comes off `shoppingProvider`, the open 
+bar's `Shopping` (FR-SET-2), so a setting changed re-keys nothing and simply recomputes. Searched 
+once at `budgets.last` so the screen reads one size off the one answer. `autoDispose`, and watched only 
 while the shopping screen is the destination on show: the shell tells each destination whether it 
 is (`ShoppingScreen.showing`), since `IndexedStack` keeps them alive and a stock tap on the 
 ingredients screen would otherwise fire a search nobody is reading. The answer is let go with the screen and 

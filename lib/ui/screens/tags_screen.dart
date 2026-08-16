@@ -14,14 +14,16 @@ import '../widgets/vocabulary_list.dart';
 /// and reference-blocked delete (FR-VOC-1/3/4). Designed in
 /// docs/ui-design.md#tags-screen.
 ///
-/// Owned bars only: Settings dims the row leading here on a guest one, which is
-/// what lets every write below take the writer as non-null (FR-BAR-4).
+/// On a guest bar the search and the orders stand and everything that writes
+/// goes — the add, the row menu, the tap that opened an edit (FR-BAR-4) — which
+/// is also what lets every write below take the writer as non-null.
 class TagsScreen extends ConsumerWidget {
   const TagsScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final collection = ref.watch(collectionProvider);
+    final writable = ref.watch(barWriterProvider) != null;
     return DefaultTabController(
       length: TagKind.values.length,
       child: Scaffold(
@@ -35,7 +37,8 @@ class TagsScreen extends ConsumerWidget {
         ),
         body: TabBarView(
           children: [
-            for (final kind in TagKind.values) _TagTab(kind, collection),
+            for (final kind in TagKind.values)
+              _TagTab(kind, collection, writable: writable),
           ],
         ),
       ),
@@ -81,10 +84,11 @@ extension on TagKind {
 }
 
 class _TagTab extends ConsumerWidget {
-  const _TagTab(this.kind, this.collection);
+  const _TagTab(this.kind, this.collection, {required this.writable});
 
   final TagKind kind;
   final Collection collection;
+  final bool writable;
 
   _Words get vocabulary => kind.words;
 
@@ -95,20 +99,30 @@ class _TagTab extends ConsumerWidget {
     rowOf: (tag) => VocabularyRow(
       // Left-align chip (prevents stretching).
       title: Align(alignment: Alignment.centerLeft, child: TagChip(tag)),
-      trailing: RowMenu({
-        'Edit': () => unawaited(_edit(context, ref, tag)),
-        'Delete': () => unawaited(_delete(context, ref, tag)),
-      }),
-      onTap: () => unawaited(_edit(context, ref, tag)),
+      // An empty menu draws nothing at all, so a guest's rows lose the ⋮
+      // rather than gaining one that opens onto nothing.
+      trailing: RowMenu(
+        writable
+            ? {
+                'Edit': () => unawaited(_edit(context, ref, tag)),
+                'Delete': () => unawaited(_delete(context, ref, tag)),
+              }
+            : const {},
+      ),
+      onTap: writable ? () => unawaited(_edit(context, ref, tag)) : null,
     ),
-    onAdd: (query) => _add(context, ref, query),
+    onAdd: writable ? (query) => _add(context, ref, query) : null,
     noun: vocabulary.noun,
     plural: vocabulary.plural,
     orders: {...alphabetical, 'Colour': (tag) => tag.color.index},
     empty: EmptyState(
       icon: Icons.label_outline,
       title: 'No ${vocabulary.plural} yet',
-      message: vocabulary.blurb,
+      // The blurb describes what one is for, which reads as an invitation —
+      // and a guest has none to take up.
+      message: writable
+          ? vocabulary.blurb
+          : 'This bar carries no ${vocabulary.plural}.',
     ),
   );
 

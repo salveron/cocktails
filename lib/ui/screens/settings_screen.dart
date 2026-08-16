@@ -9,6 +9,7 @@ import '../widgets/telling.dart';
 import 'amounts_screen.dart';
 import 'bar_form_screen.dart';
 import 'bars_screen.dart';
+import 'shopping_settings_screen.dart';
 import 'tags_screen.dart';
 import 'units_screen.dart';
 
@@ -21,35 +22,42 @@ class SettingsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // What may be written to the open bar, and null on a guest one. The rows
-    // that would change the owner's collection stay where they are and go
-    // quiet: dimmed, leading nowhere (FR-BAR-4).
+    // What may be written to the open bar, and null on a guest one. The
+    // vocabularies open either way and read there (FR-BAR-4); what dims is the
+    // row whose screen would have nothing at all to say.
     final writable = ref.watch(barWriterProvider) != null;
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
       body: ListView(
         children: [
-          _Entry.opens(
+          const _Entry.opens(
             icon: Icons.label_outline,
             title: 'Tags',
             subtitle: 'Labels and their colours',
-            page: const TagsScreen(),
-            enabled: writable,
+            page: TagsScreen(),
           ),
-          _Entry.opens(
+          const _Entry.opens(
             icon: Icons.straighten_outlined,
             title: 'Units',
             subtitle: 'What lines are measured in',
-            page: const UnitsScreen(),
-            enabled: writable,
+            page: UnitsScreen(),
           ),
-          // The pick is the reader's on any bar, so this one never dims; what
-          // it offers there is the pick alone (FR-BAR-3).
+          // The pick is the reader's on any bar and the sizes are the owner's,
+          // so this offers both and lets a guest move only the pick (FR-BAR-3).
           const _Entry.opens(
             icon: Icons.swap_horiz,
             title: 'Amounts',
             subtitle: 'How amounts read and convert',
             page: AmountsScreen(),
+          ),
+          // The one row that dims, the optimizer being absent on a guest bar
+          // and these its settings alone (FR-BAR-4, FR-SET-2).
+          _Entry.opens(
+            icon: Icons.shopping_cart_outlined,
+            title: 'Shopping',
+            subtitle: 'What the optimizer is asked',
+            page: const ShoppingSettingsScreen(),
+            enabled: writable,
           ),
           // A guest already holds what the file would carry (FR-DAT-1).
           _Entry.acts(

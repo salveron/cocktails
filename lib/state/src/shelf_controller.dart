@@ -137,6 +137,14 @@ final class ShelfController extends AsyncNotifier<Shelf> {
     await _publish(shelf.withBar(bar.copyWith(display: display)));
   }
 
+  /// What the optimizer is asked — beside the unit, for its reason (ADR 24).
+  Future<void> setShopping(Shopping shopping) async {
+    final shelf = await future;
+    final bar = shelf.open;
+    if (bar == null || bar.shopping == shopping) return;
+    await _publish(shelf.withBar(bar.copyWith(shopping: shopping)));
+  }
+
   /// A shareable copy and where it went, opaque so the screen hands it on
   /// unread (FR-DAT-1, FR-BAR-4).
   Future<String> export() async {

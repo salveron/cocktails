@@ -41,13 +41,19 @@ Two tag vocabularies separate; one name may exist in both (different meanings).
   one of their own, and no refresh moves either. What a part and an ounce are worth there stays the 
   owner's — the recipes were written against those. The bar is removed whenever they like, touching 
   nothing the owner holds. A device may hold guest bars and own none.
-- **FR-BAR-4** A guest bar offers its recipes and its ingredients and nothing else: the shopping 
-  optimizer and all that belongs to it (FR-DIS-6, FR-DIS-7, FR-DIS-10) is absent there rather than 
-  empty. On those two everything that reads works and nothing that writes exists — no creating, 
-  editing or deleting, no stock toggle, no vocabulary change, and none of them offered rather than 
-  refused. Availability, search, the tag and base narrowings, the random pick, the orders, the jumps 
-  between the two (FR-DIS-9) and scaling all work as on an owned bar, over the owner's recipes and 
-  the owner's stock. Export works too (FR-DAT-1) — a guest already holds what the file would carry.
+- **FR-BAR-4** A guest bar offers its recipes and its ingredients as destinations and nothing else: 
+  the shopping optimizer and all that belongs to it (FR-DIS-6, FR-DIS-7, FR-DIS-10, FR-SET-2) is 
+  absent there rather than empty. Everywhere in it, everything that reads works and nothing that 
+  writes exists — no creating, editing or deleting, no stock toggle, no vocabulary change, and none 
+  of them offered rather than refused. Availability, search, the tag and base narrowings, the random 
+  pick, the orders, the jumps between the two (FR-DIS-9) and scaling all work as on an owned bar, 
+  over the owner's recipes and the owner's stock. Export works too (FR-DAT-1) — a guest already 
+  holds what the file would carry.
+  The owner's vocabularies and sizes read on those same terms: the tags, the units and what a part 
+  and an ounce are worth all open from Settings, and none of them can be touched. A reader meeting 
+  an unfamiliar tag on a recipe, or a unit a line measures in, is owed the vocabulary behind it — 
+  reading is what a guest bar is for, and a row opening onto the owner's answer says more than one 
+  dimmed to nothing.
 - **FR-BAR-5** A guest bar refreshes from the source it was added from, wholesale: what arrives 
   replaces what stood and nothing is merged, save the two that are the reader's — which unit amounts 
   read in and what the bar is called here (FR-BAR-3, FR-SET-1). Neither moves; the sizes behind the 
@@ -81,7 +87,8 @@ Two tag vocabularies separate; one name may exist in both (different meanings).
 - **FR-REC-2** Ingredient line: amount + unit + ingredient. Unit from FR-VOC-5; **part** default, 
   omittable. Amount may be range ("1.5–2"); plural for amounts ≠ 1. ≥1 non-optional line required 
   (availability judges something).
-- **FR-REC-3** Line may be optional: displays but excluded from availability and optimizer.
+- **FR-REC-3** Line may be optional: displays but excluded from availability, and from the optimizer 
+  unless the reader shops for optional ingredients too (FR-SET-2).
 - **FR-REC-4** A recipe carries any number of tags, chosen from the tag vocabulary.
 - **FR-REC-5** A recipe carries one free-text notes field — the home for preparation steps,
   techniques, glassware, and garnish, all unformalized.
@@ -147,12 +154,14 @@ empty so no reference to it can mean two things.
   Zero-yield hidden, and so is a combo unlocking no more than a smaller one inside it — every 
   ingredient offered earns its place. A substitution group counts as satisfied by any one purchase 
   (FR-REC-9). The best few of each size are offered rather than every combo 
-  ([ADR 15](adr/15-the-optimizer-answers-with-the-best-few.md)).
+  ([ADR 15](adr/15-the-optimizer-answers-with-the-best-few.md)); how few is the reader's to raise 
+  (FR-SET-2).
 - **FR-DIS-7** What counts as short is the reader's to say, through one switch 
   ([ADR 16](adr/16-the-optimizer-buys-what-is-running-low.md)): off, only what is out of stock — 
   the bar can make what it is merely low on; on, anything short of full stock, so ingredients running 
   low are bought alongside missing ones and the goal becomes ready rather than merely makeable. 
-  Being shoppable is how a low ingredient is reminded of; the optimizer keeps no separate restock list.
+  Being shoppable is how a low ingredient is reminded of; the optimizer keeps no separate restock 
+  list. Which way the switch starts is the reader's to set (FR-SET-2).
 - **FR-DIS-8** Lists (recipes, ingredients, tags) readable in multiple orders: by name, by signal 
   (availability, stock, colour). Picking current order reverses it. Default: recipes by availability, 
   ingredients by stock, tags by name (not persisted). Rows stable during edit.
@@ -165,13 +174,17 @@ empty so no reference to it can mean two things.
   ingredient by any of its spellings reaches it under the vocabulary's own (FR-VOC-6), and each 
   alternative of a substitution group is its own target (FR-REC-9). Back undoes a jump and a chain of 
   them one at a time; a destination the reader chose themselves clears the way back.
-- **FR-DIS-10** Shopping baskets filterable by recipe tag — FR-DIS-3's idiom on the optimizer's 
-  answers, combining with the budget and the reading of short. A basket is kept where each picked tag 
-  is worn by some recipe it unlocks, not necessarily the same one, so picking one shops for a 
-  category. What is narrowed is the answer, not the search behind it: a basket keeps the rank it holds 
-  among all of its size, and the numbering on show gaps. An open basket marks each recipe with the 
-  picks that recipe answers, so which of them reached the basket is read rather than inferred; one 
-  answering none is marked with nothing.
+- **FR-DIS-10** Shopping baskets answer to recipe tag — FR-DIS-3's idiom on the optimizer's answers, 
+  combining with the budget and the reading of short — one of two ways, the reader's to pick 
+  (FR-SET-2, [ADR 24](adr/24-the-tags-may-aim-the-optimizer.md)). **Sifting**: a basket is kept where 
+  each picked tag is worn by some recipe it unlocks, not necessarily the same one, so picking one 
+  shops for a category. What is narrowed is the answer, not the search behind it: a basket keeps the 
+  rank it holds among all of its size, and the numbering on show gaps. **Aiming**: the picks say what 
+  the search is *for*, and a basket ranks by how many of the recipes it unlocks wear any of them — so 
+  picking one asks for the baskets unlocking the most of that category, one unlocking none of it is 
+  gone, and the numbering runs unbroken. Either way a basket names every recipe it unlocks and marks 
+  each with the picks that recipe answers, so which of them reached the basket is read rather than 
+  inferred; one answering none is marked with nothing.
 
 ### Settings
 
@@ -182,6 +195,13 @@ empty so no reference to it can mean two things.
   company: the unit is picked there as on an owned one and outlasts every refresh, where the sizes 
   are the owner's and arrive with the rest of the bar (FR-BAR-3, FR-BAR-5). Display only — nothing 
   converted is written. One open recipe reads otherwise without moving the global (FR-REC-7).
+- **FR-SET-2** What the optimizer is asked, and what its screen opens on, are the reader's to set — 
+  per bar and never in the file (FR-BAR-1, [ADR 24](adr/24-the-tags-may-aim-the-optimizer.md)): 
+  which of FR-DIS-10's two readings a tag pick carries, how many baskets of each size are offered 
+  (FR-DIS-6), and whether an optional line is worth shopping for (FR-REC-3). The budget and the 
+  reading of short (FR-DIS-6, FR-DIS-7) are set here too, as the values the screen starts at — the 
+  screen's own controls move freely from them and nothing is written back. Absent on a guest bar, 
+  which has no optimizer to ask (FR-BAR-4).
 
 ### Data exchange
 

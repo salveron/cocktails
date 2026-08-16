@@ -112,10 +112,12 @@ Iterable<String> dotsBeside(WidgetTester tester, String name) => tester
 Future<MemoryBarStore> pumpShopping(
   WidgetTester tester, [
   Collection? collection,
+  Shopping shopping = const Shopping(),
 ]) => pumpOver(
   tester,
   const ShoppingScreen(showing: true),
   collection ?? shoppingCollection,
+  bar: testBar(shopping: shopping),
 );
 
 Future<void> pickBudget(WidgetTester tester, int budget) =>
@@ -504,6 +506,77 @@ void main() {
         tester.widgetList<StockDot>(find.byType(StockDot)).map((d) => d.stock),
         [StockLevel.out],
         reason: 'the stock dot is a reading of its own, and is untouched',
+      );
+    });
+  });
+
+  // The same chips read the other way (FR-SET-2): the picks go into the search
+  // rather than over what it answered. Sifting keeps `tiki`'s basket at the
+  // rank it holds among all three; aiming asks only about tiki and finds it
+  // first — one pick, one basket, two numbers.
+  group('the tags aim the search (ADR 24)', () {
+    const aiming = Shopping(aiming: true);
+
+    testWidgets('aiming runs the numbering unbroken', (tester) async {
+      await pumpShopping(tester, taggedCollection, aiming);
+      await pickTag(tester, 'tiki');
+      expect(rowTexts(tester), ['Shopping Cart #1', 'white rum', '1 recipe']);
+    });
+
+    testWidgets('a basket unlocking nothing picked for is gone', (
+      tester,
+    ) async {
+      await pumpShopping(tester, taggedCollection, aiming);
+      await pickTag(tester, 'clean');
+      expect(cartsOn(tester), [
+        'Shopping Cart #1',
+        'Shopping Cart #2',
+      ], reason: 'white rum unlocks nothing clean');
+    });
+
+    testWidgets('two picks reach whatever wears either (a union)', (
+      tester,
+    ) async {
+      await pumpShopping(tester, taggedCollection, aiming);
+      await pickTag(tester, 'tiki');
+      await pickTag(tester, 'clean');
+      expect(cartsOn(tester), hasLength(3));
+    });
+
+    testWidgets('nothing picked is the answer the other reading gives', (
+      tester,
+    ) async {
+      await pumpShopping(tester, taggedCollection, aiming);
+      expect(cartsOn(tester), [
+        'Shopping Cart #1',
+        'Shopping Cart #2',
+        'Shopping Cart #3',
+      ]);
+    });
+
+    testWidgets('a pick nothing wears blames the picks, not the shelf', (
+      tester,
+    ) async {
+      await pumpShopping(tester, taggedCollection, aiming);
+      await pickTag(tester, 'sour');
+      expect(find.text('Nothing to shop for'), findsOneWidget);
+      expect(find.textContaining('any tag picked'), findsOneWidget);
+    });
+  });
+
+  group('where the shopping screen opens (FR-SET-2)', () {
+    testWidgets('at the budget and the reading its settings name', (
+      tester,
+    ) async {
+      await pumpShopping(
+        tester,
+        shoppingCollection,
+        const Shopping(budget: 2, restocking: true),
+      );
+      expect(tester.widget<Switch>(find.byType(Switch)).value, isTrue);
+      expect(
+        tester.widget<SegmentedButton<int>>(find.byType(SegmentedButton<int>)),
+        isA<SegmentedButton<int>>().having((b) => b.selected, 'selected', {2}),
       );
     });
   });

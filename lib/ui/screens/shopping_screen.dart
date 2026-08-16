@@ -36,10 +36,12 @@ class ShoppingScreen extends ConsumerStatefulWidget {
 }
 
 class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
-  int _budget = budgets.first;
+  /// Where the two controls stand. They open where the bar's settings say
+  /// (FR-SET-2) and move freely from there, writing neither back.
+  late int _budget = _opening.budget;
+  late bool _restocking = _opening.restocking;
 
-  /// Whether an ingredient running low counts as short (ADR 16).
-  bool _restocking = false;
+  Shopping get _opening => ref.read(shoppingProvider);
 
   final _expanded = <String>{};
 
@@ -50,18 +52,42 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
   @override
   Widget build(BuildContext context) {
     if (!widget.showing) return const SizedBox.shrink();
+    // A default moved in Settings takes hold at once: the shell keeps this
+    // screen alive across a crossing, so waiting for a fresh one would leave
+    // the reader's own change unread until they left the bar (FR-SET-2).
+    ref.listen(shoppingProvider, (was, now) {
+      if (was?.budget == now.budget && was?.restocking == now.restocking) {
+        return;
+      }
+      setState(() {
+        _budget = now.budget;
+        _restocking = now.restocking;
+      });
+    });
+    final aiming = ref.watch(shoppingProvider).aiming;
     final collection = ref.watch(collectionProvider);
-    final purchases = ref.watch(purchasesProvider(_restocking));
     final vocabulary = sortedByName(collection.recipeTags);
     final worn = {
       for (final recipe in collection.recipes) recipe.name: recipe.tags,
     };
-    final filter = _tagFilter(vocabulary, worn);
+    final filter = _tagFilter(vocabulary, worn, aiming: aiming);
+    // Aiming, the picks are what the search was for, so they reach it; sifting,
+    // they narrow what it already answered and the key must not move (ADR 24).
+    final purchases = ref.watch(
+      purchasesProvider(
+        ShoppingAsk(
+          restocking: _restocking,
+          aimedAt: aiming ? filter?.picks ?? const [] : const [],
+        ),
+      ),
+    );
     // The picks as the vocabulary spells them — `tagFilter` reads them by the
     // same rule, so nothing is dotted by a pick that stopped narrowing.
     final lit = wornInOrder(vocabulary, _picked);
-    // Ranked among every basket of the size, then narrowed — the rank is
-    // bound before the tags drop any, so the numbering on show gaps.
+    // Ranked among every basket of the size, then narrowed — the rank is bound
+    // before the tags drop any, so sifting gaps the numbering. Aiming keeps
+    // them all, the search having answered the picks itself, so it runs
+    // unbroken: which reading is in force is read off the gaps (ADR 24).
     final onShow = [
       for (final (rank, purchase)
           in purchases
@@ -81,7 +107,7 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
         ?filter?.row,
         Expanded(
           child: onShow.isEmpty
-              ? _emptyFor(collection, purchases, filter)
+              ? _emptyFor(collection, purchases, filter, aiming: aiming)
               : ListView.builder(
                   padding: const EdgeInsets.only(bottom: 16),
                   itemCount: onShow.length,
@@ -104,17 +130,32 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
   /// and one sour rather than demanding a recipe that is both. A pick gone
   /// stale is read against the vocabulary there and stops narrowing, and a
   /// collection with no recipe tags draws no row at all.
+  ///
+  /// [aiming] is the other reading (ADR 24): the picks went into the search, so
+  /// every basket that came back already answers them and the row keeps them
+  /// all. Its reason turns with it, a basket having been weighed by any pick
+  /// rather than kept for every one.
   ListFilter<Purchase>? _tagFilter(
     List<Tag> vocabulary,
-    Map<String, List<String>> worn,
-  ) => tagFilter(
-    vocabulary: vocabulary,
-    picked: _picked,
-    onToggle: (tag) => setState(() => _picked.toggle(tag)),
-    tagsOf: (purchase) => [
-      for (final recipe in purchase.unlocks) ...?worn[recipe],
-    ],
-  );
+    Map<String, List<String>> worn, {
+    required bool aiming,
+  }) {
+    final sifting = tagFilter<Purchase>(
+      vocabulary: vocabulary,
+      picked: _picked,
+      onToggle: (tag) => setState(() => _picked.toggle(tag)),
+      tagsOf: (purchase) => [
+        for (final recipe in purchase.unlocks) ...?worn[recipe],
+      ],
+    );
+    if (sifting == null || !aiming) return sifting;
+    return (
+      row: sifting.row,
+      test: (_) => true,
+      narrowing: sifting.picks.isEmpty ? null : 'any tag picked',
+      picks: sifting.picks,
+    );
+  }
 
   Widget _card(
     Collection collection,
@@ -157,8 +198,9 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
   Widget _emptyFor(
     Collection collection,
     List<Purchase> purchases,
-    ListFilter<Purchase>? filter,
-  ) {
+    ListFilter<Purchase>? filter, {
+    required bool aiming,
+  }) {
     if (collection.recipes.isEmpty) {
       return const EmptyState(
         icon: Icons.local_bar_outlined,
@@ -169,10 +211,16 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
       );
     }
     if (purchases.isEmpty) {
+      // Aiming, the picks went into the search, so an empty answer is about
+      // them rather than about the shelf: the untagged recipes may be short of
+      // plenty, and saying the bar wants for nothing would be false (ADR 24).
+      final aimed = aiming ? filter?.narrowing : null;
       return EmptyState(
         icon: Icons.shopping_cart_outlined,
         title: 'Nothing to shop for',
-        message: _restocking
+        message: aimed != null
+            ? 'No shopping unlocks a recipe matching $aimed.'
+            : _restocking
             ? 'Every ingredient the recipes ask for is fully in stock.'
             : 'Every recipe here can be made from what is on the shelf.',
       );

@@ -118,6 +118,8 @@ List<String> _barEntry(Bar bar) {
       'name: ${_scalar(bar.name, inFlow: true)}',
       'mode: ${bar.mode.token}',
       'display: ${bar.display.token}',
+      if (bar.shopping != const Shopping())
+        'shopping: ${_shopping(bar.shopping)}',
       if (bar.offers.isNotEmpty)
         'offers: [${bar.offers.map(_offer).join(', ')}]',
       // Quoted: a timestamp's colons would end the scalar in flow context.
@@ -131,6 +133,17 @@ List<String> _barEntry(Bar bar) {
 
 String _stamp(DateTime at) =>
     _scalar(at.toUtc().toIso8601String(), inFlow: true);
+
+/// Whole once written at all, the way a summary is: the block is left off while
+/// nothing in it has moved, and a reader hand-editing one key should find the
+/// other four beside it rather than have to know what they defaulted to.
+String _shopping(Shopping shopping) => _flowMap([
+  'aim: ${shopping.aiming}',
+  'budget: ${shopping.budget}',
+  'low: ${shopping.restocking}',
+  'most: ${shopping.most}',
+  'optional: ${shopping.buyingOptional}',
+]);
 
 /// Every kind, in [Holding]'s own order and including the zeroes: a summary
 /// left half-written is one a reader cannot tell from a bar that holds none.

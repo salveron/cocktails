@@ -442,6 +442,117 @@ void main() {
     });
   });
 
+  group('purchasesWithin, aiming (ADR 24)', () {
+    // gin closes three recipes and rum two, so the plain reading puts gin
+    // first. Only one of gin's three is scored, against both of rum's — so
+    // scoring is what turns the answer round rather than merely trimming it.
+    final collection = bar(
+      {'gin': out, 'rum': out},
+      {
+        'A': [
+          line(['rum']),
+        ],
+        'B': [
+          line(['rum']),
+        ],
+        'C': [
+          line(['gin']),
+        ],
+        'D': [
+          line(['gin']),
+        ],
+        'E': [
+          line(['gin']),
+        ],
+      },
+    );
+    const scored = {'A', 'B', 'E'};
+
+    test('weighs a basket by the recipes scored, not by all of them', () {
+      expect(purchasesWithin(collection, 1).map((p) => p.ingredients), [
+        ['gin'],
+        ['rum'],
+      ]);
+      expect(
+        purchasesWithin(
+          collection,
+          1,
+          scoring: scored,
+        ).map((p) => p.ingredients),
+        [
+          ['rum'],
+          ['gin'],
+        ],
+      );
+    });
+
+    test('names every recipe a basket unlocks, scored or not', () {
+      final purchases = purchasesWithin(collection, 1, scoring: scored);
+      expect(
+        purchases.firstWhere((p) => p.ingredients.single == 'gin').unlocks,
+        ['C', 'D', 'E'],
+      );
+    });
+
+    test('drops a basket scoring nothing, as a zero yield already was', () {
+      expect(
+        purchasesWithin(
+          collection,
+          1,
+          scoring: const {'A'},
+        ).map((p) => p.ingredients),
+        [
+          ['rum'],
+        ],
+      );
+    });
+
+    test('scoring every recipe is the answer it gave before', () {
+      expect(
+        purchasesWithin(
+          collection,
+          3,
+          scoring: const {'A', 'B', 'C', 'D', 'E'},
+        ),
+        purchasesWithin(collection, 3),
+      );
+    });
+  });
+
+  group('purchasesWithin, buying optional lines (FR-REC-3)', () {
+    final collection = bar(
+      {'gin': inStock, 'absinthe': out},
+      {
+        'Martini': [
+          line(['gin']),
+          line(['absinthe'], mark: LineMark.optional),
+        ],
+      },
+    );
+
+    test('buys for one once asked to', () {
+      expect(purchasesWithin(collection, 2, buyingOptional: true), [
+        Purchase(['absinthe'], ['Martini']),
+      ]);
+    });
+
+    test('reaches one merely running low when restocking too (ADR 16)', () {
+      final low_ = bar(
+        {'gin': inStock, 'absinthe': low},
+        {
+          'Martini': [
+            line(['gin']),
+            line(['absinthe'], mark: LineMark.optional),
+          ],
+        },
+      );
+      expect(purchasesWithin(low_, 2, buyingOptional: true), isEmpty);
+      expect(purchasesWithin(low_, 2, buyingOptional: true, restocking: true), [
+        Purchase(['absinthe'], ['Martini']),
+      ]);
+    });
+  });
+
   group('one search answers every size', () {
     // What the shopping screen stands on: it searches once at the largest
     // budget and reads one size at a time off that answer, rather than

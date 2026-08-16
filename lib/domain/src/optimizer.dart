@@ -7,8 +7,66 @@ import 'names.dart';
 import 'collection.dart';
 
 /// What a budget can be (FR-DIS-6) — one search at the largest answers them
-/// all.
+/// all — and how many baskets of one size are worth offering (ADR 15).
 const budgets = [1, 2, 3];
+const basketCounts = [10, 25, 50];
+
+/// How the optimizer is asked and what its screen opens on (FR-SET-2) — the
+/// reader's, so ADR 24 rides it on the bar's record rather than in the file.
+/// The defaults are the answer the app gave before any of it could be set.
+final class Shopping {
+  /// Whether a tag pick aims the search or sifts its answer (FR-DIS-10).
+  final bool aiming;
+
+  /// Where the screen's own two controls start (FR-DIS-6, FR-DIS-7), moving
+  /// freely from both and writing neither back.
+  final int budget;
+  final bool restocking;
+
+  /// The best few of each size (ADR 15), and whether an optional line is short
+  /// at all (FR-REC-3).
+  final int most;
+  final bool buyingOptional;
+
+  const Shopping({
+    this.aiming = false,
+    this.budget = 1,
+    this.restocking = false,
+    this.most = 25,
+    this.buyingOptional = false,
+  });
+
+  Shopping copyWith({
+    bool? aiming,
+    int? budget,
+    bool? restocking,
+    int? most,
+    bool? buyingOptional,
+  }) => Shopping(
+    aiming: aiming ?? this.aiming,
+    budget: budget ?? this.budget,
+    restocking: restocking ?? this.restocking,
+    most: most ?? this.most,
+    buyingOptional: buyingOptional ?? this.buyingOptional,
+  );
+
+  @override
+  bool operator ==(Object other) =>
+      other is Shopping &&
+      other.aiming == aiming &&
+      other.budget == budget &&
+      other.restocking == restocking &&
+      other.most == most &&
+      other.buyingOptional == buyingOptional;
+
+  @override
+  int get hashCode =>
+      Object.hash(aiming, budget, restocking, most, buyingOptional);
+
+  @override
+  String toString() =>
+      'Shopping(${aiming ? 'aiming' : 'sifting'}, $budget of $most)';
+}
 
 final class Purchase {
   final List<String> ingredients;
@@ -47,12 +105,19 @@ final class Purchase {
 ///
 /// [restocking] is what counts as short (ADR 16): a line standing at out, or
 /// one short of full stock — which puts the ingredients running low in the pool
-/// and makes the goal ready rather than merely makeable.
+/// and makes the goal ready rather than merely makeable. [buyingOptional] lets
+/// an optional line be short at all (FR-REC-3), widening the pool the same way.
+///
+/// [scoring] is the recipes a basket is weighed by (FR-DIS-10, ADR 24) — null
+/// for all of them, the reading the chips sift. Naming is untouched: a basket
+/// names every recipe it closes, so what moves is which are kept, and where.
 List<Purchase> purchasesWithin(
   Collection collection,
   int budget, {
   int most = 25,
   bool restocking = false,
+  bool buyingOptional = false,
+  Set<String>? scoring,
 }) {
   if (budget < 1) return const [];
   final gaps = <({Set<String> ingredients, String recipe})>[];
@@ -63,6 +128,7 @@ List<Purchase> purchasesWithin(
       recipe,
       budget,
       restocking: restocking,
+      buyingOptional: buyingOptional,
     )) {
       gaps.add((ingredients: gap, recipe: recipe.name));
       pool.addAll(gap);
@@ -85,24 +151,26 @@ List<Purchase> purchasesWithin(
   final unlocks = <String>{};
   for (final basket in _baskets(ingredients.length, budget)) {
     _unlockedBy(unlocks, basket, closes, radix);
-    final yield = unlocks.length;
+    final yield = scoring == null
+        ? unlocks.length
+        : unlocks.where(scoring.contains).length;
     yields[_keyOfPart(basket, (1 << basket.length) - 1, radix)] = yield;
     if (yield == 0 || !_earnsIts(basket, yield, yields, radix)) continue;
     _shelve(shelves[basket.length], basket, yield, most);
   }
 
   final purchases = <Purchase>[];
-  for (final shelf in shelves) {
-    for (final kept in shelf) {
-      _unlockedBy(unlocks, kept.basket, closes, radix);
-      purchases.add(
-        Purchase([
-          for (final id in kept.basket) ingredients[id],
-        ], [...unlocks]..sort(compareNames)),
-      );
-    }
+  for (final kept in [
+    for (final shelf in shelves) ...shelf,
+  ]..sort(_bestFirst)) {
+    _unlockedBy(unlocks, kept.basket, closes, radix);
+    purchases.add(
+      Purchase([
+        for (final id in kept.basket) ingredients[id],
+      ], [...unlocks]..sort(compareNames)),
+    );
   }
-  return purchases..sort(_bestFirst);
+  return purchases;
 }
 
 typedef _Kept = ({List<int> basket, int yield});
@@ -158,11 +226,12 @@ List<Set<String>> _gapsOf(
   Recipe recipe,
   int budget, {
   required bool restocking,
+  required bool buyingOptional,
 }) {
   var gaps = [<String>{}];
   var short = false;
   for (final line in recipe.lines) {
-    if (line.isOptional) continue;
+    if (line.isOptional && !buyingOptional) continue;
     final stock = stockOfLine(collection, line);
     if (restocking ? stock == StockLevel.in_ : stock != StockLevel.out) {
       continue;
@@ -230,17 +299,18 @@ int _keyOfPart(List<int> basket, int mask, int radix) {
 String _keyOf(Iterable<String> ingredients) =>
     (ingredients.map(nameKey).toList()..sort()).join(alternativeSeparator);
 
-/// Most recipes first, then the smaller basket, then A→Z. Both baskets already
-/// read A→Z, so the tie-break walks them side by side — a key built per
-/// comparison would be built a million times over a collection's worth.
-int _bestFirst(Purchase a, Purchase b) {
-  final byYield = b.unlocks.length.compareTo(a.unlocks.length);
+/// Most recipes *scored* first, then the smaller basket, then A→Z — what ranked
+/// a basket rather than the length of the list it is named with, two different
+/// counts once [purchasesWithin] is aiming (ADR 24). Ids index a pool already
+/// in name order, so the tie-break compares ids and names nothing to sort it.
+int _bestFirst(_Kept a, _Kept b) {
+  final byYield = b.yield.compareTo(a.yield);
   if (byYield != 0) return byYield;
-  final bySize = a.ingredients.length.compareTo(b.ingredients.length);
+  final bySize = a.basket.length.compareTo(b.basket.length);
   if (bySize != 0) return bySize;
-  for (var i = 0; i < a.ingredients.length; i++) {
-    final byName = compareNames(a.ingredients[i], b.ingredients[i]);
-    if (byName != 0) return byName;
+  for (var i = 0; i < a.basket.length; i++) {
+    final byId = a.basket[i].compareTo(b.basket[i]);
+    if (byId != 0) return byId;
   }
   return 0;
 }

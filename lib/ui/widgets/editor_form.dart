@@ -79,10 +79,17 @@ class EditorScaffold extends StatelessWidget {
     required this.discardTitle,
     required this.onSave,
     required this.children,
+    this.readOnly = false,
     super.key,
   });
 
   final String title;
+
+  /// Whether nothing here is this reader's to write, which is not the same as
+  /// [onSave] being null: that is nothing valid to save *yet*. Read-only drops
+  /// the Save rather than dimming it, a guest bar being offered nothing it
+  /// would have to refuse (FR-BAR-4).
+  final bool readOnly;
 
   /// Whether anything has changed since opening; untouched pops silently.
   final bool dirty;
@@ -95,14 +102,16 @@ class EditorScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => PopScope(
-    canPop: !dirty,
+    canPop: readOnly || !dirty,
     onPopInvokedWithResult: (didPop, _) {
       if (!didPop) unawaited(_discard(context));
     },
     child: Scaffold(
       appBar: AppBar(
         title: Text(title),
-        actions: [TextButton(onPressed: onSave, child: const Text('Save'))],
+        actions: readOnly
+            ? const []
+            : [TextButton(onPressed: onSave, child: const Text('Save'))],
       ),
       body: ListView(padding: const EdgeInsets.all(16), children: children),
     ),

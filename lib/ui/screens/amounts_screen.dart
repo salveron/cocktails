@@ -119,9 +119,9 @@ class _AmountsFormState extends ConsumerState<_AmountsForm> {
       for (final sized in _sizedUnits)
         if (_typed(sized) == null) sized: 'Must be a number above zero',
     };
-    // The sizes are the owner's and the pick the reader's, so a guest bar is
-    // offered the pick alone (FR-BAR-3): no rows, and nothing of the sizes to
-    // be dirty about.
+    // The sizes are the owner's and the pick the reader's, so a guest bar reads
+    // the rows and moves the pick alone (FR-BAR-3): the fields go quiet, and
+    // there is nothing of the sizes to be dirty about.
     final writer = ref.watch(barWriterProvider);
     return EditorScaffold(
       title: 'Amounts',
@@ -136,7 +136,8 @@ class _AmountsFormState extends ConsumerState<_AmountsForm> {
         Text(
           'Amounts in "$partUnit", "$mlUnit" and "$ozUnit" read in the unit '
           'picked here; every other unit reads as entered. Nothing converted '
-          'is written — a recipe keeps every line as it was entered.',
+          'is written — a recipe keeps every line as it was entered.'
+          '${writer == null ? " The sizes below are the owner's." : ''}',
           style: TextStyle(
             color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),
@@ -151,21 +152,20 @@ class _AmountsFormState extends ConsumerState<_AmountsForm> {
           showSelectedIcon: false,
           onSelectionChanged: (picked) => _pick(picked.single),
         ),
-        if (writer != null) ...[
-          const SizedBox(height: 16),
-          // A table, so both rows' fields stand in line whatever the units
-          // around them are spelled like — and go on doing so under a reader's
-          // larger text, which no width written here would survive.
-          _sizes(unread, refused),
-        ],
+        const SizedBox(height: 16),
+        // A table, so both rows' fields stand in line whatever the units
+        // around them are spelled like — and go on doing so under a reader's
+        // larger text, which no width written here would survive.
+        _sizes(unread, refused, writable: writer != null),
       ],
     );
   }
 
   Widget _sizes(
     Map<FixedUnit, String> unread,
-    Map<FixedUnit, String> refused,
-  ) => Table(
+    Map<FixedUnit, String> refused, {
+    required bool writable,
+  }) => Table(
     columnWidths: const {
       0: IntrinsicColumnWidth(),
       1: FlexColumnWidth(),
@@ -178,7 +178,10 @@ class _AmountsFormState extends ConsumerState<_AmountsForm> {
         _ratioRow(
           row: _row(sized),
           field: _fields[sized]!,
-          error: unread[sized] ?? refused[sized],
+          writable: writable,
+          // A row nobody may type in cannot be wrong, and the owner's sizes are
+          // not this reader's to be told off for.
+          error: writable ? unread[sized] ?? refused[sized] : null,
           onEdit: () => _edit(sized),
         ),
     ],
@@ -204,6 +207,7 @@ double _rounded(double value) => (value * 10000).roundToDouble() / 10000;
 TableRow _ratioRow({
   required (FixedUnit, FixedUnit) row,
   required TextEditingController field,
+  required bool writable,
   required String? error,
   required VoidCallback onEdit,
 }) {
@@ -215,6 +219,7 @@ TableRow _ratioRow({
         padding: const EdgeInsets.symmetric(horizontal: 12),
         child: TextField(
           controller: field,
+          enabled: writable,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
           decoration: InputDecoration(errorText: error),
           onChanged: (_) => onEdit(),

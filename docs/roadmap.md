@@ -136,6 +136,21 @@ Milestones in dependency order. Scope: [requirements.md](requirements.md); desig
   sentence; its cards run to the width of the fields above them (`VocabularyRow.margin`). A bar card's
   subtitle drops "Loaded", which marked nothing since counts came off the index (ADR 20), and dates
   itself **Updated: 3 hours ago** or **Refreshed: 2 days ago**. Depends: M36a.
+- [x] **M36c** — The optimizer is asked, and a guest may look. Delivers:
+  [ADR 24](adr/24-the-tags-may-aim-the-optimizer.md) and FR-SET-2 — a **Shopping** row between
+  Amounts and Export, opening on five settings kept as `Bar.shopping` beside `display` (ADR 21) and
+  written to the index under `shopping:`, absent while nothing has moved. The chips **aim** the
+  search or **sift** its answer (FR-DIS-10): aiming weighs a basket by how many of the recipes it
+  unlocks wear *any* pick — `purchasesWithin`'s new `scoring`, a union unlike every other reading of
+  picks (`recipesWearing`) — so the card is untouched and only which baskets stand, and where, moves;
+  the numbering gaps under one reading and runs unbroken under the other, which is what says which is
+  in force. Beside it: how many baskets a size offers (FR-DIS-6, ADR 15's own relief handed over),
+  whether an optional line is shoppable (FR-REC-3, `buyingOptional`), and the budget and "low too"
+  the screen starts at. The ranking sort moves off `Purchase` onto the kept records, the count that
+  ranks a basket no longer being the length of the list it is named with. A guest bar now **reads**
+  the owner's tags, units and amounts (FR-BAR-4) instead of meeting three dimmed rows — searchable,
+  quiet, no add, no ⋮, no spare row, no Save (`EditorScaffold.readOnly`) — and Shopping is the one
+  row that dims, the optimizer being absent there. Depends: M36b.
 
 ## Phase 9 — A bar travels over the LAN
 

@@ -1300,6 +1300,54 @@ bars:
       expect(records.openId, 'b3e1d7');
     });
 
+    // FR-SET-2, ADR 24: the block is the device's, not the file's — it rides
+    // the index and never an export.
+    group('what the optimizer is asked', () {
+      Bar asking(Shopping shopping) =>
+          Bar(id: 'a1', name: 'Ada', mode: BarMode.owner, shopping: shopping);
+
+      test('round-trips whole', () {
+        const asked = Shopping(
+          aiming: true,
+          budget: 3,
+          restocking: true,
+          most: 50,
+          buyingOptional: true,
+        );
+        final records = indexOf(
+          codec.encodeIndex((bars: [asking(asked)], openId: null)),
+        );
+        expect(records.bars.single.shopping, asked);
+      });
+
+      test('is left off entirely while nothing in it has moved', () {
+        final written = codec.encodeIndex((
+          bars: [asking(const Shopping())],
+          openId: null,
+        ));
+        expect(written, isNot(contains('shopping')));
+        expect(indexOf(written).bars.single.shopping, const Shopping());
+      });
+
+      test('a record written before it existed reads as the defaults', () {
+        final records = indexOf(
+          'format: 2\nopen:\n'
+          'bars:\n'
+          '  - {id: a1, name: Ada, mode: owner}\n',
+        );
+        expect(records.bars.single.shopping, const Shopping());
+      });
+
+      test('a number outside what its screen offers is reported', () {
+        final issues = indexRejected(
+          'format: 2\nopen:\n'
+          'bars:\n'
+          '  - {id: a1, name: Ada, mode: owner, shopping: {budget: 7}}\n',
+        );
+        expect(issues.single.issue.message, contains('Budget must be one of'));
+      });
+    });
+
     test('an empty shelf round-trips, open naming nothing', () {
       final records = indexOf(
         codec.encodeIndex((bars: const [], openId: null)),

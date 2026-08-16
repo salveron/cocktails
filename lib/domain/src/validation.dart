@@ -5,6 +5,7 @@ library;
 import 'names.dart';
 import 'line_format.dart';
 import 'collection.dart';
+import 'optimizer.dart';
 import 'shelf.dart';
 
 /// Issue rules; switch on this instead of the message.
@@ -235,6 +236,29 @@ List<ValidationIssue> _checkRecord(Bar bar, List<Object> basePath) {
       ),
     );
   }
+  // Both are picked from a fixed few on their screen (FR-SET-2), so a stored
+  // value outside them would leave that screen with nothing selected.
+  _addProblems(
+    issues,
+    [...basePath, 'shopping'],
+    [
+      budgets.contains(bar.shopping.budget)
+          ? null
+          : (
+              kind: ValidationIssueKind.malformedValue,
+              message:
+                  'Budget must be one of ${budgets.join(', ')}: "${bar.name}"',
+            ),
+      basketCounts.contains(bar.shopping.most)
+          ? null
+          : (
+              kind: ValidationIssueKind.malformedValue,
+              message:
+                  'Baskets must be one of ${basketCounts.join(', ')}: '
+                  '"${bar.name}"',
+            ),
+    ],
+  );
   final vias = <Transport>{};
   for (var o = 0; o < bar.offers.length; o++) {
     final via = bar.offers[o].via;

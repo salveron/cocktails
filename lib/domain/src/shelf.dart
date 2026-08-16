@@ -8,6 +8,7 @@ library;
 
 import 'collection.dart';
 import 'names.dart';
+import 'optimizer.dart';
 
 /// What this device is to a bar: its owner, or a guest reading another's
 /// (FR-BAR-3).
@@ -88,6 +89,9 @@ final class Bar {
   /// The reader's pick, outliving every refresh (FR-SET-1, ADR-21).
   final FixedUnit display;
 
+  /// The reader's too, and kept here for the same reason (FR-SET-2, ADR-24).
+  final Shopping shopping;
+
   /// An owner's, one per way the bar is shared (FR-BAR-6).
   final List<Offer> offers;
 
@@ -110,6 +114,7 @@ final class Bar {
     required this.name,
     required this.mode,
     this.display = FixedUnit.part,
+    this.shopping = const Shopping(),
     List<Offer> offers = const [],
     this.source,
     this.refreshed,
@@ -125,11 +130,17 @@ final class Bar {
   /// copy's to move either — a bar is the same bar, and whose it is arrives
   /// with it. Neither stamp is a copy's to move: both date contents, and a
   /// copy that renames a bar has not touched them.
-  Bar copyWith({String? name, FixedUnit? display, List<Offer>? offers}) => Bar(
+  Bar copyWith({
+    String? name,
+    FixedUnit? display,
+    Shopping? shopping,
+    List<Offer>? offers,
+  }) => Bar(
     id: id,
     name: name ?? this.name,
     mode: mode,
     display: display ?? this.display,
+    shopping: shopping ?? this.shopping,
     offers: offers ?? this.offers,
     source: source,
     refreshed: refreshed,
@@ -146,6 +157,7 @@ final class Bar {
     name: name,
     mode: mode,
     display: display,
+    shopping: shopping,
     offers: offers,
     source: source,
     refreshed: at,
@@ -163,6 +175,7 @@ final class Bar {
     name: name,
     mode: mode,
     display: display,
+    shopping: shopping,
     offers: offers,
     source: source,
     refreshed: refreshed,
@@ -177,6 +190,7 @@ final class Bar {
       other.name == name &&
       other.mode == mode &&
       other.display == display &&
+      other.shopping == shopping &&
       _sameOffers(other.offers, offers) &&
       other.source == source &&
       other.refreshed == refreshed &&
@@ -189,6 +203,7 @@ final class Bar {
     name,
     mode,
     display,
+    shopping,
     _offersHash(offers),
     source,
     refreshed,

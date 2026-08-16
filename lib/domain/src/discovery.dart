@@ -8,6 +8,17 @@ import 'availability.dart';
 import 'names.dart';
 import 'collection.dart';
 
+/// The recipes wearing any of [tags] — what the optimizer weighs a basket by
+/// while the chips aim rather than sift (FR-DIS-10, ADR 24). A union, unlike
+/// every other reading of picks, and folded (ADR 08).
+Set<String> recipesWearing(Collection collection, Iterable<String> tags) {
+  final picked = {for (final tag in tags) nameKey(tag)};
+  return {
+    for (final recipe in collection.recipes)
+      if (recipe.tags.any((tag) => picked.contains(nameKey(tag)))) recipe.name,
+  };
+}
+
 /// Every ingredient a base line of [recipe] names — several, base being a mark
 /// on the line (ADR 06) and a line naming more than one (ADR 11); or none.
 Set<String> basesOf(Recipe recipe) => {
