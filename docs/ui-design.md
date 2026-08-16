@@ -123,7 +123,45 @@ already says a screen follows, and "…" on top of it says the same thing twice.
 - **Swipe down to refresh** (FR-BAR-5), on a guest bar's lists and nowhere else — the standard 
   gesture for "ask the source again", and the reason the shell carries no refresh control and no 
   as-of. How stale a bar is reads on the card that lists it; on the bar itself, being one gesture 
-  from current is worth more than being told how far from it you are.
+  from current is worth more than being told how far from it you are. **A bar holding nothing 
+  answers the pull too**: an empty list has no rows to pull on, and that is exactly where the 
+  gesture is the only way to ask at all, so the empty state is given something to overscroll.
+- **A refresh that did not land says so above the destinations**, beside the load banner and 
+  worded like it: what arrived and would not read gets the `line N:` issues (FR-DAT-4), a source 
+  that could not be reached gets one of the three reasons in the app's own words. Two banners 
+  rather than one — a torn file on disk and a source that would not answer are different news, and 
+  a reader dismissing either has not heard the other. **Nothing is said while a refresh is out**: 
+  the pull's own spinner is saying it, and asking again clears what the last ask came to.
+
+### New bar
+
+**A pushed form, not a dialog** — the name field first, then where the bar's contents come from, 
+then whose bar it is. A dialog carried the name and nothing else, which was right while an owned 
+bar was the only thing this button could make; a picked file has to be *read* before it is agreed 
+to (the counts, the refusals) and has two destinations to choose between (FR-BAR-7), and neither 
+fits over a list. Save rides the app bar, where every other commit in the app sits, and back asks 
+before dropping what was typed — the recipe form's own frame (`editor_form.dart`).
+
+- **From import is a button, not a row**: the form is not a menu, and the pick is the one thing on 
+  it that leaves the screen. It is where **Find nearby** will stand when the LAN transport lands 
+  (FR-BAR-8), which is the other reason the section is "Contents" rather than "From a file".
+- **A file picked in is shown before it is agreed to** — the same cards the import review draws, 
+  read the same way, since it is the same question about the same file. A file that will not read 
+  shows its issues and offers no road: founding an empty bar in its place would be a lie about what 
+  became of it. The clear beside the button is the way back to an empty bar, and the way out of a 
+  refused file.
+- **Owned or Guest is a segmented choice under the counts**, and only once a file is in hand: there 
+  is nothing to be a guest *of* until one is. Owned is a copy, this device's own to edit, with 
+  nothing linking it back — FR-BAR-2's "created from a file". Guest is the owner's, read-only, 
+  refreshed by a newer file they send (FR-BAR-3/5/7).
+- **The name field goes quiet on the guest road** and reads the owner's, with a line saying why: a 
+  guest bar's name is its owner's and every refresh brings it back (FR-BAR-5), so a name typed 
+  there would be thrown away by the next one. Dimmed rather than hidden — a field that vanishes on 
+  a toggle makes the form jump under the finger — and what the reader typed is given back if they 
+  choose Owned again.
+- **A file names the bar where the reader has not.** The file carries a name (ADR 21) and it is a 
+  better default than an empty field; a name already typed is left standing, the reader having 
+  already answered the question.
 
 ## Searchable lists
 
@@ -414,18 +452,25 @@ screen, not the row that starts it.
   early. The two tag vocabularies share one count but keep their own runs in the body, labelled, 
   since one name may stand in both ([ADR 07](adr/07-tag-colour.md)); an empty run is left out rather 
   than heading nothing, and a kind the file holds none of offers no chevron and answers no tap.
-- **Accept rides the app bar**, where every other commit in the app sits (`editor_form.dart`). What 
-  the act is worth is carried by a body spelling out everything arriving, not by the size of the 
-  button agreeing to it — and a button pinned under a list a reader is meant to read first argues 
-  with the reading. Above the cards, the one thing the counts cannot say: everything held now goes, 
-  and a copy of it is kept first (FR-DAT-3). No numbers there — the cards have them, and a second 
-  set beside them reads as a discrepancy rather than a reassurance.
+- **Both roads ride the app bar**, where every other commit in the app sits (`editor_form.dart`). 
+  What either act is worth is carried by a body spelling out everything arriving, not by the size 
+  of the button agreeing to it — and a button pinned under a list a reader is meant to read first 
+  argues with the reading. **Replace** puts the file in place of everything the open bar holds, a 
+  copy kept first (FR-DAT-3); **Add as guest** leaves that bar alone and founds one of its own 
+  beside it (FR-BAR-7). Above the cards, the one thing the counts cannot say: which bar each road 
+  ends up holding this, both named. No numbers there — the cards have them, and a second set beside 
+  them reads as a discrepancy rather than a reassurance.
+- **The review is reached from an owned bar alone**, Import being dimmed on a guest whose 
+  collection is not this device's to replace (FR-BAR-4). So Replace is offered without asking whose 
+  bar is on show, and a device holding only guest bars reaches the guest road through 
+  [New bar](#new-bar) instead — which is where it belongs in any case, an arriving bar being a new 
+  bar rather than an edit to one.
 - **A refused file offers nothing to agree to.** The issues as the startup banner words them, 
   `line N:` and all (FR-DAT-4), under the one sentence that matters — nothing has changed. A file the 
   app cannot read holds nothing to import, so there is no button to grey out.
-- **The replace leaves for the collection**, popping Settings along with the review: what was 
-  imported is two screens back, and a list of recipes that were not there a moment ago says more than 
-  any sentence. It says what landed as it goes, which is where an import parts from an export — a 
+- **Either road leaves for the collection**, popping Settings along with the review: what arrived 
+  is two screens back, and a list of recipes that were not there a moment ago says more than any 
+  sentence. Both say what landed as they go, which is where an import parts from an export — a 
   share cannot know its outcome, an import knows exactly.
 - **Only a failure speaks otherwise.** A picker that will not open, a file that cannot be read, a 
   replace that cannot be written; a reader who picks nothing has done nothing, and a refused file has 

@@ -114,3 +114,36 @@ class EditorScaffold extends StatelessWidget {
     }
   }
 }
+
+/// What the run of fields under it settles — the one heading every editor
+/// divides itself by, so two forms never space their sections apart.
+class SectionLabel extends StatelessWidget {
+  const SectionLabel(this.text, {super.key});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(top: 16, bottom: 8),
+    child: Text(text, style: Theme.of(context).textTheme.labelLarge),
+  );
+}
+
+/// A dimmed line under a control saying what it will do — what a hint cannot
+/// carry, at the size the fact is worth.
+class FieldNote extends StatelessWidget {
+  const FieldNote(this.text, {super.key});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(top: 8),
+    child: Text(
+      text,
+      style: Theme.of(
+        context,
+      ).textTheme.bodySmall?.copyWith(color: Theme.of(context).hintColor),
+    ),
+  );
+}

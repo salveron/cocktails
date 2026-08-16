@@ -20,9 +20,18 @@ import 'package:flutter_test/flutter_test.dart';
 import 'harness.dart';
 
 void main() {
-  /// The shell over [bar], pumped past its startup load.
-  Future<void> pumpShell(WidgetTester tester, Bar bar) =>
-      pumpApp(tester, store: MemoryBarStore.of(bar, recipeCollection));
+  /// The shell over [bar], pumped past its startup load — [picker] being what
+  /// the system's file picker answers a refresh with (FR-BAR-7).
+  Future<void> pumpShell(
+    WidgetTester tester,
+    Bar bar, {
+    Collection? collection,
+    Future<String?> Function()? picker,
+  }) => pumpApp(
+    tester,
+    store: MemoryBarStore.of(bar, collection ?? recipeCollection),
+    picker: picker,
+  );
 
   /// Which destinations the bottom bar is offering, in the order drawn.
   List<String> barDestinations(WidgetTester tester) => [
@@ -267,6 +276,106 @@ void main() {
         const MaterialApp(home: Scaffold(body: RowMenu({}))),
       );
       expect(find.byTooltip('More'), findsNothing);
+    });
+  });
+
+  group('asking the source again (FR-BAR-5)', () {
+    /// The pull a reader makes down the list, let run to its answer.
+    Future<void> pull(WidgetTester tester) async {
+      await tester.fling(
+        find.byType(RefreshIndicator).first,
+        const Offset(0, 300),
+        1000,
+      );
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('a guest bar\'s lists answer a pull and an owned one\'s do '
+        'not', (tester) async {
+      await pumpShell(tester, guestBar());
+      expect(find.byType(RefreshIndicator), findsOneWidget);
+      // Both of a guest's destinations, not just the one it opens on.
+      await goTo(tester, 'Inventory');
+      expect(find.byType(RefreshIndicator), findsOneWidget);
+      // An owned bar has no source to ask, so the gesture is not offered — and
+      // the shell needs no refresh control of its own either.
+      await pumpShell(tester, testBar());
+      expect(find.byType(RefreshIndicator), findsNothing);
+    });
+
+    testWidgets('what arrives replaces what stood, wholesale', (tester) async {
+      await pumpShell(
+        tester,
+        guestBar(),
+        picker: () async => fileOf(fixtureCollection),
+      );
+      expect(find.text('Whiskey Sour'), findsOneWidget);
+      await pull(tester);
+      expect(find.text('Whiskey Sour'), findsNothing);
+      expect(find.text('Negroni'), findsOneWidget);
+      expect(find.byType(MaterialBanner), findsNothing);
+    });
+
+    /// Where the gesture is the only way in: there are no rows to pull on, so a
+    /// body with nothing to scroll has to answer one anyway.
+    testWidgets('a guest bar holding nothing can still be pulled', (
+      tester,
+    ) async {
+      await pumpShell(
+        tester,
+        guestBar(),
+        collection: Collection(),
+        picker: () async => fileOf(recipeCollection),
+      );
+      await pull(tester);
+      expect(find.text('Whiskey Sour'), findsOneWidget);
+    });
+
+    testWidgets('what will not read leaves the bar as it stood, and says why', (
+      tester,
+    ) async {
+      await pumpShell(tester, guestBar(), picker: () async => damagedFile);
+      await pull(tester);
+      expect(find.text('Whiskey Sour'), findsOneWidget);
+      expect(find.textContaining('could not be read'), findsOneWidget);
+      expect(find.textContaining('rye'), findsOneWidget);
+      expect(find.textContaining('line '), findsOneWidget);
+    });
+
+    /// A source naming a transport this build has no adapter for — an index
+    /// carrying `cloud` before its channel lands (ADR 22).
+    testWidgets('a source that could not be reached says which way', (
+      tester,
+    ) async {
+      await pumpShell(
+        tester,
+        Bar(
+          id: 'cld1',
+          name: "Ada's bar",
+          mode: BarMode.guest,
+          source: const BarSource(
+            via: Transport.cloud,
+            at: 'somewhere',
+            from: 'Ada',
+          ),
+        ),
+      );
+      await pull(tester);
+      expect(
+        find.textContaining('its source could not be found'),
+        findsOneWidget,
+      );
+      await tap(tester, find.text('Dismiss'));
+      expect(find.byType(MaterialBanner), findsNothing);
+    });
+
+    testWidgets('a reader who picks nothing has failed at nothing', (
+      tester,
+    ) async {
+      await pumpShell(tester, guestBar(), picker: () async => null);
+      await pull(tester);
+      expect(find.byType(MaterialBanner), findsNothing);
+      expect(find.text('Whiskey Sour'), findsOneWidget);
     });
   });
 }

@@ -101,7 +101,16 @@ Milestones in dependency order. Scope: [requirements.md](requirements.md); desig
 ## Phase 8 — A bar travels by file
 
 - [x] **M35** — Sharing seam. Delivers: [ADR 22](adr/22-a-bar-travels-behind-one-seam.md), BarChannel, FetchOutcome, channelsProvider, refreshesProvider, file channel first (FR-BAR-7). Depends: M34.
-- [ ] **M36** — One file, two destinations. Delivers: review, BarPayload, replace owned or found guest (FR-BAR-7), refresh by picker (FR-BAR-5). Depends: M35.
+- [x] **M36** — One file, two destinations. Delivers: `BarFormScreen` — the new-bar dialog becomes a
+  pushed form (name, **From import**, Owned/Guest, the counts inline), with the name field going
+  quiet and reading the owner's on the guest road; `addOwnedBar(name, {from})` for FR-BAR-2's
+  "created from a file" and `_found` shared with `addGuestBar`; `fileSource` republished in
+  `channels.dart` so `ui/` never builds an address; the import review's **Accept** becoming
+  **Replace** beside **Add as guest**, both roads named against the bars they land on; `pickBar`,
+  `BarHoldings` and `RefusedFile` pulled into `arriving_bar.dart` as the one reading of an arriving
+  file; swipe-to-refresh on a guest bar's lists including an empty one (`VocabularyList.onRefresh`,
+  `refreshOf`) and the `RefreshFailure` banner beside `LoadIssues` in `banners.dart`; shared
+  `SectionLabel`/`FieldNote`, and `fileOf`/`damagedFile` in the widget harness. Depends: M35.
 
 ## Phase 9 — A bar travels over the LAN
 

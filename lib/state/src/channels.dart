@@ -18,6 +18,10 @@ final channelsProvider = Provider<Map<Transport, BarChannel>>(
   }),
 );
 
+/// What a bar added from a picked file is kept under — republished so that no
+/// screen founding one ever builds an address (ADR 22).
+const fileSource = FileBarChannel.source;
+
 /// What a bar's refresh is doing, or what its last one came to (FR-BAR-5).
 sealed class RefreshState {
   const RefreshState();
@@ -28,8 +32,7 @@ final class Reaching extends RefreshState {
   const Reaching();
 }
 
-/// Judged as an import is, and described as the startup banner describes one:
-/// `ui/` never meets a [SourcedIssue] (FR-DAT-4).
+/// Judged as an import is, and worded as the startup banner words one (FR-DAT-4).
 final class RefreshRefused extends RefreshState {
   final List<String> issues;
   final DateTime at;
@@ -56,9 +59,8 @@ final refreshesProvider =
     NotifierProvider<Refreshes, Map<String, RefreshState>>(Refreshes.new);
 
 final class Refreshes extends Notifier<Map<String, RefreshState>> {
-  /// The newest ask per bar, so a late answer is dropped whole rather than
-  /// landing behind a newer one. Off the state: a screen rebuilding because a
-  /// token was minted would be a rebuild for nothing.
+  /// The newest ask per bar, so a late answer is dropped rather than landing
+  /// behind a newer one. Off the state: minting one is nothing to rebuild for.
   final _tokens = <String, int>{};
 
   @override

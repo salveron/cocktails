@@ -1,5 +1,6 @@
 import 'package:cocktails/data/data.dart';
 import 'package:cocktails/domain/domain.dart';
+import 'package:cocktails/ui/screens/bar_form_screen.dart';
 import 'package:cocktails/ui/screens/bars_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -269,35 +270,13 @@ void main() {
   });
 
   group('a new bar', () {
-    testWidgets('is named, made and opened by the making of it', (
-      tester,
-    ) async {
+    testWidgets('the button opens the form, not a dialog', (tester) async {
       await openBars(tester);
       await tap(tester, find.byTooltip('New bar'));
-      await type(tester, 'Cellar');
-      await tap(tester, find.text('Save'));
-      expect(shellTitle('Recipes', bar: 'Cellar'), findsOneWidget);
-      // Empty, and the reader is standing in it.
-      expect(find.text('Negroni'), findsNothing);
-    });
-
-    testWidgets('a name of nothing but spaces is refused', (tester) async {
-      await openBars(tester);
-      await tap(tester, find.byTooltip('New bar'));
-      await type(tester, '   ');
-      expect(
-        tester.widget<TextField>(dialogField).decoration?.errorText,
-        'A name of spaces is no name',
-      );
-    });
-
-    testWidgets('backing out of the dialog makes nothing', (tester) async {
-      await openBars(tester);
-      await tap(tester, find.byTooltip('New bar'));
-      await tap(tester, find.text('Cancel'));
-      expect(find.byType(BarsScreen), findsOneWidget);
-      expect(find.text('Home bar'), findsOneWidget);
-      expect(find.text('Anna'), findsOneWidget);
+      // A name and where the contents come from need room a dialog has not got
+      // (FR-BAR-2/7); what the form then does with them is its own test.
+      expect(find.byType(BarFormScreen), findsOneWidget);
+      expect(find.byType(AlertDialog), findsNothing);
     });
   });
 
@@ -383,7 +362,7 @@ void main() {
         store: MemoryBarStore((bars: const [], openId: null)),
       );
       await tap(tester, find.byTooltip('New bar'));
-      await type(tester, 'Cellar');
+      await typeInto(tester, barNameField, 'Cellar');
       await tap(tester, find.text('Save'));
       expect(shellTitle('Recipes', bar: 'Cellar'), findsOneWidget);
       expect(find.byType(NavigationBar), findsOneWidget);

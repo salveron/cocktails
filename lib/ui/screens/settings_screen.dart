@@ -5,6 +5,7 @@ import 'package:cocktails/state/state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../widgets/arriving_bar.dart';
 import '../widgets/vocabulary_list.dart';
 import 'amounts_screen.dart';
 import 'bars_screen.dart';
@@ -109,35 +110,46 @@ Future<void> _export(BuildContext context, WidgetRef ref) async {
 }
 
 /// Takes a file off the system's picker and puts what is in it in front of the
-/// reader (FR-DAT-3/4). Nothing is touched here: the review is where a replace
-/// is agreed to, and `review` cannot fail — the codec answers a file it cannot
-/// read with issues rather than an exception.
+/// reader (FR-DAT-3/4). Nothing is touched here: the review is where a road is
+/// agreed to.
 Future<void> _import(BuildContext context, WidgetRef ref) async {
-  final picker = ref.read(filePickerProvider);
-  final shelf = ref.read(shelfProvider.notifier);
   final navigator = Navigator.of(context);
-  await _wentThrough(
-    ScaffoldMessenger.of(context),
-    'Could not read that file',
-    () async {
-      final text = await picker();
-      // A reader who picked nothing has done nothing, which is not a failure.
-      if (text == null) return;
-      await navigator.push(
-        MaterialPageRoute<void>(
-          builder: (_) => _ImportReview(shelf.review(text)),
-        ),
-      );
-    },
+  final picked = await pickBar(context, ref);
+  if (picked == null) return;
+  await navigator.push(
+    MaterialPageRoute<void>(builder: (_) => _ImportReview(picked)),
   );
 }
 
-/// What a picked file turned out to be, and the one place a replace is agreed to
-/// (FR-DAT-3/4). Pushed rather than shown over the list, the room a
-/// confirmation and a report need arriving after the pick rather than before it.
-/// Accept rides the app bar, where every other commit in the app sits
-/// (`editor_form.dart`); the weight of the act is carried by a body that spells
+/// Runs [road] and leaves for the collection itself: what arrived is two
+/// screens back, and the reader's own list is the answer no sentence improves
+/// on. Unlike a share, this knows what it did, so it says so too — the
+/// messenger is the app's, so the word outlives both pops. A road that could
+/// not be taken stays on the review, leaving for a collection that never
+/// reached the disk being a lie about what happened.
+Future<void> _took(
+  BuildContext context,
+  String refusal,
+  String Function() said,
+  Future<void> Function() road,
+) async {
+  final messenger = ScaffoldMessenger.of(context);
+  final navigator = Navigator.of(context);
+  if (!await _wentThrough(messenger, refusal, road)) return;
+  navigator.popUntil((route) => route.isFirst);
+  messenger.showSnackBar(SnackBar(content: Text(said())));
+}
+
+/// What a picked file turned out to be, and where its two roads are agreed to
+/// (FR-DAT-3/4, FR-BAR-7). Pushed rather than shown over the list, the room a
+/// confirmation and a report need arriving after the pick rather than before
+/// it. Both roads ride the app bar, where every other commit in the app sits
+/// (`editor_form.dart`); the weight of either is carried by a body that spells
 /// out everything arriving, not by the size of the button agreeing to it.
+///
+/// Reached from an owned bar alone — Import dims on a guest, whose collection
+/// is not this device's to replace (FR-BAR-4) — so Replace is offered without
+/// asking whose bar is on show.
 class _ImportReview extends ConsumerWidget {
   const _ImportReview(this.review);
 
@@ -145,199 +157,109 @@ class _ImportReview extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // The whole bar is accepted; the body reads its collection, what else the
-    // file carries being the two roads it can take, and theirs (FR-BAR-7).
+    // The whole bar is taken; the body reads its collection, what else the file
+    // carries being the two roads it can take, and theirs (FR-BAR-7).
     final incoming = review.bar;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Import'),
         actions: [
-          // A file the app cannot read holds nothing to accept.
-          if (incoming != null)
+          // A file the app cannot read holds nothing to take either road with.
+          if (incoming != null) ...[
             TextButton(
-              onPressed: () => unawaited(_accept(context, ref, incoming)),
-              child: const Text('Accept'),
+              onPressed: () => unawaited(_addGuest(context, ref, incoming)),
+              child: const Text('Add as guest'),
             ),
+            TextButton(
+              onPressed: () => unawaited(_replace(context, ref, incoming)),
+              child: const Text('Replace'),
+            ),
+          ],
         ],
       ),
-      body: incoming == null
-          ? _Refused(review.issues)
-          : _Holdings(incoming.collection),
+      body: ListView(
+        padding: const EdgeInsets.only(bottom: 16),
+        children: incoming == null
+            ? [
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: RefusedFile(
+                    review.issues,
+                    standing:
+                        'Nothing has changed. The collection stands as it was.',
+                  ),
+                ),
+              ]
+            : [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                  child: _Roads(incoming.name),
+                ),
+                BarHoldings(incoming.collection),
+              ],
+      ),
     );
   }
 
-  /// Replaces everything and leaves for the collection itself: what was imported
-  /// is two screens back, and the reader's own list is the answer no sentence
-  /// improves on. Unlike a share, an import knows what it did, so it says so
-  /// too — the messenger is the app's, so the word outlives both pops.
-  Future<void> _accept(
+  /// FR-DAT-3: the open bar keeps its name and its place and takes these
+  /// contents, a copy of what stood kept first.
+  Future<void> _replace(
     BuildContext context,
     WidgetRef ref,
     BarPayload incoming,
-  ) async {
-    final messenger = ScaffoldMessenger.of(context);
-    final navigator = Navigator.of(context);
-    final replaced = await _wentThrough(
-      messenger,
-      'Could not import',
-      () => ref.read(shelfProvider.notifier).replaceOpen(incoming),
-    );
-    if (!replaced) return;
-    navigator.popUntil((route) => route.isFirst);
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(
-          '${counted(incoming.collection.recipes.length, 'recipe')} imported.',
-        ),
-      ),
-    );
-  }
-}
-
-/// Why the file was not read, and where (FR-DAT-4). There is nothing to agree
-/// to: a file the app cannot read holds nothing to import.
-class _Refused extends StatelessWidget {
-  const _Refused(this.issues);
-
-  final List<String> issues;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        Row(
-          children: [
-            Icon(Icons.error_outline, color: theme.colorScheme.error),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                'This file cannot be imported',
-                style: theme.textTheme.titleMedium,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'Nothing has changed. The collection stands as it was.',
-          style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
-        ),
-        const SizedBox(height: 16),
-        BulletRuns([bulletRun(issues)]),
-      ],
-    );
-  }
-}
-
-/// Everything the file carries, kind by kind, each card opening to the names
-/// behind its count — every one of them, however many: a reader agreeing to
-/// replace a collection is owed sight of the one replacing it, and a list cut
-/// short is exactly where the entry they were looking for would have been.
-class _Holdings extends StatefulWidget {
-  const _Holdings(this.incoming);
-
-  final Collection incoming;
-
-  @override
-  State<_Holdings> createState() => _HoldingsState();
-}
-
-class _HoldingsState extends State<_Holdings> {
-  final _open = <Holding>{};
-
-  @override
-  Widget build(BuildContext context) => ListView(
-    padding: const EdgeInsets.only(bottom: 16),
-    children: [
-      Padding(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-        child: Text(
-          'Replaces everything on the shelf now. A copy is kept first.',
-          style: TextStyle(
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
-        ),
-      ),
-      for (final holding in _holdingsOf(widget.incoming)) _card(holding),
-    ],
+  ) => _took(
+    context,
+    'Could not import',
+    () => '${counted(incoming.collection.recipes.length, 'recipe')} imported.',
+    () => ref.read(shelfProvider.notifier).replaceOpen(incoming),
   );
 
-  /// Count as the title, the names themselves as the line under it, the whole
-  /// list when opened. A kind the file holds none of opens onto nothing, so it
-  /// offers no chevron and does not answer a tap.
-  Widget _card(_Holding holding) {
-    final open = _open.contains(holding.kind);
-    final empty = holding.count == 0;
-    return VocabularyRow(
-      title: Text(counted(holding.count, holding.kind.noun)),
-      subtitle: open || empty
-          ? null
-          : Text(holding.line, maxLines: 1, overflow: TextOverflow.ellipsis),
-      trailing: empty
-          ? null
-          : Icon(open ? Icons.expand_less : Icons.expand_more),
-      body: open ? BulletRuns(holding.runs) : null,
-      onTap: empty ? null : () => setState(() => _open.toggle(holding.kind)),
+  /// FR-BAR-7's other road: a bar of its own, the owner's to name and refresh,
+  /// and nothing on the shelf is touched to make room for it.
+  Future<void> _addGuest(
+    BuildContext context,
+    WidgetRef ref,
+    BarPayload incoming,
+  ) => _took(
+    context,
+    'Could not add that bar',
+    () => '"${incoming.name}" added as a guest bar.',
+    () => ref.read(shelfProvider.notifier).addGuestBar(fileSource, incoming),
+  );
+}
+
+/// The one thing the counts cannot say: what each road does with them. No
+/// numbers here — the cards have them, and a second set beside them reads as a
+/// discrepancy rather than a reassurance. Both bars are named, the two roads
+/// differing in exactly which one ends up holding this.
+class _Roads extends ConsumerWidget {
+  const _Roads(this.arriving);
+
+  final String arriving;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Non-null: the gear this was reached through is the open bar's own.
+    final open = ref.watch(openBarProvider)!.name;
+    return DefaultTextStyle.merge(
+      style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Replace puts this in place of everything "$open" holds now. '
+            'A copy is kept first.',
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Add as guest leaves "$open" alone and founds "$arriving" beside '
+            'it, read-only.',
+          ),
+        ],
+      ),
     );
   }
 }
-
-/// One kind the file carries, and the names behind it.
-final class _Holding {
-  const _Holding(this.kind, this.runs);
-
-  final Holding kind;
-
-  /// One run but for the tags, whose single count covers two vocabularies a
-  /// body has to keep apart (ADR 07).
-  final List<BulletRun> runs;
-
-  int get count => runs.fold(0, (total, run) => total + run.bullets.length);
-
-  /// Runs end to end, as the line under the title reads them — and only as far
-  /// as the ellipsis can outrun, the body being where the rest is owed. Joining
-  /// two thousand names lays out a paragraph to show one line of it.
-  String get line => runs
-      .expand((run) => run.bullets)
-      .take(_lineNames)
-      .map((bullet) => bullet.name)
-      .join(', ');
-}
-
-/// More names than a phone's width fits, so the ellipsis lands on the line
-/// rather than on the count of what was left out of it.
-const _lineNames = 24;
-
-/// What the file amounts to, in [Holding]'s own order and under its own nouns —
-/// the same four a bar card counts. Each kind is named and ordered within itself
-/// as the screen managing it does, so a card here reads as the list it stands
-/// for (`inventory_screen.dart`, `tags_screen.dart`, `units_screen.dart`).
-List<_Holding> _holdingsOf(Collection collection) => [
-  for (final kind in Holding.values)
-    _Holding(kind, switch (kind) {
-      Holding.recipe => [_run(collection.recipes.map((it) => it.name))],
-      Holding.ingredient => [_run(collection.ingredients.map((it) => it.name))],
-      Holding.tag => [
-        _run(collection.recipeTags.map((it) => it.name), label: 'Recipe'),
-        _run(
-          collection.ingredientTags.map((it) => it.name),
-          label: 'Ingredient',
-        ),
-      ],
-      Holding.unit => [
-        _run(collection.units.map((it) => it.name), sorted: false),
-      ],
-    }),
-];
-
-/// A→Z on the app's one ordering (ADR 08), so a reader scanning a long card
-/// finds a name where every other list in the app would put it — but for the
-/// units, whose vocabulary order carries the fixed three first and which
-/// `units_screen.dart` leaves standing (ADR 17).
-BulletRun _run(Iterable<String> names, {String? label, bool sorted = true}) =>
-    bulletRun(sorted ? ([...names]..sort(byName)) : names, label: label);
 
 /// One row of the menu: what it is, and what a tap does with it. A row that
 /// travels wears the chevron saying so; a row that acts where it stands

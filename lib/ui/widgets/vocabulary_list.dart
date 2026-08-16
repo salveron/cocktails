@@ -249,10 +249,16 @@ class VocabularyList<T> extends StatefulWidget {
     this.filter,
     this.draw,
     this.reveal,
+    this.onRefresh,
     this.orders = alphabetical,
     this.spellingsOf,
     super.key,
   });
+
+  /// The swipe that asks the bar's source for it again (FR-BAR-5) — a guest
+  /// bar's lists and nowhere else, which is why the shell carries no refresh
+  /// control (docs/ui-design.md#bars). Null where there is no source to ask.
+  final Future<void> Function()? onRefresh;
 
   final List<T> entries;
   final String Function(T entry) nameOf;
@@ -364,8 +370,34 @@ class _VocabularyListState<T> extends State<VocabularyList<T>> {
     _notice();
     final matches = widget.entries.isEmpty ? <T>[] : _matches();
     return Scaffold(
-      body: widget.entries.isEmpty ? widget.empty : _searchable(add, matches),
+      body: widget.entries.isEmpty
+          ? _refreshable(widget.empty)
+          : _searchable(add, matches),
       floatingActionButton: _buttons(add, matches),
+    );
+  }
+
+  /// [child] under the pull that refreshes, where one is offered. Wrapped
+  /// around what scrolls rather than around the search standing over it, that
+  /// being where the reader pulls. A body with nothing to scroll is given
+  /// something: an empty bar is exactly where the gesture is the only way to
+  /// ask a source at all, so it must answer there too.
+  Widget _refreshable(Widget child, {bool scrolls = false}) {
+    final onRefresh = widget.onRefresh;
+    if (onRefresh == null) return child;
+    return RefreshIndicator(
+      onRefresh: onRefresh,
+      child: scrolls
+          ? child
+          : LayoutBuilder(
+              builder: (context, box) => SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minHeight: box.maxHeight),
+                  child: child,
+                ),
+              ),
+            ),
     );
   }
 
@@ -500,36 +532,48 @@ class _VocabularyListState<T> extends State<VocabularyList<T>> {
         if (filter != null) filter.row,
         Expanded(
           child: matches.isEmpty
-              ? _NoMatch(
-                  query: query,
-                  narrowing: filter?.narrowing,
-                  noun: widget.noun,
-                  onAdd: add == null ? null : () => unawaited(_add(add, query)),
-                )
-              : ScrollablePositionedList.builder(
-                  itemScrollController: _scroller,
-                  itemPositionsListener: _positions,
-                  // Padding so the last row clears whatever stands over it.
-                  padding: EdgeInsets.only(
-                    bottom: widget.draw == null ? 88 : 156,
+              ? _refreshable(
+                  _NoMatch(
+                    query: query,
+                    narrowing: filter?.narrowing,
+                    noun: widget.noun,
+                    onAdd: add == null
+                        ? null
+                        : () => unawaited(_add(add, query)),
                   ),
-                  itemCount: matches.length,
-                  itemBuilder: (context, index) {
-                    final name = widget.nameOf(matches[index]);
-                    final row = widget.rowOf(matches[index]);
-                    // Keyed outermost either way, so gaining the wash moves no
-                    // row and drops none of what one is standing on.
-                    return KeyedSubtree(
-                      key: ValueKey(name),
-                      child: name != _washing
-                          ? row
-                          : _Wash(
-                              key: ValueKey(_washes),
-                              onDone: () => setState(() => _washing = null),
-                              child: row,
-                            ),
-                    );
-                  },
+                )
+              : _refreshable(
+                  scrolls: true,
+                  ScrollablePositionedList.builder(
+                    itemScrollController: _scroller,
+                    itemPositionsListener: _positions,
+                    // Overscroll for the pull to start in, however few rows
+                    // stand under it.
+                    physics: widget.onRefresh == null
+                        ? null
+                        : const AlwaysScrollableScrollPhysics(),
+                    // Padding so the last row clears whatever stands over it.
+                    padding: EdgeInsets.only(
+                      bottom: widget.draw == null ? 88 : 156,
+                    ),
+                    itemCount: matches.length,
+                    itemBuilder: (context, index) {
+                      final name = widget.nameOf(matches[index]);
+                      final row = widget.rowOf(matches[index]);
+                      // Keyed outermost either way, so gaining the wash moves no
+                      // row and drops none of what one is standing on.
+                      return KeyedSubtree(
+                        key: ValueKey(name),
+                        child: name != _washing
+                            ? row
+                            : _Wash(
+                                key: ValueKey(_washes),
+                                onDone: () => setState(() => _washing = null),
+                                child: row,
+                              ),
+                      );
+                    },
+                  ),
                 ),
         ),
       ],

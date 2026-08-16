@@ -103,8 +103,7 @@ final class ShelfController extends AsyncNotifier<Shelf> {
         Corrupt(:final recovered) => recovered?.collection,
       };
 
-  /// A device holding nothing gets one empty owned bar, its file before the
-  /// index as [addOwnedBar] and the migration both write one.
+  /// A device holding nothing gets one empty owned bar, founded as any is.
   Future<Shelf> _foundFirstBar(BarStore store, List<String> issues) async {
     final bar = _newBar('Home bar', Collection());
     _report(issues);
@@ -190,34 +189,38 @@ final class ShelfController extends AsyncNotifier<Shelf> {
     await _publish(shelf.opening(id, collection));
   }
 
-  /// FR-BAR-2: a new bar, empty, owned and opened on the spot; its file lands
-  /// before the index names it.
-  Future<void> addOwnedBar(String name) async {
-    final shelf = await future;
-    final collection = Collection();
-    final bar = _newBar(name, collection);
-    await ref.read(barStoreProvider).saveBar(bar, collection);
-    _report(const []);
-    await _publish(shelf.withBar(bar).opening(bar.id, collection));
+  /// FR-BAR-2: a new bar, owned and opened on the spot — empty, or holding a
+  /// picked file (FR-BAR-7), named by the reader where the contents are not.
+  Future<void> addOwnedBar(String name, {BarPayload? from}) {
+    final collection = from?.collection ?? Collection();
+    return _found(
+      _newBar(name, collection, display: from?.display),
+      collection,
+    );
   }
 
   /// FR-BAR-3/7: another owner's bar, added from what they shared rather than
   /// imported into one of this device's own — the same file's other road.
-  /// Read-only from here (ADR 23); the file's own display is kept, an
-  /// establishing being where the reader has no pick yet (ADR 21).
-  Future<void> addGuestBar(BarSource source, BarPayload payload) async {
-    final shelf = await future;
-    final bar = Bar(
+  /// Read-only (ADR 23), the source kept so a refresh asks again (FR-BAR-5).
+  Future<void> addGuestBar(BarSource source, BarPayload payload) => _found(
+    Bar(
       id: newBarId(),
       name: payload.name,
       mode: BarMode.guest,
       display: payload.display,
       source: source,
       refreshed: _now(),
-    ).summarised(payload.collection);
-    await ref.read(barStoreProvider).saveBar(bar, payload.collection);
+    ).summarised(payload.collection),
+    payload.collection,
+  );
+
+  /// The founding both roads take: the bar's file before the index naming it,
+  /// a crash between the two otherwise leaving a bar that opens onto nothing.
+  Future<void> _found(Bar bar, Collection collection) async {
+    final shelf = await future;
+    await ref.read(barStoreProvider).saveBar(bar, collection);
     _report(const []);
-    await _publish(shelf.withBar(bar).opening(bar.id, payload.collection));
+    await _publish(shelf.withBar(bar).opening(bar.id, collection));
   }
 
   /// FR-BAR-5: asks a guest bar's source again, whatever way it came. Off the
@@ -269,13 +272,14 @@ final class ShelfController extends AsyncNotifier<Shelf> {
     await _publish(refreshed);
   }
 
-  /// An owned bar, summarised and stamped from the moment it is founded, so no
-  /// bar is ever listed without the counts the list reads it by.
-  Bar _newBar(String name, Collection collection) => Bar(
+  /// An owned bar, counted and stamped from the moment it is founded, so none
+  /// is ever listed without the counts the list reads it by. A file that founded
+  /// it brings its reading unit (ADR 21); `copyWith` keeps the default.
+  Bar _newBar(String name, Collection collection, {FixedUnit? display}) => Bar(
     id: newBarId(),
     name: name,
     mode: BarMode.owner,
-  ).summarised(collection, at: _now());
+  ).copyWith(display: display).summarised(collection, at: _now());
 
   DateTime _now() => ref.read(clockProvider)();
 
@@ -322,9 +326,8 @@ final class ShelfController extends AsyncNotifier<Shelf> {
 
   /// Publish, then persist only what moved: a stock tap rewrites one bar's file
   /// and a unit pick only the index, neither rotating the other's backups. A
-  /// collection is written only where the bar under it stayed put — that is what
-  /// tells an edit from a crossing, which brings its collection up from disk and
-  /// would rotate the backups of a bar nobody touched.
+  /// collection is written only where the bar under it stayed put — which tells
+  /// an edit from a crossing, whose collection came up from disk already.
   Future<void> _publish(Shelf edited) async {
     final standing = state.requireValue;
     if (edited == standing) return;

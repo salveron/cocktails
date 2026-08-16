@@ -6,14 +6,6 @@ import 'package:flutter_test/flutter_test.dart';
 
 import '../harness.dart';
 
-/// [collection] as a bar's file — the shape a picked document actually has
-/// from format 2 on (ADR 21).
-String fileOf(Collection collection) => const YamlCodec().encode((
-  name: 'Ada\'s bar',
-  display: FixedUnit.part,
-  collection: collection,
-));
-
 /// A store that cannot write, so the one thing a failed replace must not do —
 /// leave for a collection that was never written — can be watched.
 final class _UnwritableStore extends MemoryBarStore {
@@ -114,14 +106,6 @@ void main() {
     /// cannot be read off the store and pass for the file's.
     final pickedFile = fileOf(recipeCollection);
 
-    /// A file the codec can read but the rules refuse: nothing declares "rye".
-    const damagedFile = '''
-format: 1
-recipes:
-  - name: Sazerac
-    lines: ["2 parts rye"]
-''';
-
     /// The Import row tapped over a store holding [fixtureCollection], with the
     /// system's picker answering [picked] — a file, nothing, or a refusal.
     Future<MemoryBarStore> importOver(
@@ -149,7 +133,7 @@ recipes:
       expect(find.text('2 tags'), findsOneWidget);
       expect(find.text('7 units'), findsOneWidget);
       expect(
-        find.textContaining('Replaces everything on the shelf now'),
+        find.textContaining('in place of everything "Home bar" holds now'),
         findsOneWidget,
       );
       expect(store.saveCount, 0);
@@ -241,7 +225,7 @@ recipes:
     testWidgets('the replace lands, keeping a copy of what it replaced '
         '(FR-DAT-3)', (tester) async {
       final store = await importOver(tester, () async => pickedFile);
-      await tap(tester, find.text('Accept'));
+      await tap(tester, find.text('Replace'));
       expect(store.saved, recipeCollection);
       expect(
         store.snapshots[ExportPurpose.beforeImport]?.$2,
@@ -250,14 +234,47 @@ recipes:
       expect(find.text('3 recipes imported.'), findsOneWidget);
     });
 
+    testWidgets('the other road founds a bar of its own and leaves nothing '
+        'behind (FR-BAR-7)', (tester) async {
+      final store = await importOver(tester, () async => pickedFile);
+      await tap(tester, find.text('Add as guest'));
+      // The bar that stood is untouched — same name, same contents, still on
+      // the shelf beside the one that just arrived.
+      final shelf = store.savedShelf!;
+      expect(shelf.bars, hasLength(2));
+      final added = shelf.bars.firstWhere((bar) => bar.id == shelf.openId);
+      expect(added.mode, BarMode.guest);
+      expect(added.name, "Ada's bar");
+      // Kept, so a refresh asks the same way again (FR-BAR-5).
+      expect(added.source?.via, Transport.file);
+      expect(store.savedBars[added.id]?.$2, recipeCollection);
+      expect(store.savedBars[testBar().id], isNull);
+      // Nothing was replaced, so nothing was copied out of the way first.
+      expect(store.snapshots, isEmpty);
+      expect(find.text('"Ada\'s bar" added as a guest bar.'), findsOneWidget);
+    });
+
+    testWidgets('both roads are named, and the bars they each land on', (
+      tester,
+    ) async {
+      await importOver(tester, () async => pickedFile);
+      expect(find.text('Replace'), findsOneWidget);
+      expect(find.text('Add as guest'), findsOneWidget);
+      expect(
+        find.textContaining('leaves "Home bar" alone and founds "Ada\'s bar"'),
+        findsOneWidget,
+      );
+    });
+
     testWidgets('a file the rules refuse changes nothing, and says what and '
         'where (FR-DAT-4)', (tester) async {
       final store = await importOver(tester, () async => damagedFile);
-      expect(find.text('This file cannot be imported'), findsOneWidget);
+      expect(find.text('This file cannot be read'), findsOneWidget);
       expect(find.textContaining('rye'), findsOneWidget);
       expect(find.textContaining('line '), findsOneWidget);
       // Nothing to agree to, and nothing agreed to.
-      expect(find.text('Accept'), findsNothing);
+      expect(find.text('Replace'), findsNothing);
+      expect(find.text('Add as guest'), findsNothing);
       expect(store.saveCount, 0);
       expect(store.snapshots, isEmpty);
     });
@@ -266,8 +283,9 @@ recipes:
       tester,
     ) async {
       await importOver(tester, () async => 'not a cocktail in sight');
-      expect(find.text('This file cannot be imported'), findsOneWidget);
-      expect(find.text('Accept'), findsNothing);
+      expect(find.text('This file cannot be read'), findsOneWidget);
+      expect(find.text('Replace'), findsNothing);
+      expect(find.text('Add as guest'), findsNothing);
     });
 
     testWidgets('a reader who picks nothing has done nothing', (tester) async {
@@ -298,7 +316,7 @@ recipes:
         picker: () async => pickedFile,
       );
       await tap(tester, find.text('Import'));
-      await tap(tester, find.text('Accept'));
+      await tap(tester, find.text('Replace'));
       expect(find.textContaining('Could not import'), findsOneWidget);
       // Still on the review: leaving for a collection that never reached the
       // disk would read as a replace that worked.
@@ -315,7 +333,7 @@ recipes:
       );
       await tap(tester, find.byTooltip('Settings'));
       await tap(tester, find.text('Import'));
-      await tap(tester, find.text('Accept'));
+      await tap(tester, find.text('Replace'));
       // Two screens back, where what was imported is: a list of recipes that
       // were not there a moment ago is the answer no sentence improves on.
       expect(find.widgetWithText(AppBar, 'Import'), findsNothing);

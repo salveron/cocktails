@@ -76,7 +76,10 @@ nothing at all, where the reader was asked and stood down.
 - **File** (FR-BAR-7): the source is the reader, and holds no address to keep. A refresh opens the 
   document picker, so a file-sourced bar cannot be told from any other file picked for it — what 
   arrives replaces what stood, and the pick is the judgement; a picker dismissed leaves the bar 
-  exactly as it was, having failed at nothing. Nothing to withdraw, nothing announced.
+  exactly as it was, having failed at nothing. Nothing to withdraw, nothing announced. **One picked 
+  file has three destinations**, and which one it takes is settled where it was picked: the open 
+  bar's contents replaced (FR-DAT-3), a new bar of the reader's own founded from it (FR-BAR-2), or 
+  a guest bar founded beside it (FR-BAR-7). Only the last keeps the source.
 - **LAN** (FR-BAR-8): an owner registers one DNS-SD service per offered bar and serves that bar over 
   a `dart:io` HTTP server on an unguessable path; a guest browses the service type, adds what it 
   finds and refreshes by GET. Discovery costs a package, the transfer none (ADR 22). Server and 

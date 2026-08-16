@@ -14,7 +14,7 @@ import 'screens/settings_screen.dart';
 import 'screens/shopping_screen.dart';
 import 'theme.dart';
 import 'widgets/empty_state.dart';
-import 'widgets/load_issues.dart';
+import 'widgets/banners.dart';
 
 class CocktailsApp extends StatelessWidget {
   const CocktailsApp({super.key});
@@ -30,10 +30,9 @@ class CocktailsApp extends StatelessWidget {
 
 /// What the app opens on, and the one place the startup load is met: a spinner
 /// while it runs, what it failed with where it did, then the bar on show or the
-/// list of them where there is none
-/// ([ADR 20](../../docs/adr/20-the-app-holds-many-bars.md)). Nothing below here
-/// is built before the shelf has answered, which is what lets every screen read
-/// a collection rather than the wait for one (docs/ui-design.md#app-shell).
+/// list of them where there is none (ADR 20). Nothing below here is built
+/// before the shelf answers, so every screen reads a collection rather than the
+/// wait for one (docs/ui-design.md#app-shell).
 class _Home extends ConsumerWidget {
   const _Home();
 
@@ -67,9 +66,8 @@ class _Home extends ConsumerWidget {
 }
 
 /// The screen behind [destination], told whether it is the one on show: the
-/// bar's own all stay alive below, and the optimizer is the one computation
-/// that must not run unwatched (ui-design.md#shopping-screen) — nor be built at
-/// all on a guest bar, which is offered no shopping to compute (FR-BAR-4).
+/// optimizer is the one computation that must not run unwatched
+/// (ui-design.md#shopping-screen), nor be built at all on a guest (FR-BAR-4).
 Widget _screenOf(Destination destination, {required bool showing}) =>
     switch (destination) {
       Destination.recipes => const RecipesScreen(),
@@ -138,6 +136,7 @@ class _AppShellState extends ConsumerState<AppShell> {
         body: Column(
           children: [
             const LoadIssues(),
+            const RefreshFailure(),
             Expanded(
               child: IndexedStack(
                 index: offered.indexOf(_current),

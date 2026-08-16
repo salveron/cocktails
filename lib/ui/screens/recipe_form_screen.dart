@@ -264,7 +264,7 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
             errorText: fieldError(_name.text, nameIssues),
           ),
         ),
-        const _SectionLabel('Ingredients'),
+        const SectionLabel('Ingredients'),
         for (var field = 0; field < _lines.rows.length; field++)
           Padding(
             padding: const EdgeInsets.only(bottom: 8),
@@ -277,14 +277,14 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
             ),
           ),
         if (vocabulary.isNotEmpty) ...[
-          const _SectionLabel('Tags'),
+          const SectionLabel('Tags'),
           TagChoices(
             vocabulary: vocabulary,
             chosen: _tags,
             onToggle: (tag) => setState(() => _tags.toggle(tag)),
           ),
         ],
-        const _SectionLabel('Notes'),
+        const SectionLabel('Notes'),
         TextField(
           controller: _notes,
           maxLines: null,
@@ -295,16 +295,4 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
       ],
     );
   }
-}
-
-class _SectionLabel extends StatelessWidget {
-  const _SectionLabel(this.text);
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(top: 16, bottom: 8),
-    child: Text(text, style: Theme.of(context).textTheme.labelLarge),
-  );
 }

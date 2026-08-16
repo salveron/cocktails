@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../destinations.dart';
+import '../widgets/arriving_bar.dart';
 import '../widgets/color_chip.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/vocabulary_dialogs.dart';
@@ -64,6 +65,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
           ? null
           : (query) => _add(writer, collection, vocabulary, query),
       reveal: revealing,
+      onRefresh: refreshOf(ref),
       noun: 'ingredient',
       plural: 'ingredients',
       orders: {

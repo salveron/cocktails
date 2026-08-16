@@ -11,6 +11,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../destinations.dart';
 import '../palette.dart';
 import '../theme.dart';
+import '../widgets/arriving_bar.dart';
 import '../widgets/color_chip.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/vocabulary_dialogs.dart';
@@ -138,6 +139,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
           ? null
           : (query) => _add(writer, collection.units, query),
       reveal: revealing,
+      onRefresh: refreshOf(ref),
       noun: 'recipe',
       plural: 'recipes',
       filter: tagFilter(

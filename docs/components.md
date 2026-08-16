@@ -654,19 +654,26 @@ Future<String> export();                           // the open bar's copy (FR-DA
 Future<void> replaceOpen(BarPayload bar);          // the copy, then the replace (FR-DAT-3)
 Future<void> setDisplay(FixedUnit display);        // the reader's, guest bar included
 Future<void> openBar(String id);                   // FR-BAR-1, the switch
-Future<void> addOwnedBar(String name);             // FR-BAR-2, opened by the making
+Future<void> addOwnedBar(String name, {BarPayload? from});  // FR-BAR-2, empty or from a file
 Future<void> renameBar(String id, String name);    // FR-BAR-2, owned bars only
 Future<void> removeBar(String id);                 // FR-BAR-2, after its own export
 Future<void> addGuestBar(BarSource source, BarPayload bar);        // FR-BAR-3/7/8/9
 Future<void> refresh(String barId);                // FR-BAR-5; never awaited by a screen
 ```
 
-The last two land with the channels that call them. All of them take **one call site each**, which is
-why they sit here rather than on the writer — see
+All of them take **one call site each**, which is why they sit here rather than on the writer — see
 [ADR 23](adr/23-nothing-writes-a-guest-bar.md), where the count is the whole argument. `export`
 and `setDisplay` work on a guest bar (FR-DAT-1, FR-BAR-3); `replaceOpen` refuses one, FR-DAT-3
 importing "into an owned bar" and FR-BAR-7 giving the same file its other road, and `renameBar`
 refuses one because a refresh replaces the name wholesale (FR-BAR-5) and would throw the rename away.
+
+**One picked file can become three things**, and the two that found a bar share `_found` — the bar's
+file before the index naming it, then the shelf opened onto it. `addOwnedBar`'s `from` is FR-BAR-2's
+"created from a file": the contents and the reading unit arrive, the *name* stays the reader's, and
+no source is kept, so nothing about such a bar refreshes. `addGuestBar` keeps both the owner's name
+and the source. `fileSource` is `channels.dart`'s republication of `FileBarChannel.source`, so a
+screen founding a guest bar from a pick names a transport and never builds an address (ADR 22) —
+`ui/` may not import `data/` at all.
 
 **What a bar holds rides on its record**, so listing bars reads the index and nothing else (ADR 20)
 and no second `Collection` ever reaches `ui/`. `Bar.holds` is `holdingsOf(Collection)` in the domain,
@@ -849,13 +856,18 @@ Performance facts (no over-engineering):
    pops to the same place (ADR 19).
 8. **Adding a guest bar** (FR-BAR-3): a source — picked, or found nearby — reaches `channel.fetch` 
    → `Fetched` becomes a bar with a minted id, the payload's name and display, and the source kept 
-   for next time; `Refused` reads as an import's issues do, `Unreachable` says which of the three.
+   for next time; `Refused` reads as an import's issues do, `Unreachable` says which of the three. 
+   The new-bar form is the other way in: it picks and `review`s the file itself, so the reader sees 
+   the counts before choosing Owned or Guest, and only the chosen road reaches the controller.
 9. **Refreshing** (FR-BAR-5): `refresh(id)` marks the bar reaching and is never awaited by a screen 
    → the fetch runs off the gesture → `refreshedWith` replaces collection, name and time; the bar on 
    show is written by `_publish` as any edit is, and any other bar's file by `refresh` itself, only 
    one collection ever being resident (ADR 20) → a failure leaves the bar as it stood, held in 
    `refreshesProvider` to be met. Each ask carries a token: an answer arriving behind a newer ask, 
-   or for a bar deleted meanwhile, is dropped whole rather than landing on top of it.
+   or for a bar deleted meanwhile, is dropped whole rather than landing on top of it. The gesture 
+   is `VocabularyList.onRefresh`, non-null only on a guest bar (`refreshOf`), and the answer is met 
+   by the `RefreshFailure` banner over the destinations — the pull awaits the fetch only to retract 
+   its own spinner, which is not a screen holding up the bar on show.
 10. **Sharing** (FR-BAR-6): an offer on a bar's record starts the adapter and removing it stops the 
     adapter; `sharingProvider` is the one place the two are kept in step, so nothing is announced 
     that the shelf does not say is shared (NFR-5).
@@ -877,7 +889,10 @@ The controller is the UI's only route to the data layer; screens never hold a `B
   Channels are tested against a fake for the seam and, for the LAN one, its own loopback server.
 - **State**: controller tests vs `MemoryBarStore` and fake channels; a mutation updates state and 
   reaches the store, a refresh lands or is dropped as stale, a guest bar hands out no writer.
-- **UI**: widget tests for critical flows. `test/ui/harness.dart` over the store and channel 
+- **UI**: widget tests for critical flows. The file transport is composed from `filePickerProvider`, 
+  so a widget test drives the *real* channel by overriding the picker alone — a pull answered with a 
+  file, a damaged one, or nothing — and reaches `Unreachable` by seeding a bar sourced `cloud`, 
+  which this build has no adapter for. `test/ui/harness.dart` over the store and channel 
   overrides.
 - **Boundaries**: `test/architecture_test.dart` enforces imports, the dependency list, and the one 
   route to a write.

@@ -10,6 +10,7 @@ import '../widgets/color_chip.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/vocabulary_dialogs.dart';
 import '../widgets/vocabulary_list.dart';
+import 'bar_form_screen.dart';
 
 /// A stamp as a reader tells the time: the largest whole unit it has been, and
 /// "just now" under a minute. Coarse on purpose — how current a bar is answers
@@ -172,18 +173,13 @@ class _BarsScreenState extends ConsumerState<BarsScreen> {
     _leave();
   }
 
-  /// FR-BAR-2. A new bar is opened by the making of it, so this leaves for it
-  /// the way a crossing does.
-  Future<void> _add() async {
-    final name = await promptForName(
-      context,
-      title: 'New bar',
-      hintText: 'What to name it',
-    );
-    if (name == null) return;
-    await ref.read(shelfProvider.notifier).addOwnedBar(name);
-    _leave();
-  }
+  /// FR-BAR-2/7: the name, and where the bar's contents come from. A pushed
+  /// form rather than a dialog, the file roads needing what a file holds put in
+  /// front of the reader first — and it leaves for the new bar itself, a bar
+  /// being opened by the making of it.
+  Future<void> _add() => Navigator.of(
+    context,
+  ).push(MaterialPageRoute<void>(builder: (_) => const BarFormScreen()));
 
   Future<void> _rename(Bar bar) async {
     final name = await promptForName(

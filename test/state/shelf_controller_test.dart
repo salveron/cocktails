@@ -867,6 +867,32 @@ recipes:
       expect(store.savedShelf?.openId, founded.id);
     });
 
+    /// FR-BAR-2's other half: an owned bar created *from a file* rather than
+    /// empty — the third thing one picked file can become (FR-BAR-7).
+    test('one founded from a file holds it, and stays the reader\'s', () async {
+      final store = twoBars();
+      final container = await started(store);
+      final arrived = Collection(ingredients: [Ingredient('rye')]);
+      await controllerOf(container).addOwnedBar(
+        'Cellar',
+        from: (name: "Ada's bar", display: FixedUnit.oz, collection: arrived),
+      );
+      final founded = container.read(openBarProvider)!;
+      expect(founded.mode, BarMode.owner);
+      // The reader's name, not the file's: the contents came from another bar
+      // and the bar itself did not.
+      expect(founded.name, 'Cellar');
+      // Nothing links it back, so a refresh has nothing to ask.
+      expect(founded.source, isNull);
+      expect(founded.refreshed, isNull);
+      expect(founded.updated, now);
+      // An establishing is where the reader has no pick yet (ADR 21).
+      expect(founded.display, FixedUnit.oz);
+      expect(collectionOf(container), arrived);
+      expect(founded.holds, holdingsOf(arrived));
+      expect(store.savedBars[founded.id]?.$2, arrived);
+    });
+
     test('two bars may carry one name (FR-BAR-1)', () async {
       final store = twoBars();
       final container = await started(store);

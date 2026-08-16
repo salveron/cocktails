@@ -101,6 +101,28 @@ Bar guestBar({String name = "Ada's bar", FixedUnit display = FixedUnit.part}) =>
       refreshed: testNow.subtract(const Duration(days: 2)),
     );
 
+/// [collection] as a bar's file — the shape a picked document actually has
+/// from format 2 on: the owner's name and the unit it reads in ride with the
+/// contents (ADR 21).
+String fileOf(
+  Collection collection, {
+  String name = "Ada's bar",
+  FixedUnit display = FixedUnit.part,
+}) => const YamlCodec().encode((
+  name: name,
+  display: display,
+  collection: collection,
+));
+
+/// A file the codec reads and the rules refuse: nothing declares "rye". The
+/// one damaged file every screen that meets one is judged against.
+const damagedFile = '''
+format: 1
+recipes:
+  - name: Sazerac
+    lines: ["2 parts rye"]
+''';
+
 /// A store whose bar file did not decode, recovered onto [fixtureCollection].
 MemoryBarStore corruptStore() {
   final bar = testBar();
@@ -258,6 +280,9 @@ final dialogField = find
 Finder field(String hint) => find.byWidgetPredicate(
   (widget) => widget is TextField && widget.decoration?.hintText == hint,
 );
+
+/// The bar form's one text field — the name, which leads it.
+final barNameField = field('Bar name');
 
 /// The recipe form's three kinds of field.
 final nameField = field('Recipe name');
