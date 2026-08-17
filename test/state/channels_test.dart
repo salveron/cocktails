@@ -12,6 +12,7 @@ import 'package:cocktails/state/state.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../support/memory_bar_store.dart';
 import 'write_log.dart';
 
 /// Answers nothing until a test says so, so the order two refreshes land in is

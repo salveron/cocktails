@@ -11,6 +11,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../support/memory_bar_store.dart';
+
 /// Two ingredients under one recipe — enough for every "not empty" screen.
 final fixtureCollection = Collection(
   ingredients: [

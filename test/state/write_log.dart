@@ -7,6 +7,8 @@ library;
 import 'package:cocktails/data/data.dart';
 import 'package:cocktails/domain/domain.dart';
 
+import '../support/memory_bar_store.dart';
+
 base class WriteLog extends MemoryBarStore {
   WriteLog(super.records);
 

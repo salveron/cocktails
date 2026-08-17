@@ -102,55 +102,28 @@ Milestones in dependency order. Scope: [requirements.md](requirements.md); desig
 
 - [x] **M35** — Sharing seam. Delivers: [ADR 22](adr/22-a-bar-travels-behind-one-seam.md), BarChannel, FetchOutcome, channelsProvider, refreshesProvider, file channel first (FR-BAR-7). Depends: M34.
 - [x] **M36** — One file, two destinations. Delivers: `BarFormScreen` — the new-bar dialog becomes a
-  pushed form (name, **From import**, Owned/Guest, the counts inline), with the name field going
-  quiet and reading the owner's on the guest road; `addOwnedBar(name, {from})` for FR-BAR-2's
-  "created from a file" and `_found` shared with `addGuestBar`; `fileSource` republished in
-  `channels.dart` so `ui/` never builds an address; the import review's **Accept** becoming
-  **Replace** beside **Add as guest**, both roads named against the bars they land on; `pickBar`,
-  `BarHoldings` and `RefusedFile` pulled into `arriving_bar.dart` as the one reading of an arriving
-  file; swipe-to-refresh on a guest bar's lists including an empty one (`VocabularyList.onRefresh`,
-  `refreshOf`) and the `RefreshFailure` banner beside `LoadIssues` in `banners.dart`; shared
-  `SectionLabel`/`FieldNote`, and `fileOf`/`damagedFile` in the widget harness. Depends: M35.
+  pushed form with the import review's two roads named against the bars they land on;
+  `addOwnedBar(name, {from})` (FR-BAR-2), `fileSource` so `ui/` never builds an address, an arriving
+  file read in one place (`arriving_bar.dart`), swipe-to-refresh on a guest bar's lists (FR-BAR-5).
+  Depends: M35.
 - [x] **M36a** — A guest bar is the reader's to name, and one form reads every arriving file.
-  Delivers: the bar's name joins the reading unit as the reader's — `renameBar` on a guest bar,
-  `Bar.refreshedAt` unable to reach a name at all, and the file's `name:` a starting value like
-  `display`, amending [ADR 21](adr/21-the-file-carries-one-bar.md) and
-  [ADR 23](adr/23-nothing-writes-a-guest-bar.md); `addGuestBar(name, source, payload)` and
-  `replaceOpen(name, payload)` taking it from the caller. The import review folds into
-  `BarFormScreen`, now `.founding()` and `.importing(review)` — one file, the same three questions,
-  the roads a segmented **Owned | Guest** or **Replace | Guest** and Save the one commit, with the
-  suggested name following the road until the reader writes their own and **Choose another file**
-  where From another file stood. Settings' Import row becomes **Refresh** on a guest bar (FR-BAR-5),
-  reporting in a snackbar and marking the answer `told` so the banner cannot repeat it
-  (`Refreshes.standing`/`told`, `refreshSaid`); `banners.dart` becomes `telling.dart`, the one home
-  for what the app could not do, `wentThrough` included. Owned/Guest chips move onto the traffic
-  light — green and amber. Depends: M36.
-- [x] **M36b** — One word per thing. Delivers: **Ingredients** where Inventory stood — the screen
-  (`ingredients_screen.dart`, `IngredientsScreen`, `Destination.ingredients`), the requirements
-  section and its identifiers (FR-INV-1/2/3 → FR-ING-1/2/3), and every doc that named it; "ingredient"
-  where "bottle" stood throughout prose, user-facing text and code — `Purchase.ingredients` and
-  `Collection.spellingOf` where `bottles` and `bottleNamed` were. The arriving-file form asks its
-  mode under **Mode** at both entries rather than "Whose bar" and "Where it goes", ends on
-  **Contents** rather than "What the file holds", carries no heading over the file button, and says
-  what each road does in one line apiece — the guest one no longer spelling "read" two ways in one
-  sentence; its cards run to the width of the fields above them (`VocabularyRow.margin`). A bar card's
-  subtitle drops "Loaded", which marked nothing since counts came off the index (ADR 20), and dates
-  itself **Updated: 3 hours ago** or **Refreshed: 2 days ago**. Depends: M36a.
+  Delivers: `renameBar` on a guest bar, the file's `name:` a starting value like `display`, amending
+  [ADR 21](adr/21-the-file-carries-one-bar.md) and [ADR 23](adr/23-nothing-writes-a-guest-bar.md);
+  the import review folded into `BarFormScreen.founding()`/`.importing(review)`; Settings' Import row
+  becoming **Refresh** on a guest bar (FR-BAR-5); `banners.dart` → `telling.dart`, the one home for
+  what the app could not do. Depends: M36.
+- [x] **M36b** — One word per thing. Delivers: **Ingredients** where Inventory stood — screen,
+  requirements (FR-INV-1/2/3 → FR-ING-1/2/3), every doc — and "ingredient" where "bottle" stood in
+  prose, UI copy and code; the arriving-file form asking its mode under **Mode** at both entries; a
+  bar card dating itself **Updated**/**Refreshed** rather than "Loaded", which marked nothing once
+  counts came off the index (ADR 20). Depends: M36a.
 - [x] **M36c** — The optimizer is asked, and a guest may look. Delivers:
-  [ADR 24](adr/24-the-tags-may-aim-the-optimizer.md) and FR-SET-2 — a **Shopping** row between
-  Amounts and Export, opening on five settings kept as `Bar.shopping` beside `display` (ADR 21) and
-  written to the index under `shopping:`, absent while nothing has moved. The chips **aim** the
-  search or **sift** its answer (FR-DIS-10): aiming weighs a basket by how many of the recipes it
-  unlocks wear *any* pick — `purchasesWithin`'s new `scoring`, a union unlike every other reading of
-  picks (`recipesWearing`) — so the card is untouched and only which baskets stand, and where, moves;
-  the numbering gaps under one reading and runs unbroken under the other, which is what says which is
-  in force. Beside it: how many baskets a size offers (FR-DIS-6, ADR 15's own relief handed over),
-  whether an optional line is shoppable (FR-REC-3, `buyingOptional`), and the budget and "low too"
-  the screen starts at. The ranking sort moves off `Purchase` onto the kept records, the count that
-  ranks a basket no longer being the length of the list it is named with. A guest bar now **reads**
-  the owner's tags, units and amounts (FR-BAR-4) instead of meeting three dimmed rows — searchable,
-  quiet, no add, no ⋮, no spare row, no Save (`EditorScaffold.readOnly`) — and Shopping is the one
-  row that dims, the optimizer being absent there. Depends: M36b.
+  [ADR 24](adr/24-the-tags-may-aim-the-optimizer.md) and FR-SET-2 — a **Shopping** settings screen
+  kept as `Bar.shopping` (ADR 21), whose chips **aim** the search or **sift** its answer (FR-DIS-10),
+  aiming weighing a basket by the recipes it unlocks wearing any pick (`purchasesWithin`'s `scoring`);
+  beside it baskets per size (FR-DIS-6), shoppable optional lines (FR-REC-3), and the opening budget.
+  A guest bar reads the owner's tags, units and amounts (FR-BAR-4) through
+  `EditorScaffold.readOnly`. Depends: M36b.
 
 ## Phase 9 — The code says what it means
 
@@ -159,22 +132,19 @@ left: one idea implemented four times, names that stopped meaning one thing, and
 size a reader holds. It stands before the LAN because the second `BarChannel` would otherwise copy
 what M36f settles.
 
-- [x] **M36d** — The name rule reaches the surface. Delivers: the tag chips folding both sides
-  (`tagFilter`), so a recipe naming its tag in the vocabulary's other case stops vanishing off its
-  own chip — reachable by export, a hand edit, and re-import, the file being clean at every step,
-  and the only one of the app's four tag intersections that did not fold. Behind it, the reason:
-  `nameKey`, `nameKeys`, `compareNames` and `sameName` now export through the domain barrel, where
-  being layer-private had put [ADR 08](adr/08-names-ignore-case.md)'s one rule out of `ui/`'s reach
-  and grown three private folds in its place — `byName` retired for `compareNames`, `matchesQuery`
-  searching under `nameKey`, and `architecture_test.dart` keeping `toLowerCase` out of `ui/` the way
-  it already keeps `editCollection` out (amending [ADR 04](adr/04-module-boundaries.md)). Beside
-  them: `openBarProvider` watched in `build` rather than from the list's `itemBuilder`, and the
-  delete dialog split into the question and the notice it always was — `askToDelete` where a caller
-  knows nothing stands in the way, `sayWhatBlocks` where it knows something does, `confirmDelete`
-  for the callers that hold the users unread. Depends: M36c.
-- [ ] **M36e** — Dead weight goes. Delivers: unused public names and ignored parameters retired;
-  `MemoryBarStore` out of the app binary and into the test support folder; the module map matching
-  the repo. Depends: M36d.
+- [x] **M36d** — The name rule reaches the surface. Delivers: the tag chips folding both sides, so a
+  recipe naming its tag in the vocabulary's other case stops vanishing off its own chip — reachable
+  by export, a hand edit and re-import, the file clean at every step. Behind it, `nameKey` and its
+  kin exported so [ADR 08](adr/08-names-ignore-case.md)'s one fold reaches `ui/`, retiring the three
+  private folds grown while it could not (amending [ADR 04](adr/04-module-boundaries.md));
+  `openBarProvider` watched in `build`; the delete dialog split into `askToDelete` and
+  `sayWhatBlocks`. Depends: M36c.
+- [x] **M36e** — Dead weight goes. Delivers: `MemoryBarStore` out of the shipped binary into
+  `test/support/`, taking with it the data-layer import twelve UI and state tests carried only to
+  reach it, and an `architecture_test` rule that no double ships; the unread writer parameters off
+  `_add`/`_edit`; the module map naming the files that exist. `recipeNamed`,
+  `ValidationIssue.location`, `YamlCodec.formatVersion` and the two `toString`s read as dead were
+  not, and stay. Depends: M36d.
 - [ ] **M36f** — One home per algorithm: domain and data. Delivers: the bar coherence rules stated
   once and read twice; `Shelf.copyWith`; one shape for a load, a decode and a fetch, which the LAN
   channel then has to build. Depends: M36e.

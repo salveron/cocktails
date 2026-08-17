@@ -1,4 +1,3 @@
-import 'package:cocktails/data/data.dart';
 import 'package:cocktails/domain/domain.dart';
 import 'package:cocktails/ui/screens/shopping_screen.dart';
 import 'package:cocktails/ui/widgets/color_chip.dart';
@@ -6,6 +5,7 @@ import 'package:cocktails/ui/widgets/tag_choices.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../support/memory_bar_store.dart';
 import '../harness.dart';
 
 RecipeLine _line(String ingredient) =>

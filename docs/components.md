@@ -38,14 +38,14 @@ lib/
     src/
       sourced_issue.dart       # SourcedIssue — shared by the store and the codec
       bar_store.dart           # the storage interface and its outcome types
-      bar_channel.dart         # the sharing seam: fetch, offer, withdraw, find (ADR 22)
-      file_channel.dart        # FR-BAR-7 — the picker's text, decoded
-      lan_channel.dart         # FR-BAR-8 — DNS-SD registration and browse, HTTP both ways
+      bar_channel.dart         # the sharing seam: transport and fetch, the two every
+                               #   transport has; offering and finding land with the
+                               #   transports that carry them (ADR 22)
+      file_bar_channel.dart    # FR-BAR-7 — the picker's text, decoded
       yaml_codec.dart          # decode/encode of a bar and of the index, version gate
       yaml_reader.dart         # YAML tree → collection parts, with source spans
       yaml_writer.dart         # canonical emitter
       file_bar_store.dart      # one file per bar, the index, atomic write, rotation
-      memory_bar_store.dart    # in-memory double for state and widget tests
   state/
     state.dart                 # barrel — every provider over the shelf
     src/
@@ -110,7 +110,9 @@ lib/
                                #     issue paths into fields every form shares
                                #   editor_form — the pushed editor both forms wear: the
                                #     Save/discard frame and the self-growing row list
-test/                          # mirrors lib/, plus test/architecture_test.dart
+test/                          # mirrors lib/, plus test/architecture_test.dart and
+                               #   test/support/ — doubles and fixtures the app never
+                               #   ships, MemoryBarStore among them
 ```
 
 `domain/src/names.dart` holds the one fold behind every name comparison 
@@ -148,7 +150,9 @@ the write surface is `barWriterProvider`'s and does not exist for a guest bar
 ([ADR 23](adr/23-nothing-writes-a-guest-bar.md)), and `toLowerCase`/`toUpperCase`, since the fold 
 behind a name comparison is `nameKey`'s ([ADR 08](adr/08-names-ignore-case.md)). Outside `ui/` the 
 fold rule does not apply — `file_bar_store` folds a bar's name into a file basename, which is a slug 
-rather than a comparison.
+rather than a comparison. Across the whole of `lib/` it reads one more: a type named `Memory…`, 
+`Fake…`, `Mock…` or `Stub…` is a test double, and a double lives in `test/support/` rather than in 
+what ships.
 
 ## Domain contracts
 
@@ -606,7 +610,7 @@ predictable. An unreadable bar falls back to its newest decodable backup and ans
 issues and recovery; the bars beside it are not touched, and a lost index is rebuilt from the bar 
 files. Load never throws (damaged file = FR-DAT-4 failure). Constructor takes directory (platform 
 path resolved at composition root `main.dart`), keeps adapter testable. File names, backup depth: 
-[platform facts](architecture.md#platform-facts). `MemoryBarStore` for tests.
+[platform facts](architecture.md#platform-facts). `MemoryBarStore` (`test/support/`) for tests.
 
 ### The sharing seam
 
@@ -933,7 +937,7 @@ The controller is the UI's only route to the data layer; screens never hold a `B
   which this build has no adapter for. `test/ui/harness.dart` over the store and channel 
   overrides.
 - **Boundaries**: `test/architecture_test.dart` enforces imports, the dependency list, the one 
-  route to a write, and the one fold behind a name.
+  route to a write, the one fold behind a name, and that no double ships.
 
 ### What earns a test
 

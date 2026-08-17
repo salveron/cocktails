@@ -1,9 +1,9 @@
-import 'package:cocktails/data/data.dart';
 import 'package:cocktails/domain/domain.dart';
 import 'package:cocktails/ui/screens/settings_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../support/memory_bar_store.dart';
 import '../harness.dart';
 
 /// The screen as it is reached — through Settings, so leaving it has somewhere

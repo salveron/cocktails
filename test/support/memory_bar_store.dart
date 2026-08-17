@@ -2,9 +2,8 @@
 /// device-free (docs/components.md#data-contracts).
 library;
 
+import 'package:cocktails/data/data.dart';
 import 'package:cocktails/domain/domain.dart';
-
-import 'bar_store.dart';
 
 /// `base` rather than `final`: a test that needs one method to fail — a load
 /// that throws, a save that cannot write — specialises that one and inherits

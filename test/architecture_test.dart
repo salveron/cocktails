@@ -175,12 +175,25 @@ List<String> _foldViolations(String libPath, String source) => [
         'home for the rule (ADR 08)',
 ];
 
-/// Runs a source-reading rule over every file under `lib/ui`, failing on any
+/// A double belongs to the tests that stand it up. `MemoryBarStore` shipped in
+/// the binary for six milestones with `saveCount`, `savedBars` and `snapshots`
+/// on it — surface no screen reads, only an assertion does. Type names rather
+/// than file names: a double smuggled into a file called something else is the
+/// case worth catching.
+final _doubleName = RegExp(r'\bclass\s+(Memory|Fake|Mock|Stub)\w*');
+
+List<String> _testDoubleViolations(String libPath, String source) => [
+  for (final match in _doubleName.allMatches(source))
+    '$libPath declares ${match.group(0)}: a double lives under test/support/, '
+        'not in what ships',
+];
+
+/// Runs a source-reading rule over every file under [root], failing on any
 /// violation and on a sweep that found too few files to have run at all.
-void _expectNoneUnderUi(List<String> Function(String, String) rule) {
+void _expectNoneUnder(String root, List<String> Function(String, String) rule) {
   final violations = <String>[];
   var scanned = 0;
-  for (final entity in Directory('lib/ui').listSync(recursive: true)) {
+  for (final entity in Directory(root).listSync(recursive: true)) {
     if (entity is! File || !entity.path.endsWith('.dart')) continue;
     final libPath = entity.path.substring(entity.path.indexOf('lib/') + 4);
     scanned++;
@@ -256,11 +269,15 @@ void main() {
     });
 
     test('no screen writes a collection round the writer (ADR 23)', () {
-      _expectNoneUnderUi(_writeRouteViolations);
+      _expectNoneUnder('lib/ui', _writeRouteViolations);
     });
 
     test('no screen folds a name itself (ADR 08)', () {
-      _expectNoneUnderUi(_foldViolations);
+      _expectNoneUnder('lib/ui', _foldViolations);
+    });
+
+    test('nothing that ships is a test double', () {
+      _expectNoneUnder('lib', _testDoubleViolations);
     });
 
     test(
@@ -589,6 +606,27 @@ void main() {
         _foldViolations(
           'data/src/file_bar_store.dart',
           "name.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '-');",
+        ),
+        isEmpty,
+      );
+    });
+
+    test('a double under lib/ is caught, whatever the file is called', () {
+      expect(
+        _testDoubleViolations(
+          'data/src/bar_store.dart',
+          'base class MemoryBarStore implements BarStore {}',
+        ),
+        isNotEmpty,
+      );
+    });
+
+    test('a real implementation naming a double in prose is not', () {
+      expect(
+        _testDoubleViolations(
+          'data/src/file_bar_store.dart',
+          '/// Unlike MemoryBarStore, this one survives a restart.\n'
+              'final class FileBarStore implements BarStore {}',
         ),
         isEmpty,
       );

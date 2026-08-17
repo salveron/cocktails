@@ -3,11 +3,11 @@
 /// (docs/ui-design.md#bars).
 library;
 
-import 'package:cocktails/data/data.dart';
 import 'package:cocktails/domain/domain.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../support/memory_bar_store.dart';
 import '../harness.dart';
 
 void main() {

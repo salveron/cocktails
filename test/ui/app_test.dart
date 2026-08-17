@@ -6,6 +6,7 @@ import 'package:cocktails/ui/screens/shopping_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../support/memory_bar_store.dart';
 import 'harness.dart';
 
 /// A store whose load blows up — the only way to reach the failure face.

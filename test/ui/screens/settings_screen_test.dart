@@ -4,6 +4,7 @@ import 'package:cocktails/ui/screens/settings_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../support/memory_bar_store.dart';
 import '../harness.dart';
 
 /// A store that cannot write, so the one thing a failed replace must not do —

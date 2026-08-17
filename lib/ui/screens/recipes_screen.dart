@@ -143,9 +143,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
         availability[recipe.name],
         resting: resting,
       ),
-      onAdd: writer == null
-          ? null
-          : (query) => _add(writer, collection.units, query),
+      onAdd: writer == null ? null : (query) => _add(collection.units, query),
       reveal: revealing,
       onRefresh: refreshOf(ref),
       noun: 'recipe',
@@ -250,7 +248,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
             if (expanded)
               'Scale & convert': () => unawaited(_scale(recipe, resting)),
             if (writer != null) ...{
-              'Edit': () => unawaited(_edit(writer, collection.units, recipe)),
+              'Edit': () => unawaited(_edit(collection.units, recipe)),
               'Delete': () => unawaited(_delete(writer, recipe)),
             },
           }),
@@ -344,7 +342,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
   /// The form, and every narrowing let go along with the search once it saves:
   /// a recipe wearing none of the picked tags, or built on another spirit,
   /// would otherwise land out of sight.
-  Future<bool> _add(BarWriter writer, List<Unit> units, String query) async {
+  Future<bool> _add(List<Unit> units, String query) async {
     final saved = await _openForm(units: units, initialName: query);
     if (saved != null && mounted) {
       setState(() {
@@ -367,7 +365,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
   ];
 
   /// On rename, move expansion state from old name to new name.
-  Future<void> _edit(BarWriter writer, List<Unit> units, Recipe recipe) async {
+  Future<void> _edit(List<Unit> units, Recipe recipe) async {
     final saved = await _openForm(units: units, original: recipe);
     if (saved == null || saved == recipe.name || !mounted) return;
     setState(() {
