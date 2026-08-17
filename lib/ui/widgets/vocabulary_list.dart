@@ -13,8 +13,6 @@ import 'empty_state.dart';
 import 'search_field.dart';
 import 'tag_choices.dart';
 
-int byName(String a, String b) => a.toLowerCase().compareTo(b.toLowerCase());
-
 String counted(int count, String noun) =>
     '$count $noun${count == 1 ? '' : 's'}';
 
@@ -29,7 +27,7 @@ const alphabetical = {'Name': _alike};
 int _alike(Object? entry) => 0;
 
 List<Tag> sortedByName(List<Tag> tags) =>
-    [...tags]..sort((a, b) => byName(a.name, b.name));
+    [...tags]..sort((a, b) => compareNames(a.name, b.name));
 
 extension ToggleMembership<T> on Set<T> {
   void toggle(T value) {
@@ -73,6 +71,12 @@ typedef ListDraw<T> = ({
 /// shopping card marks its recipes with the picks they answer off the same
 /// rule, so nothing is ever dotted by a pick that has stopped narrowing.
 ///
+/// The test folds both sides, because they come from different places: [chosen]
+/// carries the vocabulary's spelling, [tagsOf] the entry's own. A file the app
+/// exported and a hand then recased — which `validateCollection` accepts, tag
+/// references being resolved by the fold — would otherwise drop that entry off
+/// its own chip.
+///
 /// [leading] is a narrowing the screen builds itself — the recipes' base spirit
 /// (ADR 12). Its row stands first among the chips, in the one scroller, and its
 /// reason joins the tags' in the one message; a vocabulary with nothing in it
@@ -86,6 +90,7 @@ ListFilter<T>? tagFilter<T>({
 }) {
   if (vocabulary.isEmpty && leading == null) return null;
   final chosen = {for (final tag in wornInOrder(vocabulary, picked)) tag.name};
+  final wanted = nameKeys(chosen);
   final reasons = [
     ?leading?.narrowing,
     if (chosen.isNotEmpty) 'every tag picked',
@@ -102,7 +107,8 @@ ListFilter<T>? tagFilter<T>({
       ),
     ),
     test: (entry) =>
-        (leading?.test(entry) ?? true) && chosen.every(tagsOf(entry).contains),
+        (leading?.test(entry) ?? true) &&
+        (wanted.isEmpty || nameKeys(tagsOf(entry)).containsAll(wanted)),
     narrowing: reasons.isEmpty ? null : reasons.join(' and '),
     picks: [...?leading?.picks, ...chosen],
   );
@@ -637,7 +643,7 @@ class _VocabularyListState<T> extends State<VocabularyList<T>> {
           final byRank = rank(a).compareTo(rank(b));
           return byRank != 0
               ? byRank
-              : byName(widget.nameOf(a), widget.nameOf(b));
+              : compareNames(widget.nameOf(a), widget.nameOf(b));
         });
       _placed = [
         for (final entry in _backwards ? placed.reversed : placed)

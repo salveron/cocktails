@@ -1,5 +1,5 @@
 /// How names fold, match and order — the one home for the rule every
-/// vocabulary keeps (ADR-08). Public in src/, not exported (ADR-04).
+/// vocabulary keeps (ADR-08). Exported; what is built on it is not (ADR-04).
 library;
 
 /// One name any case (ADR-08).

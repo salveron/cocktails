@@ -241,8 +241,11 @@ Same two dialogs for ingredients and tags:
 - **Aliases** (FR-VOC-6): second plain field, always shown. Comma-separated; trimmed, blanks 
   dropped. Displayed only here ([ADR 10](adr/10-ingredient-aliases.md)).
 - **Selection**: tick in swatch or ring on chip (transparent unpicked).
-- **Delete dialog**: confirmation if unreferenced; refusal listing users (FR-VOC-1). 
-  Same dialog for missing-ingredient offer and discard prompt.
+- **Delete dialog**: a question where nothing references it (`askToDelete`), a notice listing what 
+  does where something has (`sayWhatBlocks`, FR-VOC-1) — the notice has no confirm, so there is 
+  nothing in it to answer. A screen holding the users without having read them asks `confirmDelete` 
+  for whichever fits; one that already knows calls the half it means. Same frame for the 
+  missing-ingredient offer and the discard prompt.
 
 Add via `FloatingActionButton`. Empty state prefills query (search miss → one tap). 
 Successful add clears search. Recipes add pushes [recipe form](#recipe-form).

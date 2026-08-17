@@ -4,18 +4,19 @@
 
 ## Context
 
-Dart `_` file-scoped only. Shared helpers become app-public. File privacy leaked wire-format 
+Dart `_` file-scoped only. Shared helpers become app-public. File privacy leaked wire-format
 (parser used `Unit.name` as token; renaming broke format).
 
 ## Decision
 
 **Each layer: barrel file over `src/` folder. Boundaries enforced by test. Enums carry tokens as fields.**
 
-- `lib/<layer>/<layer>.dart` exports contract; rest in `src/`. Three visibility: `_name` (file), 
-  public unexported (layer), exported (app). Shared domain internals in `src/names.dart`, not re-exported.
-- Dependencies inward only (`ui → state → data → domain`). Layer's barrel is only import. 
+- `lib/<layer>/<layer>.dart` exports contract; rest in `src/`. Three visibility: `_name` (file),
+  public unexported (layer), exported (app). Shared domain internals in `src/names.dart`, exported by
+  a `show` list — the fold, not the bookkeeping over it.
+- Dependencies inward only (`ui → state → data → domain`). Layer's barrel is only import.
   `test/architecture_test.dart` enforces via imports/exports.
-- Every enum carries token as field (`FixedUnit.part('part')`, `StockLevel.in_('in')`); renaming 
+- Every enum carries token as field (`FixedUnit.part('part')`, `StockLevel.in_('in')`); renaming
   cannot change format.
 
 Structure, interfaces in [components.md](../components.md).

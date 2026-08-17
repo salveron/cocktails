@@ -115,7 +115,7 @@ class _UnitsFormState extends ConsumerState<_UnitsForm> {
     if (was != null) {
       final blockedBy = widget.collection.recipesUsingUnit(was);
       if (blockedBy.isNotEmpty) {
-        await confirmDelete(
+        await sayWhatBlocks(
           context,
           what: was,
           blockedBy: blockedBy,

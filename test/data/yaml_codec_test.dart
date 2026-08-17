@@ -941,6 +941,26 @@ recipes: []
     });
   });
 
+  // The whole road the tag-chip bug arrives by: an exported file, hand-edited
+  // to recase one tag reference, decodes clean and keeps the spelling it was
+  // given. What narrows a list has to fold, because the file does not.
+  test('a tag reference recased against its vocabulary decodes as written', () {
+    final collection = decoded(
+      'format: 1\n'
+      'ingredients:\n'
+      '  - {name: gin}\n'
+      'recipe_tags:\n'
+      '  - {name: sour, color: teal}\n'
+      'recipes:\n'
+      '  - name: Martini\n'
+      '    tags: [Sour]\n'
+      '    lines:\n'
+      '      - 2 oz gin\n',
+    );
+    expect(collection.recipes.single.tags, ['Sour']);
+    expect(collection.recipeTags.single.name, 'sour');
+  });
+
   group('decode reports validation issues with lines', () {
     test('a duplicate name at the line of the second entry', () {
       final issues = rejected(

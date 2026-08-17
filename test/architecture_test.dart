@@ -161,6 +161,35 @@ List<String> _writeRouteViolations(String libPath, String source) => [
         'barWriterProvider, which a guest bar has none of',
 ];
 
+/// ADR 08: one fold behind every name comparison, and `nameKey` is it. `ui/`
+/// spelled its own three times while the rule was out of reach behind the
+/// domain barrel (ADR 04), and the tag chips' spelling was a bug — a recipe
+/// dropped off its own chip over a case the file was free to carry. The rule
+/// is `ui/`-only: `data/` folds a bar's name into a file basename, which is a
+/// slug rather than a comparison.
+final _rawFold = RegExp(r'\.to(Lower|Upper)Case\(\)');
+
+List<String> _foldViolations(String libPath, String source) => [
+  if (_layerOf(libPath) == 'ui' && _rawFold.hasMatch(source))
+    '$libPath folds a name itself: comparison goes through nameKey, the one '
+        'home for the rule (ADR 08)',
+];
+
+/// Runs a source-reading rule over every file under `lib/ui`, failing on any
+/// violation and on a sweep that found too few files to have run at all.
+void _expectNoneUnderUi(List<String> Function(String, String) rule) {
+  final violations = <String>[];
+  var scanned = 0;
+  for (final entity in Directory('lib/ui').listSync(recursive: true)) {
+    if (entity is! File || !entity.path.endsWith('.dart')) continue;
+    final libPath = entity.path.substring(entity.path.indexOf('lib/') + 4);
+    scanned++;
+    violations.addAll(rule(libPath, entity.readAsStringSync()));
+  }
+  expect(scanned, greaterThan(4), reason: 'scanned only $scanned files');
+  expect(violations, isEmpty, reason: violations.join('\n'));
+}
+
 List<_Directive> _imports(List<String> targets) => [
   for (final target in targets) (kind: 'import', target: target),
 ];
@@ -227,27 +256,40 @@ void main() {
     });
 
     test('no screen writes a collection round the writer (ADR 23)', () {
-      final violations = <String>[];
-      var scanned = 0;
-      for (final entity in Directory('lib/ui').listSync(recursive: true)) {
-        if (entity is! File || !entity.path.endsWith('.dart')) continue;
-        final libPath = entity.path.substring(entity.path.indexOf('lib/') + 4);
-        scanned++;
-        violations.addAll(
-          _writeRouteViolations(libPath, entity.readAsStringSync()),
-        );
-      }
-      expect(scanned, greaterThan(4), reason: 'scanned only $scanned files');
-      expect(violations, isEmpty, reason: violations.join('\n'));
+      _expectNoneUnderUi(_writeRouteViolations);
     });
 
-    test('the domain barrel keeps layer-private names unexported', () {
-      final barrel = File('lib/domain/domain.dart').readAsStringSync();
-      final exported = _directivesOf(barrel).map((d) => d.target);
-      expect(exported, isNot(contains('src/names.dart')));
-      expect(barrel, contains('hide reservedSuffixes'));
-      expect(barrel, contains('hide enumFromToken'));
+    test('no screen folds a name itself (ADR 08)', () {
+      _expectNoneUnderUi(_foldViolations);
     });
+
+    test(
+      'the domain barrel exports the name fold, not what is built on it',
+      () {
+        final barrel = File(
+          'lib/domain/domain.dart',
+        ).readAsStringSync().replaceAll(RegExp(r'\s+'), ' ');
+        expect(barrel, contains('hide reservedSuffixes'));
+        expect(barrel, contains('hide enumFromToken'));
+        // ADR 08's fold is the whole app's, or ui/ spells it again — which it
+        // did, three times, one of them wrongly. The duplicate bookkeeping over
+        // the fold is the domain's own and stays behind the barrel (ADR 04).
+        expect(
+          barrel,
+          contains(
+            "export 'src/names.dart' "
+            'show nameKey, nameKeys, compareNames, NameComparison;',
+          ),
+        );
+        for (final internal in const [
+          'repeatsName',
+          'duplicateNameIndexes',
+          'listEquals',
+        ]) {
+          expect(barrel, isNot(contains(internal)));
+        }
+      },
+    );
 
     // lib/main.dart sits outside every layer (docs/components.md module
     // map): it is exempt from the layer-to-layer dependency rules below
@@ -498,7 +540,7 @@ void main() {
     });
   });
 
-  group('write-route matcher sanity checks (fake inputs)', () {
+  group('source-reading matcher sanity checks (fake inputs)', () {
     test('a screen naming the raw write route is caught', () {
       expect(
         _writeRouteViolations(
@@ -517,6 +559,36 @@ void main() {
               'await shelf.export();\n'
               'shelf.review(text);\n'
               'await shelf.setDisplay(FixedUnit.ml);',
+        ),
+        isEmpty,
+      );
+    });
+
+    test('a screen folding a name itself is caught', () {
+      expect(
+        _foldViolations(
+          'ui/widgets/search_field.dart',
+          'text.toLowerCase().contains(query.toLowerCase());',
+        ),
+        isNotEmpty,
+      );
+    });
+
+    test('a screen reading the fold from the domain is not', () {
+      expect(
+        _foldViolations(
+          'ui/widgets/search_field.dart',
+          'nameKey(text).contains(nameKey(query.trim()));',
+        ),
+        isEmpty,
+      );
+    });
+
+    test('the file-basename slug outside ui/ is not', () {
+      expect(
+        _foldViolations(
+          'data/src/file_bar_store.dart',
+          "name.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '-');",
         ),
         isEmpty,
       );

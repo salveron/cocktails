@@ -18,7 +18,7 @@ lib/
                                #   BarPayload. Bar.summarised and Bar.refreshedAt are the
                                #   only writers of what a bar holds and when it changed.
                                #   enumFromToken, the token lookup it shares
-                               #   with collection.dart, is layer-private like names.dart
+                               #   with collection.dart, is layer-private
       shelf_edits.dart         # extension ShelfEdits on Shelf — pure derivations,
                                #   the guest-bar refusal among them (ADR 23)
       collection.dart          # entities, Collection — one bar's contents — name lookups,
@@ -30,8 +30,8 @@ lib/
       scaling.dart             # ×N scaling, part↔ml display
       discovery.dart           # basesOf, baseSpirits, marksBase, randomCanMake
       optimizer.dart           # Purchase, purchasesWithin — what to buy next
-      names.dart               # not exported: nameKey, nameKeys, sameName,
-                               #   compareNames, repeatsName, duplicateNameIndexes,
+      names.dart               # exported: nameKey, nameKeys, sameName, compareNames.
+                               #   Layer-private: repeatsName, duplicateNameIndexes,
                                #   listEquals
   data/
     data.dart                  # barrel — the store, the channels, the codec, their results
@@ -113,9 +113,11 @@ lib/
 test/                          # mirrors lib/, plus test/architecture_test.dart
 ```
 
-`domain/src/names.dart` holds the name rules shared between domain files (layer-private, not 
-exported) — `nameKey`/`sameName` among them, the one fold behind every name comparison 
-([ADR 08](adr/08-names-ignore-case.md)).
+`domain/src/names.dart` holds the one fold behind every name comparison 
+([ADR 08](adr/08-names-ignore-case.md)). The fold — `nameKey`, `nameKeys`, `sameName`, 
+`compareNames` — is exported, so a list that sorts or a chip that narrows reads the rule rather than 
+restating it; the duplicate bookkeeping over it is layer-private 
+([ADR 04](adr/04-module-boundaries.md)).
 
 ## Boundary rules
 
@@ -141,9 +143,12 @@ Dependencies point inward (`ui → state → data → domain`):
 `test/architecture_test.dart` enforces via `import`/`export` directives (pure functions, 
 exercised on constructed inputs and real tree). It also pins the dependency list in 
 [architecture.md](architecture.md#technology-stack) to `pubspec.yaml`, so a package taken without 
-a written reason fails the suite, and it keeps `ui/` off `shelfProvider.notifier` — the write 
-surface is `barWriterProvider`'s, which does not exist for a guest bar 
-([ADR 23](adr/23-nothing-writes-a-guest-bar.md)).
+a written reason fails the suite, and it reads two names in `ui/` source: `editCollection`, since 
+the write surface is `barWriterProvider`'s and does not exist for a guest bar 
+([ADR 23](adr/23-nothing-writes-a-guest-bar.md)), and `toLowerCase`/`toUpperCase`, since the fold 
+behind a name comparison is `nameKey`'s ([ADR 08](adr/08-names-ignore-case.md)). Outside `ui/` the 
+fold rule does not apply — `file_bar_store` folds a bar's name into a file basename, which is a slug 
+rather than a comparison.
 
 ## Domain contracts
 
@@ -492,7 +497,7 @@ and `baseSpirits` folds those into what the filter offers — resolved through `
 `spellingOf` is also how a screen holding a pick reads it against a changed vocabulary, so an 
 ingredient merely recased goes on narrowing; it is the one home for "this name, under the entry's own", 
 which the optimizer, `withCanonicalIngredientNames` and delete blocking all ask for too. Comparison 
-runs through `names.dart`, which stays unexported — no screen folds a name itself.
+runs through `names.dart`, which every layer reads — no screen folds a name itself.
 
 `purchasesWithin` answers FR-DIS-6 ([ADR 15](adr/15-the-optimizer-answers-with-the-best-few.md)); 
 the algorithm is in [architecture.md](architecture.md#domain-computations). It returns the best 
@@ -927,8 +932,8 @@ The controller is the UI's only route to the data layer; screens never hold a `B
   file, a damaged one, or nothing — and reaches `Unreachable` by seeding a bar sourced `cloud`, 
   which this build has no adapter for. `test/ui/harness.dart` over the store and channel 
   overrides.
-- **Boundaries**: `test/architecture_test.dart` enforces imports, the dependency list, and the one 
-  route to a write.
+- **Boundaries**: `test/architecture_test.dart` enforces imports, the dependency list, the one 
+  route to a write, and the one fold behind a name.
 
 ### What earns a test
 

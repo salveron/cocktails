@@ -121,6 +121,13 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
     // Null on a guest bar; every control that writes is built from it, so the
     // reading half of the screen goes on untouched (FR-BAR-4, ADR 23).
     final writer = ref.watch(barWriterProvider);
+    // The reading every card opens under, until one is scaled. Watched here
+    // rather than inside rowOf, which the list calls from its itemBuilder: a
+    // watch there is one whichever rows got built happen to register, not one
+    // this build declares.
+    final resting = _resting(
+      ref.watch(openBarProvider)?.display ?? FixedUnit.part,
+    );
     // Read through the build that carries it, so no later one reveals again.
     final revealing = _revealing;
     _revealing = null;
@@ -134,6 +141,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
         vocabulary,
         recipe,
         availability[recipe.name],
+        resting: resting,
       ),
       onAdd: writer == null
           ? null
@@ -188,12 +196,10 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
     Collection collection,
     List<Tag> vocabulary,
     Recipe recipe,
-    Availability? availability,
-  ) {
+    Availability? availability, {
+    required _AmountView resting,
+  }) {
     final expanded = _expanded.contains(recipe.name);
-    final resting = _resting(
-      ref.watch(openBarProvider)?.display ?? FixedUnit.part,
-    );
     final view = _views[recipe.name] ?? resting;
     final note = _viewNote(view, resting);
     final summary = [
@@ -394,12 +400,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
 
   /// Delete: never blocked since nothing references recipes.
   Future<void> _delete(BarWriter writer, Recipe recipe) async {
-    final confirmed = await confirmDelete(
-      context,
-      what: recipe.name,
-      blockedBy: const [],
-      blockedByNoun: 'recipes',
-    );
+    final confirmed = await askToDelete(context, what: recipe.name);
     if (!confirmed || !mounted) return;
     await writer.removeRecipe(recipe.name);
     if (mounted) {

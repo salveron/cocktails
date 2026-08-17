@@ -1,6 +1,6 @@
 # Roadmap
 
-Milestones in dependency order. Scope: [requirements.md](requirements.md); design: [architecture.md](architecture.md), [components.md](components.md), [ui-design.md](ui-design.md); rationale: [ADRs](adr/). Phases 0–6: single bar; Phase 7+: FR-BAR-1..9.
+Milestones in dependency order. Scope: [requirements.md](requirements.md); design: [architecture.md](architecture.md), [components.md](components.md), [ui-design.md](ui-design.md); rationale: [ADRs](adr/). Phases 0–6: single bar; Phases 7–8 and 10–11: FR-BAR-1..9; Phase 9 carries no new requirement.
 
 ## Phase 0 — Foundation
 
@@ -152,11 +152,50 @@ Milestones in dependency order. Scope: [requirements.md](requirements.md); desig
   quiet, no add, no ⋮, no spare row, no Save (`EditorScaffold.readOnly`) — and Shopping is the one
   row that dims, the optimizer being absent there. Depends: M36b.
 
-## Phase 9 — A bar travels over the LAN
+## Phase 9 — The code says what it means
 
-- [ ] **M37** — Owner offers bar nearby. Delivers: FR-BAR-8, DNS-SD package, dart:io server, internet permission, sharingProvider, [ADR 22](adr/22-a-bar-travels-behind-one-seam.md). Depends: M36.
+No behaviour changes here but the first, which is a bug fix. The phase pays down what Phases 7 and 8
+left: one idea implemented four times, names that stopped meaning one thing, and four files past the
+size a reader holds. It stands before the LAN because the second `BarChannel` would otherwise copy
+what M36f settles.
+
+- [x] **M36d** — The name rule reaches the surface. Delivers: the tag chips folding both sides
+  (`tagFilter`), so a recipe naming its tag in the vocabulary's other case stops vanishing off its
+  own chip — reachable by export, a hand edit, and re-import, the file being clean at every step,
+  and the only one of the app's four tag intersections that did not fold. Behind it, the reason:
+  `nameKey`, `nameKeys`, `compareNames` and `sameName` now export through the domain barrel, where
+  being layer-private had put [ADR 08](adr/08-names-ignore-case.md)'s one rule out of `ui/`'s reach
+  and grown three private folds in its place — `byName` retired for `compareNames`, `matchesQuery`
+  searching under `nameKey`, and `architecture_test.dart` keeping `toLowerCase` out of `ui/` the way
+  it already keeps `editCollection` out (amending [ADR 04](adr/04-module-boundaries.md)). Beside
+  them: `openBarProvider` watched in `build` rather than from the list's `itemBuilder`, and the
+  delete dialog split into the question and the notice it always was — `askToDelete` where a caller
+  knows nothing stands in the way, `sayWhatBlocks` where it knows something does, `confirmDelete`
+  for the callers that hold the users unread. Depends: M36c.
+- [ ] **M36e** — Dead weight goes. Delivers: unused public names and ignored parameters retired;
+  `MemoryBarStore` out of the app binary and into the test support folder; the module map matching
+  the repo. Depends: M36d.
+- [ ] **M36f** — One home per algorithm: domain and data. Delivers: the bar coherence rules stated
+  once and read twice; `Shelf.copyWith`; one shape for a load, a decode and a fetch, which the LAN
+  channel then has to build. Depends: M36e.
+- [ ] **M36g** — One home per algorithm: UI. Delivers: one expanding card where five stood, one
+  segmented control, one dialog frame, one way to say something failed, and derived values off the
+  build path. Depends: M36f.
+- [ ] **M36h** — One owner per value. Delivers: provider state no longer mirrored into `setState`,
+  `watch`/`read` used as the rule says, and `build` stops mutating state. Depends: M36g.
+- [ ] **M36i** — One word per thing. Delivers: M36b's treatment applied to what M33–M36 left —
+  "vocabulary" retired where it names no vocabulary, the write gate given one idiom, and the bar
+  shapes named apart. Depends: M36h.
+- [ ] **M36j** — Files find their size. Delivers: the four files over 600 lines split by subject,
+  widget-returning methods become widget classes. Depends: M36i.
+- [ ] **M36k** — The tests get a home. Delivers: `test/support/` as the fixture home, colliding
+  fixture names settled, one state harness, the five test files over 1,000 lines split. Depends: M36j.
+
+## Phase 10 — A bar travels over the LAN
+
+- [ ] **M37** — Owner offers bar nearby. Delivers: FR-BAR-8, DNS-SD package, dart:io server, internet permission, sharingProvider, [ADR 22](adr/22-a-bar-travels-behind-one-seam.md). Depends: M36k.
 - [ ] **M38** — Guest finds one. Delivers: FR-BAR-8, browse service type, GET refresh, two instances discriminated by bar id (FR-BAR-1/5). Depends: M37.
 
-## Phase 10 — A bar travels over the cloud
+## Phase 11 — A bar travels over the cloud
 
 - [ ] **M39** — Cloud adapter. Delivers: FR-BAR-9, backend chosen via [ADR 22](adr/22-a-bar-travels-behind-one-seam.md), one identity (NFR-3), guests named, refresh from anywhere. Depends: M38.

@@ -4,8 +4,8 @@
 
 ## Context
 
-Names are identity. Case-sensitive comparison forked identity: "gin" vs "Gin" created duplicates. 
-Decided once the recipe form could create the pair, and before the filters, the random pick and 
+Names are identity. Case-sensitive comparison forked identity: "gin" vs "Gin" created duplicates.
+Decided once the recipe form could create the pair, and before the filters, the random pick and
 the optimizer were built on name lookups.
 
 ## Decision

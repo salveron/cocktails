@@ -1,8 +1,10 @@
+import 'package:cocktails/domain/domain.dart';
 import 'package:flutter/material.dart';
 
-/// Case-insensitive substring match.
+/// Substring match under the fold every name comparison keeps, so what a
+/// search reaches and what a name is are the one rule (ADR 08).
 bool matchesQuery(String text, String query) =>
-    text.toLowerCase().contains(query.trim().toLowerCase());
+    nameKey(text).contains(nameKey(query.trim()));
 
 /// Search field with clear button (caller owns controller/rebuild). [trailing]
 /// rides beside the field, for what acts on the list rather than on the text.

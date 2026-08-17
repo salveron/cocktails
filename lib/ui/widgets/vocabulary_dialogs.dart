@@ -182,28 +182,51 @@ Future<bool> confirmDiscard(BuildContext context, String title) =>
       confirm: 'Discard',
     );
 
-/// Ask to delete; true only if free and confirmed. A blocked entry names what
-/// stands in the way and offers nothing to confirm, so it answers false.
+/// Ask to delete something nothing stands in the way of — for a caller that
+/// already knows so, nothing referencing a recipe.
+Future<bool> askToDelete(BuildContext context, {required String what}) =>
+    confirmDialog(
+      context,
+      title: 'Delete "$what"?',
+      message: 'Nothing references it. This cannot be undone.',
+      cancel: 'Cancel',
+      confirm: 'Delete',
+    );
+
+/// Name what stands in the way, and what to clear first (FR-VOC-1) — for a
+/// caller that has already found something does. A telling, not an asking:
+/// there is nothing here to answer.
+Future<void> sayWhatBlocks(
+  BuildContext context, {
+  required String what,
+  required List<String> blockedBy,
+  required String blockedByNoun,
+}) => confirmDialog(
+  context,
+  title: 'Cannot delete "$what"',
+  message: 'Remove it from these $blockedByNoun first:',
+  bullets: blockedBy,
+  cancel: 'Close',
+);
+
+/// Ask to delete, or say why it cannot go — for a caller holding the answer to
+/// "what references this" without having read it. True only if free and
+/// confirmed; a blocked entry is told about, and a telling answers false.
 Future<bool> confirmDelete(
   BuildContext context, {
   required String what,
   required List<String> blockedBy,
   required String blockedByNoun,
-}) => blockedBy.isEmpty
-    ? confirmDialog(
-        context,
-        title: 'Delete "$what"?',
-        message: 'Nothing references it. This cannot be undone.',
-        cancel: 'Cancel',
-        confirm: 'Delete',
-      )
-    : confirmDialog(
-        context,
-        title: 'Cannot delete "$what"',
-        message: 'Remove it from these $blockedByNoun first:',
-        bullets: blockedBy,
-        cancel: 'Close',
-      );
+}) async {
+  if (blockedBy.isEmpty) return askToDelete(context, what: what);
+  await sayWhatBlocks(
+    context,
+    what: what,
+    blockedBy: blockedBy,
+    blockedByNoun: blockedByNoun,
+  );
+  return false;
+}
 
 typedef _Answer = ({VocabularyEntry entry, TagColor? color});
 

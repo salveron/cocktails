@@ -173,4 +173,4 @@ List<_Holding> _holdingsOf(Collection collection) => [
 /// units, whose vocabulary order carries the fixed three first and which
 /// `units_screen.dart` leaves standing (ADR 17).
 BulletRun _run(Iterable<String> names, {String? label, bool sorted = true}) =>
-    bulletRun(sorted ? ([...names]..sort(byName)) : names, label: label);
+    bulletRun(sorted ? ([...names]..sort(compareNames)) : names, label: label);

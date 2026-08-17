@@ -421,6 +421,22 @@ void main() {
       expect(issues[1].message, contains('"gin"'));
     });
 
+    // The precondition behind the tag chips folding both sides: a hand edit to
+    // an exported file can leave a recipe naming its tag in a case the
+    // vocabulary does not use, and nothing on the import road objects.
+    test('lets a recipe name its tag in the vocabulary\'s other case', () {
+      expect(
+        validateCollection(
+          ingredients: [Ingredient('gin')],
+          recipeTags: [const Tag('sour', color: TagColor.rose)],
+          recipes: [
+            Recipe('Daiquiri', tags: ['Sour'], lines: const [_gin]),
+          ],
+        ),
+        isEmpty,
+      );
+    });
+
     test('flags a tag repeated on one recipe', () {
       final issues = validateCollection(
         ingredients: [Ingredient('gin')],

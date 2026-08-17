@@ -184,6 +184,15 @@ final untriedCollection = recipeCollection.withTag(
   const Tag('tiki', color: TagColor.teal),
 );
 
+/// A recipe naming its tag in a case the vocabulary does not use — what a hand
+/// edit to an exported file leaves behind, and what `validateCollection`
+/// accepts, tag references resolving by the fold (ADR 08).
+final recasedTagCollection = recipeCollection.withRecipe(
+  recipeCollection.recipes
+      .firstWhere((recipe) => recipe.name == 'Whiskey Sour')
+      .copyWith(tags: const ['Sour', 'classic']),
+);
+
 /// An ingredient answering to a second name, so a search can reach a recipe by
 /// a spelling no line of it holds (FR-VOC-6).
 final aliasedCollection = recipeCollection.withIngredient(
@@ -300,14 +309,25 @@ Future<void> scale(
   await tap(tester, find.text(button));
 }
 
+ProviderContainer _containerOn(WidgetTester tester) =>
+    ProviderScope.containerOf(
+      tester.element(find.byType(RecipesScreen)),
+      listen: false,
+    );
+
+/// The reading unit settled elsewhere while this screen stands (FR-SET-1) —
+/// the bar's, not the collection's (ADR 21), so nothing the list watches for
+/// its rows changes with it.
+Future<void> setDisplay(WidgetTester tester, FixedUnit display) async {
+  await _containerOn(tester).read(shelfProvider.notifier).setDisplay(display);
+  await tester.pumpAndSettle();
+}
+
 /// The collection rewritten under the reader, without their having touched
 /// anything: [recipe]'s notes, so every row is built afresh while what is on
 /// show, and the order it is in, both stand exactly as they did.
 Future<void> rewriteUnder(WidgetTester tester, String recipe) async {
-  final container = ProviderScope.containerOf(
-    tester.element(find.byType(RecipesScreen)),
-    listen: false,
-  );
+  final container = _containerOn(tester);
   final collection = container.read(collectionProvider);
   await container
       .read(barWriterProvider)!
@@ -426,6 +446,14 @@ void main() {
     ) async {
       await pumpRecipes(tester);
       await pickTag(tester, 'classic');
+      await pickTag(tester, 'sour');
+      expect(namesOn(tester), ['Whiskey Sour']);
+    });
+
+    testWidgets('a tag the recipe recased still answers its chip', (
+      tester,
+    ) async {
+      await pumpRecipes(tester, recasedTagCollection);
       await pickTag(tester, 'sour');
       expect(namesOn(tester), ['Whiskey Sour']);
     });
@@ -1258,6 +1286,21 @@ void main() {
       // The app's own reading is no transform, so nothing marks the card.
       expect(find.text('(ml)'), findsNothing);
       expect(italicOn(tester, '30 ml gin (base)'), isEmpty);
+    });
+
+    testWidgets('the settings changing it reaches the cards already open', (
+      tester,
+    ) async {
+      await pumpRecipes(tester);
+      await tap(tester, find.text('Negroni'));
+      expect(find.text('1 part gin (base)'), findsOneWidget);
+
+      await setDisplay(tester, inMillilitres);
+
+      expect(find.text('30 ml gin (base)'), findsOneWidget);
+      // The reading the settings name is never a transform, whenever it
+      // arrives, so the card stays unmarked.
+      expect(find.text('(ml)'), findsNothing);
     });
 
     testWidgets('under ml, it is the file\'s own unit that marks a card', (
