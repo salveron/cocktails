@@ -153,9 +153,13 @@ what M36f settles.
   edits; `isShortLine`, the one reading `availabilityOf` and the optimizer's gap search both judge
   a line by. Domain's own `listEquals`, hand-rolled because the layer cannot import Flutter's,
   stays beside it in `derived.dart` — the boundary's cost, not a bug. Depends: M36e.
-- [ ] **M36g** — One home per algorithm: UI. Delivers: one expanding card where five stood, one
-  segmented control, one dialog frame, one way to say something failed, and derived values off the
-  build path. Depends: M36f.
+- [x] **M36g** — One home per algorithm: UI. Delivers: `ExpandingRow`, the one shape four screens'
+  Set-backed toggling cards share (bars_screen's hand-rolled toggle fixed along the way);
+  `Segments<T>` for all six segmented controls; `DialogFrame`, the `AlertDialog` shell three
+  dialogs each built by hand; `wentThrough`/`say` as the one way a snackbar speaks;
+  `RevealServing`, the reveal field and read-and-forget two screens each carried;
+  `recipeTagsProvider`/`ingredientTagsProvider` sorting each vocabulary once rather than per
+  build. Depends: M36f.
 - [ ] **M36h** — One owner per value. Delivers: provider state no longer mirrored into `setState`,
   `watch`/`read` used as the rule says, and `build` stops mutating state. Depends: M36g.
 - [ ] **M36i** — One word per thing. Delivers: M36b's treatment applied to what M33–M36 left —

@@ -9,6 +9,8 @@ import 'package:cocktails/state/state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'editor_form.dart';
+import 'telling.dart';
 import 'vocabulary_list.dart';
 
 /// A file off the system's picker, decoded and judged before anything is done
@@ -16,18 +18,18 @@ import 'vocabulary_list.dart';
 /// is nothing done, and a picker that would not open says so where it stands
 /// rather than leaving the screen silent.
 Future<ImportReview?> pickBar(BuildContext context, WidgetRef ref) async {
-  final messenger = ScaffoldMessenger.of(context);
   final picker = ref.read(filePickerProvider);
   final shelf = ref.read(shelfProvider.notifier);
-  try {
-    final text = await picker();
-    return text == null ? null : shelf.review(text);
-  } catch (error) {
-    messenger.showSnackBar(
-      SnackBar(content: Text('Could not read that file: $error')),
-    );
-    return null;
-  }
+  ImportReview? review;
+  final went = await wentThrough(
+    ScaffoldMessenger.of(context),
+    'Could not read that file',
+    () async {
+      final text = await picker();
+      if (text != null) review = shelf.review(text);
+    },
+  );
+  return went ? review : null;
 }
 
 /// Why the file was not read, and where (FR-DAT-4), under the one sentence that
@@ -58,10 +60,7 @@ class RefusedFile extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 8),
-        Text(
-          standing,
-          style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
-        ),
+        MutedText(standing),
         const SizedBox(height: 16),
         BulletRuns([bulletRun(issues)]),
       ],
@@ -106,17 +105,16 @@ class _BarHoldingsState extends State<BarHoldings> {
   Widget _card(_Holding holding) {
     final open = _open.contains(holding.kind);
     final empty = holding.count == 0;
-    return VocabularyRow(
+    return ExpandingRow(
       margin: const EdgeInsets.symmetric(vertical: 4),
+      open: open,
       title: Text(counted(holding.count, holding.kind.noun)),
-      subtitle: open || empty
-          ? null
-          : Text(holding.line, maxLines: 1, overflow: TextOverflow.ellipsis),
+      subtitle: empty ? null : holding.line,
       trailing: empty
           ? null
           : Icon(open ? Icons.expand_less : Icons.expand_more),
-      body: open ? BulletRuns(holding.runs) : null,
-      onTap: empty ? null : () => setState(() => _open.toggle(holding.kind)),
+      body: BulletRuns(holding.runs),
+      onToggle: empty ? null : () => setState(() => _open.toggle(holding.kind)),
     );
   }
 }

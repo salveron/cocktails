@@ -62,7 +62,8 @@ lib/
       channels.dart            # the transports resolved, the refreshes in flight and
                                #   what they failed with, the offers standing (ADR 22)
       derived.dart             # read-only over the shelf: the open bar's collection and
-                               #   record, every record on it, availability, the optimizer
+                               #   record, every record on it, availability, the optimizer,
+                               #   each tag vocabulary sorted once for every screen reading it
   ui/                          # no barrel — leaves, imported directly; design in ui-design.md
     app.dart                   # MaterialApp and the shell: app bar, gear, the stack, and
                                #   the trail a jump leaves for back to undo (ADR 19)
@@ -806,6 +807,9 @@ recipe on each collection change; empty until the load lands. One pass serves th
 the availability filter, the random pick and the optimizer. Per-line marks read `stockOfLine` 
 directly (the map answers per recipe, the card asks per line), and `stockOf` per ingredient beneath it — 
 so a card dims the alternatives it lacks against the same rule the verdict was reached by (ADR 11).
+
+`recipeTagsProvider`/`ingredientTagsProvider` — each vocabulary sorted once per collection change 
+(ADR 08), read by every screen that draws it rather than sorted again per build.
 
 Filter, search and order are presentation: widget state where the list is drawn, never persisted and 
 never a provider — nothing collection-derived reads them, so there is nothing to invalidate. A consumer 

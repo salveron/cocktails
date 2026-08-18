@@ -129,6 +129,36 @@ Future<Tag?> promptForTag(
   _ => null,
 };
 
+/// The `AlertDialog` shell every dialog in the app opens in: scrollable, one
+/// title, a column of [content], a row of [actions] — [confirmDialog], the
+/// vocabulary entry dialog and the scale dialog each built this by hand.
+class DialogFrame extends StatelessWidget {
+  const DialogFrame({
+    required this.title,
+    required this.content,
+    required this.actions,
+    this.crossAxisAlignment = CrossAxisAlignment.start,
+    super.key,
+  });
+
+  final String title;
+  final List<Widget> content;
+  final List<Widget> actions;
+  final CrossAxisAlignment crossAxisAlignment;
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    scrollable: true,
+    title: Text(title),
+    content: Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: crossAxisAlignment,
+      children: content,
+    ),
+    actions: actions,
+  );
+}
+
 /// The one dialog that asks a yes-or-no: the question, whatever it has to list
 /// under it, and two buttons. Dismissed without answering counts as no. Leave
 /// [confirm] out for a refusal — there is nothing to agree to.
@@ -143,19 +173,14 @@ Future<bool> confirmDialog(
 }) async =>
     await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        scrollable: true,
-        title: Text(title),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(message),
-            if (bullets.isNotEmpty) const SizedBox(height: 8),
-            for (final entry in bullets) Text('• $entry'),
-            if (footer != null) ...[const SizedBox(height: 8), Text(footer)],
-          ],
-        ),
+      builder: (context) => DialogFrame(
+        title: title,
+        content: [
+          Text(message),
+          if (bullets.isNotEmpty) const SizedBox(height: 8),
+          for (final entry in bullets) Text('• $entry'),
+          if (footer != null) ...[const SizedBox(height: 8), Text(footer)],
+        ],
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
@@ -327,56 +352,52 @@ class _EntryDialogState extends State<_EntryDialog> {
         ? null
         : () => Navigator.of(context).pop((entry: entry, color: _color));
     final color = _color;
-    return AlertDialog(
-      scrollable: true,
-      title: Text(widget.title),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        // Full width so swatches/chips left-align with field.
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
+    return DialogFrame(
+      title: widget.title,
+      // Full width so swatches/chips left-align with field.
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      content: [
+        TextField(
+          controller: _name,
+          autofocus: true,
+          decoration: InputDecoration(
+            hintText: widget.hintText,
+            errorText: fieldError(entry.name, issuesUnder(issues)),
+          ),
+          onSubmitted: save == null ? null : (_) => save(),
+        ),
+        // Closer than the sections below: both fields are what the entry is
+        // called, not two things to settle.
+        if (widget.aliases != null) ...[
+          const SizedBox(height: 8),
           TextField(
-            controller: _name,
-            autofocus: true,
+            controller: _aliases,
             decoration: InputDecoration(
-              hintText: widget.hintText,
-              errorText: fieldError(entry.name, issuesUnder(issues)),
+              hintText: 'Also known as (comma-separated)',
+              errorText: fieldError(
+                _aliases.text,
+                issuesUnder(issues, 'aliases'),
+              ),
             ),
             onSubmitted: save == null ? null : (_) => save(),
           ),
-          // Closer than the sections below: both fields are what the entry is
-          // called, not two things to settle.
-          if (widget.aliases != null) ...[
-            const SizedBox(height: 8),
-            TextField(
-              controller: _aliases,
-              decoration: InputDecoration(
-                hintText: 'Also known as (comma-separated)',
-                errorText: fieldError(
-                  _aliases.text,
-                  issuesUnder(issues, 'aliases'),
-                ),
-              ),
-              onSubmitted: save == null ? null : (_) => save(),
-            ),
-          ],
-          if (color != null) ...[
-            const SizedBox(height: 20),
-            _Swatches(
-              selected: color,
-              onPick: (picked) => setState(() => _color = picked),
-            ),
-          ],
-          if (widget.vocabulary.isNotEmpty) ...[
-            const SizedBox(height: 20),
-            TagChoices(
-              vocabulary: widget.vocabulary,
-              chosen: _tags,
-              onToggle: _toggle,
-            ),
-          ],
         ],
-      ),
+        if (color != null) ...[
+          const SizedBox(height: 20),
+          _Swatches(
+            selected: color,
+            onPick: (picked) => setState(() => _color = picked),
+          ),
+        ],
+        if (widget.vocabulary.isNotEmpty) ...[
+          const SizedBox(height: 20),
+          TagChoices(
+            vocabulary: widget.vocabulary,
+            chosen: _tags,
+            onToggle: _toggle,
+          ),
+        ],
+      ],
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),

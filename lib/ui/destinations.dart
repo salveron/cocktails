@@ -54,3 +54,32 @@ String? takeReveal(WidgetRef ref, Reveal? request, Destination serving) {
   ref.read(revealProvider.notifier).served();
   return request.name;
 }
+
+/// The name held and cleared for the one build that hands it to the list
+/// (ADR 19) — every reveal-serving screen's field and read-and-forget, once.
+mixin RevealServing<T extends ConsumerStatefulWidget> on ConsumerState<T> {
+  String? _revealing;
+
+  /// Where this screen's rows are asked for.
+  Destination get revealDestination;
+
+  /// What a reveal does beside holding the name — recipes_screen also drops
+  /// its base pick and opens the card alone.
+  void prepareReveal(String name);
+
+  void serveReveal(Reveal? request) {
+    final name = takeReveal(ref, request, revealDestination);
+    if (name == null) return;
+    setState(() {
+      prepareReveal(name);
+      _revealing = name;
+    });
+  }
+
+  /// Read through the build that carries it, so no later one reveals again.
+  String? consumeReveal() {
+    final revealing = _revealing;
+    _revealing = null;
+    return revealing;
+  }
+}

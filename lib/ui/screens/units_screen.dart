@@ -82,15 +82,12 @@ class _UnitsFormState extends ConsumerState<_UnitsForm> {
       discardTitle: 'Discard these units?',
       onSave: issues.isEmpty ? () => unawaited(_save(entered)) : null,
       children: [
-        Text(
+        MutedText(
           writable
               ? 'A plural left empty reads like the name. "$partUnit", '
                     '"$mlUnit" and "$ozUnit" cannot be renamed or deleted — '
                     'amounts convert between them.'
               : "The owner's units. A plural left empty reads like the name.",
-          style: TextStyle(
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
         ),
         const SizedBox(height: 16),
         const _HeaderRow(),

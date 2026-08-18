@@ -12,6 +12,19 @@ final collectionProvider = Provider<Collection>(
   (ref) => ref.watch(shelfProvider).requireValue.collection,
 );
 
+/// Each vocabulary, sorted (ADR-08) — every screen reading it shares the one
+/// sort, computed once per collection change rather than once per build.
+final recipeTagsProvider = Provider<List<Tag>>(
+  (ref) => _sortedByName(ref.watch(collectionProvider).recipeTags),
+);
+
+final ingredientTagsProvider = Provider<List<Tag>>(
+  (ref) => _sortedByName(ref.watch(collectionProvider).ingredientTags),
+);
+
+List<Tag> _sortedByName(List<Tag> tags) =>
+    [...tags]..sort((a, b) => compareNames(a.name, b.name));
+
 /// The record beside it: name, mode, reading unit, source, last refresh.
 final openBarProvider = Provider<Bar?>(
   (ref) => ref.watch(shelfProvider).valueOrNull?.open,

@@ -82,29 +82,26 @@ class _BarsScreenState extends ConsumerState<BarsScreen> {
   /// The name and how current the bar is while closed, what it holds once
   /// opened. Whose bar it is rides beside the ⋮ as a chip, the mode being what
   /// decides everything the bar offers (FR-BAR-3).
-  Widget _card(Bar bar, DateTime now) {
-    final standing = _standing(bar, now);
-    return VocabularyRow(
-      title: Text(bar.name),
-      subtitle: standing == null ? null : Text(standing),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          BarModeChip(bar.mode),
-          RowMenu({
-            // Offered on a guest bar too: what a bar is called here is the
-            // reader's, as the unit it reads in is (FR-BAR-3, ADR 21).
-            'Rename': () => unawaited(_rename(bar)),
-            'Delete': () => unawaited(_delete(bar)),
-          }),
-        ],
-      ),
-      body: _opened.contains(bar.id) ? _body(bar) : null,
-      onTap: () => setState(() {
-        if (!_opened.remove(bar.id)) _opened.add(bar.id);
-      }),
-    );
-  }
+  Widget _card(Bar bar, DateTime now) => ExpandingRow(
+    open: _opened.contains(bar.id),
+    title: Text(bar.name),
+    subtitle: _standing(bar, now),
+    hideSubtitleWhenOpen: false,
+    trailing: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        BarModeChip(bar.mode),
+        RowMenu({
+          // Offered on a guest bar too: what a bar is called here is the
+          // reader's, as the unit it reads in is (FR-BAR-3, ADR 21).
+          'Rename': () => unawaited(_rename(bar)),
+          'Delete': () => unawaited(_delete(bar)),
+        }),
+      ],
+    ),
+    body: _body(bar),
+    onToggle: () => setState(() => _opened.toggle(bar.id)),
+  );
 
   /// How long ago the bar last became what it holds — an owner's own edit, a
   /// guest's last answer from its source (FR-BAR-5). Null where there is

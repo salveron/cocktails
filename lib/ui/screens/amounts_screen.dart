@@ -133,24 +133,18 @@ class _AmountsFormState extends ConsumerState<_AmountsForm> {
           ? () => unawaited(_save(writer))
           : null,
       children: [
-        Text(
+        MutedText(
           'Amounts in "$partUnit", "$mlUnit" and "$ozUnit" read in the unit '
           'picked here; every other unit reads as entered. Nothing converted '
           'is written — a recipe keeps every line as it was entered.'
           '${writer == null ? " The sizes below are the owner's." : ''}',
-          style: TextStyle(
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
         ),
         const SizedBox(height: 16),
-        SegmentedButton<FixedUnit>(
-          segments: [
-            for (final unit in FixedUnit.values)
-              ButtonSegment(value: unit, label: Text(unit.token)),
-          ],
-          selected: {_display},
-          showSelectedIcon: false,
-          onSelectionChanged: (picked) => _pick(picked.single),
+        Segments(
+          values: FixedUnit.values,
+          selected: _display,
+          labelOf: (unit) => unit.token,
+          onPick: _pick,
         ),
         const SizedBox(height: 16),
         // A table, so both rows' fields stand in line whatever the units

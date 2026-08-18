@@ -26,9 +26,6 @@ const alphabetical = {'Name': _alike};
 
 int _alike(Object? entry) => 0;
 
-List<Tag> sortedByName(List<Tag> tags) =>
-    [...tags]..sort((a, b) => compareNames(a.name, b.name));
-
 extension ToggleMembership<T> on Set<T> {
   void toggle(T value) {
     if (!remove(value)) add(value);
@@ -168,6 +165,48 @@ class VocabularyRow extends StatelessWidget {
   }
 }
 
+/// A [VocabularyRow] that opens in place: [subtitle] shown only while
+/// collapsed unless [hideSubtitleWhenOpen] says otherwise (bars_screen keeps
+/// its standing line either way), [body] only while [open]. Built regardless
+/// of [open] — a body no reader can see costs nothing unlaid-out.
+class ExpandingRow extends StatelessWidget {
+  const ExpandingRow({
+    required this.open,
+    required this.title,
+    this.subtitle,
+    this.hideSubtitleWhenOpen = true,
+    this.trailing,
+    this.body,
+    this.onToggle,
+    this.margin = VocabularyRow.listMargin,
+    super.key,
+  });
+
+  final bool open;
+  final Widget title;
+  final String? subtitle;
+  final bool hideSubtitleWhenOpen;
+  final Widget? trailing;
+  final Widget? body;
+  final VoidCallback? onToggle;
+  final EdgeInsets margin;
+
+  @override
+  Widget build(BuildContext context) {
+    final subtitle = this.subtitle;
+    return VocabularyRow(
+      margin: margin,
+      title: title,
+      subtitle: subtitle == null || (open && hideSubtitleWhenOpen)
+          ? null
+          : Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis),
+      trailing: trailing,
+      body: open ? body : null,
+      onTap: onToggle,
+    );
+  }
+}
+
 typedef Bullet = ({String name, Widget? trailing});
 
 /// One stretch of bullets under a heading, the heading being null wherever the
@@ -275,7 +314,7 @@ class VocabularyList<T> extends StatefulWidget {
 
   final List<T> entries;
   final String Function(T entry) nameOf;
-  final VocabularyRow Function(T entry) rowOf;
+  final Widget Function(T entry) rowOf;
 
   /// Every spelling the search matches an entry by — the name alone where a
   /// screen names none. An ingredient answers to its aliases too (ADR 10), and

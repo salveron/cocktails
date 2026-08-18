@@ -9,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../widgets/editor_form.dart';
 import '../widgets/vocabulary_dialogs.dart';
 import '../widgets/tag_choices.dart';
+import '../widgets/telling.dart';
 import '../widgets/vocabulary_list.dart';
 
 /// One pushed page for creating and editing a recipe (FR-REC-1..5/8): the
@@ -206,9 +207,7 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
         if (_fieldOf(issue, fieldOf) == null) issue,
     ];
     if (unplaceable.isNotEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(unplaceable.first.message)));
+      say(ScaffoldMessenger.of(context), unplaceable.first.message);
     }
   }
 
@@ -245,7 +244,7 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
   @override
   Widget build(BuildContext context) {
     final collection = ref.watch(collectionProvider);
-    final vocabulary = sortedByName(collection.recipeTags);
+    final vocabulary = ref.watch(recipeTagsProvider);
     final original = widget.original;
     final nameIssues = _nameIssues(collection);
     final syntax = _syntaxProblems;

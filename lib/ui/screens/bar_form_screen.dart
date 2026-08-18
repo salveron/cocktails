@@ -160,9 +160,7 @@ class _BarFormScreenState extends ConsumerState<BarFormScreen> {
     // did — the other two answer with a bar that was not there before.
     if (road == _Road.replace && arriving != null) {
       final recipes = arriving.collection.recipes.length;
-      messenger.showSnackBar(
-        SnackBar(content: Text('${counted(recipes, 'recipe')} imported.')),
-      );
+      say(messenger, '${counted(recipes, 'recipe')} imported.');
     }
   }
 
@@ -213,16 +211,16 @@ class _BarFormScreenState extends ConsumerState<BarFormScreen> {
           ),
         if (arriving != null) ...[
           const SectionLabel('Mode'),
-          SegmentedButton<_Road>(
-            segments: [
-              ButtonSegment(
-                value: _importing ? _Road.replace : _Road.own,
-                label: Text(_importing ? 'Replace' : 'Owned'),
-              ),
-              const ButtonSegment(value: _Road.guest, label: Text('Guest')),
-            ],
-            selected: {_road},
-            onSelectionChanged: (chosen) => _chose(chosen.first),
+          Segments(
+            values: [_importing ? _Road.replace : _Road.own, _Road.guest],
+            selected: _road,
+            labelOf: (road) => switch (road) {
+              _Road.own => 'Owned',
+              _Road.replace => 'Replace',
+              _Road.guest => 'Guest',
+            },
+            showSelectedIcon: true,
+            onPick: _chose,
           ),
           // One line each: the choice is read at a glance or not at all.
           FieldNote(switch (_road) {

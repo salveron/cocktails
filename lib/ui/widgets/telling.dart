@@ -78,6 +78,11 @@ String _because(UnreachableReason why) => switch (why) {
   UnreachableReason.withdrawn => 'its owner has stopped sharing it.',
 };
 
+/// Puts [text] on the snackbar the messenger already knows — the one shape
+/// every message reaches a reader through, [wentThrough]'s failure included.
+void say(ScaffoldMessengerState messenger, String text) =>
+    messenger.showSnackBar(SnackBar(content: Text(text)));
+
 /// Runs [action] and answers whether it got through, [refusal] leading the
 /// snackbar where it did not. Every failure speaks, not only the `Exception`s:
 /// what is not caught reaches a reader as nothing happening at all, which is
@@ -91,7 +96,7 @@ Future<bool> wentThrough(
     await action();
     return true;
   } catch (error) {
-    messenger.showSnackBar(SnackBar(content: Text('$refusal: $error')));
+    say(messenger, '$refusal: $error');
     return false;
   }
 }

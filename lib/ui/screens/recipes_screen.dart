@@ -13,7 +13,9 @@ import '../palette.dart';
 import '../theme.dart';
 import '../widgets/arriving_bar.dart';
 import '../widgets/color_chip.dart';
+import '../widgets/editor_form.dart';
 import '../widgets/empty_state.dart';
+import '../widgets/telling.dart';
 import '../widgets/vocabulary_dialogs.dart';
 import '../widgets/vocabulary_list.dart';
 import 'recipe_form_screen.dart';
@@ -60,7 +62,8 @@ class RecipesScreen extends ConsumerStatefulWidget {
   ConsumerState<RecipesScreen> createState() => _RecipesScreenState();
 }
 
-class _RecipesScreenState extends ConsumerState<RecipesScreen> {
+class _RecipesScreenState extends ConsumerState<RecipesScreen>
+    with RevealServing<RecipesScreen> {
   /// Expansion state here, not per-card (list disposes what scrolls).
   final _expanded = <String>{};
 
@@ -77,10 +80,6 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
 
   /// What the last roll landed on, so the next one moves off it (FR-DIS-5).
   String? _rolled;
-
-  /// The recipe another destination asked for, held for the one build that
-  /// hands it to the list and let go there (ADR 19).
-  String? _revealing;
 
   final _random = Random();
 
@@ -99,25 +98,22 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
       ..add(name);
   }
 
-  /// Every pick the screen holds goes with the request: a reader who named a
-  /// recipe asked to see it, not to be told why they cannot (ADR 19).
-  void _serve(Reveal? request) {
-    final name = takeReveal(ref, request, Destination.recipes);
-    if (name == null) return;
-    setState(() {
-      _picked.clear();
-      _base = null;
-      _openAlone(name);
-      _revealing = name;
-    });
+  @override
+  Destination get revealDestination => Destination.recipes;
+
+  @override
+  void prepareReveal(String name) {
+    _picked.clear();
+    _base = null;
+    _openAlone(name);
   }
 
   @override
   Widget build(BuildContext context) {
     final availability = ref.watch(availabilityProvider);
-    ref.listen(revealProvider, (_, request) => _serve(request));
+    ref.listen(revealProvider, (_, request) => serveReveal(request));
     final collection = ref.watch(collectionProvider);
-    final vocabulary = sortedByName(collection.recipeTags);
+    final vocabulary = ref.watch(recipeTagsProvider);
     // Null on a guest bar; every control that writes is built from it, so the
     // reading half of the screen goes on untouched (FR-BAR-4, ADR 23).
     final writer = ref.watch(barWriterProvider);
@@ -128,9 +124,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
     final resting = _resting(
       ref.watch(openBarProvider)?.display ?? FixedUnit.part,
     );
-    // Read through the build that carries it, so no later one reveals again.
-    final revealing = _revealing;
-    _revealing = null;
+    final revealing = consumeReveal();
     return VocabularyList<Recipe>(
       entries: collection.recipes,
       nameOf: (recipe) => recipe.name,
@@ -189,7 +183,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
   /// below. [availability] is derived from the collection this row is built
   /// from, so there; an absent one draws no chip rather than standing on an
   /// assertion.
-  VocabularyRow _row(
+  Widget _row(
     BarWriter? writer,
     Collection collection,
     List<Tag> vocabulary,
@@ -203,7 +197,8 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
     final summary = [
       for (final line in recipe.lines) line.ingredients.join(_or),
     ].join(' · ');
-    return VocabularyRow(
+    return ExpandingRow(
+      open: expanded,
       title: expanded
           ? Row(
               children: [
@@ -213,29 +208,20 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
                 if (note != null)
                   Padding(
                     padding: const EdgeInsets.only(left: 6),
-                    child: Text(
-                      note,
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                    ),
+                    child: MutedText(note),
                   ),
               ],
             )
           : DottedName(recipe.name, vocabulary: vocabulary, worn: recipe.tags),
-      subtitle: expanded || summary.isEmpty
-          ? null
-          : Text(summary, maxLines: 1, overflow: TextOverflow.ellipsis),
-      body: expanded
-          ? _Details(
-              collection: collection,
-              vocabulary: vocabulary,
-              recipe: recipe,
-              view: view,
-              resting: resting,
-              onReach: (ingredient) => _reach(collection, ingredient),
-            )
-          : null,
+      subtitle: summary.isEmpty ? null : summary,
+      body: _Details(
+        collection: collection,
+        vocabulary: vocabulary,
+        recipe: recipe,
+        view: view,
+        resting: resting,
+        onReach: (ingredient) => _reach(collection, ingredient),
+      ),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -254,7 +240,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
           }),
         ],
       ),
-      onTap: () => _toggle(recipe.name),
+      onToggle: () => _toggle(recipe.name),
     );
   }
 
@@ -272,9 +258,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
       besides: _rolled,
     );
     if (drawn == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Nothing here can be made right now.')),
-      );
+      say(ScaffoldMessenger.of(context), 'Nothing here can be made right now.');
       return null;
     }
     setState(() {
@@ -660,52 +644,35 @@ class _ScaleDialogState extends State<_ScaleDialog> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return AlertDialog(
-      scrollable: true,
-      title: const Text('Scale & convert'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        // Full width, so both controls start where the recipe's name does.
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            widget.recipe,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
+    return DialogFrame(
+      title: 'Scale & convert',
+      // Full width, so both controls start where the recipe's name does.
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      content: [
+        MutedText(widget.recipe, style: theme.textTheme.bodyMedium),
+        const SizedBox(height: 20),
+        _section(
+          'Scale',
+          Segments(
+            values: scaleFactors,
+            selected: _view.scale,
+            labelOf: (factor) => '×$factor',
+            onPick: (factor) =>
+                setState(() => _view = (scale: factor, unit: _view.unit)),
           ),
-          const SizedBox(height: 20),
-          _section(
-            'Scale',
-            SegmentedButton<int>(
-              segments: [
-                for (final factor in scaleFactors)
-                  ButtonSegment(value: factor, label: Text('×$factor')),
-              ],
-              selected: {_view.scale},
-              showSelectedIcon: false,
-              onSelectionChanged: (picked) => setState(
-                () => _view = (scale: picked.single, unit: _view.unit),
-              ),
-            ),
+        ),
+        const SizedBox(height: 20),
+        _section(
+          'Show in',
+          Segments(
+            values: FixedUnit.values,
+            selected: _view.unit,
+            labelOf: (unit) => unit.token,
+            onPick: (unit) =>
+                setState(() => _view = (scale: _view.scale, unit: unit)),
           ),
-          const SizedBox(height: 20),
-          _section(
-            'Show in',
-            SegmentedButton<FixedUnit>(
-              segments: [
-                for (final unit in FixedUnit.values)
-                  ButtonSegment(value: unit, label: Text(unit.token)),
-              ],
-              selected: {_view.unit},
-              showSelectedIcon: false,
-              onSelectionChanged: (picked) => setState(
-                () => _view = (scale: _view.scale, unit: picked.single),
-              ),
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),

@@ -28,7 +28,7 @@ class ShoppingSettingsScreen extends ConsumerWidget {
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
         children: [
           const SectionLabel('Tags'),
-          _Segments(
+          Segments(
             values: const [false, true],
             selected: shopping.aiming,
             labelOf: (aiming) => aiming ? 'Aim' : 'Sift',
@@ -40,7 +40,7 @@ class ShoppingSettingsScreen extends ConsumerWidget {
                 : 'Baskets are kept where every tag picked is unlocked.',
           ),
           const SectionLabel('Baskets'),
-          _Segments(
+          Segments(
             values: basketCounts,
             selected: shopping.most,
             labelOf: (most) => '$most',
@@ -48,7 +48,7 @@ class ShoppingSettingsScreen extends ConsumerWidget {
           ),
           const FieldNote('How many of each size the list offers.'),
           const SectionLabel('Opens at'),
-          _Segments(
+          Segments(
             values: budgets,
             selected: shopping.budget,
             labelOf: (budget) => '$budget',
@@ -71,33 +71,6 @@ class ShoppingSettingsScreen extends ConsumerWidget {
       ),
     );
   }
-}
-
-/// One pick of a fixed few, full width — the Amounts screen's own control, and
-/// the shopping screen's, so a setting is made here the way it is made there.
-class _Segments<T> extends StatelessWidget {
-  const _Segments({
-    required this.values,
-    required this.selected,
-    required this.labelOf,
-    required this.onPick,
-  });
-
-  final List<T> values;
-  final T selected;
-  final String Function(T value) labelOf;
-  final ValueChanged<T> onPick;
-
-  @override
-  Widget build(BuildContext context) => SegmentedButton<T>(
-    segments: [
-      for (final value in values)
-        ButtonSegment(value: value, label: Text(labelOf(value))),
-    ],
-    selected: {selected},
-    showSelectedIcon: false,
-    onSelectionChanged: (picked) => onPick(picked.single),
-  );
 }
 
 /// A switch and what it does, laid out as the pickers above are: the label at

@@ -131,7 +131,7 @@ Future<void> _refresh(BuildContext context, WidgetRef ref) async {
       (landed ? 'Refreshed.' : null);
   if (said == null) return;
   refreshes.told(bar.id);
-  messenger.showSnackBar(SnackBar(content: Text(said)));
+  say(messenger, said);
 }
 
 /// Takes a file off the system's picker and puts what is in it in front of the

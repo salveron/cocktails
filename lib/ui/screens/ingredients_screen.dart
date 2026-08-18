@@ -24,38 +24,28 @@ class IngredientsScreen extends ConsumerStatefulWidget {
   ConsumerState<IngredientsScreen> createState() => _IngredientsScreenState();
 }
 
-class _IngredientsScreenState extends ConsumerState<IngredientsScreen> {
+class _IngredientsScreenState extends ConsumerState<IngredientsScreen>
+    with RevealServing<IngredientsScreen> {
   final _picked = <String>{};
-
-  /// The ingredient another destination asked for, held for the one build that
-  /// hands it to the list and let go there (ADR 19).
-  String? _revealing;
 
   void _toggle(String tag) => setState(() => _picked.toggle(tag));
 
-  /// The tag picks go with the request: a reader who named an ingredient asked to
-  /// see it, not to be told why they cannot (ADR 19).
-  void _serve(Reveal? request) {
-    final name = takeReveal(ref, request, Destination.ingredients);
-    if (name == null) return;
-    setState(() {
-      _picked.clear();
-      _revealing = name;
-    });
-  }
+  @override
+  Destination get revealDestination => Destination.ingredients;
+
+  @override
+  void prepareReveal(String name) => _picked.clear();
 
   @override
   Widget build(BuildContext context) {
-    ref.listen(revealProvider, (_, request) => _serve(request));
+    ref.listen(revealProvider, (_, request) => serveReveal(request));
     final collection = ref.watch(collectionProvider);
     // Null on a guest bar, and the whole of the rule: every control that would
     // write is built from it, so none can be offered where there is nothing to
     // write with (FR-BAR-4, ADR 23).
     final writer = ref.watch(barWriterProvider);
-    final vocabulary = sortedByName(collection.ingredientTags);
-    // Read through the build that carries it, so no later one reveals again.
-    final revealing = _revealing;
-    _revealing = null;
+    final vocabulary = ref.watch(ingredientTagsProvider);
+    final revealing = consumeReveal();
     return VocabularyList<Ingredient>(
       entries: collection.ingredients,
       nameOf: (ingredient) => ingredient.name,

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../destinations.dart';
 import '../widgets/color_chip.dart';
+import '../widgets/editor_form.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/vocabulary_list.dart';
 
@@ -66,7 +67,7 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
     });
     final aiming = ref.watch(shoppingProvider).aiming;
     final collection = ref.watch(collectionProvider);
-    final vocabulary = sortedByName(collection.recipeTags);
+    final vocabulary = ref.watch(recipeTagsProvider);
     final worn = {
       for (final recipe in collection.recipes) recipe.name: recipe.tags,
     };
@@ -81,9 +82,9 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
         ),
       ),
     );
-    // The picks as the vocabulary spells them — `tagFilter` reads them by the
-    // same rule, so nothing is dotted by a pick that stopped narrowing.
-    final lit = wornInOrder(vocabulary, _picked);
+    // Off `tagFilter`'s own published picks rather than `_picked` again, so
+    // nothing is dotted by a pick that stopped narrowing.
+    final lit = wornInOrder(vocabulary, filter?.picks ?? const []);
     // Ranked among every basket of the size, then narrowed — the rank is bound
     // before the tags drop any, so sifting gaps the numbering. Aiming keeps
     // them all, the search having answered the picks itself, so it runs
@@ -165,28 +166,21 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
     required Map<String, List<String>> worn,
   }) {
     final ingredients = _ingredientsOf(purchase);
-    final expanded = _expanded.contains(ingredients);
-    final theme = Theme.of(context);
-    return VocabularyRow(
+    return ExpandingRow(
+      open: _expanded.contains(ingredients),
       title: Text('Shopping Cart #$rank'),
-      subtitle: expanded
-          ? null
-          : Text(ingredients, maxLines: 1, overflow: TextOverflow.ellipsis),
-      trailing: Text(
+      subtitle: ingredients,
+      trailing: MutedText(
         _countOf(purchase),
-        style: theme.textTheme.labelMedium?.copyWith(
-          color: theme.colorScheme.onSurfaceVariant,
-        ),
+        style: Theme.of(context).textTheme.labelMedium,
       ),
-      body: expanded
-          ? _Basket(
-              collection: collection,
-              purchase: purchase,
-              lit: lit,
-              worn: worn,
-            )
-          : null,
-      onTap: () => setState(() => _expanded.toggle(ingredients)),
+      body: _Basket(
+        collection: collection,
+        purchase: purchase,
+        lit: lit,
+        worn: worn,
+      ),
+      onToggle: () => setState(() => _expanded.toggle(ingredients)),
     );
   }
 
@@ -218,11 +212,12 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
       return EmptyState(
         icon: Icons.shopping_cart_outlined,
         title: 'Nothing to shop for',
-        message: aimed != null
-            ? 'No shopping unlocks a recipe matching $aimed.'
-            : _restocking
-            ? 'Every ingredient the recipes ask for is fully in stock.'
-            : 'Every recipe here can be made from what is on the shelf.',
+        message: switch (aimed) {
+          final aimed? => 'No shopping unlocks a recipe matching $aimed.',
+          null when _restocking =>
+            'Every ingredient the recipes ask for is fully in stock.',
+          null => 'Every recipe here can be made from what is on the shelf.',
+        },
       );
     }
     final narrowing = filter?.narrowing;
@@ -238,11 +233,14 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
     return EmptyState(
       icon: Icons.shopping_cart_outlined,
       title: 'Nothing worth buying in $_budget',
-      message: narrowing != null
-          ? 'No $basket here unlocks a recipe matching $narrowing.'
-          : _budget == 1
-          ? 'No single ingredient unlocks a recipe on its own here.'
-          : 'Every $basket does no better than a smaller one inside it.',
+      message: switch (narrowing) {
+        final narrowing? =>
+          'No $basket here unlocks a recipe matching '
+              '$narrowing.',
+        null when _budget == 1 =>
+          'No single ingredient unlocks a recipe on its own here.',
+        null => 'Every $basket does no better than a smaller one inside it.',
+      },
       action: elsewhere == null
           ? null
           : FilledButton.tonal(
@@ -284,22 +282,16 @@ class _Controls extends StatelessWidget {
             children: [
               Text('Buy', style: label),
               const SizedBox(width: 4),
-              SegmentedButton<int>(
-                segments: [
-                  for (final size in budgets)
-                    ButtonSegment(
-                      value: size,
-                      label: Text('$size'),
-                      tooltip: counted(size, 'ingredient'),
-                    ),
-                ],
-                selected: {budget},
-                showSelectedIcon: false,
+              Segments(
+                values: budgets,
+                selected: budget,
+                labelOf: (size) => '$size',
+                tooltipOf: (size) => counted(size, 'ingredient'),
                 style: const ButtonStyle(
                   visualDensity: VisualDensity(horizontal: -4, vertical: -2),
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
-                onSelectionChanged: (picked) => onBudget(picked.single),
+                onPick: onBudget,
               ),
             ],
           ),
