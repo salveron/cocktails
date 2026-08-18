@@ -107,7 +107,7 @@ void main() {
     });
 
     test('a corrupt store starts on the recovered backup', () async {
-      store.barOutcomes[bar.id] = Corrupt([
+      store.barOutcomes[bar.id] = Rejected([
         issueAt(4),
       ], recovered: payloadOf(stored));
       final container = await started();
@@ -118,20 +118,20 @@ void main() {
     });
 
     test('a corrupt store with nothing to recover starts empty', () async {
-      store.barOutcomes[bar.id] = Corrupt([issueAt(4)]);
+      store.barOutcomes[bar.id] = Rejected([issueAt(4)]);
       final container = await started();
       expect(collectionOf(container), Collection());
       expect(container.read(loadIssuesProvider), hasLength(1));
     });
 
     test('an issue without a line still reports what is wrong', () async {
-      store.barOutcomes[bar.id] = Corrupt([issueAt(null)]);
+      store.barOutcomes[bar.id] = Rejected([issueAt(null)]);
       final container = await started();
       expect(container.read(loadIssuesProvider), ['Unknown ingredient: "rye"']);
     });
 
     test('the issues are published when the load resolves', () async {
-      store.barOutcomes[bar.id] = Corrupt([issueAt(4)]);
+      store.barOutcomes[bar.id] = Rejected([issueAt(4)]);
       final container = containerFor(store);
       expect(container.read(loadIssuesProvider), isEmpty);
       await container.read(shelfProvider.future);
@@ -566,7 +566,7 @@ void main() {
         mode: BarMode.owner,
       ).summarised(Collection(), at: now);
       final seeded = MemoryBarStore((bars: [bar, beach], openId: bar.id))
-        ..barOutcomes[bar.id] = Loaded(payloadOf(stored));
+        ..barOutcomes[bar.id] = Ok(payloadOf(stored));
       final container = await started(seeded);
       await controllerOf(container).setDisplay(FixedUnit.ml);
       expect(seeded.savedShelf?.bars.map((b) => b.id), [bar.id, beach.id]);
@@ -631,7 +631,7 @@ void main() {
     test('a session recovered from a damaged file exports what it '
         'recovered, not that file (ADR 18)', () async {
       final damaged = MemoryBarStore((bars: [bar], openId: bar.id))
-        ..barOutcomes[bar.id] = Corrupt([
+        ..barOutcomes[bar.id] = Rejected([
           issueAt(4),
         ], recovered: payloadOf(stored));
       final container = await started(damaged);
@@ -785,7 +785,7 @@ recipes:
       openId: bars.first.id,
     ));
     for (final bar in bars) {
-      store.barOutcomes[bar.id] = Loaded(payloadFor(bar, held(bar)));
+      store.barOutcomes[bar.id] = Ok(payloadFor(bar, held(bar)));
     }
     return store;
   }
@@ -831,7 +831,7 @@ recipes:
 
     test('a torn file opens on its backup and says what tore', () async {
       final store = twoBars();
-      store.barOutcomes[other.id] = Corrupt([
+      store.barOutcomes[other.id] = Rejected([
         issueAt(4),
       ], recovered: payloadFor(other, otherCollection));
       final container = await started(store);
@@ -844,7 +844,7 @@ recipes:
 
     test('a crossing onto a sound bar clears the last load\'s word', () async {
       final store = twoBars();
-      store.barOutcomes[bar.id] = Corrupt([
+      store.barOutcomes[bar.id] = Rejected([
         issueAt(4),
       ], recovered: payloadOf(stored));
       final container = await started(store);
@@ -1028,8 +1028,8 @@ recipes:
         bars: [uncountedRecord(bar), uncountedRecord(other)],
         openId: bar.id,
       ));
-      store.barOutcomes[bar.id] = Loaded(payloadFor(bar, stored));
-      store.barOutcomes[other.id] = Loaded(payloadFor(other, otherCollection));
+      store.barOutcomes[bar.id] = Ok(payloadFor(bar, stored));
+      store.barOutcomes[other.id] = Ok(payloadFor(other, otherCollection));
       return store;
     }
 
@@ -1072,7 +1072,7 @@ recipes:
 
     test('a file that will not read leaves the bar uncounted', () async {
       final store = uncounted();
-      store.barOutcomes[other.id] = Corrupt([issueAt(4)]);
+      store.barOutcomes[other.id] = Rejected([issueAt(4)]);
       final container = await started(store);
       // Absent rather than a row of zeroes: the card says it could not be read
       // instead of claiming the bar holds nothing.
@@ -1081,7 +1081,7 @@ recipes:
 
     test('a torn file is counted from what its backup holds', () async {
       final store = uncounted();
-      store.barOutcomes[other.id] = Corrupt([
+      store.barOutcomes[other.id] = Rejected([
         issueAt(4),
       ], recovered: payloadFor(other, otherCollection));
       final container = await started(store);

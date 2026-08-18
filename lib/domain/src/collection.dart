@@ -6,11 +6,18 @@ library;
 
 import 'names.dart';
 
-enum StockLevel {
+/// A value that declares its own wire token as a field, never the enum
+/// member's name — a rename must not move the format (dev-flutter3).
+abstract interface class Tokened {
+  String get token;
+}
+
+enum StockLevel implements Tokened {
   in_('in'),
   low('low'),
   out('out');
 
+  @override
   final String token;
   const StockLevel(this.token);
 
@@ -18,23 +25,22 @@ enum StockLevel {
   /// Declaration order is the life; wire tokens are independent.
   StockLevel get next => values[(index + 1) % values.length];
 
-  static StockLevel? fromToken(String text) =>
-      enumFromToken(values, text, (v) => v.token);
+  static StockLevel? fromToken(String text) => enumFromToken(values, text);
 }
 
 /// The fixed units (FR-VOC-5): no rename, no delete, and the only ones a
 /// measure converts between — `Bar.display` names the one they all read in
 /// ([ADR 17](../../../docs/adr/17-the-fixed-units-interconvert.md)).
-enum FixedUnit {
+enum FixedUnit implements Tokened {
   part(partUnit),
   ml(mlUnit),
   oz(ozUnit);
 
+  @override
   final String token;
   const FixedUnit(this.token);
 
-  static FixedUnit? fromToken(String text) =>
-      enumFromToken(values, text, (v) => v.token);
+  static FixedUnit? fromToken(String text) => enumFromToken(values, text);
 
   /// The fixed unit [name] spells, or null where it is one of the reader's own.
   static FixedUnit? named(String name) {
@@ -47,20 +53,20 @@ enum FixedUnit {
 
 /// A recipe line's mark: base spirit or optional (ADR-06).
 /// One field ensures a line cannot be both.
-enum LineMark {
+enum LineMark implements Tokened {
   base('base'),
   optional('optional');
 
+  @override
   final String token;
   const LineMark(this.token);
 
-  static LineMark? fromToken(String text) =>
-      enumFromToken(values, text, (v) => v.token);
+  static LineMark? fromToken(String text) => enumFromToken(values, text);
 }
 
 /// Tag color palette; green/amber/red reserved by stock and availability (ADR-07).
 /// Every tag has a color; declaration order is the picker's order.
-enum TagColor {
+enum TagColor implements Tokened {
   teal('teal'),
   indigo('indigo'),
   plum('plum'),
@@ -68,22 +74,18 @@ enum TagColor {
   sand('sand'),
   slate('slate');
 
+  @override
   final String token;
   const TagColor(this.token);
 
-  static TagColor? fromToken(String text) =>
-      enumFromToken(values, text, (v) => v.token);
+  static TagColor? fromToken(String text) => enumFromToken(values, text);
 }
 
-/// Linear token lookup, shared by the enums above and by the bar's own
-/// (shelf.dart). Public in src/, not exported (ADR-04).
-T? enumFromToken<T extends Enum>(
-  List<T> values,
-  String text,
-  String Function(T) token,
-) {
+/// Linear token lookup, shared by every [Tokened] enum above and the bar's
+/// own (shelf.dart). Public in src/, not exported (ADR-04).
+T? enumFromToken<T extends Tokened>(List<T> values, String text) {
   for (final value in values) {
-    if (token(value) == text) return value;
+    if (value.token == text) return value;
   }
   return null;
 }
@@ -498,8 +500,7 @@ final class Collection {
   /// All spellings the vocabulary answers to, except [except] (ADR-10).
   Set<String> ingredientSpellings({String? except}) => {
     for (final ingredient in ingredients)
-      if (except == null || !ingredient.name.sameName(except))
-        ...ingredient.spellings,
+      if (isOtherName(ingredient.name, except)) ...ingredient.spellings,
   };
 
   /// Unit spellings; used by reference rules.

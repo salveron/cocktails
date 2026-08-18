@@ -138,7 +138,7 @@ recipes:
 MemoryBarStore corruptStore() {
   final bar = testBar();
   return MemoryBarStore((bars: [bar], openId: bar.id))
-    ..barOutcomes[bar.id] = Corrupt(
+    ..barOutcomes[bar.id] = Rejected(
       [
         SourcedIssue(
           ValidationIssue(

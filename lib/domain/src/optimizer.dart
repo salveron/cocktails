@@ -232,10 +232,7 @@ List<Set<String>> _gapsOf(
   var short = false;
   for (final line in recipe.lines) {
     if (line.isOptional && !buyingOptional) continue;
-    final stock = stockOfLine(collection, line);
-    if (restocking ? stock == StockLevel.in_ : stock != StockLevel.out) {
-      continue;
-    }
+    if (!isShortLine(collection, line, restocking: restocking)) continue;
     short = true;
     final ways = {
       for (final name in line.ingredients) collection.spellingOf(name),

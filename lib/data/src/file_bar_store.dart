@@ -44,12 +44,12 @@ final class FileBarStore implements BarStore {
   FileBarStore(this.directory);
 
   @override
-  Future<LoadOutcome<Records>> loadShelf() => _enqueue(_loadShelf);
+  Future<Outcome<Records>> loadShelf() => _enqueue(_loadShelf);
 
   @override
-  Future<LoadOutcome<BarPayload>> loadBar(String id) => _enqueue(() {
+  Future<Outcome<BarPayload>> loadBar(String id) => _enqueue(() {
     if (!isStorableBarId(id)) {
-      return Future.value(Corrupt<BarPayload>([_refusedId(id)]));
+      return Future.value(Rejected<BarPayload>([_refusedId(id)]));
     }
     return _read(_barPath(id), '$_barsDirectory/$id.yaml', _codec.decode);
   });
@@ -100,7 +100,7 @@ final class FileBarStore implements BarStore {
 
   /// The index, or the format-1 store migrated into one. A device with neither
   /// is a first run and answers [Empty].
-  Future<LoadOutcome<Records>> _loadShelf() async {
+  Future<Outcome<Records>> _loadShelf() async {
     if (await File(_indexPath).exists()) {
       return _read(_indexPath, '$_indexName.yaml', _codec.decodeIndex);
     }
@@ -115,16 +115,16 @@ final class FileBarStore implements BarStore {
   /// crash between the two leaves no index, so the next run migrates again
   /// rather than opening a bar whose file never arrived. The old file and its
   /// backups are never touched, being the net this runs over.
-  Future<LoadOutcome<Records>> _migrateLegacy() async {
+  Future<Outcome<Records>> _migrateLegacy() async {
     final legacy = File('${directory.path}/$_legacyName');
-    final DecodeResult<BarPayload> result;
+    final Outcome<BarPayload> result;
     try {
       result = _codec.decode(await legacy.readAsString());
     } on Exception catch (error) {
-      return Corrupt([_unreadable(_legacyName, error)]);
+      return Rejected([_unreadable(_legacyName, error)]);
     }
-    if (result case Rejected(:final issues)) return Corrupt(issues);
-    final payload = (result as Decoded<BarPayload>).value;
+    if (result case Rejected(:final issues)) return Rejected(issues);
+    final payload = (result as Ok<BarPayload>).value;
     final bar = Bar(
       id: newBarId(),
       name: payload.name.isEmpty ? _migratedBarName : payload.name,
@@ -136,15 +136,17 @@ final class FileBarStore implements BarStore {
     final records = (bars: [bar], openId: bar.id);
     await _writeBar(bar, payload.collection);
     await _writeRotating(File(_indexPath), _codec.encodeIndex(records));
-    return Loaded(records);
+    return Ok(records);
   }
 
   /// [path]'s content through [decode], falling back to the newest backup that
-  /// decodes. A file that is not there at all is [Empty], not a failure.
-  Future<LoadOutcome<T>> _read<T>(
+  /// decodes. A file that is not there at all is [Empty], not a failure. A
+  /// decode already answers in [Outcome]; attaching [recovered] to a rejection
+  /// is this method's only conversion.
+  Future<Outcome<T>> _read<T>(
     String path,
     String name,
-    DecodeResult<T> Function(String) decode,
+    Outcome<T> Function(String) decode,
   ) async {
     final file = File(path);
     if (!await file.exists()) return const Empty();
@@ -152,29 +154,26 @@ final class FileBarStore implements BarStore {
     try {
       text = await file.readAsString();
     } on Exception catch (error) {
-      return Corrupt([
+      return Rejected([
         _unreadable(name, error),
       ], recovered: await _recover(path, decode));
     }
-    return switch (decode(text)) {
-      Decoded(:final value) => Loaded(value),
-      Rejected(:final issues) => Corrupt(
-        issues,
-        recovered: await _recover(path, decode),
-      ),
-    };
+    final result = decode(text);
+    return result is Rejected<T>
+        ? Rejected(result.issues, recovered: await _recover(path, decode))
+        : result;
   }
 
   /// Newest backup of [path] that decodes; null if none do.
   Future<T?> _recover<T>(
     String path,
-    DecodeResult<T> Function(String) decode,
+    Outcome<T> Function(String) decode,
   ) async {
     for (var index = 1; index <= _backupDepth; index++) {
       final file = File(_backupPath(path, index));
       try {
         if (!await file.exists()) continue;
-        if (decode(await file.readAsString()) case Decoded(:final value)) {
+        if (decode(await file.readAsString()) case Ok(:final value)) {
           return value;
         }
       } on Exception {

@@ -145,9 +145,14 @@ what M36f settles.
   `_add`/`_edit`; the module map naming the files that exist. `recipeNamed`,
   `ValidationIssue.location`, `YamlCodec.formatVersion` and the two `toString`s read as dead were
   not, and stay. Depends: M36d.
-- [ ] **M36f** — One home per algorithm: domain and data. Delivers: the bar coherence rules stated
-  once and read twice; `Shelf.copyWith`; one shape for a load, a decode and a fetch, which the LAN
-  channel then has to build. Depends: M36e.
+- [x] **M36f** — One home per algorithm: domain and data. Delivers: the bar coherence rules stated
+  once, read by a throw and a report both; `Shelf.copyWith`; `otherNames` and `ingredientSpellings`
+  sharing one exclusion rule; `Outcome<T>` replacing three separate load/decode/fetch hierarchies,
+  so a decode needs no conversion at all; the six token-carrying enums declaring `Tokened`; one
+  primitive reader in `yaml_reader.dart`; `upserted`/`without` shared by collection and shelf
+  edits; `isShortLine`, the one reading `availabilityOf` and the optimizer's gap search both judge
+  a line by. Domain's own `listEquals`, hand-rolled because the layer cannot import Flutter's,
+  stays beside it in `derived.dart` — the boundary's cost, not a bug. Depends: M36e.
 - [ ] **M36g** — One home per algorithm: UI. Delivers: one expanding card where five stood, one
   segmented control, one dialog frame, one way to say something failed, and derived values off the
   build path. Depends: M36f.

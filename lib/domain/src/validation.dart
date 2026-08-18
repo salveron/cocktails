@@ -195,49 +195,21 @@ List<ValidationIssue> validateShelf({required List<Bar> bars, String? openId}) {
   return issues;
 }
 
-/// The half of a record its mode allows it: a guest refreshes from a source and
-/// has nothing of its own to give away, an owner shares and refreshes from
-/// nothing (FR-BAR-3/6).
+/// The half of a record its mode allows it (FR-BAR-3/6, [coherenceProblems]),
+/// plus the one rule that is validation's alone: budget and basket count are
+/// each picked from a fixed few on their screen (FR-SET-2), so a stored value
+/// outside them would leave that screen with nothing selected.
 List<ValidationIssue> _checkRecord(Bar bar, List<Object> basePath) {
-  final issues = <ValidationIssue>[];
-  final hasSource = bar.source != null;
-  _addProblems(
-    issues,
-    [...basePath, 'source'],
-    [
-      if (bar.isOwned && hasSource)
-        (
-          kind: ValidationIssueKind.malformedValue,
-          message: 'An owned bar refreshes from no source: "${bar.name}"',
-        ),
-      if (!bar.isOwned && !hasSource)
-        (
-          kind: ValidationIssueKind.malformedValue,
-          message:
-              'A guest bar needs the source it refreshes from: "${bar.name}"',
-        ),
-    ],
-  );
-  if (bar.isOwned && bar.refreshed != null) {
-    issues.add(
+  final issues = [
+    for (final problem in coherenceProblems(bar))
       ValidationIssue(
-        [...basePath, 'refreshed'],
-        ValidationIssueKind.malformedValue,
-        'An owned bar has nothing to refresh: "${bar.name}"',
+        [...basePath, ...problem.path],
+        problem.duplicate
+            ? ValidationIssueKind.duplicateName
+            : ValidationIssueKind.malformedValue,
+        problem.message,
       ),
-    );
-  }
-  if (!bar.isOwned && bar.updated != null) {
-    issues.add(
-      ValidationIssue(
-        [...basePath, 'updated'],
-        ValidationIssueKind.malformedValue,
-        'A guest bar changes only when it refreshes: "${bar.name}"',
-      ),
-    );
-  }
-  // Both are picked from a fixed few on their screen (FR-SET-2), so a stored
-  // value outside them would leave that screen with nothing selected.
+  ];
   _addProblems(
     issues,
     [...basePath, 'shopping'],
@@ -259,29 +231,6 @@ List<ValidationIssue> _checkRecord(Bar bar, List<Object> basePath) {
             ),
     ],
   );
-  final vias = <Transport>{};
-  for (var o = 0; o < bar.offers.length; o++) {
-    final via = bar.offers[o].via;
-    _addProblems(
-      issues,
-      [...basePath, 'offers', o],
-      [
-        bar.isOwned
-            ? null
-            : (
-                kind: ValidationIssueKind.malformedValue,
-                message:
-                    'A guest bar is not this device\'s to share: "${bar.name}"',
-              ),
-        vias.add(via)
-            ? null
-            : (
-                kind: ValidationIssueKind.duplicateName,
-                message: 'Bar offered twice by ${via.token}: "${bar.name}"',
-              ),
-      ],
-    );
-  }
   return issues;
 }
 
@@ -328,7 +277,7 @@ void _checkUnits(List<ValidationIssue> issues, List<Unit> units) {
 /// [names] minus [except]; omit the original so renames don't self-collide (ADR-08).
 Set<String> otherNames(Set<String> names, String? except) => {
   for (final name in names)
-    if (except == null || !name.sameName(except)) name,
+    if (isOtherName(name, except)) name,
 };
 
 /// Checks one ingredient before entering vocabulary; paths relative to entry.
@@ -362,7 +311,7 @@ List<ValidationIssue> validateTag(
 }) => _checkName(
   'tag',
   tag.name,
-  isDuplicate: _holdsName(otherTagNames, tag.name),
+  isDuplicate: repeatsName(nameKeys(otherTagNames), tag.name),
 );
 
 /// Checks one recipe against vocabularies; paths relative to recipe.
@@ -376,7 +325,7 @@ List<ValidationIssue> validateRecipe(
   ..._checkName(
     'recipe',
     recipe.name,
-    isDuplicate: _holdsName(otherRecipeNames, recipe.name),
+    isDuplicate: repeatsName(nameKeys(otherRecipeNames), recipe.name),
   ),
   ..._checkRecipe(
     recipe,
@@ -386,10 +335,6 @@ List<ValidationIssue> validateRecipe(
     knownUnits: nameKeys(knownUnits),
   ),
 ];
-
-/// Whether [names] already holds [name] as one name (ADR-08).
-bool _holdsName(Set<String> names, String name) =>
-    names.any((other) => other.sameName(name));
 
 /// Every rule for one list of named entries, applied per entry.
 void _checkNames(

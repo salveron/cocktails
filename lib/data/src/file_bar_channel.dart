@@ -1,7 +1,6 @@
-/// The file transport (FR-BAR-7): a bar travels as a document the reader hands
-/// over, so every fetch is the picker and there is nothing to offer or
-/// withdraw. The one interactive fetch, legal because none here is unattended
-/// ([ADR 22](../../../docs/adr/22-a-bar-travels-behind-one-seam.md)).
+/// The file transport (FR-BAR-7): a bar travels as a document the reader
+/// hands over, so fetch is the picker — legal since nothing here runs
+/// unattended ([ADR 22](../../../docs/adr/22-a-bar-travels-behind-one-seam.md)).
 library;
 
 import 'package:cocktails/domain/domain.dart';
@@ -23,20 +22,16 @@ final class FileBarChannel implements BarChannel {
   Transport get transport => Transport.file;
 
   /// [source] goes unread: which document answers is the reader's judgement
-  /// every time (ADR 21).
+  /// (ADR 21) — a decode already answers in [Outcome].
   @override
-  Future<FetchOutcome?> fetch(BarSource source) async {
+  Future<Outcome<BarPayload>?> fetch(BarSource source) async {
     final String? text;
     try {
       text = await _pick();
     } catch (error) {
-      return Refused([_unreadable('$error')]);
+      return Rejected([_unreadable('$error')]);
     }
-    if (text == null) return null;
-    return switch (const YamlCodec().decode(text)) {
-      Decoded(:final value) => Fetched(value),
-      Rejected(:final issues) => Refused(issues),
-    };
+    return text == null ? null : const YamlCodec().decode(text);
   }
 
   /// A picker that failed is a file the app could not read, which is what a

@@ -19,6 +19,11 @@ int compareNames(String a, String b) => nameKey(a).compareTo(nameKey(b));
 /// Whether [name] already stands in [seen]; adds it either way.
 bool repeatsName(Set<String> seen, String name) => !seen.add(nameKey(name));
 
+/// Whether [name] is not the one being excluded (ADR-08) — the "everyone but
+/// this one" rule a rename shares with every vocabulary it can appear in.
+bool isOtherName(String name, String? except) =>
+    except == null || !name.sameName(except);
+
 /// Indexes of duplicate names; repeated values at higher index.
 List<int> duplicateNameIndexes(List<String> names) {
   final seen = <String>{};

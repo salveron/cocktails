@@ -76,14 +76,14 @@ void main() {
   group('loadShelf', () {
     test('a hand-written index decodes into its records', () async {
       writeFile(indexName, codec.encodeIndex((bars: [home], openId: home.id)));
-      final outcome = await store.loadShelf() as Loaded<Records>;
+      final outcome = await store.loadShelf() as Ok<Records>;
       expect(outcome.value.bars, [home]);
       expect(outcome.value.openId, home.id);
     });
 
     test('a corrupt index with no backup reports the codec issues', () async {
       writeFile(indexName, 'format: 2\nbars: 5\n');
-      final outcome = await store.loadShelf() as Corrupt<Records>;
+      final outcome = await store.loadShelf() as Rejected<Records>;
       expect(outcome.recovered, isNull);
       expect(outcome.issues, isNotEmpty);
     });
@@ -98,7 +98,7 @@ void main() {
         backupName(indexName, 2),
         codec.encodeIndex((bars: [beach], openId: beach.id)),
       );
-      final outcome = await store.loadShelf() as Corrupt<Records>;
+      final outcome = await store.loadShelf() as Rejected<Records>;
       expect(outcome.issues, isNotEmpty);
       expect(outcome.recovered?.bars, [home]);
     });
@@ -110,7 +110,7 @@ void main() {
         barName(home.id),
         codec.encode(payloadOf(home, collectionOf('gin'))),
       );
-      final outcome = await store.loadBar(home.id) as Loaded<BarPayload>;
+      final outcome = await store.loadBar(home.id) as Ok<BarPayload>;
       expect(outcome.value.collection, collectionOf('gin'));
       expect(outcome.value.name, 'Home bar');
     });
@@ -121,21 +121,21 @@ void main() {
         backupName(barName(home.id), 1),
         codec.encode(payloadOf(home, collectionOf('gin'))),
       );
-      final outcome = await store.loadBar(home.id) as Corrupt<BarPayload>;
+      final outcome = await store.loadBar(home.id) as Rejected<BarPayload>;
       expect(outcome.recovered?.collection, collectionOf('gin'));
     });
 
     test('an unreadable bar file is reported, not thrown', () async {
       writeFile(barName(home.id), '');
       fileNamed(barName(home.id)).writeAsBytesSync([0xC3, 0x28]);
-      final outcome = await store.loadBar(home.id) as Corrupt<BarPayload>;
+      final outcome = await store.loadBar(home.id) as Rejected<BarPayload>;
       expect(outcome.issues.single.issue.message, contains(home.id));
       expect(outcome.recovered, isNull);
     });
 
     test('an id that could name a path is refused, never resolved', () async {
       writeFile('secrets.yaml', codec.encode(payloadOf(home, Collection())));
-      final outcome = await store.loadBar('../secrets') as Corrupt<BarPayload>;
+      final outcome = await store.loadBar('../secrets') as Rejected<BarPayload>;
       expect(outcome.issues.single.issue.message, contains('does not name'));
     });
   });
@@ -309,10 +309,7 @@ void main() {
     test('the exported copy re-imports as the same collection', () async {
       final location = await store.exportSnapshot(home, collectionOf('gin'));
       final result = codec.decode(File(location).readAsStringSync());
-      expect(
-        (result as Decoded<BarPayload>).value.collection,
-        collectionOf('gin'),
-      );
+      expect((result as Ok<BarPayload>).value.collection, collectionOf('gin'));
     });
 
     test('each net has its own file (FR-DAT-3, FR-BAR-2)', () async {
@@ -349,7 +346,7 @@ void main() {
   group('the format-1 migration', () {
     test('a legacy file with no index becomes the first owned bar', () async {
       writeFile(legacyName, legacyText());
-      final records = ((await store.loadShelf()) as Loaded<Records>).value;
+      final records = ((await store.loadShelf()) as Ok<Records>).value;
       expect(records.bars, hasLength(1));
       expect(records.openId, records.bars.single.id);
       expect(records.bars.single.mode, BarMode.owner);
@@ -358,22 +355,22 @@ void main() {
 
     test('the collection comes across whole', () async {
       writeFile(legacyName, legacyText());
-      final records = ((await store.loadShelf()) as Loaded<Records>).value;
+      final records = ((await store.loadShelf()) as Ok<Records>).value;
       final payload =
-          ((await store.loadBar(records.bars.single.id)) as Loaded<BarPayload>)
+          ((await store.loadBar(records.bars.single.id)) as Ok<BarPayload>)
               .value;
       expect(payload.collection, collectionOf('gin'));
     });
 
     test('the reader\'s unit comes with it (ADR 21)', () async {
       writeFile(legacyName, legacyText(display: 'ml'));
-      final records = ((await store.loadShelf()) as Loaded<Records>).value;
+      final records = ((await store.loadShelf()) as Ok<Records>).value;
       expect(records.bars.single.display, FixedUnit.ml);
     });
 
     test('the bar is written as format 2', () async {
       writeFile(legacyName, legacyText());
-      final records = ((await store.loadShelf()) as Loaded<Records>).value;
+      final records = ((await store.loadShelf()) as Ok<Records>).value;
       expect(
         readFile(barName(records.bars.single.id)),
         startsWith('format: 2\nname: Home bar\n'),
@@ -395,10 +392,9 @@ void main() {
 
     test('a second run finds the index and migrates nothing', () async {
       writeFile(legacyName, legacyText());
-      final first = ((await store.loadShelf()) as Loaded<Records>).value;
+      final first = ((await store.loadShelf()) as Ok<Records>).value;
       final second =
-          ((await FileBarStore(directory).loadShelf()) as Loaded<Records>)
-              .value;
+          ((await FileBarStore(directory).loadShelf()) as Ok<Records>).value;
       expect(second.bars.single.id, first.bars.single.id);
     });
 
@@ -408,7 +404,7 @@ void main() {
         codec.encodeIndex((bars: [beach], openId: beach.id)),
       );
       writeFile(legacyName, legacyText());
-      final records = ((await store.loadShelf()) as Loaded<Records>).value;
+      final records = ((await store.loadShelf()) as Ok<Records>).value;
       expect(records.bars, [beach]);
     });
 
@@ -416,7 +412,7 @@ void main() {
       'a legacy file that will not decode is reported, not migrated',
       () async {
         writeFile(legacyName, 'format: 1\ningredients: 5\n');
-        final outcome = await store.loadShelf() as Corrupt<Records>;
+        final outcome = await store.loadShelf() as Rejected<Records>;
         expect(outcome.issues, isNotEmpty);
         expect(fileNamed(indexName).existsSync(), isFalse);
         expect(readFile(legacyName), 'format: 1\ningredients: 5\n');

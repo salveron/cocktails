@@ -15,18 +15,14 @@ void main() {
 
   test('a seeded index loads without a save', () async {
     final store = MemoryBarStore((bars: [home], openId: home.id));
-    expect(((await store.loadShelf()) as Loaded<Records>).value.bars, [home]);
+    expect(((await store.loadShelf()) as Ok<Records>).value.bars, [home]);
     expect(store.savedShelf, isNull);
   });
 
   test('.of seeds the index and the bar together', () async {
     final store = MemoryBarStore.of(home, collection);
-    expect(
-      ((await store.loadShelf()) as Loaded<Records>).value.openId,
-      home.id,
-    );
-    final payload =
-        ((await store.loadBar(home.id)) as Loaded<BarPayload>).value;
+    expect(((await store.loadShelf()) as Ok<Records>).value.openId, home.id);
+    final payload = ((await store.loadBar(home.id)) as Ok<BarPayload>).value;
     expect(payload.collection, collection);
     expect(store.saveCount, 0, reason: 'seeding is not a save');
   });
@@ -49,7 +45,7 @@ void main() {
       1,
     );
     final store = MemoryBarStore()
-      ..barOutcomes[home.id] = Corrupt(
+      ..barOutcomes[home.id] = Rejected(
         [issue],
         recovered: (
           name: home.name,
@@ -57,7 +53,7 @@ void main() {
           collection: collection,
         ),
       );
-    final outcome = await store.loadBar(home.id) as Corrupt<BarPayload>;
+    final outcome = await store.loadBar(home.id) as Rejected<BarPayload>;
     expect(outcome.issues, [issue]);
     expect(outcome.recovered?.collection, collection);
   });

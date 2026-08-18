@@ -137,9 +137,9 @@ Collection docCollection() => Collection(
 BarPayload payloadOf(String yaml) {
   final result = codec.decode(yaml);
   if (result is Rejected<BarPayload>) {
-    fail('expected Decoded, got:\n${result.issues.join('\n')}');
+    fail('expected Ok, got:\n${result.issues.join('\n')}');
   }
-  return (result as Decoded<BarPayload>).value;
+  return (result as Ok<BarPayload>).value;
 }
 
 Collection decoded(String yaml) => payloadOf(yaml).collection;
@@ -1180,9 +1180,9 @@ recipes: []
     Records indexOf(String yaml) {
       final result = codec.decodeIndex(yaml);
       if (result is Rejected<Records>) {
-        fail('expected Decoded, got:\n${result.issues.join('\n')}');
+        fail('expected Ok, got:\n${result.issues.join('\n')}');
       }
-      return (result as Decoded<Records>).value;
+      return (result as Ok<Records>).value;
     }
 
     List<SourcedIssue> indexRejected(String yaml) {

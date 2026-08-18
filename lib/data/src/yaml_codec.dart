@@ -10,20 +10,6 @@ import 'sourced_issue.dart';
 import 'yaml_reader.dart';
 import 'yaml_writer.dart';
 
-sealed class DecodeResult<T> {}
-
-final class Decoded<T> extends DecodeResult<T> {
-  final T value;
-
-  Decoded(this.value);
-}
-
-final class Rejected<T> extends DecodeResult<T> {
-  final List<SourcedIssue> issues;
-
-  Rejected(List<SourcedIssue> issues) : issues = List.unmodifiable(issues);
-}
-
 final class YamlCodec {
   static const int formatVersion = storeFormatVersion;
 
@@ -37,7 +23,7 @@ final class YamlCodec {
   /// Never throws — every failure is a [Rejected] carrying sourced issues.
   /// Answers all three of a bar's parts and leaves who keeps which to the
   /// caller, which is where an import and a refresh differ (ADR 21).
-  DecodeResult<BarPayload> decode(String yaml) => _decode(
+  Outcome<BarPayload> decode(String yaml) => _decode(
     yaml,
     'format, name, settings, units, ingredients, ingredient_tags, '
     'recipe_tags, recipes',
@@ -46,10 +32,10 @@ final class YamlCodec {
 
   /// The index, judged by `validateShelf` as a bar's file is by
   /// `validateCollection` — one canonical form, two documents.
-  DecodeResult<Records> decodeIndex(String yaml) =>
+  Outcome<Records> decodeIndex(String yaml) =>
       _decode(yaml, 'format, open, bars', _readRecords);
 
-  DecodeResult<T> _decode<T>(
+  Outcome<T> _decode<T>(
     String yaml,
     String shape,
     T? Function(YamlMap root, List<ValidationIssue> issues) read,
@@ -91,7 +77,7 @@ final class YamlCodec {
     if (value == null || issues.isNotEmpty) {
       return Rejected([for (final issue in issues) _sourced(root, issue)]);
     }
-    return Decoded(value);
+    return Ok(value);
   }
 
   /// A format-1 file carries no `name:` and its `made:` was dropped by the

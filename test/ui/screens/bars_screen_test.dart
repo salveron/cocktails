@@ -39,7 +39,7 @@ void main() {
   MemoryBarStore shelfOf(List<Bar> bars, Map<String, Collection> collections) {
     final store = MemoryBarStore((bars: bars, openId: bars.first.id));
     for (final bar in bars) {
-      store.barOutcomes[bar.id] = Loaded((
+      store.barOutcomes[bar.id] = Ok((
         name: bar.name,
         display: bar.display,
         collection: collections[bar.id] ?? Collection(),
@@ -192,7 +192,7 @@ void main() {
     ) async {
       final torn = Bar(id: 'torn01', name: 'Torn', mode: BarMode.owner);
       final store = shelfOf([home, torn], {});
-      store.barOutcomes[torn.id] = Corrupt([
+      store.barOutcomes[torn.id] = Rejected([
         SourcedIssue(
           ValidationIssue(
             const [],

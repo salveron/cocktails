@@ -17,16 +17,21 @@ lib/
                                #   holds: Bar, BarMode, Transport, BarSource, Offer,
                                #   BarPayload. Bar.summarised and Bar.refreshedAt are the
                                #   only writers of what a bar holds and when it changed.
-                               #   enumFromToken, the token lookup it shares
-                               #   with collection.dart, is layer-private
+                               #   coherenceProblems is the one rule list validation.dart
+                               #   reports on; BarMode and Transport are Tokened
       shelf_edits.dart         # extension ShelfEdits on Shelf — pure derivations,
                                #   the guest-bar refusal among them (ADR 23)
       collection.dart          # entities, Collection — one bar's contents — name lookups,
-                               #   wornInOrder, the unit vocabulary and its lookup (ADR 09)
+                               #   wornInOrder, the unit vocabulary and its lookup (ADR 09).
+                               #   Tokened + enumFromToken, layer-private, back every
+                               #   token-carrying enum's fromToken
       collection_edits.dart    # extension CollectionEdits on Collection — pure derivations
+      list_edits.dart          # upserted/without — generic list edits collection_edits.dart
+                               #   and shelf_edits.dart share, layer-private
       line_format.dart         # compact-line grammar
       validation.dart          # ValidationIssue + rule set, otherNames
-      availability.dart        # Availability, availabilityOf, canMake, stockOfLine, stockOf
+      availability.dart        # Availability, availabilityOf, canMake, stockOfLine, stockOf,
+                               #   isShortLine — the optimizer's own reading of ADR 16
       scaling.dart             # ×N scaling, part↔ml display
       discovery.dart           # basesOf, baseSpirits, marksBase, randomCanMake
       optimizer.dart           # Purchase, purchasesWithin — what to buy next
@@ -36,8 +41,9 @@ lib/
   data/
     data.dart                  # barrel — the store, the channels, the codec, their results
     src/
-      sourced_issue.dart       # SourcedIssue — shared by the store and the codec
-      bar_store.dart           # the storage interface and its outcome types
+      sourced_issue.dart       # SourcedIssue, and Outcome<T> — one shape a load, a decode
+                               #   and a fetch each answer with
+      bar_store.dart           # the storage interface
       bar_channel.dart         # the sharing seam: transport and fetch, the two every
                                #   transport has; offering and finding land with the
                                #   transports that carry them (ADR 22)
@@ -511,8 +517,9 @@ ask for one size at a time off a single search.
 
 `restocking` is what "short" means ([ADR 16](adr/16-the-optimizer-buys-what-is-running-low.md), 
 FR-DIS-7): off, a line standing at out; on, a line short of full stock, so the ingredients running low 
-join the pool and the goal becomes ready rather than merely makeable. Decided in one place — the 
-whole search below reads "short", never "out" — which is why it costs the algorithm nothing. 
+join the pool and the goal becomes ready rather than merely makeable. Decided in one place, 
+`isShortLine` (availability.dart) — the same reading `availabilityOf` judges "missing" by — so the 
+whole search below reads "short", never "out", and it costs the algorithm nothing. 
 `canMake` does not move: the traffic light, the recipe order and the random pick all go on reading 
 low as makeable, and it is the optimizer's own goal that shifts.
 
@@ -540,9 +547,17 @@ typedef Records = ({List<Bar> bars, String? openId});   // the index, with no co
 String newBarId();                                     // six hex characters, minted per device
 bool isStorableBarId(String id);                       // may it name a file — an index is untrusted
 
+sealed class Outcome<T> {}                              // one shape, three readings (below)
+final class Ok<T> extends Outcome<T> { final T value; }
+final class Empty<T> extends Outcome<T> {}              // a load only — nothing stored yet
+final class Rejected<T> extends Outcome<T> {            // FR-DAT-4; recovered is a load's alone
+  final List<SourcedIssue> issues; final T? recovered;
+}
+final class Unreachable<T> extends Outcome<T> { final UnreachableReason why; }   // a fetch only
+
 abstract interface class BarStore {
-  Future<LoadOutcome<Records>> loadShelf();
-  Future<LoadOutcome<BarPayload>> loadBar(String id);   // one bar, or why it could not be read
+  Future<Outcome<Records>> loadShelf();
+  Future<Outcome<BarPayload>> loadBar(String id);       // one bar, or why it could not be read
   Future<void> saveShelf(Records records);
   Future<void> saveBar(Bar bar, Collection collection);      // one file — the name and pick ride along
   Future<void> removeBar(String id);                    // its file and its backups (FR-BAR-2)
@@ -550,18 +565,22 @@ abstract interface class BarStore {
 }
 ```
 
+`Outcome<T>` is one shape, three readings: a load reaches every case, `YamlCodec.decode` answers 
+only `Ok`/`Rejected` (never having a backup or a "nothing stored" of its own), and `BarChannel.fetch` 
+every case but `Empty` (a fetch has nothing to say "nothing stored yet" of). One shape means a 
+decode's `Ok`/`Rejected` needs no conversion at all where a load or a fetch reads it straight through; 
+only attaching a load's `recovered` remains hand-written.
+
 The interface names no file and answers an export with an opaque location, which is the whole of 
 [storage isolation](architecture.md#storage-isolation). `loadShelf` and `loadBar` are separate 
 because the bar list must open without reading a collection (NFR-2), and `saveBar` takes the record 
 beside the collection because the file carries the bar's name and reading unit as well as its 
-contents ([ADR 21](adr/21-the-file-carries-one-bar.md)). Both answer the sealed trio the store has 
-always answered with, now over what was asked for: `Loaded<T>`, `Empty`, `Corrupt<T>` with its 
-recovery. Name and reading unit therefore stand in two files at once, and the index is the 
-authority: `loadBar`'s copy of them is read only where a bar is being established or a lost index 
-rebuilt, and every `saveBar` writes the record's own back.
+contents ([ADR 21](adr/21-the-file-carries-one-bar.md)). Name and reading unit therefore stand in 
+two files at once, and the index is the authority: `loadBar`'s copy of them is read only where a bar 
+is being established or a lost index rebuilt, and every `saveBar` writes the record's own back.
 
 `exportSnapshot` takes the collection rather than copying the store file: a session started from 
-`Corrupt` runs on a recovered backup, and the copy must be the collection on screen, not the file 
+`Rejected` runs on a recovered backup, and the copy must be the collection on screen, not the file 
 that failed to decode ([ADR 18](adr/18-data-crosses-the-edge-in-a-system-sheet.md)). Byte-identical 
 to that bar's store file regardless, the emitter being canonical.
 
@@ -574,14 +593,15 @@ Ids are minted in the data layer rather than the domain, which stays pure of amb
 reached by the state layer through the barrel. `isStorableBarId` stands beside `newBarId` because an 
 id is also a file name: minted ones are always safe, but the index is a file like any other and one 
 carrying `../secrets` has to be refused rather than resolved. The store gates on it before it 
-resolves a path, and answers `Corrupt` rather than reaching outside `bars/`.
+resolves a path, and answers `Rejected` rather than reaching outside `bars/`.
 
 Import is `YamlCodec.decode` + `saveBar`, not a store method. Separate so confirmation and 
 pre-import export can slot between (FR-DAT-3), and so a refresh reaches the same decode by another 
 road (FR-BAR-5).
 
-`SourcedIssue` is own module (`Corrupt`, `Rejected` and `Refused` all carry it). Putting elsewhere 
-creates cross-layer coupling [ADR 02](adr/02-persistence-and-export-format.md) avoids.
+`SourcedIssue` and `Outcome` share a module: every `Rejected` carries the one, and both the store and 
+the codec answer the other. Putting elsewhere creates cross-layer coupling 
+[ADR 02](adr/02-persistence-and-export-format.md) avoids.
 
 `decode` pipeline (each stage feeds issue list):
 1. Parse YAML, retain node spans.
@@ -606,7 +626,7 @@ written by the same emitter — one canonical form, two documents.
 `FileBarStore` writes via temp + rename, rotates that file's own backups, and serialises every call 
 through one queue (overlapping saves collapse). One queue rather than one per bar: two bars are 
 never written in the same breath, and a single order is what makes a refresh landing behind an edit 
-predictable. An unreadable bar falls back to its newest decodable backup and answers `Corrupt` with 
+predictable. An unreadable bar falls back to its newest decodable backup and answers `Rejected` with 
 issues and recovery; the bars beside it are not touched, and a lost index is rebuilt from the bar 
 files. Load never throws (damaged file = FR-DAT-4 failure). Constructor takes directory (platform 
 path resolved at composition root `main.dart`), keeps adapter testable. File names, backup depth: 
@@ -618,16 +638,14 @@ One interface per side, so a way that cannot do something does not carry a metho
 ([ADR 22](adr/22-a-bar-travels-behind-one-seam.md)):
 
 ```dart
-sealed class FetchOutcome {}
-final class Fetched extends FetchOutcome { final BarPayload payload; }
-final class Refused extends FetchOutcome { final List<SourcedIssue> issues; }   // FR-DAT-4
-final class Unreachable extends FetchOutcome { final UnreachableReason why; }   // FR-BAR-5
-
 abstract interface class BarChannel {         // every transport answers this much
   Transport get transport;
-  Future<FetchOutcome?> fetch(BarSource source);        // the add, and every refresh after
+  Future<Outcome<BarPayload>?> fetch(BarSource source);   // the add, and every refresh after
 }
 ```
+
+`fetch` answers in the same `Outcome<T>` a load and a decode do — `Ok`, `Rejected` (FR-DAT-4) or 
+`Unreachable` (FR-BAR-5), never `Empty`, which only a load has a "nothing stored" of its own to mean.
 
 The endings ([architecture.md](architecture.md#sharing)) are values a caller must handle rather than 
 an exception it may forget, and a null one is *no fetch happened*: the file transport's picker 
@@ -730,7 +748,7 @@ FR-DAT-3 offer — replacing an owned bar, founding one, or founding a guest bar
 what becomes of its three parts.
 
 `ShelfController.build()` performs the startup load and is the only writable provider: it reads the 
-index, opens the bar it names, and reports what failed — a `Corrupt` bar starts on its recovered 
+index, opens the bar it names, and reports what failed — a `Rejected` bar starts on its recovered 
 backup, and issues reach the UI through `loadIssuesProvider` as `"line N: message"` strings 
 (FR-DAT-4; `SourcedIssue` is data-layer). Those issues are the *last* load's, startup or crossing 
 alike, so a bar opened onto a torn file says so where the banner already speaks. That provider is 
@@ -739,7 +757,7 @@ it: a field would only ever be right while every write set it before the shelf m
 site can be made to keep an invariant the type does not. An index naming no open bar, or naming one 
 it does not hold, still opens on whatever it does hold. **No index at all is 
 a first run and founds a bar; an index listing none is a reader who deleted their last, and the bar 
-list meets them** — the store tells the two apart, and `Empty` versus `Loaded` with no bars is where.
+list meets them** — the store tells the two apart, and `Empty` versus `Ok` with no bars is where.
 
 One private path serves every write, `_publish`: publish, then persist only what moved. A collection 
 is written **only where the bar under it stayed put**, which is what tells an edit from a crossing — 
@@ -863,8 +881,8 @@ Performance facts (no over-engineering):
 ## Data flows
 
 1. **Startup**: `main` overrides `barStoreProvider` → 
-   `ShelfController.build()` reads the index and opens the bar it names → `Loaded` seeds state, 
-   `Corrupt` seeds that bar's recovered backup + surfaces issues, no index at all runs the format-1 
+   `ShelfController.build()` reads the index and opens the bar it names → `Ok` seeds state, 
+   `Rejected` seeds that bar's recovered backup + surfaces issues, no index at all runs the format-1 
    migration ([architecture.md](architecture.md#storage-isolation)) or mints one empty owned bar.
 2. **Edit**: widget takes `barWriterProvider` and calls `setStock(…)` → `CollectionEdits` returns a new 
    `Collection` → `withCollection` publishes it → UI rebuilds → the open bar's file is enqueued.
@@ -894,8 +912,8 @@ Performance facts (no over-engineering):
    already loaded has nothing to read again, so it asks `Reveals.land` for the recipes instead and
    pops to the same place (ADR 19).
 8. **Adding a guest bar** (FR-BAR-3): a source — picked, or found nearby — reaches `channel.fetch` 
-   → `Fetched` becomes a bar with a minted id, the name the reader left in the form, the payload's 
-   display, and the source kept for next time; `Refused` reads as an import's issues do, 
+   → `Ok` becomes a bar with a minted id, the name the reader left in the form, the payload's 
+   display, and the source kept for next time; `Rejected` reads as an import's issues do, 
    `Unreachable` says which of the three. The form picks and `review`s the file itself, so the 
    reader sees the counts before choosing a road, and only the chosen road reaches the controller.
 9. **Refreshing** (FR-BAR-5): `refresh(id)` marks the bar reaching and is never awaited by a screen 

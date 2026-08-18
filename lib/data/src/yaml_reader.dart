@@ -139,7 +139,6 @@ Bar? _readBar(YamlNode node, List<Object> path, List<ValidationIssue> issues) {
     issues,
     fromToken: BarMode.fromToken,
     values: BarMode.values,
-    token: (value) => value.token,
     required: true,
   );
   final display =
@@ -150,7 +149,6 @@ Bar? _readBar(YamlNode node, List<Object> path, List<ValidationIssue> issues) {
         issues,
         fromToken: FixedUnit.fromToken,
         values: FixedUnit.values,
-        token: (value) => value.token,
       ) ??
       FixedUnit.part;
   final offers = <Offer>[];
@@ -197,25 +195,9 @@ Shopping _readShopping(
   const keys = {'aim', 'budget', 'low', 'most', 'optional'};
   _checkKeys(node, keys, path, issues);
   bool flag(String key, bool standing) =>
-      _readValue<bool>(
-        node,
-        key,
-        path,
-        issues,
-        parse: (value) => value is bool ? value : null,
-        requirement: '$key must be true or false',
-      ) ??
-      standing;
+      _readBool(node, key, path, issues) ?? standing;
   int count(String key, int standing) =>
-      _readValue<int>(
-        node,
-        key,
-        path,
-        issues,
-        parse: (value) => value is int ? value : null,
-        requirement: '$key must be a number',
-      ) ??
-      standing;
+      _readInt(node, key, path, issues) ?? standing;
   return Shopping(
     aiming: flag('aim', standing.aiming),
     budget: count('budget', standing.budget),
@@ -256,14 +238,7 @@ Map<Holding, int>? _readHolds(
   _checkKeys(node, {for (final h in Holding.values) h.token}, path, issues);
   final holds = <Holding, int>{};
   for (final holding in Holding.values) {
-    final count = _readValue<int>(
-      node,
-      holding.token,
-      path,
-      issues,
-      parse: (value) => value is int && value >= 0 ? value : null,
-      requirement: '${holding.token} must be a count',
-    );
+    final count = _readInt(node, holding.token, path, issues, atLeast: 0);
     if (count == null) return null;
     holds[holding] = count;
   }
@@ -316,7 +291,6 @@ Transport? _readTransport(
   issues,
   fromToken: Transport.fromToken,
   values: Transport.values,
-  token: (value) => value.token,
   required: true,
 );
 
@@ -396,14 +370,7 @@ Settings _readSettings(YamlNode? node, List<ValidationIssue> issues) {
   }
   const path = ['settings'];
   _checkKeys(node, const {'part_ml', 'oz_ml', 'display'}, path, issues);
-  double? size(String key) => _readValue<double>(
-    node,
-    key,
-    path,
-    issues,
-    parse: (value) => value is num && value.isFinite ? value.toDouble() : null,
-    requirement: '$key must be a number',
-  );
+  double? size(String key) => _readDouble(node, key, path, issues);
   return Settings(
     partMl: size('part_ml') ?? defaults.partMl,
     ozMl: size('oz_ml') ?? defaults.ozMl,
@@ -483,6 +450,57 @@ String? _readText(
   required: required,
 );
 
+/// A true/false field under [key]; every one asks for the same thing.
+bool? _readBool(
+  YamlMap map,
+  String key,
+  List<Object> path,
+  List<ValidationIssue> issues,
+) => _readValue<bool>(
+  map,
+  key,
+  path,
+  issues,
+  parse: (value) => value is bool ? value : null,
+  requirement: '$key must be true or false',
+);
+
+/// A whole number under [key]; [atLeast] is Holds' alone, a count never
+/// negative, and narrows the requirement's wording along with the value.
+int? _readInt(
+  YamlMap map,
+  String key,
+  List<Object> path,
+  List<ValidationIssue> issues, {
+  int? atLeast,
+}) => _readValue<int>(
+  map,
+  key,
+  path,
+  issues,
+  parse: (value) =>
+      value is int && (atLeast == null || value >= atLeast) ? value : null,
+  requirement: atLeast == null
+      ? '$key must be a number'
+      : '$key must be a count',
+);
+
+/// A finite decimal under [key]; the format writes size ratios as plain
+/// numbers, never quoted.
+double? _readDouble(
+  YamlMap map,
+  String key,
+  List<Object> path,
+  List<ValidationIssue> issues,
+) => _readValue<double>(
+  map,
+  key,
+  path,
+  issues,
+  parse: (value) => value is num && value.isFinite ? value.toDouble() : null,
+  requirement: '$key must be a number',
+);
+
 /// Omitted `plural` means it reads like the name.
 Unit? _readUnit(
   YamlNode node,
@@ -518,7 +536,6 @@ Ingredient? _readIngredient(
         issues,
         fromToken: StockLevel.fromToken,
         values: StockLevel.values,
-        token: (value) => value.token,
       ) ??
       StockLevel.out;
   final aliases = _readNames(node, 'aliases', path, issues, 'Alias');
@@ -543,7 +560,6 @@ Tag? _readTag(YamlNode node, List<Object> path, List<ValidationIssue> issues) {
     issues,
     fromToken: TagColor.fromToken,
     values: TagColor.values,
-    token: (value) => value.token,
     required: true,
   );
   return name == null || color == null ? null : Tag(name, color: color);
@@ -551,14 +567,15 @@ Tag? _readTag(YamlNode node, List<Object> path, List<ValidationIssue> issues) {
 
 /// Enum-token value or null; one bad token doesn't cost other entry fields.
 /// The tokens on offer are the message, so no call site spells them out.
-T? _readToken<T extends Enum>(
+/// [fromToken] rather than [enumFromToken] itself: the domain's own lookup is
+/// unexported (ADR-04), each enum's static the reader is meant to lean on.
+T? _readToken<T extends Tokened>(
   YamlMap map,
   String key,
   List<Object> path,
   List<ValidationIssue> issues, {
   required T? Function(String) fromToken,
   required List<T> values,
-  required String Function(T value) token,
   bool required = false,
 }) => _readValue<T>(
   map,
@@ -568,7 +585,7 @@ T? _readToken<T extends Enum>(
   parse: (value) => fromToken(_asString(value) ?? ''),
   requirement:
       '$key must be one of '
-      '${[for (final value in values) token(value)].join(', ')}',
+      '${[for (final value in values) value.token].join(', ')}',
   required: required,
 );
 

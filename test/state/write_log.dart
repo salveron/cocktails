@@ -19,7 +19,7 @@ base class WriteLog extends MemoryBarStore {
   final loads = <String>[];
 
   @override
-  Future<LoadOutcome<BarPayload>> loadBar(String id) {
+  Future<Outcome<BarPayload>> loadBar(String id) {
     loads.add(id);
     return super.loadBar(id);
   }

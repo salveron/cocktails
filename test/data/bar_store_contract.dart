@@ -29,30 +29,29 @@ void barStoreContract(BarStore Function() storeOf) {
     final store = storeOf();
     await store.saveShelf((bars: [home, beach], openId: beach.id));
     final outcome = await store.loadShelf();
-    expect(outcome, isA<Loaded<Records>>());
-    expect((outcome as Loaded<Records>).value.bars, [home, beach]);
+    expect(outcome, isA<Ok<Records>>());
+    expect((outcome as Ok<Records>).value.bars, [home, beach]);
     expect(outcome.value.openId, beach.id);
   });
 
   test('a shelf with no bar open round-trips as one', () async {
     final store = storeOf();
     await store.saveShelf((bars: [home], openId: null));
-    expect(((await store.loadShelf()) as Loaded<Records>).value.openId, isNull);
+    expect(((await store.loadShelf()) as Ok<Records>).value.openId, isNull);
   });
 
   test('loadBar returns the collection saveBar was given', () async {
     final store = storeOf();
     await store.saveBar(home, collection);
     final outcome = await store.loadBar(home.id);
-    expect(outcome, isA<Loaded<BarPayload>>());
-    expect((outcome as Loaded<BarPayload>).value.collection, collection);
+    expect(outcome, isA<Ok<BarPayload>>());
+    expect((outcome as Ok<BarPayload>).value.collection, collection);
   });
 
   test('a bar\'s file carries its name and reading unit (ADR 21)', () async {
     final store = storeOf();
     await store.saveBar(beach, collection);
-    final payload =
-        ((await store.loadBar(beach.id)) as Loaded<BarPayload>).value;
+    final payload = ((await store.loadBar(beach.id)) as Ok<BarPayload>).value;
     expect(payload.name, 'Beach bar');
     expect(payload.display, FixedUnit.oz);
   });
@@ -61,8 +60,7 @@ void barStoreContract(BarStore Function() storeOf) {
     final store = storeOf();
     await store.saveBar(home, collection);
     await store.saveBar(home, Collection());
-    final payload =
-        ((await store.loadBar(home.id)) as Loaded<BarPayload>).value;
+    final payload = ((await store.loadBar(home.id)) as Ok<BarPayload>).value;
     expect(payload.collection.ingredients, isEmpty);
   });
 
@@ -70,8 +68,7 @@ void barStoreContract(BarStore Function() storeOf) {
     final store = storeOf();
     await store.saveBar(home, collection);
     await store.saveBar(beach, Collection());
-    final payload =
-        ((await store.loadBar(home.id)) as Loaded<BarPayload>).value;
+    final payload = ((await store.loadBar(home.id)) as Ok<BarPayload>).value;
     expect(payload.collection, collection);
   });
 
@@ -81,14 +78,14 @@ void barStoreContract(BarStore Function() storeOf) {
     await store.saveBar(beach, collection);
     await store.removeBar(home.id);
     expect(await store.loadBar(home.id), isA<Empty<BarPayload>>());
-    expect(await store.loadBar(beach.id), isA<Loaded<BarPayload>>());
+    expect(await store.loadBar(beach.id), isA<Ok<BarPayload>>());
   });
 
   test('removing a bar the store never held changes nothing', () async {
     final store = storeOf();
     await store.saveBar(home, collection);
     await store.removeBar('nothing');
-    expect(await store.loadBar(home.id), isA<Loaded<BarPayload>>());
+    expect(await store.loadBar(home.id), isA<Ok<BarPayload>>());
   });
 
   test('every export purpose answers with a location', () async {

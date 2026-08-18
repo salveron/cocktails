@@ -12,7 +12,7 @@ import 'harness.dart';
 /// A store whose load blows up — the only way to reach the failure face.
 final class _FailingStore extends MemoryBarStore {
   @override
-  Future<LoadOutcome<Records>> loadShelf() async =>
+  Future<Outcome<Records>> loadShelf() async =>
       throw StateError('disk on fire');
 }
 

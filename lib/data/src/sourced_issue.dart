@@ -1,5 +1,5 @@
-/// A validation issue bound to its place in the store file. Its own module
-/// because both the codec's Rejected and the store's Corrupt carry it
+/// A validation issue bound to its place in the store file, and [Outcome]:
+/// the one shape a load, a decode and a fetch each answer with
 /// (docs/components.md#data-contracts).
 library;
 
@@ -27,4 +27,40 @@ final class SourcedIssue {
 
   @override
   String toString() => _placed('$issue');
+}
+
+/// What a load, a decode or a fetch comes to: one shape, three readings. A
+/// load reaches every case; a decode only [Ok]/[Rejected]; a fetch every case
+/// but [Empty].
+sealed class Outcome<T> {
+  const Outcome();
+}
+
+final class Ok<T> extends Outcome<T> {
+  final T value;
+
+  const Ok(this.value);
+}
+
+/// Nothing stored yet (a load only) — a first run, or a file never landed.
+final class Empty<T> extends Outcome<T> {
+  const Empty();
+}
+
+/// Reached, or read, but rejected (FR-DAT-4). [recovered] is a load's newest
+/// backup that decoded; a decode or a fetch keeps none, and leaves it null.
+final class Rejected<T> extends Outcome<T> {
+  final List<SourcedIssue> issues;
+  final T? recovered;
+
+  Rejected(List<SourcedIssue> issues, {this.recovered})
+    : issues = List.unmodifiable(issues);
+}
+
+/// Never reached at all (a fetch only) — no source answered, so there is
+/// nothing to judge.
+final class Unreachable<T> extends Outcome<T> {
+  final UnreachableReason why;
+
+  const Unreachable(this.why);
 }

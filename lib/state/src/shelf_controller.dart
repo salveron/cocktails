@@ -38,11 +38,12 @@ final class ShelfController extends AsyncNotifier<Shelf> {
     final store = ref.watch(barStoreProvider);
     final issues = <String>[];
     final index = await store.loadShelf();
-    if (index is Corrupt<Records>) issues.addAll(_described(index.issues));
+    if (index is Rejected<Records>) issues.addAll(_described(index.issues));
     final records = switch (index) {
-      Loaded(:final value) => value,
+      Ok(:final value) => value,
       Empty() => null,
-      Corrupt(:final recovered) => recovered,
+      Rejected(:final recovered) => recovered,
+      Unreachable() => null,
     };
     // No index at all is a first run and gets a bar; an index listing none is a
     // reader who deleted their last, whom the bar list meets instead (ADR 20).
@@ -98,9 +99,10 @@ final class ShelfController extends AsyncNotifier<Shelf> {
   /// collection opening it would give, which is a real answer.
   Future<Collection?> _readableCollectionOf(BarStore store, String id) async =>
       switch (await store.loadBar(id)) {
-        Loaded(:final value) => value.collection,
+        Ok(:final value) => value.collection,
         Empty() => Collection(),
-        Corrupt(:final recovered) => recovered?.collection,
+        Rejected(:final recovered) => recovered?.collection,
+        Unreachable() => null,
       };
 
   /// A device holding nothing gets one empty owned bar, founded as any is.
@@ -120,11 +122,14 @@ final class ShelfController extends AsyncNotifier<Shelf> {
     List<String> issues,
   ) async {
     final loaded = await store.loadBar(id);
-    if (loaded is Corrupt<BarPayload>) issues.addAll(_described(loaded.issues));
+    if (loaded is Rejected<BarPayload>) {
+      issues.addAll(_described(loaded.issues));
+    }
     return switch (loaded) {
-      Loaded(:final value) => value.collection,
+      Ok(:final value) => value.collection,
       Empty() => Collection(),
-      Corrupt(:final recovered) => recovered?.collection ?? Collection(),
+      Rejected(:final recovered) => recovered?.collection ?? Collection(),
+      Unreachable() => Collection(),
     };
   }
 
@@ -154,10 +159,13 @@ final class ShelfController extends AsyncNotifier<Shelf> {
         .exportSnapshot(shelf.open!, shelf.collection);
   }
 
-  /// What [text] holds, judged before anything is touched (FR-DAT-3/4).
+  /// What [text] holds, judged before anything is touched (FR-DAT-3/4). A
+  /// decode never answers [Empty] or [Unreachable]; only here for [Outcome]'s
+  /// sake.
   ImportReview review(String text) => switch (const YamlCodec().decode(text)) {
-    Decoded(:final value) => (bar: value, issues: const <String>[]),
+    Ok(:final value) => (bar: value, issues: const <String>[]),
     Rejected(:final issues) => (bar: null, issues: _described(issues)),
+    Empty() || Unreachable() => (bar: null, issues: const <String>[]),
   };
 
   /// Replaces the open bar's contents with a picked file's, copying what stood
@@ -245,13 +253,14 @@ final class ShelfController extends AsyncNotifier<Shelf> {
     // reached at all — an index carrying `cloud` before its channel lands.
     final channel = ref.read(channelsProvider)[source.via];
     final outcome = channel == null
-        ? Unreachable(UnreachableReason.notFound)
+        ? Unreachable<BarPayload>(UnreachableReason.notFound)
         : await channel.fetch(source);
     switch (outcome) {
-      // The reader dismissed the picker: nothing was asked, so nothing failed.
-      case null:
+      // The reader dismissed the picker: nothing was asked, so nothing
+      // failed. A fetch never answers Empty; grouped here for the same reason.
+      case null || Empty():
         refreshes.settled(id, token);
-      case Refused(:final issues):
+      case Rejected(:final issues):
         refreshes.settled(
           id,
           token,
@@ -259,8 +268,8 @@ final class ShelfController extends AsyncNotifier<Shelf> {
         );
       case Unreachable(:final why):
         refreshes.settled(id, token, RefreshUnreachable(why, _now()));
-      case Fetched(:final payload):
-        await _land(id, token, payload);
+      case Ok(:final value):
+        await _land(id, token, value);
     }
   }
 

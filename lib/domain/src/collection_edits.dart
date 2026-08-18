@@ -5,6 +5,7 @@ library;
 
 import 'names.dart';
 import 'collection.dart';
+import 'list_edits.dart';
 
 /// Unit edit result: current state and prior name (null if new).
 typedef UnitEdit = ({Unit unit, String? was});
@@ -58,7 +59,10 @@ extension CollectionEdits on Collection {
   Collection withIngredient(Ingredient ingredient, {String? replacing}) {
     final from = replacing ?? ingredient.name;
     return copyWith(
-      ingredients: _upserted(ingredients, ingredient, (i) => i.name, at: from),
+      ingredients: upserted(ingredients, ingredient, [
+        (e) => e.name.sameName(from),
+        (e) => e.name.sameName(ingredient.name),
+      ]),
       recipes: from == ingredient.name
           ? recipes
           : [
@@ -77,7 +81,7 @@ extension CollectionEdits on Collection {
   }
 
   Collection withoutIngredient(String name) =>
-      copyWith(ingredients: _without(ingredients, name, (i) => i.name));
+      copyWith(ingredients: without(ingredients, (i) => i.name.sameName(name)));
 
   Collection withStock(String ingredient, StockLevel stock) {
     final entry = ingredientNamed(ingredient);
@@ -85,11 +89,13 @@ extension CollectionEdits on Collection {
   }
 
   /// Adds [tag] to [kind]'s vocabulary, or replaces the entry of its name.
-  Collection withTag(TagKind kind, Tag tag) =>
-      _withTags(kind, _upserted(tagsOf(kind), tag, _tagName));
+  Collection withTag(TagKind kind, Tag tag) => _withTags(
+    kind,
+    upserted(tagsOf(kind), tag, [(t) => t.name.sameName(tag.name)]),
+  );
 
   Collection withoutTag(TagKind kind, String name) =>
-      _withTags(kind, _without(tagsOf(kind), name, _tagName));
+      _withTags(kind, without(tagsOf(kind), (t) => t.name.sameName(name)));
 
   /// Renames tag and rewrites all entries wearing it; on their own side only (FR-VOC-4).
   Collection withTagRenamed(TagKind kind, String from, String to) {
@@ -123,46 +129,58 @@ extension CollectionEdits on Collection {
   };
 
   /// Adds or replaces recipe by name.
-  Collection withRecipe(Recipe recipe) =>
-      copyWith(recipes: _upserted(recipes, recipe, (r) => r.name));
+  Collection withRecipe(Recipe recipe) => copyWith(
+    recipes: upserted(recipes, recipe, [(r) => r.name.sameName(recipe.name)]),
+  );
 
   Collection withoutRecipe(String name) =>
-      copyWith(recipes: _without(recipes, name, (r) => r.name));
+      copyWith(recipes: without(recipes, (r) => r.name.sameName(name)));
 
   /// Recipe names blocking ingredient deletion, in collection order
-  /// (FR-VOC-1, ADR-10).
-  List<String> recipesUsingIngredient(String name) {
-    final wanted = spellingOf(name);
-    return [
-      for (final recipe in recipes)
-        if (recipe.lines.any(
-          (line) =>
-              line.ingredients.any((name) => spellingOf(name).sameName(wanted)),
-        ))
-          recipe.name,
-    ];
-  }
+  /// (FR-VOC-1, ADR-10). Spellings on both sides: an alias references its
+  /// entry as surely as the canonical name does.
+  List<String> recipesUsingIngredient(String name) => _referencing(
+    recipes,
+    (r) => r.name,
+    (r) => [
+      for (final line in r.lines)
+        for (final n in line.ingredients) spellingOf(n),
+    ],
+    spellingOf(name),
+  );
 
   /// Recipe names blocking unit deletion (measured-in reference).
-  List<String> recipesUsingUnit(String name) => [
-    for (final recipe in recipes)
-      if (recipe.lines.any((line) => line.unit.sameName(name))) recipe.name,
-  ];
+  List<String> recipesUsingUnit(String name) => _referencing(
+    recipes,
+    (r) => r.name,
+    (r) => [for (final line in r.lines) line.unit],
+    name,
+  );
 
   /// Users of a tag; blocked by own vocabulary's side only.
   List<String> usersOfTag(TagKind kind, String name) => switch (kind) {
-    TagKind.recipe => [
-      for (final recipe in recipes)
-        if (recipe.tags.any((tag) => tag.sameName(name))) recipe.name,
-    ],
-    TagKind.ingredient => [
-      for (final ingredient in ingredients)
-        if (ingredient.tags.any((tag) => tag.sameName(name))) ingredient.name,
-    ],
+    TagKind.recipe => _referencing(recipes, (r) => r.name, (r) => r.tags, name),
+    TagKind.ingredient => _referencing(
+      ingredients,
+      (i) => i.name,
+      (i) => i.tags,
+      name,
+    ),
   };
 }
 
-String _tagName(Tag tag) => tag.name;
+/// Names of [items] that reference [name] among the spellings [refsOf] them
+/// gives back — the one walk `recipesUsingIngredient`, `recipesUsingUnit` and
+/// `usersOfTag` all are, case and spelling folded (ADR-08).
+List<String> _referencing<T>(
+  List<T> items,
+  String Function(T) nameOf,
+  Iterable<String> Function(T) refsOf,
+  String name,
+) => [
+  for (final item in items)
+    if (refsOf(item).any((ref) => ref.sameName(name))) nameOf(item),
+];
 
 /// [recipe] with every line put through [rewrite] — the recipe itself where
 /// none moved, so an edit reaching no line rebuilds nothing and callers can
@@ -182,25 +200,6 @@ Recipe _withLines(Recipe recipe, RecipeLine Function(RecipeLine line) rewrite) {
 List<Tag> _renamedTag(List<Tag> tags, String from, String to) => [
   for (final tag in tags)
     tag.name.sameName(from) ? tag.copyWith(name: to) : tag,
-];
-
-/// [item] replacing entry named [at], else its own name, else added.
-List<T> _upserted<T>(
-  List<T> items,
-  T item,
-  String Function(T) nameOf, {
-  String? at,
-}) {
-  for (final name in [?at, nameOf(item)]) {
-    final index = items.indexWhere((entry) => nameOf(entry).sameName(name));
-    if (index >= 0) return [...items]..[index] = item;
-  }
-  return [...items, item];
-}
-
-List<T> _without<T>(List<T> items, String name, String Function(T) nameOf) => [
-  for (final item in items)
-    if (!nameOf(item).sameName(name)) item,
 ];
 
 /// Tags with [from] rewritten to [to]; null if none matched.

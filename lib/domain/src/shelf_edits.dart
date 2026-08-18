@@ -4,13 +4,13 @@
 library;
 
 import 'collection.dart';
+import 'list_edits.dart';
 import 'shelf.dart';
 
 extension ShelfEdits on Shelf {
   /// The open bar's collection, replaced and the record restamped [at]. Every
-  /// collection edit ends here, so a guest bar — whose contents are its owner's
-  /// — is refused once ([ADR 23](../../../docs/adr/23-nothing-writes-a-guest-bar.md)),
-  /// and no edit leaves the summary counting what the bar held before it.
+  /// collection edit ends here, so a guest bar is refused once
+  /// ([ADR 23](../../../docs/adr/23-nothing-writes-a-guest-bar.md)).
   Shelf withCollection(Collection collection, DateTime at) {
     final bar = open;
     if (bar == null) {
@@ -19,47 +19,28 @@ extension ShelfEdits on Shelf {
     if (!bar.isOwned) {
       throw ArgumentError('A guest bar is read-only: "${bar.name}"');
     }
-    return Shelf(
-      bars: withBar(bar.summarised(collection, at: at)).bars,
-      openId: openId,
-      collection: collection,
-    );
+    return withBar(
+      bar.summarised(collection, at: at),
+    ).copyWith(collection: collection);
   }
 
-  /// Adds [bar], or replaces the record standing under its id: a rename, an
-  /// offer taken up or withdrawn, a source moved.
-  Shelf withBar(Bar bar) {
-    final index = bars.indexWhere((entry) => entry.id == bar.id);
-    return Shelf(
-      bars: index < 0 ? [...bars, bar] : ([...bars]..[index] = bar),
-      openId: openId,
-      collection: collection,
-    );
-  }
+  /// Adds [bar], or replaces the record standing under its id.
+  Shelf withBar(Bar bar) =>
+      copyWith(bars: upserted(bars, bar, [(b) => b.id == bar.id]));
 
-  /// FR-BAR-2. Deleting the open bar leaves none open and nothing resident.
+  /// FR-BAR-2: closing is [Shelf]'s own default state, so this names no field.
   Shelf withoutBar(String id) {
-    final remaining = [
-      for (final bar in bars)
-        if (bar.id != id) bar,
-    ];
+    final remaining = without(bars, (bar) => bar.id == id);
     if (remaining.length == bars.length) return this;
-    final keptOpen = openId != id;
-    return Shelf(
-      bars: remaining,
-      openId: keptOpen ? openId : null,
-      collection: keptOpen ? collection : Collection(),
-    );
+    return openId == id ? Shelf(bars: remaining) : copyWith(bars: remaining);
   }
 
-  /// The switch: the record and the bytes at once (ADR-20). An [id] naming no
-  /// bar throws through Shelf's own constructor, where that rule lives.
+  /// The switch: the record and the bytes at once (ADR-20).
   Shelf opening(String id, Collection collection) =>
-      Shelf(bars: bars, openId: id, collection: collection);
+      copyWith(openId: id, collection: collection);
 
   /// FR-BAR-5: the owner's collection replaced, stamped [at]. Never [Bar.name]
-  /// or [Bar.display], the reader's picks (ADR-21). The collection moves only
-  /// for the open bar; refreshing another is a record edit and a file write.
+  /// or [Bar.display], the reader's picks (ADR-21).
   Shelf refreshedWith(String id, BarPayload payload, DateTime at) {
     final bar = barWithId(id);
     if (bar == null) return this;
@@ -68,11 +49,7 @@ extension ShelfEdits on Shelf {
     }
     final shelf = withBar(bar.refreshedAt(payload.collection, at));
     return id == openId
-        ? Shelf(
-            bars: shelf.bars,
-            openId: openId,
-            collection: payload.collection,
-          )
+        ? shelf.copyWith(collection: payload.collection)
         : shelf;
   }
 }

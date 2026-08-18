@@ -12,29 +12,29 @@ import 'optimizer.dart';
 
 /// What this device is to a bar: its owner, or a guest reading another's
 /// (FR-BAR-3).
-enum BarMode {
+enum BarMode implements Tokened {
   owner('owner'),
   guest('guest');
 
+  @override
   final String token;
   const BarMode(this.token);
 
-  static BarMode? fromToken(String text) =>
-      enumFromToken(values, text, (v) => v.token);
+  static BarMode? fromToken(String text) => enumFromToken(values, text);
 }
 
 /// A way a bar travels (FR-BAR-7/8/9). `cloud` is declared ahead of its adapter
 /// so the index's format need not move when one lands (ADR-22).
-enum Transport {
+enum Transport implements Tokened {
   file('file'),
   lan('lan'),
   cloud('cloud');
 
+  @override
   final String token;
   const Transport(this.token);
 
-  static Transport? fromToken(String text) =>
-      enumFromToken(values, text, (v) => v.token);
+  static Transport? fromToken(String text) => enumFromToken(values, text);
 }
 
 /// Why a source did not answer (FR-BAR-5). Closed, so an adapter maps its own
@@ -125,16 +125,17 @@ final class Bar {
 
   bool get isOwned => mode == BarMode.owner;
 
-  /// What a copy may change, and nothing else: null means "keep", so a field
-  /// that can be absent would read as unclearable here. Id and mode are not a
-  /// copy's to move either — a bar is the same bar, and whose it is arrives
-  /// with it. Neither stamp is a copy's to move: both date contents, and a
-  /// copy that renames a bar has not touched them.
-  Bar copyWith({
+  /// The one rebuild behind [copyWith], [refreshedAt] and [summarised]: each
+  /// restates only the field it means to change, id and mode never among
+  /// them — a bar is the same bar, and whose it is arrives with it.
+  Bar _copy({
     String? name,
     FixedUnit? display,
     Shopping? shopping,
     List<Offer>? offers,
+    DateTime? refreshed,
+    DateTime? updated,
+    Map<Holding, int>? holds,
   }) => Bar(
     id: id,
     name: name ?? this.name,
@@ -143,45 +144,38 @@ final class Bar {
     shopping: shopping ?? this.shopping,
     offers: offers ?? this.offers,
     source: source,
-    refreshed: refreshed,
-    updated: updated,
-    holds: holds,
+    refreshed: refreshed ?? this.refreshed,
+    updated: updated ?? this.updated,
+    holds: holds ?? this.holds,
   );
+
+  /// What a copy may change, and nothing else: null means "keep", so a field
+  /// that can be absent would read as unclearable here. Neither stamp is a
+  /// copy's to move either: both date contents, and a copy that renames a bar
+  /// has not touched them.
+  Bar copyWith({
+    String? name,
+    FixedUnit? display,
+    Shopping? shopping,
+    List<Offer>? offers,
+  }) => _copy(name: name, display: display, shopping: shopping, offers: offers);
 
   /// FR-BAR-5: the owner's contents as they just arrived, and when the source
   /// answered. The one writer of [refreshed], so a stamp cannot be dropped by a
   /// copy that meant to keep it. [name] and [display] are the reader's and are
   /// physically unreachable from here, so no refresh can lose either (ADR-21).
-  Bar refreshedAt(Collection collection, DateTime at) => Bar(
-    id: id,
-    name: name,
-    mode: mode,
-    display: display,
-    shopping: shopping,
-    offers: offers,
-    source: source,
-    refreshed: at,
-    holds: holdingsOf(collection),
-  );
+  Bar refreshedAt(Collection collection, DateTime at) =>
+      _copy(refreshed: at, holds: holdingsOf(collection));
 
   /// What the bar holds, counted afresh. The one writer of [updated] and —
   /// with [refreshedAt] — of [holds], so a summary is never a step behind the
   /// contents it counts. [at] is the moment the contents became these, and is
   /// absent only where they did not just change: a bar being summarised for
   /// the first time is being counted, not edited, and inventing a stamp for it
-  /// would date an edit nobody made.
-  Bar summarised(Collection collection, {DateTime? at}) => Bar(
-    id: id,
-    name: name,
-    mode: mode,
-    display: display,
-    shopping: shopping,
-    offers: offers,
-    source: source,
-    refreshed: refreshed,
-    updated: at ?? updated,
-    holds: holdingsOf(collection),
-  );
+  /// would date an edit nobody made — so absent here means "keep", same as
+  /// everywhere else this rebuild is read from.
+  Bar summarised(Collection collection, {DateTime? at}) =>
+      _copy(holds: holdingsOf(collection), updated: at);
 
   @override
   bool operator ==(Object other) =>
@@ -248,6 +242,16 @@ final class Shelf {
 
   Bar? barWithId(String id) => _barsById[id];
 
+  /// What a copy may change, and nothing else: null means "keep". Closing the
+  /// shelf — [openId] cleared, [collection] reset — is [Shelf]'s own default
+  /// state rather than a copy's to reach; `withoutBar` builds that directly.
+  Shelf copyWith({List<Bar>? bars, String? openId, Collection? collection}) =>
+      Shelf(
+        bars: bars ?? this.bars,
+        openId: openId ?? this.openId,
+        collection: collection ?? this.collection,
+      );
+
   late final Map<String, Bar> _barsById = {for (final bar in bars) bar.id: bar};
 
   @override
@@ -266,37 +270,72 @@ final class Shelf {
 
 /// The mode decides which half of a record a bar may carry: a guest refreshes
 /// from a source and has nothing of its own to give away, an owner shares and
-/// refreshes from nothing (FR-BAR-3/6).
-void _requireCoherent(Bar bar) {
+/// refreshes from nothing (FR-BAR-3/6). One list; [_requireCoherent] throws
+/// the first entry, and validation.dart's `_checkRecord` reports every one —
+/// so a rule, or its wording, changes in one place rather than two.
+/// [duplicate] is the only fact `_checkRecord` needs back to place a
+/// [ValidationIssueKind] without this file naming one.
+List<({List<Object> path, String message, bool duplicate})> coherenceProblems(
+  Bar bar,
+) {
+  final problems = <({List<Object> path, String message, bool duplicate})>[];
   if (bar.isOwned) {
-    if (bar.source != null || bar.refreshed != null) {
-      throw ArgumentError('An owned bar refreshes from nothing: "${bar.name}"');
+    if (bar.source != null) {
+      problems.add((
+        path: const ['source'],
+        message: 'An owned bar refreshes from no source: "${bar.name}"',
+        duplicate: false,
+      ));
+    }
+    if (bar.refreshed != null) {
+      problems.add((
+        path: const ['refreshed'],
+        message: 'An owned bar has nothing to refresh: "${bar.name}"',
+        duplicate: false,
+      ));
     }
     final vias = <Transport>{};
-    for (final offer in bar.offers) {
-      if (!vias.add(offer.via)) {
-        throw ArgumentError(
-          'Bar "${bar.name}" is offered twice by ${offer.via.token}',
-        );
+    for (var o = 0; o < bar.offers.length; o++) {
+      final via = bar.offers[o].via;
+      if (!vias.add(via)) {
+        problems.add((
+          path: ['offers', o],
+          message: 'Bar offered twice by ${via.token}: "${bar.name}"',
+          duplicate: true,
+        ));
       }
     }
   } else {
     if (bar.source == null) {
-      throw ArgumentError(
-        'A guest bar carries the source it refreshes from: "${bar.name}"',
-      );
+      problems.add((
+        path: const ['source'],
+        message:
+            'A guest bar needs the source it refreshes from: "${bar.name}"',
+        duplicate: false,
+      ));
     }
-    if (bar.offers.isNotEmpty) {
-      throw ArgumentError(
-        'A guest bar is not this device\'s to share: '
-        '"${bar.name}"',
-      );
+    for (var o = 0; o < bar.offers.length; o++) {
+      problems.add((
+        path: ['offers', o],
+        message: 'A guest bar is not this device\'s to share: "${bar.name}"',
+        duplicate: false,
+      ));
     }
     if (bar.updated != null) {
-      throw ArgumentError(
-        'A guest bar changes only when it refreshes: "${bar.name}"',
-      );
+      problems.add((
+        path: const ['updated'],
+        message: 'A guest bar changes only when it refreshes: "${bar.name}"',
+        duplicate: false,
+      ));
     }
+  }
+  return problems;
+}
+
+void _requireCoherent(Bar bar) {
+  final problems = coherenceProblems(bar);
+  if (problems.isNotEmpty) {
+    throw ArgumentError(problems.first.message);
   }
 }
 

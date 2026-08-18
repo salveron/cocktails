@@ -11,25 +11,31 @@ Availability availabilityOf(Collection collection, Recipe recipe) {
   var low = false;
   for (final line in recipe.lines) {
     if (line.isOptional) continue;
-    switch (stockOfLine(collection, line)) {
-      case StockLevel.out:
-        return Availability.missing;
-      case StockLevel.low:
-        low = true;
-      case StockLevel.in_:
-        break;
+    if (isShortLine(collection, line, restocking: false)) {
+      return Availability.missing;
     }
+    if (stockOfLine(collection, line) == StockLevel.low) low = true;
   }
   return low ? Availability.makeableLow : Availability.makeable;
+}
+
+/// Whether [line] counts as short: out always does, restocking widening that
+/// to anything under full stock (ADR 16) — [availabilityOf]'s reading too.
+bool isShortLine(
+  Collection collection,
+  RecipeLine line, {
+  required bool restocking,
+}) {
+  final stock = stockOfLine(collection, line);
+  return restocking ? stock != StockLevel.in_ : stock == StockLevel.out;
 }
 
 /// Can make it now (FR-DIS-5): low still counts, and unjudged reads as missing.
 bool canMake(Availability? availability) =>
     availability != null && availability != Availability.missing;
 
-/// What a line stands at: its best-stocked alternative, any one of them making
-/// it (ADR-11). Order runs best to worst, and folding from the worst leaves a
-/// line naming nothing out rather than crashing the pass over every recipe.
+/// What a line stands at: its best-stocked alternative (ADR-11), folded from
+/// the worst so a line naming nothing reads out rather than crashing.
 StockLevel stockOfLine(Collection collection, RecipeLine line) =>
     line.ingredients.fold(StockLevel.out, (best, ingredient) {
       final stock = stockOf(collection, ingredient);

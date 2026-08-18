@@ -25,12 +25,12 @@ final class _FakeChannel implements BarChannel {
   final asked = <BarSource>[];
 
   /// One per fetch still out, oldest first.
-  final out = <Completer<FetchOutcome?>>[];
+  final out = <Completer<Outcome<BarPayload>?>>[];
 
   @override
-  Future<FetchOutcome?> fetch(BarSource source) {
+  Future<Outcome<BarPayload>?> fetch(BarSource source) {
     asked.add(source);
-    final answering = Completer<FetchOutcome?>();
+    final answering = Completer<Outcome<BarPayload>?>();
     out.add(answering);
     return answering.future;
   }
@@ -96,12 +96,12 @@ void main() {
   /// A store holding both bars, [openId] naming the one on show.
   MemoryBarStore holding(String openId) {
     final seeded = MemoryBarStore((bars: [owned, guest], openId: openId));
-    seeded.barOutcomes[owned.id] = Loaded((
+    seeded.barOutcomes[owned.id] = Ok((
       name: owned.name,
       display: owned.display,
       collection: Collection(),
     ));
-    seeded.barOutcomes[guest.id] = Loaded(payloadOf(stored));
+    seeded.barOutcomes[guest.id] = Ok(payloadOf(stored));
     return seeded;
   }
 
@@ -133,7 +133,7 @@ void main() {
   Future<void> refreshed(
     ProviderContainer container,
     String id,
-    FetchOutcome? outcome,
+    Outcome<BarPayload>? outcome,
   ) async {
     final refreshing = controllerOf(container).refresh(id);
     await pumpEventQueue();
@@ -191,7 +191,7 @@ void main() {
     /// that opens onto nothing.
     test('its file lands before the index names it', () async {
       final logged = WriteLog((bars: [owned], openId: owned.id));
-      logged.barOutcomes[owned.id] = Loaded((
+      logged.barOutcomes[owned.id] = Ok((
         name: owned.name,
         display: owned.display,
         collection: Collection(),
@@ -228,9 +228,7 @@ void main() {
       final refreshing = controllerOf(container).refresh(guest.id);
       await pumpEventQueue();
       expect(refreshOf(container, guest.id), isA<Reaching>());
-      channel.out.single.complete(
-        Fetched(payloadOf(arrived, name: 'The Ada Room')),
-      );
+      channel.out.single.complete(Ok(payloadOf(arrived, name: 'The Ada Room')));
       await refreshing;
       expect(container.read(collectionProvider), arrived);
       expect(barOf(container, guest.id).refreshed, now);
@@ -254,14 +252,14 @@ void main() {
       await refreshed(
         container,
         guest.id,
-        Fetched(payloadOf(arrived, display: FixedUnit.ml)),
+        Ok(payloadOf(arrived, display: FixedUnit.ml)),
       );
       expect(barOf(container, guest.id).display, FixedUnit.oz);
     });
 
     test('it asks the source the bar was added from', () async {
       final container = await started(holding(guest.id));
-      await refreshed(container, guest.id, Fetched(payloadOf(arrived)));
+      await refreshed(container, guest.id, Ok(payloadOf(arrived)));
       expect(channel.asked, [source]);
     });
 
@@ -270,7 +268,7 @@ void main() {
     test('one landing on a bar not on show writes that bar\'s file', () async {
       final seeded = holding(owned.id);
       final container = await started(seeded);
-      await refreshed(container, guest.id, Fetched(payloadOf(arrived)));
+      await refreshed(container, guest.id, Ok(payloadOf(arrived)));
       expect(seeded.savedBars[guest.id]?.$2, arrived);
       expect(barOf(container, guest.id).holds, holdingsOf(arrived));
       // The bar on show is untouched by another bar's refresh.
@@ -297,7 +295,7 @@ void main() {
       await refreshed(
         container,
         guest.id,
-        Refused([
+        Rejected([
           SourcedIssue(
             ValidationIssue(
               const ['recipes', 0],
@@ -363,7 +361,7 @@ void main() {
         ],
         openId: 'cld1',
       ));
-      seeded.barOutcomes['cld1'] = Loaded(payloadOf(stored));
+      seeded.barOutcomes['cld1'] = Ok(payloadOf(stored));
       final container = await started(seeded);
       await controllerOf(container).refresh('cld1');
       expect(channel.out, isEmpty);
@@ -379,7 +377,7 @@ void main() {
         final refreshing = controllerOf(container).refresh(guest.id);
         await pumpEventQueue();
         await controllerOf(container).removeBar(guest.id);
-        channel.out.single.complete(Fetched(payloadOf(arrived)));
+        channel.out.single.complete(Ok(payloadOf(arrived)));
         await refreshing;
         expect(
           container.read(shelfProvider).requireValue.barWithId(guest.id),
@@ -399,9 +397,9 @@ void main() {
       final second = controller.refresh(guest.id);
       await pumpEventQueue();
       expect(channel.out, hasLength(2));
-      channel.out[1].complete(Fetched(payloadOf(arrived)));
+      channel.out[1].complete(Ok(payloadOf(arrived)));
       await second;
-      channel.out[0].complete(Fetched(payloadOf(stored)));
+      channel.out[0].complete(Ok(payloadOf(stored)));
       await first;
       // The contents of the newer answer, and the counts that go with them.
       expect(container.read(collectionProvider), arrived);
@@ -414,7 +412,7 @@ void main() {
       final first = controller.refresh(guest.id);
       final second = controller.refresh(guest.id);
       await pumpEventQueue();
-      channel.out[1].complete(Fetched(payloadOf(arrived)));
+      channel.out[1].complete(Ok(payloadOf(arrived)));
       await second;
       channel.out[0].complete(Unreachable(UnreachableReason.offline));
       await first;
