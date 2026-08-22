@@ -46,7 +46,7 @@ the only one resident.**
   says. **Reversed before any of this was built.** The cost was the whole of the argument, and it
   only ever grew — Phases 7 to 10 each add code that would name the type. Against it stood the tiers
   the app now reads in: `Shelf`, `Bar`, `Model`, `Recipe`, three of them a thing in a bar and the
-  fourth a thing in an architecture. The signatures above settled it: `BarPayload`, `withCollection`
+  fourth a thing in an architecture. The signatures above settled it: `BarContent`, `withCollection`
   and `opening` were all written `Model collection` before a line of them existed, so the concept
   had taken the name already and only the type had not. Done as its own change, no behaviour
   touched, ahead of the milestone that would have doubled it.

@@ -204,7 +204,7 @@ void main() {
         },
       );
       expect(purchasesWithin(collection, 1).length, 3);
-      expect(purchasesWithin(collection, 1, most: 1), [
+      expect(purchasesWithin(collection, 1, keptPerSize: 1), [
         Purchase(['campari'], ['Negroni']),
       ]);
     });
@@ -661,8 +661,8 @@ void main() {
 
     test('the best answers survive the cap on how many are kept', () {
       final collection = collectionOf(recipes: 120, ingredients: 40);
-      final all = purchasesWithin(collection, 3, most: 100000);
-      final capped = purchasesWithin(collection, 3, most: 5);
+      final all = purchasesWithin(collection, 3, keptPerSize: 100000);
+      final capped = purchasesWithin(collection, 3, keptPerSize: 5);
       expect(capped.length, lessThan(all.length));
       expect(capped.first, all.first);
       expect(

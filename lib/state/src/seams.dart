@@ -40,4 +40,4 @@ Future<String> pickedText(XFile picked) async =>
     utf8.decode(await picked.readAsBytes());
 
 /// What a picked file turned out to be (FR-DAT-4). Never both.
-typedef ImportReview = ({BarPayload? bar, List<String> issues});
+typedef ImportReview = ({BarContent? bar, List<String> issues});

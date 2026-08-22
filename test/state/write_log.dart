@@ -1,4 +1,4 @@
-/// Records what reached the store and in what order: a bar's file must land
+/// ShelfIndex what reached the store and in what order: a bar's file must land
 /// before the index names it, and its record must go before the file is
 /// dropped, or a crash between the two leaves a bar that opens onto nothing.
 /// Shared by every test that watches the controller write.
@@ -19,7 +19,7 @@ base class WriteLog extends MemoryBarStore {
   final loads = <String>[];
 
   @override
-  Future<Outcome<BarPayload>> loadBar(String id) {
+  Future<Outcome<BarContent>> loadBar(String id) {
     loads.add(id);
     return super.loadBar(id);
   }
@@ -31,7 +31,7 @@ base class WriteLog extends MemoryBarStore {
   }
 
   @override
-  Future<void> saveShelf(Records records) {
+  Future<void> saveShelf(ShelfIndex records) {
     calls.add('shelf');
     return super.saveShelf(records);
   }

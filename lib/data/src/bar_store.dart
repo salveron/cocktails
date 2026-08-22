@@ -9,15 +9,15 @@ import 'package:cocktails/domain/domain.dart';
 import 'sourced_issue.dart';
 
 /// The index: every bar and which is open, no collection in it (NFR-2).
-typedef Records = ({List<Bar> bars, String? openId});
+typedef ShelfIndex = ({List<Bar> bars, String? openId});
 
 abstract interface class BarStore {
-  Future<Outcome<Records>> loadShelf();
+  Future<Outcome<ShelfIndex>> loadShelf();
 
   /// Name and unit ride along too; the index stays their authority (ADR 21).
-  Future<Outcome<BarPayload>> loadBar(String id);
+  Future<Outcome<BarContent>> loadBar(String id);
 
-  Future<void> saveShelf(Records records);
+  Future<void> saveShelf(ShelfIndex records);
 
   /// One file, no other bar's bytes read or rewritten (NFR-2).
   Future<void> saveBar(Bar bar, Collection collection);

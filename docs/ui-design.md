@@ -229,7 +229,7 @@ learns nothing about where a row stands.
 
 ## Vocabulary editing
 
-`VocabularyList`: search, sort orders, three faces, add button. Screen provides row display, 
+`EntryCardList`: search, sort orders, three faces, add button. Screen provides row display, 
 tap handler, sort key. Ingredients: stock chip + stock order. Tags: tag + palette order. 
 Optional filter row narrows by custom predicate.
 
@@ -426,7 +426,7 @@ Behind Settings. Tab per vocab (Recipe, Ingredient, FR-VOC-4). Tag drawn as chip
 
 ## Units
 
-Behind Settings. Form, not `VocabularyList` (no search/sort). Rows editable in place 
+Behind Settings. Form, not `EntryCardList` (no search/sort). Rows editable in place 
 (name, plural). One Save for screen. Rename propagates to lines.
 - **Self-growing**: empty row at bottom; typing adds next; erasing spare removes it.
 - **`part`/`ml`/`oz` locked** (the ratios and the global unit anchored, ADR 09/17); plurals still 
@@ -539,7 +539,7 @@ screen, not the row that starts it.
   early. The two tag vocabularies share one count but keep their own runs in the body, labelled, 
   since one name may stand in both ([ADR 07](adr/07-tag-colour.md)); an empty run is left out rather 
   than heading nothing, and a kind the file holds none of offers no chevron and answers no tap.
-- **The cards run to the width of the fields above them.** `VocabularyRow` insets itself for the 
+- **The cards run to the width of the fields above them.** `EntryCard` insets itself for the 
   lists it was written for, which on a form that already pads its own page left the counts standing 
   narrower than the name field and the segments — a difference with nothing behind it. The row takes 
   its margin as an argument, defaulted to the lists' own, so the inset is still said in one place.

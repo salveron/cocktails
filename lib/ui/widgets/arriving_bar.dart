@@ -10,8 +10,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'editor_form.dart';
-import 'telling.dart';
-import 'vocabulary_list.dart';
+import 'entry_list.dart';
+import 'failures.dart';
 
 /// A file off the system's picker, decoded and judged before anything is done
 /// with it (FR-DAT-3/4). Null where nothing came back to judge: picking nothing
@@ -68,14 +68,6 @@ class RefusedFile extends StatelessWidget {
   }
 }
 
-/// The pull a guest bar's lists answer (FR-BAR-5): its source asked again,
-/// whatever way it came — a newer file, for the file transport. Null on an
-/// owned bar, which has no source. `RefreshFailure` meets what it comes to.
-Future<void> Function()? refreshOf(WidgetRef ref, Bar? open) {
-  if (open == null || open.isOwned) return null;
-  return () => ref.read(shelfProvider.notifier).refresh(open.id);
-}
-
 /// Everything the file carries, kind by kind, each card opening to every name
 /// behind its count: a reader agreeing to a collection is owed sight of it, and
 /// a list cut short is where the entry they came looking for would have been.
@@ -95,13 +87,13 @@ class _BarHoldingsState extends State<BarHoldings> {
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
-      for (final holding in _holdingsOf(widget.arriving)) _card(holding),
+      for (final holding in _holdingsOf(widget.arriving)) _holdingCard(holding),
     ],
   );
 
   /// Count as the title, the names as the line under it, the whole list when
   /// opened. A kind holding none offers no chevron and answers no tap.
-  Widget _card(_Holding holding) {
+  Widget _holdingCard(_HoldingGroup holding) {
     final open = _open.contains(holding.kind);
     final empty = holding.count == 0;
     return ExpandingRow(
@@ -119,8 +111,8 @@ class _BarHoldingsState extends State<BarHoldings> {
 }
 
 /// One kind the file carries, and the names behind it.
-final class _Holding {
-  const _Holding(this.kind, this.runs);
+final class _HoldingGroup {
+  const _HoldingGroup(this.kind, this.runs);
 
   final Holding kind;
 
@@ -147,9 +139,9 @@ const _lineNames = 24;
 /// What the file amounts to, in [Holding]'s own order and under its own nouns —
 /// the same four a bar card counts. Each kind is named and ordered as the
 /// screen managing it does, so a card here reads as the list it stands for.
-List<_Holding> _holdingsOf(Collection collection) => [
+List<_HoldingGroup> _holdingsOf(Collection collection) => [
   for (final kind in Holding.values)
-    _Holding(kind, switch (kind) {
+    _HoldingGroup(kind, switch (kind) {
       Holding.recipe => [_run(collection.recipes.map((it) => it.name))],
       Holding.ingredient => [_run(collection.ingredients.map((it) => it.name))],
       Holding.tag => [

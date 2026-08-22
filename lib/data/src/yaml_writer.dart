@@ -6,7 +6,7 @@ library;
 import 'package:cocktails/domain/domain.dart';
 import 'package:yaml/yaml.dart';
 
-import 'bar_store.dart' show Records;
+import 'bar_store.dart' show ShelfIndex;
 
 /// The schema version the app reads and writes — the bar's file and the index
 /// alike, one number for the whole on-disk layout (ADR 21).
@@ -21,7 +21,7 @@ final _flowUnsafe = RegExp(r'[,\[\]{}:]');
 
 /// One bar's file: the owner's [name] for it, the [display] whoever establishes
 /// a bar from this carries over, and the collection (ADR 21).
-String encodeBar(BarPayload payload) {
+String encodeBar(BarContent payload) {
   final collection = payload.collection;
   final settings = collection.settings;
   final sections = [
@@ -95,7 +95,7 @@ List<String> _recipeEntry(Recipe recipe, List<Unit> units) => [
 /// The index: every bar's record and which is open, in the same canonical form
 /// a bar's file takes. Device state rather than an export — it travels nowhere
 /// (docs/architecture.md#data-format).
-String encodeShelf(Records records) {
+String encodeShelf(ShelfIndex records) {
   final open = records.openId;
   final sections = [
     'format: $storeFormatVersion\n'
@@ -111,21 +111,21 @@ List<String> _barEntry(Bar bar) {
   final refreshed = bar.refreshed;
   final updated = bar.updated;
   final source = bar.source;
-  final holds = bar.holds;
+  final summary = bar.summary;
   return [
     _flowMap([
       'id: ${_scalar(bar.id, inFlow: true)}',
       'name: ${_scalar(bar.name, inFlow: true)}',
       'mode: ${bar.mode.token}',
       'display: ${bar.display.token}',
-      if (bar.shopping != const Shopping())
+      if (bar.shopping != const ShoppingSettings())
         'shopping: ${_shopping(bar.shopping)}',
       if (bar.offers.isNotEmpty)
         'offers: [${bar.offers.map(_offer).join(', ')}]',
       // Quoted: a timestamp's colons would end the scalar in flow context.
       if (refreshed != null) 'refreshed: ${_stamp(refreshed)}',
       if (updated != null) 'updated: ${_stamp(updated)}',
-      if (holds != null) 'holds: ${_holds(holds)}',
+      if (summary != null) 'holds: ${_holds(summary)}',
       if (source != null) 'source: ${_source(source)}',
     ]),
   ];
@@ -137,11 +137,11 @@ String _stamp(DateTime at) =>
 /// Whole once written at all, the way a summary is: the block is left off while
 /// nothing in it has moved, and a reader hand-editing one key should find the
 /// other four beside it rather than have to know what they defaulted to.
-String _shopping(Shopping shopping) => _flowMap([
+String _shopping(ShoppingSettings shopping) => _flowMap([
   'aim: ${shopping.aiming}',
   'budget: ${shopping.budget}',
   'low: ${shopping.restocking}',
-  'most: ${shopping.most}',
+  'most: ${shopping.keptPerSize}',
   'optional: ${shopping.buyingOptional}',
 ]);
 

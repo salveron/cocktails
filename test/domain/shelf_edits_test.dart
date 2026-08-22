@@ -31,7 +31,7 @@ void main() {
       final shelf = shelfOf(openId: '5f2c9a').withCollection(_gin, _at);
       final written = shelf.barWithId('5f2c9a')!;
       expect(written.updated, _at);
-      expect(written.holds, holdingsOf(_gin));
+      expect(written.summary, summaryOf(_gin));
       expect(shelf.barWithId('b3e1d7')!.updated, isNull);
     });
 
@@ -161,7 +161,7 @@ void main() {
         collection: _gin,
       ).refreshedWith('b3e1d7', payload, now);
       expect(shelf.collection, _gin);
-      expect(shelf.barWithId('b3e1d7')?.holds, holdingsOf(_rum));
+      expect(shelf.barWithId('b3e1d7')?.summary, summaryOf(_rum));
       expect(shelf.barWithId('b3e1d7')?.refreshed, now);
     });
 
@@ -171,7 +171,7 @@ void main() {
           openId: openId,
           collection: _gin,
         ).refreshedWith('b3e1d7', payload, now);
-        expect(shelf.barWithId('b3e1d7')?.holds, holdingsOf(_rum));
+        expect(shelf.barWithId('b3e1d7')?.summary, summaryOf(_rum));
       }
     });
 

@@ -49,7 +49,7 @@ stay on the device. The reading unit leaves the collection and lives on the bar.
   to take it. It still travels in the file, inside `settings:` where a reader expects it, as a
   starting value for whoever establishes a bar from it.
 - **Establishing takes the file's `name:` and `display`; refreshing keeps the bar's.** One
-  difference, at two call sites, spelled by the type: a decode answers a `BarPayload` and the caller
+  difference, at two call sites, spelled by the type: a decode answers a `BarContent` and the caller
   says what becomes of each of its three parts. `Bar.refreshedAt` cannot reach either — it takes the
   collection and the stamp and nothing else — so no refresh can lose a reader's pick by forgetting
   to keep it. Founding is where a name is chosen, and the caller passes one in: `addOwnedBar`,

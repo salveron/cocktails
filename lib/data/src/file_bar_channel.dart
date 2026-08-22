@@ -24,7 +24,7 @@ final class FileBarChannel implements BarChannel {
   /// [source] goes unread: which document answers is the reader's judgement
   /// (ADR 21) — a decode already answers in [Outcome].
   @override
-  Future<Outcome<BarPayload>?> fetch(BarSource source) async {
+  Future<Outcome<BarContent>?> fetch(BarSource source) async {
     final String? text;
     try {
       text = await _pick();

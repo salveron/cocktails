@@ -58,6 +58,13 @@ class RefreshFailure extends ConsumerWidget {
   }
 }
 
+/// The pull a guest bar's lists answer (FR-BAR-5), null on an owned bar which
+/// has no source. [RefreshFailure] meets what it comes to.
+Future<void> Function()? refreshOf(WidgetRef ref, Bar? open) {
+  if (open == null || open.isOwned) return null;
+  return () => ref.read(shelfProvider.notifier).refresh(open.id);
+}
+
 /// What a refresh of [bar] came to, in the app's own words, and null where
 /// there is nothing to report — no ask, one still out, or one that landed, which
 /// the reader's own lists answer better than a sentence. The one wording, met as
@@ -85,8 +92,7 @@ void say(ScaffoldMessengerState messenger, String text) =>
 
 /// Runs [action] and answers whether it got through, [refusal] leading the
 /// snackbar where it did not. Every failure speaks, not only the `Exception`s:
-/// what is not caught reaches a reader as nothing happening at all, which is
-/// the one outcome worse than a refusal.
+/// nothing caught would read as nothing happening, the one outcome worse.
 Future<bool> wentThrough(
   ScaffoldMessengerState messenger,
   String refusal,

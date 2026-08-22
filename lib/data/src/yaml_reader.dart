@@ -173,7 +173,7 @@ Bar? _readBar(YamlNode node, List<Object> path, List<ValidationIssue> issues) {
     source: source,
     refreshed: refreshed,
     updated: updated,
-    holds: _readHolds(node.nodes['holds'], [...path, 'holds'], issues),
+    summary: _readHolds(node.nodes['holds'], [...path, 'holds'], issues),
   );
 }
 
@@ -181,12 +181,12 @@ Bar? _readBar(YamlNode node, List<Object> path, List<ValidationIssue> issues) {
 /// 24): a record written before any of it could be set carries none of them and
 /// reads as the answer the app gave then. Whether the numbers make sense is
 /// `validateShelf`'s, this being the one place they are merely read.
-Shopping _readShopping(
+ShoppingSettings _readShopping(
   YamlNode? node,
   List<Object> path,
   List<ValidationIssue> issues,
 ) {
-  const standing = Shopping();
+  const standing = ShoppingSettings();
   if (node == null) return standing;
   if (node is! YamlMap) {
     _report(issues, path, 'shopping must be a mapping', node);
@@ -198,11 +198,11 @@ Shopping _readShopping(
       _readBool(node, key, path, issues) ?? standing;
   int count(String key, int standing) =>
       _readInt(node, key, path, issues) ?? standing;
-  return Shopping(
+  return ShoppingSettings(
     aiming: flag('aim', standing.aiming),
     budget: count('budget', standing.budget),
     restocking: flag('low', standing.restocking),
-    most: count('most', standing.most),
+    keptPerSize: count('most', standing.keptPerSize),
     buyingOptional: flag('optional', standing.buyingOptional),
   );
 }

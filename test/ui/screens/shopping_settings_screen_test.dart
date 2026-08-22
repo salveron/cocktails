@@ -14,7 +14,7 @@ import '../harness.dart';
 void main() {
   Future<MemoryBarStore> pumpShoppingSettings(
     WidgetTester tester, [
-    Shopping shopping = const Shopping(),
+    ShoppingSettings shopping = const ShoppingSettings(),
   ]) => pumpOver(
     tester,
     const ShoppingSettingsScreen(),
@@ -29,14 +29,19 @@ void main() {
     matching: find.byType(Switch),
   );
 
-  Shopping asked(MemoryBarStore store) =>
+  ShoppingSettings asked(MemoryBarStore store) =>
       store.savedShelf!.bars.single.shopping;
 
   group('shopping settings', () {
     testWidgets('every control opens where the record stands', (tester) async {
       await pumpShoppingSettings(
         tester,
-        const Shopping(aiming: true, budget: 3, most: 50, restocking: true),
+        const ShoppingSettings(
+          aiming: true,
+          budget: 3,
+          keptPerSize: 50,
+          restocking: true,
+        ),
       );
       expect(find.text('Baskets rank by how many'), findsNothing);
       expect(
@@ -71,7 +76,7 @@ void main() {
     ) async {
       final store = await pumpShoppingSettings(tester);
       await tap(tester, find.text('50'));
-      expect(asked(store).most, 50);
+      expect(asked(store).keptPerSize, 50);
     });
 
     testWidgets('the budget the screen opens at (FR-DIS-6)', (tester) async {

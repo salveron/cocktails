@@ -8,7 +8,7 @@ FR-DIS-6: purchases of ≤N ingredients unlocking most missing recipes, ranked. 
 
 ## Decision
 
-**`purchasesWithin` returns best `most` baskets per size, `most` default 25.**
+**`purchasesWithin` returns best `keptPerSize` baskets per size, `keptPerSize` default 25.**
 
 - Baskets weighed by recipe count during search, named only if returned: 75 objects at N=3 instead of 35,000.
 - **Per size, not overall**: global cap fills with large baskets, buries cheap wins. Per-size keeps best of each; screen free to read as ranked list or section per size.
@@ -25,15 +25,15 @@ FR-DIS-6: purchases of ≤N ingredients unlocking most missing recipes, ranked. 
 
 - 400 recipes at N=3 answers in **~140 ms**, from 6.8 s. The performance test pins a regression
   guard rather than a stopwatch, since CI machines vary.
-- `most` is a parameter, so a screen wanting a longer list asks for one. The default is the domain's
-  guess at what a phone can show, not a limit on what the search can find.
+- `keptPerSize` is a parameter, so a screen wanting a longer list asks for one. The default is the
+  domain's guess at what a phone can show, not a limit on what the search can find.
 - The optimizer no longer promises *every* purchase worth making, only the best few of each size.
-  Anything that needs the whole space — a "surprise me" over purchases, say — must raise `most`
-  and pay for it.
+  Anything that needs the whole space — a "surprise me" over purchases, say — must raise
+  `keptPerSize` and pay for it.
 - The best few are all a screen can narrow. The shopping tag filter (FR-DIS-10) sifts this list rather
   than the search behind it, so a basket cut here for ranking poorly overall is offered under no tag it
-  would have led — a niche category can read empty while a good basket for it exists. `most` is the
-  relief, and re-running the search over the tagged recipes alone is the answer if it ever is not.
+  would have led — a niche category can read empty while a good basket for it exists. `keptPerSize` is
+  the relief, and re-running the search over the tagged recipes alone is the answer if it ever is not.
 - Cost still grows with the cube of the pool of out-of-stock ingredients, not with the recipe count. A
   collection short of far more ingredients than this one will cost more, and the budget selector is the
   relief: N=1 is linear and N=2 quadratic.

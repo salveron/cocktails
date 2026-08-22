@@ -33,28 +33,28 @@ final class BarWriter {
   const BarWriter(this._controller);
 
   Future<void> setSettings(Settings settings) =>
-      _edit((collection) => collection.withSettings(settings));
+      _commit((collection) => collection.withSettings(settings));
 
   /// Units vocabulary whole; renames reach measured lines in one edit (FR-VOC-5).
   Future<void> setUnits(List<UnitEdit> units) =>
-      _edit((collection) => collection.withUnits(units));
+      _commit((collection) => collection.withUnits(units));
 
   /// Adds/replaces ingredient; every line that named it follows (FR-VOC-1).
   Future<void> upsertIngredient(Ingredient ingredient, {String? replacing}) =>
-      _edit(
+      _commit(
         (collection) =>
             collection.withIngredient(ingredient, replacing: replacing),
       );
 
   Future<void> removeIngredient(String name) =>
-      _edit((collection) => collection.withoutIngredient(name));
+      _commit((collection) => collection.withoutIngredient(name));
 
   Future<void> setStock(String ingredient, StockLevel stock) =>
-      _edit((collection) => collection.withStock(ingredient, stock));
+      _commit((collection) => collection.withStock(ingredient, stock));
 
   /// Upserts tag; [replacing] renames first so all wearers follow.
   Future<void> upsertTag(TagKind kind, Tag tag, {String? replacing}) =>
-      _edit((collection) {
+      _commit((collection) {
         final renamed = replacing == null || replacing == tag.name
             ? collection
             : collection.withTagRenamed(kind, replacing, tag.name);
@@ -62,14 +62,14 @@ final class BarWriter {
       });
 
   Future<void> removeTag(TagKind kind, String name) =>
-      _edit((collection) => collection.withoutTag(kind, name));
+      _commit((collection) => collection.withoutTag(kind, name));
 
   /// Adds/replaces recipe; auto-creates missing ingredients; lines canonicalize (ADR-08, ADR-10).
   Future<void> upsertRecipe(
     Recipe recipe, {
     List<Ingredient> addingIngredients = const [],
     String? replacing,
-  }) => _edit((collection) {
+  }) => _commit((collection) {
     var edited = collection;
     for (final ingredient in addingIngredients) {
       edited = edited.withIngredient(ingredient);
@@ -81,8 +81,8 @@ final class BarWriter {
   });
 
   Future<void> removeRecipe(String name) =>
-      _edit((collection) => collection.withoutRecipe(name));
+      _commit((collection) => collection.withoutRecipe(name));
 
-  Future<void> _edit(Collection Function(Collection) edit) =>
+  Future<void> _commit(Collection Function(Collection) edit) =>
       _controller.editCollection(edit);
 }

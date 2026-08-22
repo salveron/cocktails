@@ -16,24 +16,24 @@ final class YamlCodec {
   const YamlCodec();
 
   /// Canonical text: fixed key order, fixed indent, no comments.
-  String encode(BarPayload payload) => encodeBar(payload);
+  String encode(BarContent payload) => encodeBar(payload);
 
-  String encodeIndex(Records records) => encodeShelf(records);
+  String encodeIndex(ShelfIndex records) => encodeShelf(records);
 
   /// Never throws — every failure is a [Rejected] carrying sourced issues.
   /// Answers all three of a bar's parts and leaves who keeps which to the
   /// caller, which is where an import and a refresh differ (ADR 21).
-  Outcome<BarPayload> decode(String yaml) => _decode(
+  Outcome<BarContent> decode(String yaml) => _decode(
     yaml,
     'format, name, settings, units, ingredients, ingredient_tags, '
     'recipe_tags, recipes',
-    _readPayload,
+    _readContent,
   );
 
   /// The index, judged by `validateShelf` as a bar's file is by
   /// `validateCollection` — one canonical form, two documents.
-  Outcome<Records> decodeIndex(String yaml) =>
-      _decode(yaml, 'format, open, bars', _readRecords);
+  Outcome<ShelfIndex> decodeIndex(String yaml) =>
+      _decode(yaml, 'format, open, bars', _readShelfIndex);
 
   Outcome<T> _decode<T>(
     String yaml,
@@ -82,7 +82,7 @@ final class YamlCodec {
 
   /// A format-1 file carries no `name:` and its `made:` was dropped by the
   /// reader; the caller names the bar it establishes from one (ADR 21).
-  static BarPayload? _readPayload(YamlMap root, List<ValidationIssue> issues) {
+  static BarContent? _readContent(YamlMap root, List<ValidationIssue> issues) {
     final parts = readBarParts(root);
     issues.addAll(parts.issues);
     if (issues.isNotEmpty) return null;
@@ -114,7 +114,10 @@ final class YamlCodec {
     );
   }
 
-  static Records? _readRecords(YamlMap root, List<ValidationIssue> issues) {
+  static ShelfIndex? _readShelfIndex(
+    YamlMap root,
+    List<ValidationIssue> issues,
+  ) {
     final parts = readShelfParts(root);
     issues.addAll(parts.issues);
     if (issues.isNotEmpty) return null;

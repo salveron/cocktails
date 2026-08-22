@@ -69,14 +69,14 @@ final class Refreshes extends Notifier<Map<String, RefreshState>> {
   RefreshState? standing(String id) => state[id];
 
   /// The reader has heard it — from the banner or from the screen that asked.
-  void told(String id) => _stand(id, null);
+  void told(String id) => _setStanding(id, null);
 
   /// Marks [id] reaching, clearing what its last ask came to, and answers the
   /// token this one is known by.
   int ask(String id) {
     final token = (_tokens[id] ?? 0) + 1;
     _tokens[id] = token;
-    _stand(id, const Reaching());
+    _setStanding(id, const Reaching());
     return token;
   }
 
@@ -85,11 +85,11 @@ final class Refreshes extends Notifier<Map<String, RefreshState>> {
   bool settled(String id, int token, [RefreshState? failure]) {
     if (_tokens[id] != token) return false;
     _tokens.remove(id);
-    _stand(id, failure);
+    _setStanding(id, failure);
     return true;
   }
 
-  void _stand(String id, RefreshState? standing) {
+  void _setStanding(String id, RefreshState? standing) {
     if (standing == null && !state.containsKey(id)) return;
     final next = {...state}..remove(id);
     if (standing != null) next[id] = standing;

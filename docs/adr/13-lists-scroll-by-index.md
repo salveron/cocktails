@@ -15,13 +15,13 @@ height to compute an offset from. The app carries no scroll machinery at all tod
 
 ## Decision
 
-**`VocabularyList` scrolls to row by index, on `scrollable_positioned_list` pinned exactly.**
+**`EntryCardList` scrolls to row by index, on `scrollable_positioned_list` pinned exactly.**
 
 - `ScrollablePositionedList.builder` replaces `ListView.builder` in one file; all four lists scroll alike.
-- Screen reveals **name**, not index/offset. `_placed` (sort order) turns name to index; package types stay in `vocabulary_list.dart`.
+- Screen reveals **name**, not index/offset. `_placed` (sort order) turns name to index; package types stay in `entry_list.dart`.
 - Ergonomic dependency (platform: `path_provider`, format: `yaml`, state: `riverpod`, lints). ADR 01 fixed stack, not additions; bar: *confined to one file, way out written down*.
 - 0.3.8 three years old, touches sliver internals. **Pinned exactly** (not caret): quiet package needs no release stream; next one read before taken.
-- Fallback recorded: if package breaks, float revealed row to front of `_placed`, scroll to nothing — few lines in `_place`, row leaves sorted position (worse reading, not broken), nothing outside `vocabulary_list.dart` changes.
+- Fallback recorded: if package breaks, float revealed row to front of `_placed`, scroll to nothing — few lines in `_place`, row leaves sorted position (worse reading, not broken), nothing outside `entry_list.dart` changes.
 
 ## Alternatives considered
 
@@ -35,7 +35,7 @@ height to compute an offset from. The app carries no scroll machinery at all tod
 - A fifth dependency, and a bar for the sixth.
 - All four lists change scroll implementation, though only the recipes reveal a row; scroll physics
   becomes the package's rather than `ListView`'s.
-- `VocabularyList` gains the ability to reveal a name. The recipes screen learns no scrolling.
+- `EntryCardList` gains the ability to reveal a name. The recipes screen learns no scrolling.
 - **A reveal is by index only where the row is out of view.** A row the reader can already see is
   reached in pixels, off the last measurement the package took — so a reveal asked for in the same
   frame as a height change aims at where the row *was*, and a tall card shutting above it carries

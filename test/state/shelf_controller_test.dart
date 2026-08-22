@@ -44,7 +44,7 @@ void main() {
     mode: BarMode.owner,
   ).summarised(stored, at: now);
 
-  BarPayload payloadOf(Collection collection, {FixedUnit? display}) =>
+  BarContent payloadOf(Collection collection, {FixedUnit? display}) =>
       (name: bar.name, display: display ?? bar.display, collection: collection);
 
   late MemoryBarStore store;
@@ -768,7 +768,7 @@ recipes:
     source: const BarSource(via: Transport.file, at: 'anna.yaml', from: 'Anna'),
   );
 
-  BarPayload payloadFor(Bar bar, Collection collection) =>
+  BarContent payloadFor(Bar bar, Collection collection) =>
       (name: bar.name, display: bar.display, collection: collection);
 
   /// A shelf of [bars] with the first open, each holding what [collections]
@@ -899,7 +899,7 @@ recipes:
       // An establishing is where the reader has no pick yet (ADR 21).
       expect(founded.display, FixedUnit.oz);
       expect(collectionOf(container), arrived);
-      expect(founded.holds, holdingsOf(arrived));
+      expect(founded.summary, summaryOf(arrived));
       expect(store.savedBars[founded.id]?.$2, arrived);
     });
 
@@ -1037,18 +1037,18 @@ recipes:
       final store = twoBars();
       final container = await started(store);
       expect(store.calls, isEmpty, reason: 'no index rewritten');
-      expect(container.read(barsProvider).first.holds, holdingsOf(stored));
+      expect(container.read(barsProvider).first.summary, summaryOf(stored));
     });
 
     test('an index carrying no counts gains them at startup', () async {
       final store = uncounted();
       final container = await started(store);
-      expect(container.read(barsProvider).map((bar) => bar.holds), [
-        holdingsOf(stored),
-        holdingsOf(otherCollection),
+      expect(container.read(barsProvider).map((bar) => bar.summary), [
+        summaryOf(stored),
+        summaryOf(otherCollection),
       ]);
       expect(store.calls, ['shelf'], reason: 'written back once, for all bars');
-      expect(store.savedShelf?.bars.first.holds, holdingsOf(stored));
+      expect(store.savedShelf?.bars.first.summary, summaryOf(stored));
     });
 
     test('counting a bar is not dating an edit to it', () async {
@@ -1064,7 +1064,7 @@ recipes:
     test('the bar on show is counted where it already stands', () async {
       final store = uncounted();
       final container = await started(store);
-      expect(container.read(barsProvider).first.holds, holdingsOf(stored));
+      expect(container.read(barsProvider).first.summary, summaryOf(stored));
       // Resident from the startup load (ADR 20), so counting it costs no
       // read of its own: one each, and the open bar's is the one it opened by.
       expect(store.loads, [bar.id, other.id]);
@@ -1076,7 +1076,7 @@ recipes:
       final container = await started(store);
       // Absent rather than a row of zeroes: the card says it could not be read
       // instead of claiming the bar holds nothing.
-      expect(container.read(barsProvider).last.holds, isNull);
+      expect(container.read(barsProvider).last.summary, isNull);
     });
 
     test('a torn file is counted from what its backup holds', () async {
@@ -1086,8 +1086,8 @@ recipes:
       ], recovered: payloadFor(other, otherCollection));
       final container = await started(store);
       expect(
-        container.read(barsProvider).last.holds,
-        holdingsOf(otherCollection),
+        container.read(barsProvider).last.summary,
+        summaryOf(otherCollection),
       );
     });
 
@@ -1097,7 +1097,7 @@ recipes:
           .read(barWriterProvider)!
           .upsertIngredient(Ingredient('rye'));
       final written = container.read(barsProvider).single;
-      expect(written.holds?[Holding.ingredient], 3);
+      expect(written.summary?[Holding.ingredient], 3);
       expect(written.updated, now);
     });
   });

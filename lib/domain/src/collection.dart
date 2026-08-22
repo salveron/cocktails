@@ -418,33 +418,33 @@ final class Collection {
   final List<Ingredient> ingredients;
 
   /// Two tag vocabularies, peers of one shape; names unique within each (ADR-07).
-  final List<Tag> recipeTags;
   final List<Tag> ingredientTags;
+  final List<Tag> recipeTags;
   final List<Recipe> recipes;
 
   Collection({
     this.settings = const Settings(),
     List<Unit> units = defaultUnits,
     List<Ingredient> ingredients = const [],
-    List<Tag> recipeTags = const [],
     List<Tag> ingredientTags = const [],
+    List<Tag> recipeTags = const [],
     List<Recipe> recipes = const [],
   }) : units = List.unmodifiable(units),
        ingredients = List.unmodifiable(ingredients),
-       recipeTags = List.unmodifiable(recipeTags),
        ingredientTags = List.unmodifiable(ingredientTags),
+       recipeTags = List.unmodifiable(recipeTags),
        recipes = List.unmodifiable(recipes) {
     _requireUniqueNames('unit', this.units.spellings);
     _requireUniqueNames('ingredient', [
       for (final ingredient in this.ingredients) ...ingredient.spellings,
     ]);
     _requireUniqueNames(
-      'recipe tag',
-      this.recipeTags.map((t) => t.name).toList(),
-    );
-    _requireUniqueNames(
       'ingredient tag',
       this.ingredientTags.map((t) => t.name).toList(),
+    );
+    _requireUniqueNames(
+      'recipe tag',
+      this.recipeTags.map((t) => t.name).toList(),
     );
     _requireUniqueNames('recipe', this.recipes.map((r) => r.name).toList());
   }
@@ -453,15 +453,15 @@ final class Collection {
     Settings? settings,
     List<Unit>? units,
     List<Ingredient>? ingredients,
-    List<Tag>? recipeTags,
     List<Tag>? ingredientTags,
+    List<Tag>? recipeTags,
     List<Recipe>? recipes,
   }) => Collection(
     settings: settings ?? this.settings,
     units: units ?? this.units,
     ingredients: ingredients ?? this.ingredients,
-    recipeTags: recipeTags ?? this.recipeTags,
     ingredientTags: ingredientTags ?? this.ingredientTags,
+    recipeTags: recipeTags ?? this.recipeTags,
     recipes: recipes ?? this.recipes,
   );
 
@@ -520,8 +520,8 @@ final class Collection {
       other.settings == settings &&
       listEquals(other.units, units) &&
       listEquals(other.ingredients, ingredients) &&
-      listEquals(other.recipeTags, recipeTags) &&
       listEquals(other.ingredientTags, ingredientTags) &&
+      listEquals(other.recipeTags, recipeTags) &&
       listEquals(other.recipes, recipes);
 
   @override
@@ -529,16 +529,16 @@ final class Collection {
     settings,
     Object.hashAll(units),
     Object.hashAll(ingredients),
-    Object.hashAll(recipeTags),
     Object.hashAll(ingredientTags),
+    Object.hashAll(recipeTags),
     Object.hashAll(recipes),
   );
 
   @override
   String toString() =>
       'Collection(${ingredients.length} ingredients, '
-      '${recipeTags.length} recipe tags, '
       '${ingredientTags.length} ingredient tags, '
+      '${recipeTags.length} recipe tags, '
       '${recipes.length} recipes)';
 }
 
@@ -564,7 +564,7 @@ enum Holding {
 /// How many of each [Holding], which is all a bar list may know of a bar that
 /// is not on show ([ADR 20](../../../docs/adr/20-the-app-holds-many-bars.md)) —
 /// four numbers rather than a second collection.
-Map<Holding, int> holdingsOf(Collection collection) => {
+Map<Holding, int> summaryOf(Collection collection) => {
   Holding.recipe: collection.recipes.length,
   Holding.ingredient: collection.ingredients.length,
   // The one kind spanning two vocabularies, counted as the reader meets it:

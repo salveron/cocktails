@@ -7,7 +7,7 @@ import 'package:cocktails/domain/domain.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'bar_writer.dart';
-import 'channels.dart';
+import 'refreshes.dart';
 import 'seams.dart';
 
 /// The root: `ui/` reads through the derived providers and mutates through
@@ -38,7 +38,7 @@ final class ShelfController extends AsyncNotifier<Shelf> {
     final store = ref.watch(barStoreProvider);
     final issues = <String>[];
     final index = await store.loadShelf();
-    if (index is Rejected<Records>) issues.addAll(_described(index.issues));
+    if (index is Rejected<ShelfIndex>) issues.addAll(_described(index.issues));
     final records = switch (index) {
       Ok(:final value) => value,
       Empty() => null,
@@ -75,7 +75,7 @@ final class ShelfController extends AsyncNotifier<Shelf> {
   Future<Shelf> _summarising(BarStore store, Shelf shelf) async {
     final counted = <Bar>[];
     for (final bar in shelf.bars) {
-      if (bar.holds != null) {
+      if (bar.summary != null) {
         counted.add(bar);
       } else if (bar.id == shelf.openId) {
         counted.add(bar.summarised(shelf.collection));
@@ -122,7 +122,7 @@ final class ShelfController extends AsyncNotifier<Shelf> {
     List<String> issues,
   ) async {
     final loaded = await store.loadBar(id);
-    if (loaded is Rejected<BarPayload>) {
+    if (loaded is Rejected<BarContent>) {
       issues.addAll(_described(loaded.issues));
     }
     return switch (loaded) {
@@ -143,7 +143,7 @@ final class ShelfController extends AsyncNotifier<Shelf> {
   }
 
   /// What the optimizer is asked — beside the unit, for its reason (ADR 24).
-  Future<void> setShopping(Shopping shopping) async {
+  Future<void> setShopping(ShoppingSettings shopping) async {
     final shelf = await future;
     final bar = shelf.open;
     if (bar == null || bar.shopping == shopping) return;
@@ -171,7 +171,7 @@ final class ShelfController extends AsyncNotifier<Shelf> {
   /// Replaces the open bar's contents with a picked file's, copying what stood
   /// first (FR-DAT-3). Owned bars only — the same file is *added* as a guest bar
   /// instead (FR-BAR-7). [name] is the reader's, as a bar's name always is.
-  Future<void> replaceOpen(String name, BarPayload payload) async {
+  Future<void> replaceOpen(String name, BarContent payload) async {
     // Awaited first: the copy must be of what stood rather than of nothing.
     final shelf = await future;
     final bar = shelf.open;
@@ -207,7 +207,7 @@ final class ShelfController extends AsyncNotifier<Shelf> {
 
   /// FR-BAR-2: a new bar, owned and opened on the spot — empty, or holding a
   /// picked file (FR-BAR-7), named by the reader where the contents are not.
-  Future<void> addOwnedBar(String name, {BarPayload? from}) {
+  Future<void> addOwnedBar(String name, {BarContent? from}) {
     final collection = from?.collection ?? Collection();
     return _found(
       _newBar(name, collection, display: from?.display),
@@ -218,7 +218,7 @@ final class ShelfController extends AsyncNotifier<Shelf> {
   /// FR-BAR-3/7: another owner's bar, added from what they shared rather than
   /// imported into this device's own — the same file's other road, named by the
   /// reader as any is. Read-only (ADR 23), the source kept for a refresh.
-  Future<void> addGuestBar(String name, BarSource source, BarPayload payload) =>
+  Future<void> addGuestBar(String name, BarSource source, BarContent payload) =>
       _found(
         Bar(
           id: newBarId(),
@@ -253,7 +253,7 @@ final class ShelfController extends AsyncNotifier<Shelf> {
     // reached at all — an index carrying `cloud` before its channel lands.
     final channel = ref.read(channelsProvider)[source.via];
     final outcome = channel == null
-        ? Unreachable<BarPayload>(UnreachableReason.notFound)
+        ? Unreachable<BarContent>(UnreachableReason.notFound)
         : await channel.fetch(source);
     switch (outcome) {
       // The reader dismissed the picker: nothing was asked, so nothing
@@ -269,13 +269,13 @@ final class ShelfController extends AsyncNotifier<Shelf> {
       case Unreachable(:final why):
         refreshes.settled(id, token, RefreshUnreachable(why, _now()));
       case Ok(:final value):
-        await _land(id, token, value);
+        await _applyRefresh(id, token, value);
     }
   }
 
   /// What a refresh that answered comes to, the bar left exactly as it stood
   /// where it did not (FR-BAR-5).
-  Future<void> _land(String id, int token, BarPayload payload) async {
+  Future<void> _applyRefresh(String id, int token, BarContent payload) async {
     final shelf = await future;
     if (!ref.read(refreshesProvider.notifier).settled(id, token)) return;
     final refreshed = shelf.refreshedWith(id, payload, _now());

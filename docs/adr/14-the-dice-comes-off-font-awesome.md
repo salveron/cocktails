@@ -11,9 +11,9 @@ ADR 13 set bar for sixth dependency: *confined to one file, way out written down
 **Font Awesome `dice` on `font_awesome_flutter`, by caret.**
 
 - Two solid dice, silhouette survives at 24px. Lucide outlined pair crowds; second die reads as noise.
-- `ListDraw.icon` carries widget, not `IconData`. Font Awesome glyphs non-square; `FaIcon` drops `SizedBox` Flutter's `Icon` imposes. Keeps font name out of `vocabulary_list.dart`.
+- `RandomDraw.icon` carries widget, not `IconData`. Font Awesome glyphs non-square; `FaIcon` drops `SizedBox` Flutter's `Icon` imposes. Keeps font name out of `entry_list.dart`.
 - By caret (not pinned): steady release cadence, opposite of ADR 13's dormant package.
-- Fallback one line: any `IconData` wrapped in `Icon` is valid `ListDraw.icon`; dropping package costs glyph, not redesign.
+- Fallback one line: any `IconData` wrapped in `Icon` is valid `RandomDraw.icon`; dropping package costs glyph, not redesign.
 
 ## Alternatives considered
 
@@ -25,7 +25,7 @@ ADR 13 set bar for sixth dependency: *confined to one file, way out written down
 ## Consequences
 
 - A sixth dependency, taken under the fifth's rule. The bar stands where ADR 13 put it.
-- `ListDraw` names a widget, so any list's draw button can wear a glyph from any font without the
+- `RandomDraw` names a widget, so any list's draw button can wear a glyph from any font without the
   shared list learning which.
 - **The font costs ~302 KB, and tree-shaking will not touch it.** The style actually used shrinks
   from 414,664 to 1,596 bytes (99.6%), but the shaker only shrinks a style *some* glyph is drawn

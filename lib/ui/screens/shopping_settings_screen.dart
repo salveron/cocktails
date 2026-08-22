@@ -20,7 +20,7 @@ class ShoppingSettingsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final shopping = ref.watch(shoppingProvider);
-    void settle(Shopping edited) =>
+    void settle(ShoppingSettings edited) =>
         unawaited(ref.read(shelfProvider.notifier).setShopping(edited));
     return Scaffold(
       appBar: AppBar(title: const Text('Shopping')),
@@ -42,9 +42,10 @@ class ShoppingSettingsScreen extends ConsumerWidget {
           const SectionLabel('Baskets'),
           Segments(
             values: basketCounts,
-            selected: shopping.most,
-            labelOf: (most) => '$most',
-            onPick: (most) => settle(shopping.copyWith(most: most)),
+            selected: shopping.keptPerSize,
+            labelOf: (keptPerSize) => '$keptPerSize',
+            onPick: (keptPerSize) =>
+                settle(shopping.copyWith(keptPerSize: keptPerSize)),
           ),
           const FieldNote('How many of each size the list offers.'),
           const SectionLabel('Opens at'),

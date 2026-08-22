@@ -4,9 +4,9 @@ import 'package:cocktails/state/state.dart';
 import 'package:cocktails/ui/app.dart';
 import 'package:cocktails/ui/theme.dart';
 import 'package:cocktails/ui/widgets/color_chip.dart';
+import 'package:cocktails/ui/widgets/entry_list.dart';
 import 'package:cocktails/ui/widgets/search_field.dart';
 import 'package:cocktails/ui/widgets/tag_choices.dart';
-import 'package:cocktails/ui/widgets/vocabulary_list.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -90,7 +90,7 @@ final recipeCollection = Collection(
 Bar testBar({
   String name = 'Home bar',
   FixedUnit display = FixedUnit.part,
-  Shopping shopping = const Shopping(),
+  ShoppingSettings shopping = const ShoppingSettings(),
 }) => Bar(
   id: 'test01',
   name: name,
@@ -365,10 +365,9 @@ Color? cardFill(WidgetTester tester, String name) => tester
 bool cardOpen(WidgetTester tester, String name) {
   final rows = find.ancestor(
     of: find.text(name),
-    matching: find.byType(VocabularyRow),
+    matching: find.byType(EntryCard),
   );
-  return tester.any(rows) &&
-      tester.widget<VocabularyRow>(rows.first).body != null;
+  return tester.any(rows) && tester.widget<EntryCard>(rows.first).body != null;
 }
 
 /// Which of [names] are reading open, in the order asked.

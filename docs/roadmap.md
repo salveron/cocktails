@@ -72,12 +72,12 @@ Milestones in dependency order. Scope: [requirements.md](requirements.md); desig
 
 ## Phase 7 — The app holds many bars
 
-- [x] **M30** — Shelf domain. Delivers: [ADR 20](adr/20-the-app-holds-many-bars.md), Bar, BarMode, Transport, BarSource, Offer, BarPayload, Shelf, ShelfEdits, validateShelf, guest refusal [ADR 23](adr/23-nothing-writes-a-guest-bar.md). Depends: M29.
+- [x] **M30** — Shelf domain. Delivers: [ADR 20](adr/20-the-app-holds-many-bars.md), Bar, BarMode, Transport, BarSource, Offer, BarContent, Shelf, ShelfEdits, validateShelf, guest refusal [ADR 23](adr/23-nothing-writes-a-guest-bar.md). Depends: M29.
 - [x] **M31** — One file per bar. Delivers: [ADR 21](adr/21-the-file-carries-one-bar.md), BarStore, shelf.yaml, bars/<id>.yaml, atomic write, rotation, format 2 lands whole, cocktails.yaml migration. Depends: M30.
 - [x] **M32** — Shelf in state. Delivers: ShelfController, collectionProvider derived, openBarProvider, barWriterProvider (null for guest), export/import on open bar only, amend [ADR 23](adr/23-nothing-writes-a-guest-bar.md). Depends: M31.
-- [x] **M33** — Bars screen. Delivers: [ui-design.md](ui-design.md#bars), Switch bar in gear, openBar/addOwnedBar/renameBar/removeBar, card expands, holdingsOf/Holding enum, loadIssues (FR-BAR-1/2). Depends: M32.
+- [x] **M33** — Bars screen. Delivers: [ui-design.md](ui-design.md#bars), Switch bar in gear, openBar/addOwnedBar/renameBar/removeBar, card expands, summaryOf/Holding enum, loadIssues (FR-BAR-1/2). Depends: M32.
 - [x] **M33a** — Load answers once. Delivers: collectionProvider as plain Provider, spinner moved to _Home, no AsyncData wrapper, loadIssuesProvider as Notifier, Bar.copyWith narrowed, widget test harness updated. Depends: M33.
-- [x] **M33b** — The bar list says more, and says it at once. Delivers: `Bar.updated` and `Bar.holds`
+- [x] **M33b** — The bar list says more, and says it at once. Delivers: `Bar.updated` and `Bar.summary`
   on the record with `Bar.summarised` their one writer, both optional keys on the index and neither
   in a bar's file; the startup pass that counts a shelf written before summaries existed; the card
   subtitle (Loaded · Updated/Synced, coarse, silent where undated); the owner/guest chip off scheme
@@ -110,7 +110,7 @@ Milestones in dependency order. Scope: [requirements.md](requirements.md); desig
   Delivers: `renameBar` on a guest bar, the file's `name:` a starting value like `display`, amending
   [ADR 21](adr/21-the-file-carries-one-bar.md) and [ADR 23](adr/23-nothing-writes-a-guest-bar.md);
   the import review folded into `BarFormScreen.founding()`/`.importing(review)`; Settings' Import row
-  becoming **Refresh** on a guest bar (FR-BAR-5); `banners.dart` → `telling.dart`, the one home for
+  becoming **Refresh** on a guest bar (FR-BAR-5); `banners.dart` → `failures.dart`, the one home for
   what the app could not do. Depends: M36.
 - [x] **M36b** — One word per thing. Delivers: **Ingredients** where Inventory stood — screen,
   requirements (FR-INV-1/2/3 → FR-ING-1/2/3), every doc — and "ingredient" where "bottle" stood in
@@ -169,13 +169,23 @@ what M36f settles.
   now take the value `build` already watches instead of reading the provider a second time;
   `refreshOf` takes the watched bar rather than watching `openBarProvider` again itself; `BarsScreen`
   ticks its own "ago" reading on a timer, `clockProvider` being a seam for the clock rather than a
-  stream of ticks. `VocabularyList`'s narrowing-detection and row placement, and `RevealServing`'s
+  stream of ticks. `EntryCardList`'s narrowing-detection and row placement, and `RevealServing`'s
   one-shot reveal, no longer mutate state as a side effect of `build` — reactive on the actual input
   that moves them, a post-frame callback standing in for `build` reading and clearing the reveal.
   Depends: M36g.
-- [ ] **M36i** — One word per thing. Delivers: M36b's treatment applied to what M33–M36 left —
-  "vocabulary" retired where it names no vocabulary, the write gate given one idiom, and the bar
-  shapes named apart. Depends: M36h.
+- [x] **M36i** — One word per thing. Delivers: `VocabularyList`/`VocabularyRow` → `EntryCardList`/
+  `EntryCard`, `vocabulary:` → `tags:` wherever it means `List<Tag>`; the write gate converges on
+  holding the writer itself rather than a bool re-read with `!` (`tags_screen`, `units_screen`);
+  `BarPayload` → `BarContent`, `Records` → `ShelfIndex`; the optimizer's `shelves`/`_shelve` off
+  `Shelf`'s own name, `Shopping` → `ShoppingSettings`, `ShoppingAsk` → `ShoppingQuery`, `most` →
+  `keptPerSize` (the wire token stays `most`); a run of local collisions settled — `_Dot` →
+  `_Swatch`, `_Holding` → `_HoldingGroup`, `EditorScaffold.readOnly` → `writable`, `ListDraw` →
+  `RandomDraw`, `formatMeasure` → `measureText`, the three `_land`s told apart as `Reveals.land`,
+  `_AppShellState._cross` and `ShelfController._applyRefresh`, five duplicated `_row`/`_card`/`_edit`
+  methods disambiguated per screen; `Holding`/`holds`/`holdingsOf`/`summarised` converge on
+  `summary`/`summaryOf`; `Collection`'s tag field order now matches `validateCollection` and the
+  file format; `vocabulary_list.dart` → `entry_list.dart`, `channels.dart` → `refreshes.dart`,
+  `telling.dart` → `failures.dart`, with `refreshOf` moved into the last of those. Depends: M36h.
 - [ ] **M36j** — Files find their size. Delivers: the four files over 600 lines split by subject,
   widget-returning methods become widget classes. Depends: M36i.
 - [ ] **M36k** — The tests get a home. Delivers: `test/support/` as the fixture home, colliding

@@ -11,13 +11,12 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../destinations.dart';
 import '../palette.dart';
 import '../theme.dart';
-import '../widgets/arriving_bar.dart';
 import '../widgets/color_chip.dart';
 import '../widgets/editor_form.dart';
 import '../widgets/empty_state.dart';
-import '../widgets/telling.dart';
+import '../widgets/entry_list.dart';
+import '../widgets/failures.dart';
 import '../widgets/vocabulary_dialogs.dart';
-import '../widgets/vocabulary_list.dart';
 import 'recipe_form_screen.dart';
 
 /// A card's reading of its own amounts: the factor it multiplies them by
@@ -113,7 +112,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
     final availability = ref.watch(availabilityProvider);
     ref.listen(revealProvider, (_, request) => serveReveal(request));
     final collection = ref.watch(collectionProvider);
-    final vocabulary = ref.watch(recipeTagsProvider);
+    final tags = ref.watch(recipeTagsProvider);
     // Null on a guest bar; every control that writes is built from it, so the
     // reading half of the screen goes on untouched (FR-BAR-4, ADR 23).
     final writer = ref.watch(barWriterProvider);
@@ -123,14 +122,14 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
     // watch there is one whichever rows got built happen to register, not one
     // this build declares.
     final resting = _resting(open?.display ?? FixedUnit.part);
-    return VocabularyList<Recipe>(
+    return EntryCardList<Recipe>(
       entries: collection.recipes,
       nameOf: (recipe) => recipe.name,
       spellingsOf: (recipe) => _spellings(collection, recipe),
-      rowOf: (recipe) => _row(
+      rowOf: (recipe) => _recipeRow(
         writer,
         collection,
-        vocabulary,
+        tags,
         recipe,
         availability[recipe.name],
         resting: resting,
@@ -141,7 +140,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
       noun: 'recipe',
       plural: 'recipes',
       filter: tagFilter(
-        vocabulary: vocabulary,
+        tags: tags,
         picked: _picked,
         onToggle: (tag) => setState(() => _picked.toggle(tag)),
         tagsOf: (recipe) => recipe.tags,
@@ -173,7 +172,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
   /// (FR-DIS-9). Under the ingredient's own name: a line may spell it any way
   /// the vocabulary answers to (ADR 10), and a list finds its rows under
   /// theirs.
-  void _reach(Collection collection, String ingredient) => ref
+  void _goToIngredient(Collection collection, String ingredient) => ref
       .read(revealProvider.notifier)
       .ask(Destination.ingredients, collection.spellingOf(ingredient));
 
@@ -181,10 +180,10 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
   /// below. [availability] is derived from the collection this row is built
   /// from, so there; an absent one draws no chip rather than standing on an
   /// assertion.
-  Widget _row(
+  Widget _recipeRow(
     BarWriter? writer,
     Collection collection,
-    List<Tag> vocabulary,
+    List<Tag> tags,
     Recipe recipe,
     Availability? availability, {
     required _AmountView resting,
@@ -210,15 +209,15 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
                   ),
               ],
             )
-          : DottedName(recipe.name, vocabulary: vocabulary, worn: recipe.tags),
+          : DottedName(recipe.name, tags: tags, worn: recipe.tags),
       subtitle: summary.isEmpty ? null : summary,
       body: _Details(
         collection: collection,
-        vocabulary: vocabulary,
+        tags: tags,
         recipe: recipe,
         view: view,
         resting: resting,
-        onReach: (ingredient) => _reach(collection, ingredient),
+        onReach: (ingredient) => _goToIngredient(collection, ingredient),
       ),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
@@ -232,7 +231,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
             if (expanded)
               'Scale & convert': () => unawaited(_scale(recipe, resting)),
             if (writer != null) ...{
-              'Edit': () => unawaited(_edit(collection.units, recipe)),
+              'Edit': () => unawaited(_editRecipe(collection.units, recipe)),
               'Delete': () => unawaited(_delete(writer, recipe)),
             },
           }),
@@ -351,7 +350,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
   ];
 
   /// On rename, move expansion state from old name to new name.
-  Future<void> _edit(List<Unit> units, Recipe recipe) async {
+  Future<void> _editRecipe(List<Unit> units, Recipe recipe) async {
     final saved = await _openForm(units: units, original: recipe);
     if (saved == null || saved == recipe.name || !mounted) return;
     setState(() {
@@ -458,7 +457,7 @@ class _BaseChip extends StatelessWidget {
 class _Details extends StatelessWidget {
   const _Details({
     required this.collection,
-    required this.vocabulary,
+    required this.tags,
     required this.recipe,
     required this.view,
     required this.resting,
@@ -469,7 +468,7 @@ class _Details extends StatelessWidget {
   /// fixed units convert at (FR-SET-1).
   final Collection collection;
 
-  final List<Tag> vocabulary;
+  final List<Tag> tags;
   final Recipe recipe;
 
   /// How this card is reading its amounts, [resting] until asked otherwise.
@@ -484,7 +483,7 @@ class _Details extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final worn = wornInOrder(vocabulary, recipe.tags);
+    final worn = wornInOrder(tags, recipe.tags);
     final transformed = view != resting;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

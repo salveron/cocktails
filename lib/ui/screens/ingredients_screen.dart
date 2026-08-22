@@ -6,11 +6,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../destinations.dart';
-import '../widgets/arriving_bar.dart';
 import '../widgets/color_chip.dart';
 import '../widgets/empty_state.dart';
+import '../widgets/entry_list.dart';
+import '../widgets/failures.dart';
 import '../widgets/vocabulary_dialogs.dart';
-import '../widgets/vocabulary_list.dart';
 
 /// Every ingredient and what is left of it — searchable by name and by tag, one
 /// tap per stock change (FR-ING-1/2/3) — and the vocabulary itself: add, edit,
@@ -44,15 +44,16 @@ class _IngredientsScreenState extends ConsumerState<IngredientsScreen>
     // write is built from it, so none can be offered where there is nothing to
     // write with (FR-BAR-4, ADR 23).
     final writer = ref.watch(barWriterProvider);
-    final vocabulary = ref.watch(ingredientTagsProvider);
-    return VocabularyList<Ingredient>(
+    final tags = ref.watch(ingredientTagsProvider);
+    return EntryCardList<Ingredient>(
       entries: collection.ingredients,
       nameOf: (ingredient) => ingredient.name,
       spellingsOf: (ingredient) => ingredient.spellings,
-      rowOf: (ingredient) => _row(writer, collection, vocabulary, ingredient),
+      rowOf: (ingredient) =>
+          _ingredientRow(writer, collection, tags, ingredient),
       onAdd: writer == null
           ? null
-          : (query) => _add(writer, collection, vocabulary, query),
+          : (query) => _add(writer, collection, tags, query),
       reveal: revealing,
       onRefresh: refreshOf(ref, ref.watch(openBarProvider)),
       noun: 'ingredient',
@@ -62,7 +63,7 @@ class _IngredientsScreenState extends ConsumerState<IngredientsScreen>
         ...alphabetical,
       },
       filter: tagFilter(
-        vocabulary: vocabulary,
+        tags: tags,
         picked: _picked,
         onToggle: _toggle,
         tagsOf: (ingredient) => ingredient.tags,
@@ -81,25 +82,22 @@ class _IngredientsScreenState extends ConsumerState<IngredientsScreen>
   /// guest bar the stock is the owner's reading of their own shelf, so the row
   /// keeps its chip and loses both — a tap that changed it would be the reader
   /// judging one bar by another (FR-BAR-4).
-  VocabularyRow _row(
+  EntryCard _ingredientRow(
     BarWriter? writer,
     Collection collection,
-    List<Tag> vocabulary,
+    List<Tag> tags,
     Ingredient ingredient,
-  ) => VocabularyRow(
-    title: DottedName(
-      ingredient.name,
-      vocabulary: vocabulary,
-      worn: ingredient.tags,
-    ),
+  ) => EntryCard(
+    title: DottedName(ingredient.name, tags: tags, worn: ingredient.tags),
     trailing: Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         StockChip(ingredient.stock),
         if (writer != null)
           RowMenu({
-            'Edit': () =>
-                unawaited(_edit(writer, collection, vocabulary, ingredient)),
+            'Edit': () => unawaited(
+              _editIngredient(writer, collection, tags, ingredient),
+            ),
             'Delete': () => unawaited(_delete(writer, collection, ingredient)),
           }),
       ],
@@ -115,7 +113,7 @@ class _IngredientsScreenState extends ConsumerState<IngredientsScreen>
   Future<bool> _add(
     BarWriter writer,
     Collection collection,
-    List<Tag> vocabulary,
+    List<Tag> tags,
     String query,
   ) async {
     final added = await promptForIngredient(
@@ -123,7 +121,7 @@ class _IngredientsScreenState extends ConsumerState<IngredientsScreen>
       title: 'New ingredient',
       hintText: 'Ingredient name',
       validate: _entryRule(collection),
-      vocabulary: vocabulary,
+      tags: tags,
       initial: query,
     );
     if (added == null || !context.mounted) return false;
@@ -135,10 +133,10 @@ class _IngredientsScreenState extends ConsumerState<IngredientsScreen>
   }
 
   /// Atomic upsert: name, aliases and tags edited together; stock unchanged.
-  Future<void> _edit(
+  Future<void> _editIngredient(
     BarWriter writer,
     Collection collection,
-    List<Tag> vocabulary,
+    List<Tag> tags,
     Ingredient ingredient,
   ) async {
     final edited = await promptForIngredient(
@@ -146,7 +144,7 @@ class _IngredientsScreenState extends ConsumerState<IngredientsScreen>
       title: 'Edit "${ingredient.name}"',
       hintText: 'Ingredient name',
       validate: _entryRule(collection, except: ingredient.name),
-      vocabulary: vocabulary,
+      tags: tags,
       aliases: ingredient.aliases,
       chosen: ingredient.tags,
       initial: ingredient.name,

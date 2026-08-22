@@ -9,7 +9,7 @@ import 'color_chip.dart';
 /// Tag chips with [chosen] ticked (same row for ingredient tagging & filtering).
 class TagChoices extends StatelessWidget {
   const TagChoices({
-    required this.vocabulary,
+    required this.tags,
     required this.chosen,
     required this.onToggle,
     this.scrolling = false,
@@ -17,7 +17,7 @@ class TagChoices extends StatelessWidget {
     super.key,
   });
 
-  final List<Tag> vocabulary;
+  final List<Tag> tags;
   final Set<String> chosen;
   final void Function(String name) onToggle;
 
@@ -36,7 +36,7 @@ class TagChoices extends StatelessWidget {
       runSpacing: 8,
       children: [
         ?leading,
-        for (final tag in vocabulary)
+        for (final tag in tags)
           InkWell(
             onTap: () => onToggle(tag.name),
             borderRadius: chipRadius,

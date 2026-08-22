@@ -8,8 +8,8 @@ import 'package:cocktails/domain/domain.dart';
 import 'package:flutter/material.dart';
 
 import '../palette.dart';
+import 'entry_list.dart';
 import 'tag_choices.dart';
-import 'vocabulary_list.dart';
 
 /// Show first issue or nothing if empty (untouched field not an error).
 String? fieldError(String text, List<ValidationIssue> issues) =>
@@ -77,7 +77,7 @@ Future<String?> promptForName(
   initial: initial,
   aliases: null,
   color: null,
-  vocabulary: const [],
+  tags: const [],
   chosen: const [],
 ))?.entry.name.trim();
 
@@ -87,7 +87,7 @@ Future<VocabularyEntry?> promptForIngredient(
   required String title,
   required String hintText,
   required List<ValidationIssue> Function(VocabularyEntry entry) validate,
-  required List<Tag> vocabulary,
+  required List<Tag> tags,
   List<String> aliases = const [],
   List<String> chosen = const [],
   String initial = '',
@@ -99,7 +99,7 @@ Future<VocabularyEntry?> promptForIngredient(
   initial: initial,
   aliases: aliases.join(', '),
   color: null,
-  vocabulary: vocabulary,
+  tags: tags,
   chosen: chosen,
 ))?.entry;
 
@@ -119,7 +119,7 @@ Future<Tag?> promptForTag(
   initial: initial,
   aliases: null,
   color: color,
-  vocabulary: const [],
+  tags: const [],
   chosen: const [],
 )) {
   (entry: final entry, color: final TagColor color) => Tag(
@@ -263,7 +263,7 @@ Future<_Answer?> _prompt(
   required String initial,
   required String? aliases,
   required TagColor? color,
-  required List<Tag> vocabulary,
+  required List<Tag> tags,
   required List<String> chosen,
 }) => showDialog<_Answer>(
   context: context,
@@ -274,7 +274,7 @@ Future<_Answer?> _prompt(
     initial: initial,
     aliases: aliases,
     color: color,
-    vocabulary: vocabulary,
+    tags: tags,
     chosen: chosen,
   ),
 );
@@ -287,7 +287,7 @@ class _EntryDialog extends StatefulWidget {
     required this.initial,
     required this.aliases,
     required this.color,
-    required this.vocabulary,
+    required this.tags,
     required this.chosen,
   });
 
@@ -304,7 +304,7 @@ class _EntryDialog extends StatefulWidget {
   final TagColor? color;
 
   /// Tags on offer and already worn (empty if vocabulary carries none).
-  final List<Tag> vocabulary;
+  final List<Tag> tags;
   final List<String> chosen;
 
   @override
@@ -345,7 +345,7 @@ class _EntryDialogState extends State<_EntryDialog> {
     final entry = (
       name: _name.text,
       aliases: _aliasNames,
-      tags: [for (final tag in wornInOrder(widget.vocabulary, _tags)) tag.name],
+      tags: [for (final tag in wornInOrder(widget.tags, _tags)) tag.name],
     );
     final issues = widget.validate(entry);
     final save = entry.name.isEmpty || issues.isNotEmpty
@@ -389,13 +389,9 @@ class _EntryDialogState extends State<_EntryDialog> {
             onPick: (picked) => setState(() => _color = picked),
           ),
         ],
-        if (widget.vocabulary.isNotEmpty) ...[
+        if (widget.tags.isNotEmpty) ...[
           const SizedBox(height: 20),
-          TagChoices(
-            vocabulary: widget.vocabulary,
-            chosen: _tags,
-            onToggle: _toggle,
-          ),
+          TagChoices(tags: widget.tags, chosen: _tags, onToggle: _toggle),
         ],
       ],
       actions: [
@@ -429,7 +425,7 @@ class _Swatches extends StatelessWidget {
             child: InkWell(
               onTap: () => onPick(color),
               customBorder: const CircleBorder(),
-              child: _Dot(
+              child: _Swatch(
                 swatch: tagColors(color, brightness),
                 chosen: color == selected,
               ),
@@ -440,8 +436,8 @@ class _Swatches extends StatelessWidget {
   }
 }
 
-class _Dot extends StatelessWidget {
-  const _Dot({required this.swatch, required this.chosen});
+class _Swatch extends StatelessWidget {
+  const _Swatch({required this.swatch, required this.chosen});
 
   final Swatch swatch;
   final bool chosen;

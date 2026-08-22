@@ -221,7 +221,7 @@ List<ValidationIssue> _checkRecord(Bar bar, List<Object> basePath) {
               message:
                   'Budget must be one of ${budgets.join(', ')}: "${bar.name}"',
             ),
-      basketCounts.contains(bar.shopping.most)
+      basketCounts.contains(bar.shopping.keptPerSize)
           ? null
           : (
               kind: ValidationIssueKind.malformedValue,

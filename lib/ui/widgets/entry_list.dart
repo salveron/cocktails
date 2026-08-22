@@ -50,7 +50,7 @@ typedef ListFilter<T> = ({
 /// [icon] is the drawn glyph rather than an `IconData`, since one off a font
 /// whose glyphs are not square is drawn by its own widget (ADR 14) — so the
 /// screen picking the glyph is the only place that font is named.
-typedef ListDraw<T> = ({
+typedef RandomDraw<T> = ({
   Widget icon,
   String tooltip,
   String? Function(List<T> onShow) draw,
@@ -61,7 +61,7 @@ typedef ListDraw<T> = ({
 /// rows, and an entry kept only where it wears every one picked. A vocabulary
 /// with nothing in it has no row and narrows nothing.
 ///
-/// [picked] is read against [vocabulary] through `wornInOrder` rather than
+/// [picked] is read against [tags] through `wornInOrder` rather than
 /// trusted, so a tag deleted or renamed elsewhere stops narrowing rather than
 /// emptying the list, while one renamed only in its case goes on narrowing (ADR
 /// 08). That is the one home for reading picks against a vocabulary — the
@@ -79,14 +79,14 @@ typedef ListDraw<T> = ({
 /// reason joins the tags' in the one message; a vocabulary with nothing in it
 /// still draws it.
 ListFilter<T>? tagFilter<T>({
-  required List<Tag> vocabulary,
+  required List<Tag> tags,
   required Set<String> picked,
   required void Function(String tag) onToggle,
   required List<String> Function(T entry) tagsOf,
   ListFilter<T>? leading,
 }) {
-  if (vocabulary.isEmpty && leading == null) return null;
-  final chosen = {for (final tag in wornInOrder(vocabulary, picked)) tag.name};
+  if (tags.isEmpty && leading == null) return null;
+  final chosen = {for (final tag in wornInOrder(tags, picked)) tag.name};
   final wanted = nameKeys(chosen);
   final reasons = [
     ?leading?.narrowing,
@@ -96,7 +96,7 @@ ListFilter<T>? tagFilter<T>({
     row: Padding(
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
       child: TagChoices(
-        vocabulary: vocabulary,
+        tags: tags,
         chosen: chosen,
         onToggle: onToggle,
         scrolling: true,
@@ -111,9 +111,9 @@ ListFilter<T>? tagFilter<T>({
   );
 }
 
-/// Single vocab row with optional body; ripple clipped to card corners.
-class VocabularyRow extends StatelessWidget {
-  const VocabularyRow({
+/// Single entry card with optional body; ripple clipped to card corners.
+class EntryCard extends StatelessWidget {
+  const EntryCard({
     required this.title,
     this.subtitle,
     this.trailing,
@@ -165,7 +165,7 @@ class VocabularyRow extends StatelessWidget {
   }
 }
 
-/// A [VocabularyRow] that opens in place: [subtitle] shown only while
+/// An [EntryCard] that opens in place: [subtitle] shown only while
 /// collapsed unless [hideSubtitleWhenOpen] says otherwise (bars_screen keeps
 /// its standing line either way), [body] only while [open]. Built regardless
 /// of [open] — a body no reader can see costs nothing unlaid-out.
@@ -178,7 +178,7 @@ class ExpandingRow extends StatelessWidget {
     this.trailing,
     this.body,
     this.onToggle,
-    this.margin = VocabularyRow.listMargin,
+    this.margin = EntryCard.listMargin,
     super.key,
   });
 
@@ -194,7 +194,7 @@ class ExpandingRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final subtitle = this.subtitle;
-    return VocabularyRow(
+    return EntryCard(
       margin: margin,
       title: title,
       subtitle: subtitle == null || (open && hideSubtitleWhenOpen)
@@ -224,7 +224,7 @@ BulletRun bulletRun(Iterable<String> names, {String? label}) => (
   onTap: null,
 );
 
-/// Every name a [VocabularyRow]'s body counts, bulleted under the run it falls
+/// Every name an [EntryCard]'s body counts, bulleted under the run it falls
 /// in — an arriving file's vocabularies (ADR 07) and a basket's two halves
 /// alike. An empty run is left out rather than standing as a heading over
 /// nothing.
@@ -289,8 +289,8 @@ class RowMenu extends StatelessWidget {
 }
 
 /// Shared list template: search, sort, filter, empty state, add button.
-class VocabularyList<T> extends StatefulWidget {
-  const VocabularyList({
+class EntryCardList<T> extends StatefulWidget {
+  const EntryCardList({
     required this.entries,
     required this.nameOf,
     required this.rowOf,
@@ -324,7 +324,7 @@ class VocabularyList<T> extends StatefulWidget {
   final ListOrders<T> orders;
 
   final ListFilter<T>? filter;
-  final ListDraw<T>? draw;
+  final RandomDraw<T>? draw;
 
   /// A row another destination asked this list to put on screen (ADR 19),
   /// carried on the one build answering a request and null on every other, so
@@ -340,10 +340,10 @@ class VocabularyList<T> extends StatefulWidget {
   final EmptyState empty;
 
   @override
-  State<VocabularyList<T>> createState() => _VocabularyListState<T>();
+  State<EntryCardList<T>> createState() => _EntryCardListState<T>();
 }
 
-class _VocabularyListState<T> extends State<VocabularyList<T>> {
+class _EntryCardListState<T> extends State<EntryCardList<T>> {
   final _search = TextEditingController();
 
   /// How a drawn row is reached, the rows being built as they are scrolled to
@@ -410,7 +410,7 @@ class _VocabularyListState<T> extends State<VocabularyList<T>> {
   /// otherwise ring is off for it, [_reposition] answering for the clear
   /// itself once below.
   @override
-  void didUpdateWidget(covariant VocabularyList<T> oldWidget) {
+  void didUpdateWidget(covariant EntryCardList<T> oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (!listEquals(oldWidget.filter?.picks, widget.filter?.picks)) {
       _home = true;
@@ -521,7 +521,7 @@ class _VocabularyListState<T> extends State<VocabularyList<T>> {
   /// Draws one of the rows on show, leaving it to [_reach] to put on screen —
   /// the one place a name becomes an index, and the only thing here that knows
   /// the list scrolls at all (ADR 13).
-  void _draw(ListDraw<T> draw, List<T> onShow) {
+  void _draw(RandomDraw<T> draw, List<T> onShow) {
     _reveal = draw.draw(onShow);
   }
 
@@ -715,7 +715,7 @@ class _VocabularyListState<T> extends State<VocabularyList<T>> {
 /// (FR-DIS-5): its fill starts at [ColorScheme.secondaryContainer] and settles
 /// back to where every other row rests. Colour alone — a row changing height
 /// would fire the very measurement the reveal waits on (ADR 13) — and the fill
-/// is overridden at the one token [VocabularyRow] reads it from, so the card
+/// is overridden at the one token [EntryCard] reads it from, so the card
 /// keeps its shape, its margins and its ripple in the one place they are said.
 ///
 /// [onDone] lets the wash go once it is spent: a row scrolled out of the list

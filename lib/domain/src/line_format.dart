@@ -97,10 +97,10 @@ RecipeLine parseRecipeLine(String line, List<Unit> units) {
 
 /// Canonical form: single spaces, the [formatAmount] amount text.
 String formatRecipeLine(RecipeLine line, List<Unit> units) =>
-    '${formatMeasure(line.amount, line.unit, units)} ${_formatLineBody(line)}';
+    '${measureText(line.amount, line.unit, units)} ${_formatLineBody(line)}';
 
 /// Line halves split where display transform stops (scaling.dart).
-String formatMeasure(Amount amount, String unit, List<Unit> units) =>
+String measureText(Amount amount, String unit, List<Unit> units) =>
     '${formatAmount(amount)} ${units.unitNamed(unit)?.spelling(amount) ?? unit}';
 
 /// Canonical body: alternatives joined by the separator, then the mark. A card

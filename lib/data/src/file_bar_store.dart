@@ -39,23 +39,23 @@ final class FileBarStore implements BarStore {
 
   /// Collapses overlapping saves of one bar; the index has its own slot.
   final Map<String, (Bar, Collection)> _pendingBars = {};
-  Records? _pendingShelf;
+  ShelfIndex? _pendingShelf;
 
   FileBarStore(this.directory);
 
   @override
-  Future<Outcome<Records>> loadShelf() => _enqueue(_loadShelf);
+  Future<Outcome<ShelfIndex>> loadShelf() => _enqueue(_loadShelf);
 
   @override
-  Future<Outcome<BarPayload>> loadBar(String id) => _enqueue(() {
+  Future<Outcome<BarContent>> loadBar(String id) => _enqueue(() {
     if (!isStorableBarId(id)) {
-      return Future.value(Rejected<BarPayload>([_refusedId(id)]));
+      return Future.value(Rejected<BarContent>([_refusedId(id)]));
     }
     return _read(_barPath(id), '$_barsDirectory/$id.yaml', _codec.decode);
   });
 
   @override
-  Future<void> saveShelf(Records records) {
+  Future<void> saveShelf(ShelfIndex records) {
     _pendingShelf = records;
     return _enqueue(_writePendingShelf);
   }
@@ -100,7 +100,7 @@ final class FileBarStore implements BarStore {
 
   /// The index, or the format-1 store migrated into one. A device with neither
   /// is a first run and answers [Empty].
-  Future<Outcome<Records>> _loadShelf() async {
+  Future<Outcome<ShelfIndex>> _loadShelf() async {
     if (await File(_indexPath).exists()) {
       return _read(_indexPath, '$_indexName.yaml', _codec.decodeIndex);
     }
@@ -115,16 +115,16 @@ final class FileBarStore implements BarStore {
   /// crash between the two leaves no index, so the next run migrates again
   /// rather than opening a bar whose file never arrived. The old file and its
   /// backups are never touched, being the net this runs over.
-  Future<Outcome<Records>> _migrateLegacy() async {
+  Future<Outcome<ShelfIndex>> _migrateLegacy() async {
     final legacy = File('${directory.path}/$_legacyName');
-    final Outcome<BarPayload> result;
+    final Outcome<BarContent> result;
     try {
       result = _codec.decode(await legacy.readAsString());
     } on Exception catch (error) {
       return Rejected([_unreadable(_legacyName, error)]);
     }
     if (result case Rejected(:final issues)) return Rejected(issues);
-    final payload = (result as Ok<BarPayload>).value;
+    final payload = (result as Ok<BarContent>).value;
     final bar = Bar(
       id: newBarId(),
       name: payload.name.isEmpty ? _migratedBarName : payload.name,
@@ -244,7 +244,7 @@ final class FileBarStore implements BarStore {
       '${path.substring(0, path.length - '.yaml'.length)}'
       '.backup-$index.yaml';
 
-  static BarPayload _payloadOf(Bar bar, Collection collection) =>
+  static BarContent _payloadOf(Bar bar, Collection collection) =>
       (name: bar.name, display: bar.display, collection: collection);
 
   /// A bar's name folded to something a file system and a stranger's downloads

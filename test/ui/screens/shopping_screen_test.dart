@@ -112,7 +112,7 @@ Iterable<String> dotsBeside(WidgetTester tester, String name) => tester
 Future<MemoryBarStore> pumpShopping(
   WidgetTester tester, [
   Collection? collection,
-  Shopping shopping = const Shopping(),
+  ShoppingSettings shopping = const ShoppingSettings(),
 ]) => pumpOver(
   tester,
   const ShoppingScreen(showing: true),
@@ -515,7 +515,7 @@ void main() {
   // rank it holds among all three; aiming asks only about tiki and finds it
   // first — one pick, one basket, two numbers.
   group('the tags aim the search (ADR 24)', () {
-    const aiming = Shopping(aiming: true);
+    const aiming = ShoppingSettings(aiming: true);
 
     testWidgets('aiming runs the numbering unbroken', (tester) async {
       await pumpShopping(tester, taggedCollection, aiming);
@@ -571,7 +571,7 @@ void main() {
       await pumpShopping(
         tester,
         shoppingCollection,
-        const Shopping(budget: 2, restocking: true),
+        const ShoppingSettings(budget: 2, restocking: true),
       );
       expect(tester.widget<Switch>(find.byType(Switch)).value, isTrue);
       expect(

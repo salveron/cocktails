@@ -25,12 +25,12 @@ final class _FakeChannel implements BarChannel {
   final asked = <BarSource>[];
 
   /// One per fetch still out, oldest first.
-  final out = <Completer<Outcome<BarPayload>?>>[];
+  final out = <Completer<Outcome<BarContent>?>>[];
 
   @override
-  Future<Outcome<BarPayload>?> fetch(BarSource source) {
+  Future<Outcome<BarContent>?> fetch(BarSource source) {
     asked.add(source);
-    final answering = Completer<Outcome<BarPayload>?>();
+    final answering = Completer<Outcome<BarContent>?>();
     out.add(answering);
     return answering.future;
   }
@@ -64,7 +64,7 @@ void main() {
     ],
   );
 
-  BarPayload payloadOf(
+  BarContent payloadOf(
     Collection collection, {
     String name = "Ada's bar",
     FixedUnit display = FixedUnit.ml,
@@ -133,7 +133,7 @@ void main() {
   Future<void> refreshed(
     ProviderContainer container,
     String id,
-    Outcome<BarPayload>? outcome,
+    Outcome<BarContent>? outcome,
   ) async {
     final refreshing = controllerOf(container).refresh(id);
     await pumpEventQueue();
@@ -215,7 +215,7 @@ void main() {
         container,
       ).addGuestBar('Ada', source, payloadOf(arrived));
       final added = container.read(shelfProvider).requireValue.open!;
-      expect(added.holds, holdingsOf(arrived));
+      expect(added.summary, summaryOf(arrived));
       // A guest's contents change only when its source answers.
       expect(added.updated, isNull);
     });
@@ -270,7 +270,7 @@ void main() {
       final container = await started(seeded);
       await refreshed(container, guest.id, Ok(payloadOf(arrived)));
       expect(seeded.savedBars[guest.id]?.$2, arrived);
-      expect(barOf(container, guest.id).holds, holdingsOf(arrived));
+      expect(barOf(container, guest.id).summary, summaryOf(arrived));
       // The bar on show is untouched by another bar's refresh.
       expect(container.read(collectionProvider), Collection());
     });
@@ -403,7 +403,7 @@ void main() {
       await first;
       // The contents of the newer answer, and the counts that go with them.
       expect(container.read(collectionProvider), arrived);
-      expect(barOf(container, guest.id).holds, holdingsOf(arrived));
+      expect(barOf(container, guest.id).summary, summaryOf(arrived));
     });
 
     test('a late failure never lands on top of one that succeeded', () async {

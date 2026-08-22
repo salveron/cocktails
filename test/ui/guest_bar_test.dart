@@ -13,7 +13,7 @@ import 'package:cocktails/ui/screens/settings_screen.dart';
 import 'package:cocktails/ui/screens/shopping_settings_screen.dart';
 import 'package:cocktails/ui/screens/tags_screen.dart';
 import 'package:cocktails/ui/screens/units_screen.dart';
-import 'package:cocktails/ui/widgets/vocabulary_list.dart';
+import 'package:cocktails/ui/widgets/entry_list.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 

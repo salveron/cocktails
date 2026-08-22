@@ -14,7 +14,7 @@ import 'screens/settings_screen.dart';
 import 'screens/shopping_screen.dart';
 import 'theme.dart';
 import 'widgets/empty_state.dart';
-import 'widgets/telling.dart';
+import 'widgets/failures.dart';
 
 class CocktailsApp extends StatelessWidget {
   const CocktailsApp({super.key});
@@ -105,7 +105,7 @@ class _AppShellState extends ConsumerState<AppShell> {
       // a destination is a landing, and a reader who has just crossed into a
       // bar has nothing here to return from (docs/ui-design.md#bars).
       if (request.name == null) {
-        _land(request.destination);
+        _cross(request.destination);
       } else {
         _jumpTo(request.destination);
       }
@@ -150,7 +150,7 @@ class _AppShellState extends ConsumerState<AppShell> {
         ),
         bottomNavigationBar: NavigationBar(
           selectedIndex: offered.indexOf(_current),
-          onDestinationSelected: (index) => _land(offered[index]),
+          onDestinationSelected: (index) => _cross(offered[index]),
           destinations: [
             for (final destination in offered)
               NavigationDestination(
@@ -178,7 +178,7 @@ class _AppShellState extends ConsumerState<AppShell> {
 
   /// A destination the reader chose has nothing to return *from*, so the trail
   /// goes with the tap: back never undoes a move they made themselves.
-  void _land(Destination destination) => setState(() {
+  void _cross(Destination destination) => setState(() {
     _trail.clear();
     _current = destination;
   });

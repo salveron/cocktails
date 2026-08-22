@@ -15,7 +15,7 @@ lib/
     src/
       shelf.dart               # Shelf, the root above Collection (ADR 20), and the bar it
                                #   holds: Bar, BarMode, Transport, BarSource, Offer,
-                               #   BarPayload. Bar.summarised and Bar.refreshedAt are the
+                               #   BarContent. Bar.summarised and Bar.refreshedAt are the
                                #   only writers of what a bar holds and when it changed.
                                #   coherenceProblems is the one rule list validation.dart
                                #   reports on; BarMode and Transport are Tokened
@@ -59,7 +59,7 @@ lib/
       bar_writer.dart          # the write surface, handed out for an owned bar only
       seams.dart               # store, clock, share sheet, picker — one provider each
                                #   (ADR 18); the clock so the domain needs none
-      channels.dart            # the transports resolved, the refreshes in flight and
+      refreshes.dart           # the transports resolved, the refreshes in flight and
                                #   what they failed with, the offers standing (ADR 22)
       derived.dart             # read-only over the shelf: the open bar's collection and
                                #   record, every record on it, availability, the optimizer,
@@ -89,18 +89,19 @@ lib/
                                #   end is read and agreed to, founding and importing being
                                #   one form reached two ways
     widgets/                   # empty_state, search_field,
-                               #   telling — how the app says what it could not do: the
+                               #   failures — how the app says what it could not do: the
                                #     load and refresh banners over every destination, the
-                               #     one wording of what a refresh came to, and the
+                               #     one wording of what a refresh came to, the pull a
+                               #     guest bar's lists answer (refreshOf), and the
                                #     snackbar a refused action speaks through
                                #   arriving_bar — one file arriving, read the same way
-                               #     wherever it was picked: the pick, the counts, the
-                               #     refusal, and the pull a guest bar's lists answer
+                               #     wherever it was picked: the pick, the counts, and
+                               #     the refusal
                                #   color_chip — the pill, chip, dot, the run of dots a name
                                #     or a basket's recipe wears, the dotted name itself, and
                                #     `chipRadius`, the corner a chip and its ink round to
                                #   tag_choices — the row tags are picked from
-                               #   vocabulary_list — the searchable list all four screens are:
+                               #   entry_list — the searchable list all four screens are:
                                #     the orders it reads in, the spellings it searches by, the
                                #     tag filter three screens narrow by (the shopping one
                                #     taking the row without the list), the draw one of them
@@ -108,8 +109,8 @@ lib/
                                #     asks it to reveal (ADR 19), the bulleted runs a card body
                                #     names things in, the row itself and the margin it is
                                #     inset by — the lists' own by default, overridden by a
-                               #     form that pads its page already — byName, Set.toggle,
-                               #     and counted — how many of a thing there are, in words.
+                               #     form that pads its page already — Set.toggle and
+                               #     counted — how many of a thing there are, in words.
                                #     The one file that knows a list scrolls (ADR 13)
                                #   vocabulary_dialogs — entry (name, aliases, colour, tags),
                                #     a bare name where only that is asked for, delete,
@@ -176,7 +177,7 @@ contents, and the level above it is added rather than folded in.
 enum BarMode { owner('owner'), guest('guest'); … }
 enum Transport { file('file'), lan('lan'), cloud('cloud'); … }              // FR-BAR-7/8/9
 typedef Offer = ({Transport via, List<String> guests});   // empty where a way cannot name them
-typedef BarPayload = ({String name, FixedUnit display, Collection collection});  // what a file holds
+typedef BarContent = ({String name, FixedUnit display, Collection collection});  // what a file holds
 
 final class BarSource {          // where a guest bar refreshes from (FR-BAR-5)
   final Transport via;
@@ -191,7 +192,7 @@ final class Bar {
   final String name;             // a label: two bars may carry one (FR-BAR-1)
   final BarMode mode;
   final FixedUnit display;       // the reader's pick, outliving every refresh (FR-SET-1)
-  final Shopping shopping;       // the reader's too, and here for the same reason (FR-SET-2)
+  final ShoppingSettings shopping; // the reader's too, and here for the same reason (FR-SET-2)
   final List<Offer> offers;      // an owner's, one per way it is shared (FR-BAR-6)
   final BarSource? source;       // a guest's, with…
   final DateTime? refreshed;     // …when that source last answered
@@ -211,7 +212,7 @@ extension ShelfEdits on Shelf {         // shelf_edits.dart, as CollectionEdits 
   Shelf withBar(Bar bar);                      // add or replace by id — rename, offers, source
   Shelf withoutBar(String id);                 // FR-BAR-2; a deleted open bar leaves openId null
   Shelf opening(String id, Collection collection);  // the switch: record and bytes at once
-  Shelf refreshedWith(String id, BarPayload payload, DateTime at);   // FR-BAR-5, guest only
+  Shelf refreshedWith(String id, BarContent payload, DateTime at);   // FR-BAR-5, guest only
 }
 ```
 
@@ -412,7 +413,7 @@ String formatAmount(Amount amount);
 String formatNumber(double value);            // canonical number text — amounts, part_ml
 ```
 
-Grammar in [architecture.md](architecture.md#data-format). This file enforces syntax; value rules in validation. Both halves take the vocabulary (ADR 09): it decides what counts as a unit and how an amount is spelled, and the line stores the unit's own name whichever spelling was typed. The unit is optional and may be plural on the way in; `formatRecipeLine` writes the canonical form for the file and the form alike. Alternatives split on `/` ([ADR 11](adr/11-substitutions-on-the-line.md)), lexically and after the mark, so the group is never resolved here. `formatMeasure` stays public in `src/` and out of the barrel — the display transform builds its measure from that same piece rather than a second spelling of it; the body is private, since a card writes its own from `ingredients` and `lineMarkSuffix`, in prose rather than in the file's separator.
+Grammar in [architecture.md](architecture.md#data-format). This file enforces syntax; value rules in validation. Both halves take the vocabulary (ADR 09): it decides what counts as a unit and how an amount is spelled, and the line stores the unit's own name whichever spelling was typed. The unit is optional and may be plural on the way in; `formatRecipeLine` writes the canonical form for the file and the form alike. Alternatives split on `/` ([ADR 11](adr/11-substitutions-on-the-line.md)), lexically and after the mark, so the group is never resolved here. `measureText` stays public in `src/` and out of the barrel — the display transform builds its measure from that same piece rather than a second spelling of it; the body is private, since a card writes its own from `ingredients` and `lineMarkSuffix`, in prose rather than in the file's separator.
 
 ### Validation
 
@@ -485,11 +486,11 @@ Set<String> recipesWearing(Collection collection, Iterable<String> tags);  // AD
 
 const budgets = [1, 2, 3];                            // what the optimizer offers (FR-DIS-6)
 const basketCounts = [10, 25, 50];                    // how many of a size (FR-SET-2, ADR 15)
-final class Shopping { bool aiming; int budget; bool restocking;   // how it is asked (FR-SET-2)
-                       int most; bool buyingOptional; }
+final class ShoppingSettings { bool aiming; int budget; bool restocking;   // how it is asked (FR-SET-2)
+                       int keptPerSize; bool buyingOptional; }
 final class Purchase { List<String> ingredients; List<String> unlocks; }   // both A→Z
 List<Purchase> purchasesWithin(Collection collection, int budget,               // FR-DIS-6
-    {int most = 25, bool restocking = false,                          // FR-DIS-7, ADR 16
+    {int keptPerSize = 25, bool restocking = false,                   // FR-DIS-7, ADR 16
      bool buyingOptional = false, Set<String>? scoring});             // FR-REC-3, ADR 24
 ```
 
@@ -512,9 +513,9 @@ runs through `names.dart`, which every layer reads — no screen folds a name it
 
 `purchasesWithin` answers FR-DIS-6 ([ADR 15](adr/15-the-optimizer-answers-with-the-best-few.md)); 
 the algorithm is in [architecture.md](architecture.md#domain-computations). It returns the best 
-`most` baskets *of each size*, not the best `most` overall, so a one-ingredient win is never crowded 
-out by the three-ingredient baskets that almost always unlock more — which is what will let the screen 
-ask for one size at a time off a single search.
+`keptPerSize` baskets *of each size*, not the best `keptPerSize` overall, so a one-ingredient win is 
+never crowded out by the three-ingredient baskets that almost always unlock more — which is what 
+will let the screen ask for one size at a time off a single search.
 
 `restocking` is what "short" means ([ADR 16](adr/16-the-optimizer-buys-what-is-running-low.md), 
 FR-DIS-7): off, a line standing at out; on, a line short of full stock, so the ingredients running low 
@@ -544,7 +545,7 @@ the factor, and everything else prints as entered (ADR 17).
 Data layer owns: YAML, files, atomicity, backups, and what crosses to another device.
 
 ```dart
-typedef Records = ({List<Bar> bars, String? openId});   // the index, with no collection in it
+typedef ShelfIndex = ({List<Bar> bars, String? openId});   // the index, with no collection in it
 String newBarId();                                     // six hex characters, minted per device
 bool isStorableBarId(String id);                       // may it name a file — an index is untrusted
 
@@ -557,9 +558,9 @@ final class Rejected<T> extends Outcome<T> {            // FR-DAT-4; recovered i
 final class Unreachable<T> extends Outcome<T> { final UnreachableReason why; }   // a fetch only
 
 abstract interface class BarStore {
-  Future<Outcome<Records>> loadShelf();
-  Future<Outcome<BarPayload>> loadBar(String id);       // one bar, or why it could not be read
-  Future<void> saveShelf(Records records);
+  Future<Outcome<ShelfIndex>> loadShelf();
+  Future<Outcome<BarContent>> loadBar(String id);       // one bar, or why it could not be read
+  Future<void> saveShelf(ShelfIndex records);
   Future<void> saveBar(Bar bar, Collection collection);      // one file — the name and pick ride along
   Future<void> removeBar(String id);                    // its file and its backups (FR-BAR-2)
   Future<String> exportSnapshot(Bar bar, Collection collection, {ExportPurpose purpose});
@@ -616,7 +617,7 @@ the codec answer the other. Putting elsewhere creates cross-layer coupling
 5. Resolve `ValidationIssue.path` against parse tree for line numbers.
 6. Build `Collection` (cannot throw; duplicates ruled out), then `withCanonicalIngredientNames` — a
    hand-edited line naming an ingredient by an alias is held under the ingredient's own name (ADR 10) — and 
-   answer a `BarPayload`: the collection, the file's `name`, and the `display` read out of 
+   answer a `BarContent`: the collection, the file's `name`, and the `display` read out of 
    `settings`. Who keeps which of the three is the caller's, and it is where an import and a refresh 
    differ (ADR 21). A format-1 file carries no name and its `made:` was dropped at step 3.
 
@@ -641,7 +642,7 @@ One interface per side, so a way that cannot do something does not carry a metho
 ```dart
 abstract interface class BarChannel {         // every transport answers this much
   Transport get transport;
-  Future<Outcome<BarPayload>?> fetch(BarSource source);   // the add, and every refresh after
+  Future<Outcome<BarContent>?> fetch(BarSource source);   // the add, and every refresh after
 }
 ```
 
@@ -694,17 +695,17 @@ of every name on the way in ([architecture.md](architecture.md#platform-facts)).
 `XFile` the way the plugin does, so the shape the bug lived in is the shape under test.
 
 ```dart
-typedef ImportReview = ({BarPayload? bar, List<String> issues});   // never both
+typedef ImportReview = ({BarContent? bar, List<String> issues});   // never both
 
 ImportReview review(String text);        // pure: decode, described, nothing touched
 Future<String> export();                           // the open bar's copy (FR-DAT-1)
-Future<void> replaceOpen(String name, BarPayload bar);      // the copy, then the replace (FR-DAT-3)
+Future<void> replaceOpen(String name, BarContent bar);      // the copy, then the replace (FR-DAT-3)
 Future<void> setDisplay(FixedUnit display);        // the reader's, guest bar included
 Future<void> openBar(String id);                   // FR-BAR-1, the switch
-Future<void> addOwnedBar(String name, {BarPayload? from});  // FR-BAR-2, empty or from a file
+Future<void> addOwnedBar(String name, {BarContent? from});  // FR-BAR-2, empty or from a file
 Future<void> renameBar(String id, String name);    // FR-BAR-2/3, any bar: the name is the reader's
 Future<void> removeBar(String id);                 // FR-BAR-2, after its own export
-Future<void> addGuestBar(String name, BarSource source, BarPayload bar);   // FR-BAR-3/7/8/9
+Future<void> addGuestBar(String name, BarSource source, BarContent bar);   // FR-BAR-3/7/8/9
 Future<void> refresh(String barId);                // FR-BAR-5; never awaited by a screen
 ```
 
@@ -721,19 +722,19 @@ caller and never off the payload: the file's `name:` is a starting value the scr
 and what the reader leaves there is what the bar is called (ADR 21). `addOwnedBar`'s `from` is
 FR-BAR-2's "created from a file": the contents and the reading unit arrive and no source is kept, so
 nothing about such a bar refreshes. `addGuestBar` keeps the source, which is what a refresh asks
-again. `fileSource` is `channels.dart`'s republication of `FileBarChannel.source`, so a screen
+again. `fileSource` is `refreshes.dart`'s republication of `FileBarChannel.source`, so a screen
 founding a guest bar from a pick names a transport and never builds an address (ADR 22) — `ui/` may
 not import `data/` at all.
 
 **What a bar holds rides on its record**, so listing bars reads the index and nothing else (ADR 20)
-and no second `Collection` ever reaches `ui/`. `Bar.holds` is `holdingsOf(Collection)` in the domain,
+and no second `Collection` ever reaches `ui/`. `Bar.summary` is `summaryOf(Collection)` in the domain,
 keyed by the `Holding` enum that is also the one home for the four kinds, their order and their nouns
 (an arriving file's cards name the same four); `Bar.updated` dates the change beside it. Both are written
 by `Bar.summarised` and — for a guest's refresh — `Bar.refreshedAt`, and by nothing else, which is
 what keeps the count from falling a step behind the contents: every route a collection takes ends in
 one of them, `ShelfEdits.withCollection` included.
 
-`Bar.holds` is null only on a record no summary has reached — an index written before they existed.
+`Bar.summary` is null only on a record no summary has reached — an index written before they existed.
 `ShelfController.build()` repairs those, reading each such bar once under the startup spinner and
 writing the index back; the open bar is counted from the collection the load already brought up, so
 it costs no read of its own. A bar whose file cannot be read at all stays null and the card says so,
@@ -744,7 +745,7 @@ editing: the repair writes no `updated`, a stamp invented there dating an edit n
 the controller's rather than the screen's because `ui/` never imports `data/`. `_described` is the 
 one rendering of a `SourcedIssue`, shared with the startup banner and with a channel's refusal, so a 
 file that fails at load, one that fails at import and a fetch that fails on arrival are worded 
-alike. It answers a whole `BarPayload`, which is what lets one picked file take any road FR-BAR-7 and 
+alike. It answers a whole `BarContent`, which is what lets one picked file take any road FR-BAR-7 and 
 FR-DAT-3 offer — replacing an owned bar, founding one, or founding a guest bar — each caller saying 
 what becomes of its three parts.
 
@@ -815,7 +816,7 @@ Filter, search and order are presentation: widget state where the list is drawn,
 never a provider — nothing collection-derived reads them, so there is nothing to invalidate. A consumer 
 outside the screen is what would hoist them, and the random pick (FR-DIS-5) turned out not to be 
 one: the draw is made *by* the list, over the rows it is already showing, so the search never had to 
-leave `VocabularyList` and no narrowing had to be named twice. What a screen supplies is the draw 
+leave `EntryCardList` and no narrowing had to be named twice. What a screen supplies is the draw 
 itself; what it gets back is a name.
 
 `destinationsOf(BarMode)` sits beside it in `ui/destinations.dart` and answers what the bottom bar 
@@ -836,11 +837,11 @@ order between them not matter. What the bar on show changes here is only how man
 are (FR-BAR-4): the shell indexes its stack by position in the list that bar offers, never by the 
 enum's own index, which is the one place a variable destination list is felt.
 
-`purchasesProvider` — `List<Purchase>` keyed on a `ShoppingAsk`: what counts as short (ADR 16), and 
+`purchasesProvider` — `List<Purchase>` keyed on a `ShoppingQuery`: what counts as short (ADR 16), and 
 the tags the search is aimed at, empty while the chips sift ([ADR 24](adr/24-the-tags-may-aim-the-optimizer.md)). 
 A value class rather than a record, a record holding a list comparing by identity — two equal asks 
 would be two searches. The rest of what the optimizer is asked comes off `shoppingProvider`, the open 
-bar's `Shopping` (FR-SET-2), so a setting changed re-keys nothing and simply recomputes. Searched 
+bar's `ShoppingSettings` (FR-SET-2), so a setting changed re-keys nothing and simply recomputes. Searched 
 once at `budgets.last` so the screen reads one size off the one answer. `autoDispose`, and watched only 
 while the shopping screen is the destination on show: the shell tells each destination whether it 
 is (`ShoppingScreen.showing`), since `IndexedStack` keeps them alive and a stock tap on the 
@@ -853,7 +854,7 @@ watches it at all (FR-BAR-4).
 
 Refreshing and sharing are the app's first work outliving the gesture that started it, and the 
 **fifth kind of state**: not collection, not derived, not screen-local, not one screen's request of 
-another, but a job the reader may walk away from. Both live in `channels.dart`.
+another, but a job the reader may walk away from. Both live in `refreshes.dart`.
 
 `refreshesProvider` — `Map<String, RefreshState>` by bar id: `Reaching`, or what it last failed with 
 and when, until it is `told`, which is what dismissing the banner and reporting it in a snackbar 
@@ -906,7 +907,7 @@ Performance facts (no over-engineering):
 6. **Reaching a row** (FR-DIS-9): a name tapped on one destination resolves to the entry's own 
    (`spellingOf`) and reaches `revealProvider.ask` → the shell switches and records what it left → 
    the serving screen clears the request, its own picks and the open cards, and hands the name to 
-   `VocabularyList` for one build → the list clears its search and order, goes home, then scrolls to 
+   `EntryCardList` for one build → the list clears its search and order, goes home, then scrolls to 
    the row and washes it (ADR 13, ADR 19).
 7. **Switching bars** (FR-BAR-1): a card's **Open bar** calls `openBar(id)` → the controller loads 
    that bar and publishes record and collection together, so no frame pairs one bar's record with 
@@ -926,7 +927,7 @@ Performance facts (no over-engineering):
    edit is, and any other bar's file by `refresh` itself, only one collection ever being resident 
    (ADR 20) → a failure leaves the bar as it stood, held in `refreshesProvider` to be met. Each ask 
    carries a token: an answer arriving behind a newer ask, or for a bar deleted meanwhile, is 
-   dropped whole rather than landing on top of it. The gesture is `VocabularyList.onRefresh`, 
+   dropped whole rather than landing on top of it. The gesture is `EntryCardList.onRefresh`, 
    non-null only on a guest bar (`refreshOf`), and the answer is met by the `RefreshFailure` banner 
    over the destinations — the pull awaits the fetch only to retract its own spinner, which is not a 
    screen holding up the bar on show. Settings' **Refresh** row asks the same way from behind that 

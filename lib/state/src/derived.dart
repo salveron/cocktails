@@ -46,8 +46,8 @@ final availabilityProvider = Provider<Map<String, Availability>>((ref) {
 
 /// How the open bar's optimizer is asked (FR-SET-2), and the defaults where
 /// none is open.
-final shoppingProvider = Provider<Shopping>(
-  (ref) => ref.watch(openBarProvider)?.shopping ?? const Shopping(),
+final shoppingProvider = Provider<ShoppingSettings>(
+  (ref) => ref.watch(openBarProvider)?.shopping ?? const ShoppingSettings(),
 );
 
 /// What a screen asks beyond the collection and its settings: the reading of
@@ -55,16 +55,16 @@ final shoppingProvider = Provider<Shopping>(
 /// the chips sift, so a pick re-keys nothing there and the one costly search
 /// stands. A value rather than a record, which holding a list would compare by
 /// identity: two equal asks would be two searches. Sorted for the same reason.
-final class ShoppingAsk {
+final class ShoppingQuery {
   final bool restocking;
   final List<String> aimedAt;
 
-  ShoppingAsk({required this.restocking, Iterable<String> aimedAt = const []})
+  ShoppingQuery({required this.restocking, Iterable<String> aimedAt = const []})
     : aimedAt = List.unmodifiable([...aimedAt]..sort());
 
   @override
   bool operator ==(Object other) =>
-      other is ShoppingAsk &&
+      other is ShoppingQuery &&
       other.restocking == restocking &&
       listEquals(other.aimedAt, aimedAt);
 
@@ -76,13 +76,13 @@ final class ShoppingAsk {
 /// autoDispose, so the one costly computation stops with the screen that asked
 /// for it.
 final purchasesProvider = Provider.autoDispose
-    .family<List<Purchase>, ShoppingAsk>((ref, ask) {
+    .family<List<Purchase>, ShoppingQuery>((ref, ask) {
       final collection = ref.watch(collectionProvider);
       final shopping = ref.watch(shoppingProvider);
       return purchasesWithin(
         collection,
         budgets.last,
-        most: shopping.most,
+        keptPerSize: shopping.keptPerSize,
         restocking: ask.restocking,
         buyingOptional: shopping.buyingOptional,
         scoring: ask.aimedAt.isEmpty

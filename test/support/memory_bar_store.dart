@@ -11,14 +11,14 @@ import 'package:cocktails/domain/domain.dart';
 base class MemoryBarStore implements BarStore {
   /// What the next [loadShelf] returns; a test seeds [Rejected] to exercise
   /// the recovery path. Every [saveShelf] replaces it.
-  Outcome<Records> shelfOutcome;
+  Outcome<ShelfIndex> shelfOutcome;
 
   /// Per bar, what its [loadBar] returns. A bar with no entry is [Empty], as a
   /// bar whose file never landed is on disk.
-  final Map<String, Outcome<BarPayload>> barOutcomes = {};
+  final Map<String, Outcome<BarContent>> barOutcomes = {};
 
   /// The records of the last [saveShelf], null until the first one.
-  Records? savedShelf;
+  ShelfIndex? savedShelf;
 
   /// Every bar written, newest per id, and how many writes have landed in all.
   final Map<String, (Bar, Collection)> savedBars = {};
@@ -28,7 +28,7 @@ base class MemoryBarStore implements BarStore {
   /// a one-bar test wants, where [savedBars] is the whole picture.
   Collection? saved;
 
-  MemoryBarStore([Records? records])
+  MemoryBarStore([ShelfIndex? records])
     : shelfOutcome = records == null ? const Empty() : Ok(records);
 
   /// A store already holding [bar] and its [collection] — the arrangement most
@@ -45,14 +45,14 @@ base class MemoryBarStore implements BarStore {
   }
 
   @override
-  Future<Outcome<Records>> loadShelf() async => shelfOutcome;
+  Future<Outcome<ShelfIndex>> loadShelf() async => shelfOutcome;
 
   @override
-  Future<Outcome<BarPayload>> loadBar(String id) async =>
+  Future<Outcome<BarContent>> loadBar(String id) async =>
       barOutcomes[id] ?? const Empty();
 
   @override
-  Future<void> saveShelf(Records records) async {
+  Future<void> saveShelf(ShelfIndex records) async {
     savedShelf = records;
     shelfOutcome = Ok(records);
   }

@@ -7,7 +7,7 @@ import '../destinations.dart';
 import '../widgets/color_chip.dart';
 import '../widgets/editor_form.dart';
 import '../widgets/empty_state.dart';
-import '../widgets/vocabulary_list.dart';
+import '../widgets/entry_list.dart';
 
 String _ingredientsOf(Purchase purchase) => purchase.ingredients.join(' + ');
 
@@ -62,16 +62,16 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
     final restocking = _restockingOverride ?? opening.restocking;
     final aiming = opening.aiming;
     final collection = ref.watch(collectionProvider);
-    final vocabulary = ref.watch(recipeTagsProvider);
+    final tags = ref.watch(recipeTagsProvider);
     final worn = {
       for (final recipe in collection.recipes) recipe.name: recipe.tags,
     };
-    final filter = _tagFilter(vocabulary, worn, aiming: aiming);
+    final filter = _tagFilter(tags, worn, aiming: aiming);
     // Aiming, the picks are what the search was for, so they reach it; sifting,
     // they narrow what it already answered and the key must not move (ADR 24).
     final purchases = ref.watch(
       purchasesProvider(
-        ShoppingAsk(
+        ShoppingQuery(
           restocking: restocking,
           aimedAt: aiming ? filter?.picks ?? const [] : const [],
         ),
@@ -79,7 +79,7 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
     );
     // Off `tagFilter`'s own published picks rather than `_picked` again, so
     // nothing is dotted by a pick that stopped narrowing.
-    final lit = wornInOrder(vocabulary, filter?.picks ?? const []);
+    final lit = wornInOrder(tags, filter?.picks ?? const []);
     // Ranked among every basket of the size, then narrowed — the rank is bound
     // before the tags drop any, so sifting gaps the numbering. Aiming keeps
     // them all, the search having answered the picks itself, so it runs
@@ -114,7 +114,7 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
               : ListView.builder(
                   padding: const EdgeInsets.only(bottom: 16),
                   itemCount: onShow.length,
-                  itemBuilder: (context, index) => _card(
+                  itemBuilder: (context, index) => _basketCard(
                     collection,
                     onShow[index].basket,
                     onShow[index].rank,
@@ -139,12 +139,12 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
   /// all. Its reason turns with it, a basket having been weighed by any pick
   /// rather than kept for every one.
   ListFilter<Purchase>? _tagFilter(
-    List<Tag> vocabulary,
+    List<Tag> tags,
     Map<String, List<String>> worn, {
     required bool aiming,
   }) {
     final sifting = tagFilter<Purchase>(
-      vocabulary: vocabulary,
+      tags: tags,
       picked: _picked,
       onToggle: (tag) => setState(() => _picked.toggle(tag)),
       tagsOf: (purchase) => [
@@ -160,7 +160,7 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
     );
   }
 
-  Widget _card(
+  Widget _basketCard(
     Collection collection,
     Purchase purchase,
     int rank, {

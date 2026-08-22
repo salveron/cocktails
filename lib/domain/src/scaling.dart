@@ -23,7 +23,7 @@ String displayMeasure(
   final factor = converts
       ? scale * settings.ratio(from, display)
       : scale.toDouble();
-  return formatMeasure(
+  return measureText(
     _scaled(line.amount, factor),
     converts ? display.token : line.unit,
     units,

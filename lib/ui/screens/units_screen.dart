@@ -14,8 +14,7 @@ import '../widgets/vocabulary_dialogs.dart';
 /// Designed in docs/ui-design.md#units.
 ///
 /// On a guest bar it reads and no more (FR-BAR-4): the rows go quiet, the spare
-/// one and the deletes go, and the Save with them — which is also what lets the
-/// Save below take the writer as non-null.
+/// one and the deletes go, and the Save with them.
 class UnitsScreen extends ConsumerStatefulWidget {
   const UnitsScreen({super.key});
 
@@ -28,13 +27,13 @@ class _UnitsScreenState extends ConsumerState<UnitsScreen> {
   late final Collection _opened = ref.read(collectionProvider);
 
   late final _rows = GrowingRows<_UnitRow>(
-    blankRow: () => _row(const Unit('')),
+    blankRow: () => _unitRow(const Unit('')),
     isBlank: (row) => row.blank,
     disposeRow: (row) => row.dispose(),
-    initial: [for (final unit in _opened.units) _row(unit, was: unit.name)],
+    initial: [for (final unit in _opened.units) _unitRow(unit, was: unit.name)],
   );
 
-  _UnitRow _row(Unit unit, {String? was}) =>
+  _UnitRow _unitRow(Unit unit, {String? was}) =>
       _UnitRow(unit, was: was, onEdit: () => setState(_rows.settle));
 
   @override
@@ -49,7 +48,8 @@ class _UnitsScreenState extends ConsumerState<UnitsScreen> {
   @override
   Widget build(BuildContext context) {
     final entered = _rows.entered;
-    final writable = ref.watch(barWriterProvider) != null;
+    final writer = ref.watch(barWriterProvider);
+    final writable = writer != null;
     // The vocabulary's own rules judge the rows, so a name the file would
     // refuse is a name this screen refuses (ADR 05).
     final issues = validateCollection(
@@ -66,10 +66,12 @@ class _UnitsScreenState extends ConsumerState<UnitsScreen> {
     );
     return EditorScaffold(
       title: 'Units',
-      readOnly: !writable,
+      writable: writable,
       dirty: _dirty,
       discardTitle: 'Discard these units?',
-      onSave: issues.isEmpty ? () => unawaited(_save(entered)) : null,
+      onSave: issues.isEmpty && writer != null
+          ? () => unawaited(_save(writer, entered))
+          : null,
       children: [
         MutedText(
           writable
@@ -113,8 +115,8 @@ class _UnitsScreenState extends ConsumerState<UnitsScreen> {
     setState(() => _rows.remove(row));
   }
 
-  Future<void> _save(List<_UnitRow> entered) async {
-    await ref.read(barWriterProvider)!.setUnits([
+  Future<void> _save(BarWriter writer, List<_UnitRow> entered) async {
+    await writer.setUnits([
       for (final row in entered) (unit: row.unit, was: row.was),
     ]);
     if (mounted) Navigator.of(context).pop();

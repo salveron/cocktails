@@ -8,8 +8,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../destinations.dart';
 import '../widgets/color_chip.dart';
 import '../widgets/empty_state.dart';
+import '../widgets/entry_list.dart';
 import '../widgets/vocabulary_dialogs.dart';
-import '../widgets/vocabulary_list.dart';
 import 'bar_form_screen.dart';
 
 /// A stamp as a reader tells the time: the largest whole unit it has been, and
@@ -89,7 +89,7 @@ class _BarsScreenState extends ConsumerState<BarsScreen> {
             )
           : ListView(
               padding: const EdgeInsets.only(top: 8, bottom: 88),
-              children: [for (final bar in bars) _card(bar, now)],
+              children: [for (final bar in bars) _barCard(bar, now)],
             ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => unawaited(_add()),
@@ -102,7 +102,7 @@ class _BarsScreenState extends ConsumerState<BarsScreen> {
   /// The name and how current the bar is while closed, what it holds once
   /// opened. Whose bar it is rides beside the ⋮ as a chip, the mode being what
   /// decides everything the bar offers (FR-BAR-3).
-  Widget _card(Bar bar, DateTime now) => ExpandingRow(
+  Widget _barCard(Bar bar, DateTime now) => ExpandingRow(
     open: _opened.contains(bar.id),
     title: Text(bar.name),
     subtitle: _standing(bar, now),
@@ -155,8 +155,8 @@ class _BarsScreenState extends ConsumerState<BarsScreen> {
   /// already holding — no file, no wait, no spinner over four numbers (ADR 20).
   /// A bar whose file could not be read carries no summary and says so.
   Widget _counts(Bar bar) {
-    final holds = bar.holds;
-    if (holds == null) {
+    final summary = bar.summary;
+    if (summary == null) {
       return Text(
         'This bar could not be read.',
         style: TextStyle(color: Theme.of(context).colorScheme.error),
@@ -164,7 +164,7 @@ class _BarsScreenState extends ConsumerState<BarsScreen> {
     }
     return BulletRuns([
       bulletRun([
-        for (final holding in holds.entries)
+        for (final holding in summary.entries)
           counted(holding.value, holding.key.noun),
       ]),
     ]);

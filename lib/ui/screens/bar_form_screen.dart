@@ -7,8 +7,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../widgets/arriving_bar.dart';
 import '../widgets/editor_form.dart';
-import '../widgets/telling.dart';
-import '../widgets/vocabulary_list.dart';
+import '../widgets/entry_list.dart';
+import '../widgets/failures.dart';
 
 /// Where a file's contents end up. [own] and [replace] are one road at two
 /// distances — a bar of the reader's own, founded here or standing already —
@@ -129,7 +129,7 @@ class _BarFormScreenState extends ConsumerState<BarFormScreen> {
 
   /// [arriving] is non-null on the two roads that need it: each is offered only
   /// while a readable file is in hand, and dropping one puts the road back.
-  Future<void> _take(_Road road, String name, BarPayload? arriving) {
+  Future<void> _take(_Road road, String name, BarContent? arriving) {
     final shelf = ref.read(shelfProvider.notifier);
     return switch (road) {
       _Road.own => shelf.addOwnedBar(name, from: arriving),
@@ -140,7 +140,7 @@ class _BarFormScreenState extends ConsumerState<BarFormScreen> {
 
   /// A road that would not go through stays on the screen and says why: leaving
   /// for a collection that never reached the disk is a lie about what happened.
-  Future<void> _save(BarPayload? arriving) async {
+  Future<void> _save(BarContent? arriving) async {
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
     final road = _road;

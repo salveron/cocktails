@@ -964,7 +964,7 @@ void main() {
     });
   });
 
-  group('holdingsOf', () {
+  group('summaryOf', () {
     test('counts each kind, and the four in the order a reader meets '
         'them', () {
       final collection = Collection(
@@ -977,10 +977,10 @@ void main() {
         ],
         recipes: [Recipe('Negroni')],
       );
-      expect(holdingsOf(collection).keys, Holding.values);
+      expect(summaryOf(collection).keys, Holding.values);
       // The tags of both vocabularies under one count, as the screen managing
       // them lists them (ADR 07).
-      expect(holdingsOf(collection), {
+      expect(summaryOf(collection), {
         Holding.recipe: 1,
         Holding.ingredient: 2,
         Holding.tag: 3,
@@ -989,7 +989,7 @@ void main() {
     });
 
     test('an empty collection still carries the units it opens with', () {
-      expect(holdingsOf(Collection()), {
+      expect(summaryOf(Collection()), {
         Holding.recipe: 0,
         Holding.ingredient: 0,
         Holding.tag: 0,

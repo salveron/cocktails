@@ -134,12 +134,12 @@ Collection docCollection() => Collection(
   ],
 );
 
-BarPayload payloadOf(String yaml) {
+BarContent payloadOf(String yaml) {
   final result = codec.decode(yaml);
-  if (result is Rejected<BarPayload>) {
+  if (result is Rejected<BarContent>) {
     fail('expected Ok, got:\n${result.issues.join('\n')}');
   }
-  return (result as Ok<BarPayload>).value;
+  return (result as Ok<BarContent>).value;
 }
 
 Collection decoded(String yaml) => payloadOf(yaml).collection;
@@ -154,8 +154,8 @@ String encoded(
 
 List<SourcedIssue> rejected(String yaml) {
   final result = codec.decode(yaml);
-  expect(result, isA<Rejected<BarPayload>>(), reason: 'expected Rejected');
-  return (result as Rejected<BarPayload>).issues;
+  expect(result, isA<Rejected<BarContent>>(), reason: 'expected Rejected');
+  return (result as Rejected<BarContent>).issues;
 }
 
 void expectIssue(
@@ -1177,18 +1177,18 @@ recipes: []
       ),
     );
 
-    Records indexOf(String yaml) {
+    ShelfIndex indexOf(String yaml) {
       final result = codec.decodeIndex(yaml);
-      if (result is Rejected<Records>) {
+      if (result is Rejected<ShelfIndex>) {
         fail('expected Ok, got:\n${result.issues.join('\n')}');
       }
-      return (result as Ok<Records>).value;
+      return (result as Ok<ShelfIndex>).value;
     }
 
     List<SourcedIssue> indexRejected(String yaml) {
       final result = codec.decodeIndex(yaml);
-      expect(result, isA<Rejected<Records>>(), reason: 'expected Rejected');
-      return (result as Rejected<Records>).issues;
+      expect(result, isA<Rejected<ShelfIndex>>(), reason: 'expected Rejected');
+      return (result as Rejected<ShelfIndex>).issues;
     }
 
     test('writes an owner as one line, its absent halves left off', () {
@@ -1262,7 +1262,7 @@ bars:
         'bars:\n'
         '  - {id: 5f2c9a, name: Home bar, mode: owner}\n',
       );
-      expect(records.bars.single.holds, isNull);
+      expect(records.bars.single.summary, isNull);
       expect(records.bars.single.updated, isNull);
     });
 
@@ -1275,7 +1275,7 @@ bars:
         'holds: {recipe: 3, ingredient: 4}}\n',
       );
       // A partial count read as a whole one would say the bar holds no tags.
-      expect(records.bars.single.holds, isNull);
+      expect(records.bars.single.summary, isNull);
     });
 
     test('a count that is not one is refused', () {
@@ -1323,15 +1323,15 @@ bars:
     // FR-SET-2, ADR 24: the block is the device's, not the file's — it rides
     // the index and never an export.
     group('what the optimizer is asked', () {
-      Bar asking(Shopping shopping) =>
+      Bar asking(ShoppingSettings shopping) =>
           Bar(id: 'a1', name: 'Ada', mode: BarMode.owner, shopping: shopping);
 
       test('round-trips whole', () {
-        const asked = Shopping(
+        const asked = ShoppingSettings(
           aiming: true,
           budget: 3,
           restocking: true,
-          most: 50,
+          keptPerSize: 50,
           buyingOptional: true,
         );
         final records = indexOf(
@@ -1342,11 +1342,11 @@ bars:
 
       test('is left off entirely while nothing in it has moved', () {
         final written = codec.encodeIndex((
-          bars: [asking(const Shopping())],
+          bars: [asking(const ShoppingSettings())],
           openId: null,
         ));
         expect(written, isNot(contains('shopping')));
-        expect(indexOf(written).bars.single.shopping, const Shopping());
+        expect(indexOf(written).bars.single.shopping, const ShoppingSettings());
       });
 
       test('a record written before it existed reads as the defaults', () {
@@ -1355,7 +1355,7 @@ bars:
           'bars:\n'
           '  - {id: a1, name: Ada, mode: owner}\n',
         );
-        expect(records.bars.single.shopping, const Shopping());
+        expect(records.bars.single.shopping, const ShoppingSettings());
       });
 
       test('a number outside what its screen offers is reported', () {

@@ -14,7 +14,7 @@ const basketCounts = [10, 25, 50];
 /// How the optimizer is asked and what its screen opens on (FR-SET-2) — the
 /// reader's, so ADR 24 rides it on the bar's record rather than in the file.
 /// The defaults are the answer the app gave before any of it could be set.
-final class Shopping {
+final class ShoppingSettings {
   /// Whether a tag pick aims the search or sifts its answer (FR-DIS-10).
   final bool aiming;
 
@@ -24,48 +24,49 @@ final class Shopping {
   final bool restocking;
 
   /// The best few of each size (ADR 15), and whether an optional line is short
-  /// at all (FR-REC-3).
-  final int most;
+  /// at all (FR-REC-3). Read and written under its own wire token, `most`.
+  final int keptPerSize;
   final bool buyingOptional;
 
-  const Shopping({
+  const ShoppingSettings({
     this.aiming = false,
     this.budget = 1,
     this.restocking = false,
-    this.most = 25,
+    this.keptPerSize = 25,
     this.buyingOptional = false,
   });
 
-  Shopping copyWith({
+  ShoppingSettings copyWith({
     bool? aiming,
     int? budget,
     bool? restocking,
-    int? most,
+    int? keptPerSize,
     bool? buyingOptional,
-  }) => Shopping(
+  }) => ShoppingSettings(
     aiming: aiming ?? this.aiming,
     budget: budget ?? this.budget,
     restocking: restocking ?? this.restocking,
-    most: most ?? this.most,
+    keptPerSize: keptPerSize ?? this.keptPerSize,
     buyingOptional: buyingOptional ?? this.buyingOptional,
   );
 
   @override
   bool operator ==(Object other) =>
-      other is Shopping &&
+      other is ShoppingSettings &&
       other.aiming == aiming &&
       other.budget == budget &&
       other.restocking == restocking &&
-      other.most == most &&
+      other.keptPerSize == keptPerSize &&
       other.buyingOptional == buyingOptional;
 
   @override
   int get hashCode =>
-      Object.hash(aiming, budget, restocking, most, buyingOptional);
+      Object.hash(aiming, budget, restocking, keptPerSize, buyingOptional);
 
   @override
   String toString() =>
-      'Shopping(${aiming ? 'aiming' : 'sifting'}, $budget of $most)';
+      'ShoppingSettings(${aiming ? 'aiming' : 'sifting'}, $budget of '
+      '$keptPerSize)';
 }
 
 final class Purchase {
@@ -92,9 +93,9 @@ final class Purchase {
 }
 
 /// The purchases of at most [budget] ingredients worth making, most recipes
-/// first, then fewest ingredients, then A→Z — the best [most] of each basket
-/// size, so a cheap win is never buried under the baskets one ingredient
-/// bigger.
+/// first, then fewest ingredients, then A→Z — the best [keptPerSize] of each
+/// basket size, so a cheap win is never buried under the baskets one
+/// ingredient bigger.
 ///
 /// The ingredients worth weighing are only those some recipe is actually short
 /// of, so the pool is the gaps' own ingredients and the search is every basket
@@ -114,7 +115,7 @@ final class Purchase {
 List<Purchase> purchasesWithin(
   Collection collection,
   int budget, {
-  int most = 25,
+  int keptPerSize = 25,
   bool restocking = false,
   bool buyingOptional = false,
   Set<String>? scoring,
@@ -146,7 +147,7 @@ List<Purchase> purchasesWithin(
     (closes[_packed(part, radix)] ??= <String>{}).add(gap.recipe);
   }
 
-  final shelves = List.generate(budget + 1, (_) => <_Kept>[]);
+  final keptBySize = List.generate(budget + 1, (_) => <_Kept>[]);
   final yields = <int, int>{};
   final unlocks = <String>{};
   for (final basket in _baskets(ingredients.length, budget)) {
@@ -155,13 +156,13 @@ List<Purchase> purchasesWithin(
         ? unlocks.length
         : unlocks.where(scoring.contains).length;
     yields[_keyOfPart(basket, (1 << basket.length) - 1, radix)] = yield;
-    if (yield == 0 || !_earnsIts(basket, yield, yields, radix)) continue;
-    _shelve(shelves[basket.length], basket, yield, most);
+    if (yield == 0 || !_earnsItsKeep(basket, yield, yields, radix)) continue;
+    _keep(keptBySize[basket.length], basket, yield, keptPerSize);
   }
 
   final purchases = <Purchase>[];
   for (final kept in [
-    for (final shelf in shelves) ...shelf,
+    for (final bySize in keptBySize) ...bySize,
   ]..sort(_bestFirst)) {
     _unlockedBy(unlocks, kept.basket, closes, radix);
     purchases.add(
@@ -175,17 +176,18 @@ List<Purchase> purchasesWithin(
 
 typedef _Kept = ({List<int> basket, int yield});
 
-/// [kept] onto a shelf holding the best [most] of its size, richest first. A
-/// basket ties with one already there only by unlocking the same number, and
-/// the earlier one reads first alphabetically, so a tie keeps what it has.
-void _shelve(List<_Kept> shelf, List<int> basket, int yield, int most) {
-  if (shelf.length >= most && yield <= shelf.last.yield) return;
-  var at = shelf.length;
-  while (at > 0 && shelf[at - 1].yield < yield) {
+/// [kept] into the list holding the best [keptPerSize] of its size, richest
+/// first. A basket ties with one already there only by unlocking the same
+/// number, and the earlier one reads first alphabetically, so a tie keeps
+/// what it has.
+void _keep(List<_Kept> bySize, List<int> basket, int yield, int keptPerSize) {
+  if (bySize.length >= keptPerSize && yield <= bySize.last.yield) return;
+  var at = bySize.length;
+  while (at > 0 && bySize[at - 1].yield < yield) {
     at--;
   }
-  shelf.insert(at, (basket: List.of(basket), yield: yield));
-  if (shelf.length > most) shelf.removeLast();
+  bySize.insert(at, (basket: List.of(basket), yield: yield));
+  if (bySize.length > keptPerSize) bySize.removeLast();
 }
 
 /// The recipes [basket] makes, into [unlocks]: those closed by any of its
@@ -208,7 +210,12 @@ void _unlockedBy(
 /// selves is that smaller one with a passenger — and since a sub-basket's
 /// recipes are always a subset, matching counts mean matching answers, so the
 /// count settles it. Baskets grow by size, so the smaller are already weighed.
-bool _earnsIts(List<int> basket, int yield, Map<int, int> yields, int radix) {
+bool _earnsItsKeep(
+  List<int> basket,
+  int yield,
+  Map<int, int> yields,
+  int radix,
+) {
   if (basket.length < 2) return true;
   final whole = (1 << basket.length) - 1;
   for (var i = 0; i < basket.length; i++) {

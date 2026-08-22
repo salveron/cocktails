@@ -9,5 +9,5 @@ abstract interface class BarChannel {
   Transport get transport;
 
   /// Every refresh; null is nothing asked (a picker dismissed), not [Unreachable].
-  Future<Outcome<BarPayload>?> fetch(BarSource source);
+  Future<Outcome<BarContent>?> fetch(BarSource source);
 }

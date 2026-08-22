@@ -50,7 +50,7 @@ typedef Offer = ({Transport via, List<String> guests});
 /// unit whoever establishes a bar from it starts out with — both theirs from
 /// then on, so neither returns on a refresh. Mode, source, refresh time and id
 /// are the device's and never travel.
-typedef BarPayload = ({String name, FixedUnit display, Collection collection});
+typedef BarContent = ({String name, FixedUnit display, Collection collection});
 
 /// Where a guest bar refreshes from (FR-BAR-5). [at] is the transport's own
 /// address, opaque above data/; [from] is what to call it where a source reads.
@@ -90,7 +90,7 @@ final class Bar {
   final FixedUnit display;
 
   /// The reader's too, and kept here for the same reason (FR-SET-2, ADR-24).
-  final Shopping shopping;
+  final ShoppingSettings shopping;
 
   /// An owner's, one per way the bar is shared (FR-BAR-6).
   final List<Offer> offers;
@@ -107,21 +107,21 @@ final class Bar {
   /// collection ([ADR 20](../../../docs/adr/20-the-app-holds-many-bars.md)).
   /// Null where nothing has summarised it yet — an index written before the
   /// summary existed — which is the one state a reader repairs by summarising.
-  final Map<Holding, int>? holds;
+  final Map<Holding, int>? summary;
 
   Bar({
     required this.id,
     required this.name,
     required this.mode,
     this.display = FixedUnit.part,
-    this.shopping = const Shopping(),
+    this.shopping = const ShoppingSettings(),
     List<Offer> offers = const [],
     this.source,
     this.refreshed,
     this.updated,
-    Map<Holding, int>? holds,
+    Map<Holding, int>? summary,
   }) : offers = List.unmodifiable(offers),
-       holds = holds == null ? null : Map.unmodifiable(holds);
+       summary = summary == null ? null : Map.unmodifiable(summary);
 
   bool get isOwned => mode == BarMode.owner;
 
@@ -131,11 +131,11 @@ final class Bar {
   Bar _copy({
     String? name,
     FixedUnit? display,
-    Shopping? shopping,
+    ShoppingSettings? shopping,
     List<Offer>? offers,
     DateTime? refreshed,
     DateTime? updated,
-    Map<Holding, int>? holds,
+    Map<Holding, int>? summary,
   }) => Bar(
     id: id,
     name: name ?? this.name,
@@ -146,7 +146,7 @@ final class Bar {
     source: source,
     refreshed: refreshed ?? this.refreshed,
     updated: updated ?? this.updated,
-    holds: holds ?? this.holds,
+    summary: summary ?? this.summary,
   );
 
   /// What a copy may change, and nothing else: null means "keep", so a field
@@ -156,7 +156,7 @@ final class Bar {
   Bar copyWith({
     String? name,
     FixedUnit? display,
-    Shopping? shopping,
+    ShoppingSettings? shopping,
     List<Offer>? offers,
   }) => _copy(name: name, display: display, shopping: shopping, offers: offers);
 
@@ -165,17 +165,17 @@ final class Bar {
   /// copy that meant to keep it. [name] and [display] are the reader's and are
   /// physically unreachable from here, so no refresh can lose either (ADR-21).
   Bar refreshedAt(Collection collection, DateTime at) =>
-      _copy(refreshed: at, holds: holdingsOf(collection));
+      _copy(refreshed: at, summary: summaryOf(collection));
 
   /// What the bar holds, counted afresh. The one writer of [updated] and —
-  /// with [refreshedAt] — of [holds], so a summary is never a step behind the
-  /// contents it counts. [at] is the moment the contents became these, and is
-  /// absent only where they did not just change: a bar being summarised for
-  /// the first time is being counted, not edited, and inventing a stamp for it
-  /// would date an edit nobody made — so absent here means "keep", same as
-  /// everywhere else this rebuild is read from.
+  /// with [refreshedAt] — of [summary], so a summary is never a step behind
+  /// the contents it counts. [at] is the moment the contents became these,
+  /// and is absent only where they did not just change: a bar being
+  /// summarised for the first time is being counted, not edited, and
+  /// inventing a stamp for it would date an edit nobody made — so absent
+  /// here means "keep", same as everywhere else this rebuild is read from.
   Bar summarised(Collection collection, {DateTime? at}) =>
-      _copy(holds: holdingsOf(collection), updated: at);
+      _copy(summary: summaryOf(collection), updated: at);
 
   @override
   bool operator ==(Object other) =>
@@ -189,7 +189,7 @@ final class Bar {
       other.source == source &&
       other.refreshed == refreshed &&
       other.updated == updated &&
-      _sameHoldings(other.holds, holds);
+      _sameSummary(other.summary, summary);
 
   @override
   int get hashCode => Object.hash(
@@ -202,7 +202,7 @@ final class Bar {
     source,
     refreshed,
     updated,
-    _holdingsHash(holds),
+    _summaryHash(summary),
   );
 
   @override
@@ -359,11 +359,11 @@ int _offersHash(List<Offer> offers) => Object.hashAll([
 /// A summary compares kind by kind, [Holding] being closed: two maps built
 /// apart would otherwise never read as equal, and an unsummarised bar is
 /// unequal to one counted as empty rather than the same thing said twice.
-bool _sameHoldings(Map<Holding, int>? a, Map<Holding, int>? b) {
+bool _sameSummary(Map<Holding, int>? a, Map<Holding, int>? b) {
   if (a == null || b == null) return a == null && b == null;
   return Holding.values.every((holding) => a[holding] == b[holding]);
 }
 
-int? _holdingsHash(Map<Holding, int>? holds) => holds == null
+int? _summaryHash(Map<Holding, int>? summary) => summary == null
     ? null
-    : Object.hashAll([for (final holding in Holding.values) holds[holding]]);
+    : Object.hashAll([for (final holding in Holding.values) summary[holding]]);

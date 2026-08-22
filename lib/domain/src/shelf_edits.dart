@@ -41,7 +41,7 @@ extension ShelfEdits on Shelf {
 
   /// FR-BAR-5: the owner's collection replaced, stamped [at]. Never [Bar.name]
   /// or [Bar.display], the reader's picks (ADR-21).
-  Shelf refreshedWith(String id, BarPayload payload, DateTime at) {
+  Shelf refreshedWith(String id, BarContent payload, DateTime at) {
     final bar = barWithId(id);
     if (bar == null) return this;
     if (bar.isOwned) {

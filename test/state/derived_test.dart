@@ -89,7 +89,7 @@ void main() {
         final container = await started(short);
         expect(
           container
-              .read(purchasesProvider(ShoppingAsk(restocking: false)))
+              .read(purchasesProvider(ShoppingQuery(restocking: false)))
               .map((p) => p.ingredients),
           [
             ['campari', 'gin'],
@@ -107,12 +107,12 @@ void main() {
         ),
       );
       expect(
-        container.read(purchasesProvider(ShoppingAsk(restocking: false))),
+        container.read(purchasesProvider(ShoppingQuery(restocking: false))),
         isEmpty,
       );
       expect(
         container
-            .read(purchasesProvider(ShoppingAsk(restocking: true)))
+            .read(purchasesProvider(ShoppingQuery(restocking: true)))
             .single
             .ingredients,
         ['gin'],

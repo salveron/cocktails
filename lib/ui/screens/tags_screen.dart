@@ -7,23 +7,21 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../widgets/color_chip.dart';
 import '../widgets/empty_state.dart';
+import '../widgets/entry_list.dart';
 import '../widgets/vocabulary_dialogs.dart';
-import '../widgets/vocabulary_list.dart';
 
 /// Both tag vocabularies, a tab each — add, rename with propagation, colour,
 /// and reference-blocked delete (FR-VOC-1/3/4). Designed in
 /// docs/ui-design.md#tags-screen.
 ///
 /// On a guest bar the search and the orders stand and everything that writes
-/// goes — the add, the row menu, the tap that opened an edit (FR-BAR-4) — which
-/// is also what lets every write below take the writer as non-null.
+/// goes — the add, the row menu, the tap that opened an edit (FR-BAR-4).
 class TagsScreen extends ConsumerWidget {
   const TagsScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final collection = ref.watch(collectionProvider);
-    final writable = ref.watch(barWriterProvider) != null;
     return DefaultTabController(
       length: TagKind.values.length,
       child: Scaffold(
@@ -37,8 +35,7 @@ class TagsScreen extends ConsumerWidget {
         ),
         body: TabBarView(
           children: [
-            for (final kind in TagKind.values)
-              _TagTab(kind, collection, writable: writable),
+            for (final kind in TagKind.values) _TagTab(kind, collection),
           ],
         ),
       ),
@@ -84,91 +81,97 @@ extension on TagKind {
 }
 
 class _TagTab extends ConsumerWidget {
-  const _TagTab(this.kind, this.collection, {required this.writable});
+  const _TagTab(this.kind, this.collection);
 
   final TagKind kind;
   final Collection collection;
-  final bool writable;
 
-  _Words get vocabulary => kind.words;
+  _Words get words => kind.words;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) => VocabularyList<Tag>(
-    entries: collection.tagsOf(kind),
-    nameOf: (tag) => tag.name,
-    rowOf: (tag) => VocabularyRow(
-      // Left-align chip (prevents stretching).
-      title: Align(alignment: Alignment.centerLeft, child: TagChip(tag)),
-      // An empty menu draws nothing at all, so a guest's rows lose the ⋮
-      // rather than gaining one that opens onto nothing.
-      trailing: RowMenu(
-        writable
-            ? {
-                'Edit': () => unawaited(_edit(context, ref, tag)),
-                'Delete': () => unawaited(_delete(context, ref, tag)),
-              }
-            : const {},
+  Widget build(BuildContext context, WidgetRef ref) {
+    final writer = ref.watch(barWriterProvider);
+    return EntryCardList<Tag>(
+      entries: collection.tagsOf(kind),
+      nameOf: (tag) => tag.name,
+      rowOf: (tag) => EntryCard(
+        // Left-align chip (prevents stretching).
+        title: Align(alignment: Alignment.centerLeft, child: TagChip(tag)),
+        // An empty menu draws nothing at all, so a guest's rows lose the ⋮
+        // rather than gaining one that opens onto nothing.
+        trailing: RowMenu(
+          writer == null
+              ? const {}
+              : {
+                  'Edit': () => unawaited(_editTag(context, writer, tag)),
+                  'Delete': () => unawaited(_delete(context, writer, tag)),
+                },
+        ),
+        onTap: writer == null
+            ? null
+            : () => unawaited(_editTag(context, writer, tag)),
       ),
-      onTap: writable ? () => unawaited(_edit(context, ref, tag)) : null,
-    ),
-    onAdd: writable ? (query) => _add(context, ref, query) : null,
-    noun: vocabulary.noun,
-    plural: vocabulary.plural,
-    orders: {...alphabetical, 'Colour': (tag) => tag.color.index},
-    empty: EmptyState(
-      icon: Icons.label_outline,
-      title: 'No ${vocabulary.plural} yet',
-      // The blurb describes what one is for, which reads as an invitation —
-      // and a guest has none to take up.
-      message: writable
-          ? vocabulary.blurb
-          : 'This bar carries no ${vocabulary.plural}.',
-    ),
-  );
+      onAdd: writer == null ? null : (query) => _add(context, writer, query),
+      noun: words.noun,
+      plural: words.plural,
+      orders: {...alphabetical, 'Colour': (tag) => tag.color.index},
+      empty: EmptyState(
+        icon: Icons.label_outline,
+        title: 'No ${words.plural} yet',
+        // The blurb describes what one is for, which reads as an invitation —
+        // and a guest has none to take up.
+        message: writer == null
+            ? 'This bar carries no ${words.plural}.'
+            : words.blurb,
+      ),
+    );
+  }
 
   /// Returns true after adding (clears search).
-  Future<bool> _add(BuildContext context, WidgetRef ref, String query) async {
+  Future<bool> _add(
+    BuildContext context,
+    BarWriter writer,
+    String query,
+  ) async {
     final color = _unspentColor(collection.tagsOf(kind));
     final tag = await promptForTag(
       context,
-      title: 'New ${vocabulary.noun}',
-      hintText: vocabulary.hint,
+      title: 'New ${words.noun}',
+      hintText: words.hint,
       validate: _nameRule(color),
       color: color,
       initial: query,
     );
     if (tag == null || !context.mounted) return false;
-    await ref.read(barWriterProvider)!.upsertTag(kind, tag);
+    await writer.upsertTag(kind, tag);
     return true;
   }
 
   /// Name and colour come back together, so the whole entry goes to the
   /// collection as one edit — one save, one backup rotation — the rename it
   /// into the entries wearing it included (FR-DAT-4).
-  Future<void> _edit(BuildContext context, WidgetRef ref, Tag tag) async {
+  Future<void> _editTag(BuildContext context, BarWriter writer, Tag tag) async {
     final edited = await promptForTag(
       context,
       title: 'Edit "${tag.name}"',
-      hintText: vocabulary.hint,
+      hintText: words.hint,
       validate: _nameRule(tag.color, except: tag.name),
       color: tag.color,
       initial: tag.name,
     );
     if (edited == null || !context.mounted) return;
-    await ref
-        .read(barWriterProvider)!
-        .upsertTag(kind, edited, replacing: tag.name);
+    await writer.upsertTag(kind, edited, replacing: tag.name);
   }
 
-  Future<void> _delete(BuildContext context, WidgetRef ref, Tag tag) async {
+  Future<void> _delete(BuildContext context, BarWriter writer, Tag tag) async {
     final confirmed = await confirmDelete(
       context,
       what: tag.name,
       blockedBy: collection.usersOfTag(kind, tag.name),
-      blockedByNoun: vocabulary.blockedByNoun,
+      blockedByNoun: words.blockedByNoun,
     );
     if (!confirmed || !context.mounted) return;
-    await ref.read(barWriterProvider)!.removeTag(kind, tag.name);
+    await writer.removeTag(kind, tag.name);
   }
 
   /// Name rules (excluding [except] to prevent collision on rename). A tag

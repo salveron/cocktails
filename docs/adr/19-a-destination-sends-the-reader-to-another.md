@@ -7,7 +7,7 @@ built at once.
 
 Basket names recipes unlocked; reader wants to know what else recipe is short of — 4 moves today (remember name, switch Recipes, search, open). Tap name on basket should make it 1 (FR-DIS-9). Recipe card names ingredients per line; reader wants that ingredient on the Ingredients screen (aliases, tags, stock). Same move, different screens. Channel designed generally.
 
-Nothing crosses destinations. `_Destination`, `_current` private to `app.dart`; three screens side by side in `IndexedStack`, never speak. Revealing row is `VocabularyList` alone; `ListDraw.draw` answers name, `_reach` turns to index off `_placed` (ADR 13; keeps scroll package contained). Row must be on-show to reveal: search, tag picks, base pick, order narrow/reorder; reveal of excluded row finds no index, silently does nothing.
+Nothing crosses destinations. `_Destination`, `_current` private to `app.dart`; three screens side by side in `IndexedStack`, never speak. Revealing row is `EntryCardList` alone; `RandomDraw.draw` answers name, `_reach` turns to index off `_placed` (ADR 13; keeps scroll package contained). Row must be on-show to reveal: search, tag picks, base pick, order narrow/reorder; reveal of excluded row finds no index, silently does nothing.
 
 ## Decision
 
@@ -18,7 +18,7 @@ Nothing crosses destinations. `_Destination`, `_current` private to `app.dart`; 
 - **Destinations module**: `lib/ui/destinations.dart` moves enum from `app.dart`, holds request provider. Same subject, same place; avoids circular import.
 - Request **nullable, one-shot**: serving screen clears it; return to destination later does not re-reveal.
 - **Shell watches only to switch destination**, learns nothing of row. `AppShell` becomes `Consumer` (whole change).
-- **Serving screen resets narrowing to default before reveal**: tag picks, base pick, search text, order. Reader asked to see row, not why cannot. `VocabularyList` gains name-to-reveal input alongside `draw`; both feed `_reveal` field; reset is part of serving.
+- **Serving screen resets narrowing to default before reveal**: tag picks, base pick, search text, order. Reader asked to see row, not why cannot. `EntryCardList` gains name-to-reveal input alongside `draw`; both feed `_reveal` field; reset is part of serving.
 - **Row opened alone**, rest shut (like random pick). Jump is one answer not pile.
 - **Plain tap sends, no marking**. Amended on implementation: long press drafted first (jump as secondary). It's not — reaching name is commonest thing reader wants; name-carrying rows lead nowhere else; tap free. Ripple is feedback. Arrow weighed/refused (slot carries tag dots, stock dots); label refused with long press.
 - **Name crossing is entry's own**: line names ingredient by any spelling (ADR 10), sender resolves with `collection.spellingOf`. List finds rows by names; channel carrying spelling fails silently on unbuilt pairs.

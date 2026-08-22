@@ -63,7 +63,7 @@ void main() {
     WidgetTester tester, {
     String title = 'New ingredient',
     String initial = '',
-    List<Tag> vocabulary = const [],
+    List<Tag> tags = const [],
     List<String> aliases = const [],
     List<String> chosen = const [],
   }) => openDialog(
@@ -73,7 +73,7 @@ void main() {
       title: title,
       hintText: 'Ingredient name',
       validate: rule,
-      vocabulary: vocabulary,
+      tags: tags,
       aliases: aliases,
       chosen: chosen,
       initial: initial,
@@ -111,7 +111,7 @@ void main() {
     testWidgets('every tag is offered, the worn ones ringed', (tester) async {
       await openIngredient(
         tester,
-        vocabulary: ingredientTags,
+        tags: ingredientTags,
         chosen: const ['syrup'],
       );
       expect(isPicked(tester, 'syrup'), isTrue);
@@ -119,7 +119,7 @@ void main() {
     });
 
     testWidgets('name and tags come back together', (tester) async {
-      final answer = await openIngredient(tester, vocabulary: ingredientTags);
+      final answer = await openIngredient(tester, tags: ingredientTags);
       await type(tester, 'lime juice');
       await chooseTag(tester, 'citrus');
       await tap(tester, find.text('Save'));
@@ -131,7 +131,7 @@ void main() {
       final answer = await openIngredient(
         tester,
         initial: 'orgeat',
-        vocabulary: ingredientTags,
+        tags: ingredientTags,
         chosen: const ['citrus', 'syrup'],
       );
       await chooseTag(tester, 'citrus');
@@ -143,7 +143,7 @@ void main() {
     testWidgets('tags answer in vocabulary order, not tapping order', (
       tester,
     ) async {
-      final answer = await openIngredient(tester, vocabulary: ingredientTags);
+      final answer = await openIngredient(tester, tags: ingredientTags);
       await type(tester, 'orgeat');
       await chooseTag(tester, 'syrup');
       await chooseTag(tester, 'citrus');
@@ -154,7 +154,7 @@ void main() {
     testWidgets('a chip keeps its size whether or not it is picked', (
       tester,
     ) async {
-      await openIngredient(tester, vocabulary: ingredientTags);
+      await openIngredient(tester, tags: ingredientTags);
       final chip = find.widgetWithText(ColorChip, 'citrus');
       final before = tester.getSize(chip);
       await chooseTag(tester, 'citrus');
@@ -163,7 +163,7 @@ void main() {
     });
 
     testWidgets('the tag row starts where the field starts', (tester) async {
-      await openIngredient(tester, vocabulary: ingredientTags);
+      await openIngredient(tester, tags: ingredientTags);
       expect(
         tester.getTopLeft(find.byType(TagChoices)).dx,
         tester.getTopLeft(dialogField).dx,

@@ -27,7 +27,7 @@ Bar ownedBar({
   FixedUnit display = FixedUnit.part,
   List<Offer> offers = const [],
   DateTime? updated,
-  Map<Holding, int>? holds,
+  Map<Holding, int>? summary,
 }) => Bar(
   id: id,
   name: name,
@@ -35,7 +35,7 @@ Bar ownedBar({
   display: display,
   offers: offers,
   updated: updated,
-  holds: holds,
+  summary: summary,
 );
 
 Bar guestBar({
@@ -44,7 +44,7 @@ Bar guestBar({
   FixedUnit display = FixedUnit.part,
   BarSource? source = aSource,
   DateTime? refreshed,
-  Map<Holding, int>? holds,
+  Map<Holding, int>? summary,
 }) => Bar(
   id: id,
   name: name,
@@ -52,7 +52,7 @@ Bar guestBar({
   display: display,
   source: source,
   refreshed: refreshed,
-  holds: holds,
+  summary: summary,
 );
 
 void main() {
@@ -166,7 +166,7 @@ void main() {
       final bar = guestBar(refreshed: anHourAgo);
       final landed = bar.refreshedAt(_twoIngredients, now);
       expect(landed.refreshed, now);
-      expect(landed.holds, holdingsOf(_twoIngredients));
+      expect(landed.summary, summaryOf(_twoIngredients));
       // The reader's two picks outlive what the owner sent (ADR 21), and where
       // the bar refreshes from is untouched by having refreshed.
       expect(landed.name, bar.name);
@@ -177,13 +177,13 @@ void main() {
     test('summarised counts the contents and dates them', () {
       final at = DateTime.utc(2026, 3, 1, 18);
       final bar = ownedBar().summarised(_twoIngredients, at: at);
-      expect(bar.holds, holdingsOf(_twoIngredients));
+      expect(bar.summary, summaryOf(_twoIngredients));
       expect(bar.updated, at);
     });
 
     test('a first summary is a count, not an edit, and dates nothing', () {
       final bar = ownedBar().summarised(_twoIngredients);
-      expect(bar.holds, holdingsOf(_twoIngredients));
+      expect(bar.summary, summaryOf(_twoIngredients));
       expect(bar.updated, isNull);
     });
 
@@ -192,12 +192,12 @@ void main() {
       final bar = ownedBar().summarised(_twoIngredients, at: at);
       final renamed = bar.copyWith(name: 'Beach bar');
       expect(renamed.updated, at);
-      expect(renamed.holds, bar.holds);
+      expect(renamed.summary, bar.summary);
     });
 
     test('a summary cannot be changed from outside', () {
       expect(
-        () => ownedBar().summarised(_twoIngredients).holds!.clear(),
+        () => ownedBar().summarised(_twoIngredients).summary!.clear(),
         throwsUnsupportedError,
       );
     });

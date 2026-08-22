@@ -60,13 +60,13 @@ class _AmountsScreenState extends ConsumerState<AmountsScreen> {
   /// [sized]'s row as "1 lead = N trail". The global unit leads, except ml —
   /// "1 ml = 0.0333 part" is a number no one can read or type back — so under
   /// ml each row leads with the unit it sizes, which is the file's own shape.
-  (FixedUnit, FixedUnit) _row(FixedUnit sized) {
+  (FixedUnit, FixedUnit) _unitsFor(FixedUnit sized) {
     if (_display == FixedUnit.ml) return (sized, FixedUnit.ml);
     return (_display, sized == _display ? FixedUnit.ml : sized);
   }
 
   String _reading(FixedUnit sized) {
-    final (lead, trail) = _row(sized);
+    final (lead, trail) = _unitsFor(sized);
     return formatNumber(_rounded(_entered.ratio(lead, trail)));
   }
 
@@ -77,10 +77,10 @@ class _AmountsScreenState extends ConsumerState<AmountsScreen> {
     return value != null && value.isFinite && value > 0 ? value : null;
   }
 
-  void _edit(FixedUnit sized) => setState(() {
+  void _apply(FixedUnit sized) => setState(() {
     final typed = _typed(sized);
     if (typed != null) {
-      final (lead, trail) = _row(sized);
+      final (lead, trail) = _unitsFor(sized);
       _entered = _entered.withRatio(lead, trail, typed);
     }
     _rewrite(except: sized);
@@ -167,13 +167,13 @@ class _AmountsScreenState extends ConsumerState<AmountsScreen> {
     children: [
       for (final sized in _sizedUnits)
         _ratioRow(
-          row: _row(sized),
+          row: _unitsFor(sized),
           field: _fields[sized]!,
           writable: writable,
           // A row nobody may type in cannot be wrong, and the owner's sizes are
           // not this reader's to be told off for.
           error: writable ? unread[sized] ?? refused[sized] : null,
-          onEdit: () => _edit(sized),
+          onEdit: () => _apply(sized),
         ),
     ],
   );

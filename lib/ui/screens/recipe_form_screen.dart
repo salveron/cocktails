@@ -7,10 +7,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../widgets/editor_form.dart';
-import '../widgets/vocabulary_dialogs.dart';
+import '../widgets/entry_list.dart';
+import '../widgets/failures.dart';
 import '../widgets/tag_choices.dart';
-import '../widgets/telling.dart';
-import '../widgets/vocabulary_list.dart';
+import '../widgets/vocabulary_dialogs.dart';
 
 /// One pushed page for creating and editing a recipe (FR-REC-1..5/8): the
 /// name, the ingredient lines typed in the file's own grammar, the tag picker,
@@ -137,7 +137,7 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
   /// kept as typed: "gin" against "Gin" and an alias against the ingredient it
   /// names both settle on the way to the collection (ADR 08, ADR 10), so the
   /// form judges what it sees and stores what the vocabulary calls it.
-  ({Recipe recipe, List<int> fieldOf}) _entered(List<Tag> vocabulary) {
+  ({Recipe recipe, List<int> fieldOf}) _entered(List<Tag> tags) {
     final lines = <RecipeLine>[];
     final fieldOf = <int>[];
     for (var field = 0; field < _lines.rows.length; field++) {
@@ -149,7 +149,7 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
     return (
       recipe: Recipe(
         _name.text,
-        tags: [for (final tag in wornInOrder(vocabulary, _tags)) tag.name],
+        tags: [for (final tag in wornInOrder(tags, _tags)) tag.name],
         lines: lines,
         notes: _notes.text.trim(),
       ),
@@ -157,8 +157,8 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
     );
   }
 
-  Future<void> _save(Collection collection, List<Tag> vocabulary) async {
-    final entered = _entered(vocabulary);
+  Future<void> _save(Collection collection, List<Tag> tags) async {
+    final entered = _entered(tags);
     final issues = validateRecipe(
       entered.recipe,
       knownIngredients: collection.ingredientSpellings(),
@@ -244,7 +244,7 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
   @override
   Widget build(BuildContext context) {
     final collection = ref.watch(collectionProvider);
-    final vocabulary = ref.watch(recipeTagsProvider);
+    final tags = ref.watch(recipeTagsProvider);
     final original = widget.original;
     final nameIssues = _nameIssues(collection);
     final syntax = _syntaxProblems;
@@ -254,7 +254,7 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
       title: original == null ? 'New recipe' : 'Edit "${original.name}"',
       dirty: _dirty,
       discardTitle: 'Discard this recipe?',
-      onSave: canSave ? () => unawaited(_save(collection, vocabulary)) : null,
+      onSave: canSave ? () => unawaited(_save(collection, tags)) : null,
       children: [
         TextField(
           controller: _name,
@@ -276,10 +276,10 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
               ),
             ),
           ),
-        if (vocabulary.isNotEmpty) ...[
+        if (tags.isNotEmpty) ...[
           const SectionLabel('Tags'),
           TagChoices(
-            vocabulary: vocabulary,
+            tags: tags,
             chosen: _tags,
             onToggle: (tag) => setState(() => _tags.toggle(tag)),
           ),

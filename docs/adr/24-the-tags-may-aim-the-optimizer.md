@@ -43,8 +43,9 @@ every recipe, which is today's answer exactly.
 
 ### Where a way of looking is kept
 
-On the bar's record, as one `Shopping` value beside `display` — with the budget and the "low too"
-reading the screen opens on, ADR 15's `most`, and whether an optional line is shoppable (FR-REC-3).
+On the bar's record, as one `ShoppingSettings` value beside `display` — with the budget and the "low
+too" reading the screen opens on, ADR 15's `keptPerSize`, and whether an optional line is shoppable
+(FR-REC-3).
 Not in the collection: [ADR 21](21-the-file-carries-one-bar.md) put the reader's data on the record
 and the owner's in the file, and nothing about a way of looking reaches a file a stranger reads. Not
 app-wide either — FR-BAR-1 has a filter reach no further than the bar it started in.
@@ -72,7 +73,7 @@ a fifth scalar is a fifth chance for one to go missing on a refresh.
 ## Consequences
 
 - FR-DIS-10 gains the second reading and FR-SET-2 owns the setting. FR-REC-3 stops saying the
-  optimizer never sees an optional line, and FR-DIS-6's `most` becomes the reader's to raise —
+  optimizer never sees an optional line, and FR-DIS-6's `keptPerSize` becomes the reader's to raise —
   which is ADR 15's own relief, handed over.
 - **The ranking sort moves off `Purchase`.** The count that ranks a basket is no longer the length
   of the list it is named with, so the kept records are sorted before they are named. Ids index an

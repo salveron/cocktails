@@ -159,18 +159,18 @@ class TagDots extends StatelessWidget {
 class DottedName extends StatelessWidget {
   const DottedName(
     this.name, {
-    required this.vocabulary,
+    required this.tags,
     required this.worn,
     super.key,
   });
 
   final String name;
-  final List<Tag> vocabulary;
+  final List<Tag> tags;
   final List<String> worn;
 
   @override
   Widget build(BuildContext context) {
-    final dots = wornInOrder(vocabulary, worn);
+    final dots = wornInOrder(tags, worn);
     return Row(
       children: [
         Flexible(child: Text(name, overflow: TextOverflow.ellipsis)),

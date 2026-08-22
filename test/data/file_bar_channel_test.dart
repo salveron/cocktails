@@ -48,8 +48,8 @@ void main() {
 
   test('a picked bar arrives whole — name, display and collection', () async {
     final outcome = await picking(document).fetch(FileBarChannel.source);
-    expect(outcome, isA<Ok<BarPayload>>());
-    expect((outcome! as Ok<BarPayload>).value, payload);
+    expect(outcome, isA<Ok<BarContent>>());
+    expect((outcome! as Ok<BarContent>).value, payload);
   });
 
   /// The source is unread: which document answers is the reader's judgement,
@@ -61,7 +61,7 @@ void main() {
       at: '10.0.0.4',
       from: 'Ada',
     );
-    expect(await channel.fetch(elsewhere), isA<Ok<BarPayload>>());
+    expect(await channel.fetch(elsewhere), isA<Ok<BarContent>>());
   });
 
   test('a reader who picks nothing has not fetched at all', () async {
@@ -73,8 +73,8 @@ void main() {
       'format: 2\nname: Ada\nrecipes:\n  - name: Martini\n    lines:\n'
       '      - 2 part rye\n',
     ).fetch(FileBarChannel.source);
-    expect(outcome, isA<Rejected<BarPayload>>());
-    final issues = (outcome! as Rejected<BarPayload>).issues;
+    expect(outcome, isA<Rejected<BarContent>>());
+    final issues = (outcome! as Rejected<BarContent>).issues;
     expect(issues, isNotEmpty);
     expect(issues.first.issue.kind, ValidationIssueKind.unknownIngredient);
     expect(issues.first.line, isNotNull);
@@ -86,9 +86,9 @@ void main() {
       null,
       error: StateError('no activity'),
     ).fetch(FileBarChannel.source);
-    expect(outcome, isA<Rejected<BarPayload>>());
+    expect(outcome, isA<Rejected<BarContent>>());
     expect(
-      (outcome! as Rejected<BarPayload>).issues.single.description,
+      (outcome! as Rejected<BarContent>).issues.single.description,
       contains('no activity'),
     );
   });
