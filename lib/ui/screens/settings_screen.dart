@@ -4,8 +4,7 @@ import 'package:cocktails/state/state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../widgets/arriving_bar.dart';
-import '../widgets/failures.dart';
+import '../widgets/notices/failures.dart';
 import 'amounts_screen.dart';
 import 'bar_form_screen.dart';
 import 'bars_screen.dart';
@@ -28,72 +27,83 @@ class SettingsScreen extends ConsumerWidget {
     final writable = ref.watch(barWriterProvider) != null;
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
-      body: ListView(
-        children: [
-          const _Entry.opens(
-            icon: Icons.label_outline,
-            title: 'Tags',
-            subtitle: 'Labels and their colours',
-            page: TagsScreen(),
-          ),
-          const _Entry.opens(
-            icon: Icons.straighten_outlined,
-            title: 'Units',
-            subtitle: 'What lines are measured in',
-            page: UnitsScreen(),
-          ),
-          // The pick is the reader's on any bar and the sizes are the owner's,
-          // so this offers both and lets a guest move only the pick (FR-BAR-3).
-          const _Entry.opens(
-            icon: Icons.swap_horiz,
-            title: 'Amounts',
-            subtitle: 'How amounts read and convert',
-            page: AmountsScreen(),
-          ),
-          // The one row that dims, the optimizer being absent on a guest bar
-          // and these its settings alone (FR-BAR-4, FR-SET-2).
-          _Entry.opens(
-            icon: Icons.shopping_cart_outlined,
-            title: 'Shopping',
-            subtitle: 'What the optimizer is asked',
-            page: const ShoppingSettingsScreen(),
-            enabled: writable,
-          ),
-          // A guest already holds what the file would carry (FR-DAT-1).
-          _Entry.acts(
-            icon: Icons.ios_share,
-            title: 'Export',
-            subtitle: 'Share all as one text file',
-            act: () => unawaited(_export(context, ref)),
-          ),
-          // The one file row, read by mode: an owned bar takes a file in, a
-          // guest asks its source for a newer one (FR-BAR-5/7). The same
-          // exchange from either side, so neither dims to make room.
-          if (writable)
-            _Entry.acts(
-              icon: Icons.file_open_outlined,
-              title: 'Import',
-              subtitle: 'Replace all, or add as a guest',
-              act: () => unawaited(_import(context, ref)),
-            )
-          else
-            _Entry.acts(
-              icon: Icons.refresh,
-              title: 'Refresh',
-              subtitle: 'Ask its source for a newer copy',
-              act: () => unawaited(_refresh(context, ref)),
-            ),
-          // Last, being the way out of this bar rather than anything in it.
-          const _Entry.opens(
-            icon: Icons.liquor_outlined,
-            title: 'Change bar',
-            subtitle: 'Every bar this device holds',
-            page: BarsScreen(),
-          ),
-        ],
-      ),
+      body: ListView(children: [_Entries(writable: writable)]),
     );
   }
+}
+
+/// Every row the gear opens onto, in the order a reader meets them.
+class _Entries extends ConsumerWidget {
+  const _Entries({required this.writable});
+
+  final bool writable;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) => Column(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      const _Entry.opens(
+        icon: Icons.label_outline,
+        title: 'Tags',
+        subtitle: 'Labels and their colours',
+        page: TagsScreen(),
+      ),
+      const _Entry.opens(
+        icon: Icons.straighten_outlined,
+        title: 'Units',
+        subtitle: 'What lines are measured in',
+        page: UnitsScreen(),
+      ),
+      // The pick is the reader's on any bar and the sizes are the owner's, so
+      // this offers both and lets a guest move only the pick (FR-BAR-3).
+      const _Entry.opens(
+        icon: Icons.swap_horiz,
+        title: 'Amounts',
+        subtitle: 'How amounts read and convert',
+        page: AmountsScreen(),
+      ),
+      // The one row that dims, the optimizer being absent on a guest bar and
+      // these its settings alone (FR-BAR-4, FR-SET-2).
+      _Entry.opens(
+        icon: Icons.shopping_cart_outlined,
+        title: 'Shopping',
+        subtitle: 'What the optimizer is asked',
+        page: const ShoppingSettingsScreen(),
+        enabled: writable,
+      ),
+      // A guest already holds what the file would carry (FR-DAT-1).
+      _Entry.acts(
+        icon: Icons.ios_share,
+        title: 'Export',
+        subtitle: 'Share all as one text file',
+        act: () => unawaited(_export(context, ref)),
+      ),
+      // The one file row, read by mode: an owned bar takes a file in, a guest
+      // asks its source for a newer one (FR-BAR-5/7). The same exchange from
+      // either side, so neither dims to make room.
+      if (writable)
+        _Entry.acts(
+          icon: Icons.file_open_outlined,
+          title: 'Import',
+          subtitle: 'Replace all, or add as a guest',
+          act: () => unawaited(_import(context, ref)),
+        )
+      else
+        _Entry.acts(
+          icon: Icons.refresh,
+          title: 'Refresh',
+          subtitle: 'Ask its source for a newer copy',
+          act: () => unawaited(_refresh(context, ref)),
+        ),
+      // Last, being the way out of this bar rather than anything in it.
+      const _Entry.opens(
+        icon: Icons.liquor_outlined,
+        title: 'Change bar',
+        subtitle: 'Every bar this device holds',
+        page: BarsScreen(),
+      ),
+    ],
+  );
 }
 
 /// Writes the copy and hands it to the system's sheet (FR-DAT-1). The sheet

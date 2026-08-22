@@ -1,12 +1,12 @@
 /// Collection validation: referential integrity, names, value rules (FR-DAT-4).
-/// Issues' paths mirror data-format keys for YAML/form mapping.
+/// Issues' paths mirror data-format keys for YAML/form mapping. [checkName]
+/// and [addProblems] are the one place a rule becomes an issue — shared with
+/// shelf_validation.dart, the shelf's own rules.
 library;
 
 import 'names.dart';
 import 'line_format.dart';
 import 'collection.dart';
-import 'optimizer.dart';
-import 'shelf.dart';
 
 /// Issue rules; switch on this instead of the message.
 enum ValidationIssueKind {
@@ -72,7 +72,7 @@ final class ValidationIssue {
 }
 
 /// A violation before it gains a path.
-typedef _Problem = ({ValidationIssueKind kind, String message});
+typedef Problem = ({ValidationIssueKind kind, String message});
 
 /// Checks the parts of a would-be [Collection]; an empty result means valid.
 List<ValidationIssue> validateCollection({
@@ -84,8 +84,36 @@ List<ValidationIssue> validateCollection({
   List<Recipe> recipes = const [],
 }) {
   final issues = <ValidationIssue>[];
-  // A size of zero or less would leave a conversion meaningless in both
-  // directions, ml being what the other two are measured against (ADR 17).
+  _checkSettingsSizes(issues, settings);
+  _checkUnits(issues, units);
+  final ingredientTagNames = ingredientTags.map((t) => t.name).toList();
+  final recipeTagNames = recipeTags.map((t) => t.name).toList();
+  final knownIngredientTags = nameKeys(ingredientTagNames);
+  // Names and aliases share one namespace (ADR-10).
+  final knownIngredients = <String>{};
+  _checkIngredients(issues, ingredients, knownIngredients, knownIngredientTags);
+  _checkNames(issues, 'ingredient_tags', 'ingredient tag', ingredientTagNames);
+  _checkNames(issues, 'recipe_tags', 'recipe tag', recipeTagNames);
+  final knownRecipeTags = nameKeys(recipeTagNames);
+  _checkNames(
+    issues,
+    'recipes',
+    'recipe',
+    recipes.map((r) => r.name).toList(),
+    entryIssues: (i) => _checkRecipe(
+      recipes[i],
+      knownIngredients,
+      ['recipes', i],
+      knownTags: knownRecipeTags,
+      knownUnits: nameKeys(units.spellings),
+    ),
+  );
+  return issues;
+}
+
+/// A size of zero or less would leave a conversion meaningless in both
+/// directions, ml being what the other two are measured against (ADR 17).
+void _checkSettingsSizes(List<ValidationIssue> issues, Settings settings) {
   for (final (key, size) in [
     ('part_ml', settings.partMl),
     ('oz_ml', settings.ozMl),
@@ -100,12 +128,14 @@ List<ValidationIssue> validateCollection({
       );
     }
   }
-  _checkUnits(issues, units);
-  final ingredientTagNames = ingredientTags.map((t) => t.name).toList();
-  final recipeTagNames = recipeTags.map((t) => t.name).toList();
-  final knownIngredientTags = nameKeys(ingredientTagNames);
-  // Names and aliases share one namespace (ADR-10).
-  final knownIngredients = <String>{};
+}
+
+void _checkIngredients(
+  List<ValidationIssue> issues,
+  List<Ingredient> ingredients,
+  Set<String> knownIngredients,
+  Set<String> knownIngredientTags,
+) {
   _checkNames(
     issues,
     'ingredients',
@@ -126,112 +156,6 @@ List<ValidationIssue> validateCollection({
       ),
     ],
   );
-  _checkNames(issues, 'ingredient_tags', 'ingredient tag', ingredientTagNames);
-  _checkNames(issues, 'recipe_tags', 'recipe tag', recipeTagNames);
-  final knownRecipeTags = nameKeys(recipeTagNames);
-  _checkNames(
-    issues,
-    'recipes',
-    'recipe',
-    recipes.map((r) => r.name).toList(),
-    entryIssues: (i) => _checkRecipe(
-      recipes[i],
-      knownIngredients,
-      ['recipes', i],
-      knownTags: knownRecipeTags,
-      knownUnits: nameKeys(units.spellings),
-    ),
-  );
-  return issues;
-}
-
-/// Checks the parts of a would-be [Shelf] — the index's own record, never a
-/// bar's contents (ADR-21) — against the rules its constructor keeps, reported
-/// rather than thrown. Names go unchecked for uniqueness: two bars may carry
-/// one (FR-BAR-1). Paths follow the index's keys, `open` before `bars` as the
-/// file writes them.
-List<ValidationIssue> validateShelf({required List<Bar> bars, String? openId}) {
-  final issues = <ValidationIssue>[];
-  final ids = {for (final bar in bars) bar.id};
-  if (openId != null && !ids.contains(openId)) {
-    issues.add(
-      ValidationIssue(
-        const ['open'],
-        ValidationIssueKind.malformedValue,
-        'open names no bar on the shelf: "$openId"',
-      ),
-    );
-  }
-  final seen = <String>{};
-  for (var i = 0; i < bars.length; i++) {
-    final bar = bars[i];
-    _addProblems(
-      issues,
-      ['bars', i, 'id'],
-      [
-        // Ids are minted rather than written, so they compare exactly: ADR-08's
-        // fold is a rule for names, and two ids differing in case are two bars.
-        bar.id.isEmpty
-            ? (kind: ValidationIssueKind.emptyName, message: 'Empty bar id')
-            : null,
-        seen.add(bar.id)
-            ? null
-            : (
-                kind: ValidationIssueKind.duplicateName,
-                message: 'Duplicate bar id: "${bar.id}"',
-              ),
-      ],
-    );
-    issues.addAll(
-      _checkName(
-        'bar',
-        bar.name,
-        isDuplicate: false,
-        basePath: ['bars', i, 'name'],
-      ),
-    );
-    issues.addAll(_checkRecord(bar, ['bars', i]));
-  }
-  return issues;
-}
-
-/// The half of a record its mode allows it (FR-BAR-3/6, [coherenceProblems]),
-/// plus the one rule that is validation's alone: budget and basket count are
-/// each picked from a fixed few on their screen (FR-SET-2), so a stored value
-/// outside them would leave that screen with nothing selected.
-List<ValidationIssue> _checkRecord(Bar bar, List<Object> basePath) {
-  final issues = [
-    for (final problem in coherenceProblems(bar))
-      ValidationIssue(
-        [...basePath, ...problem.path],
-        problem.duplicate
-            ? ValidationIssueKind.duplicateName
-            : ValidationIssueKind.malformedValue,
-        problem.message,
-      ),
-  ];
-  _addProblems(
-    issues,
-    [...basePath, 'shopping'],
-    [
-      budgets.contains(bar.shopping.budget)
-          ? null
-          : (
-              kind: ValidationIssueKind.malformedValue,
-              message:
-                  'Budget must be one of ${budgets.join(', ')}: "${bar.name}"',
-            ),
-      basketCounts.contains(bar.shopping.keptPerSize)
-          ? null
-          : (
-              kind: ValidationIssueKind.malformedValue,
-              message:
-                  'Baskets must be one of ${basketCounts.join(', ')}: '
-                  '"${bar.name}"',
-            ),
-    ],
-  );
-  return issues;
 }
 
 /// Every rule on the unit vocabulary (ADR-09).
@@ -239,7 +163,7 @@ void _checkUnits(List<ValidationIssue> issues, List<Unit> units) {
   final seen = <String>{};
   for (var i = 0; i < units.length; i++) {
     final unit = units[i];
-    _addProblems(
+    addProblems(
       issues,
       ['units', i],
       [
@@ -250,7 +174,7 @@ void _checkUnits(List<ValidationIssue> issues, List<Unit> units) {
       ],
     );
     if (unit.plural.isEmpty) continue;
-    _addProblems(
+    addProblems(
       issues,
       ['units', i, 'plural'],
       [
@@ -288,7 +212,7 @@ List<ValidationIssue> validateIngredient(
 }) {
   final taken = nameKeys(otherIngredientNames);
   return [
-    ..._checkName(
+    ...checkName(
       'ingredient',
       ingredient.name,
       isDuplicate: repeatsName(taken, ingredient.name),
@@ -308,7 +232,7 @@ List<ValidationIssue> validateIngredient(
 List<ValidationIssue> validateTag(
   Tag tag, {
   Set<String> otherTagNames = const {},
-}) => _checkName(
+}) => checkName(
   'tag',
   tag.name,
   isDuplicate: repeatsName(nameKeys(otherTagNames), tag.name),
@@ -322,7 +246,7 @@ List<ValidationIssue> validateRecipe(
   required Set<String> knownUnits,
   Set<String> otherRecipeNames = const {},
 }) => [
-  ..._checkName(
+  ...checkName(
     'recipe',
     recipe.name,
     isDuplicate: repeatsName(nameKeys(otherRecipeNames), recipe.name),
@@ -343,13 +267,13 @@ void _checkNames(
   String entity,
   List<String> names, {
   Set<String>? namespace,
-  _Problem? Function(String name)? extraRule,
+  Problem? Function(String name)? extraRule,
   List<ValidationIssue> Function(int index)? entryIssues,
 }) {
   final taken = namespace ?? <String>{};
   for (var i = 0; i < names.length; i++) {
     issues.addAll(
-      _checkName(
+      checkName(
         entity,
         names[i],
         isDuplicate: repeatsName(taken, names[i]),
@@ -372,7 +296,7 @@ List<ValidationIssue> _checkAliases(
   final issues = <ValidationIssue>[];
   for (var a = 0; a < aliases.length; a++) {
     final alias = aliases[a];
-    _addProblems(
+    addProblems(
       issues,
       [...basePath, 'aliases', a],
       [
@@ -394,15 +318,15 @@ List<ValidationIssue> _checkAliases(
 }
 
 /// Single home of name rules, whether from list or form.
-List<ValidationIssue> _checkName(
+List<ValidationIssue> checkName(
   String entity,
   String name, {
   required bool isDuplicate,
-  _Problem? Function(String name)? extraRule,
+  Problem? Function(String name)? extraRule,
   List<Object> basePath = const [],
 }) {
   final issues = <ValidationIssue>[];
-  _addProblems(issues, basePath, [
+  addProblems(issues, basePath, [
     _nameProblem(entity, name),
     isDuplicate ? _duplicateProblem(entity, name) : null,
     extraRule?.call(name),
@@ -410,16 +334,16 @@ List<ValidationIssue> _checkName(
   return issues;
 }
 
-_Problem _duplicateProblem(String entity, String name) => (
+Problem _duplicateProblem(String entity, String name) => (
   kind: ValidationIssueKind.duplicateName,
   message: 'Duplicate $entity name: "$name"',
 );
 
 /// All non-null problems as issues sharing one [path].
-void _addProblems(
+void addProblems(
   List<ValidationIssue> issues,
   List<Object> path,
-  List<_Problem?> problems,
+  List<Problem?> problems,
 ) {
   for (final problem in problems) {
     if (problem != null) {
@@ -430,7 +354,7 @@ void _addProblems(
 
 /// The grammar's own text is reserved: no ingredient spelling may end with a
 /// mark suffix, nor hold the separator that would split it in two (ADR-11).
-_Problem? _reservedTextProblem(String what, String name) {
+Problem? _reservedTextProblem(String what, String name) {
   for (final suffix in reservedSuffixes) {
     if (name.endsWith(suffix)) {
       return (
@@ -450,7 +374,7 @@ _Problem? _reservedTextProblem(String what, String name) {
       : null;
 }
 
-_Problem? _nameProblem(String entity, String name) {
+Problem? _nameProblem(String entity, String name) {
   if (name.isEmpty) {
     return (kind: ValidationIssueKind.emptyName, message: 'Empty $entity name');
   }
@@ -480,7 +404,7 @@ List<ValidationIssue> _checkTagReferences(
   final duplicates = duplicateNameIndexes(tags).toSet();
   for (var t = 0; t < tags.length; t++) {
     final tag = tags[t];
-    _addProblems(
+    addProblems(
       issues,
       [...basePath, 'tags', t],
       [
@@ -526,51 +450,69 @@ List<ValidationIssue> _checkRecipe(
     );
   }
   for (var l = 0; l < recipe.lines.length; l++) {
-    final line = recipe.lines[l];
-    final amount = formatAmount(line.amount);
-    // Any one alternative makes the line, but each must name an ingredient, and
-    // naming one twice is a slip rather than a choice (ADR-11).
-    final repeated = duplicateNameIndexes(line.ingredients).toSet();
-    _addProblems(
+    _checkLine(
       issues,
-      [...basePath, 'lines', l],
-      [
-        for (var a = 0; a < line.ingredients.length; a++) ...[
-          knownIngredients.contains(nameKey(line.ingredients[a]))
-              ? null
-              : (
-                  kind: ValidationIssueKind.unknownIngredient,
-                  message: 'Unknown ingredient: "${line.ingredients[a]}"',
-                ),
-          repeated.contains(a)
-              ? (
-                  kind: ValidationIssueKind.duplicateAlternative,
-                  message:
-                      'Duplicate alternative on the line: '
-                      '"${line.ingredients[a]}"',
-                )
-              : null,
-        ],
-        knownUnits.contains(nameKey(line.unit))
-            ? null
-            : (
-                kind: ValidationIssueKind.unknownUnit,
-                message: 'Unknown unit: "${line.unit}"',
-              ),
-        line.amount.min <= 0
-            ? (
-                kind: ValidationIssueKind.amountNotPositive,
-                message: 'Amount must be positive: $amount',
-              )
-            : null,
-        line.amount.min > line.amount.max
-            ? (
-                kind: ValidationIssueKind.rangeOutOfOrder,
-                message: 'Range ends out of order: $amount',
-              )
-            : null,
-      ],
+      recipe.lines[l],
+      l,
+      basePath,
+      knownIngredients,
+      knownUnits,
     );
   }
   return issues;
+}
+
+/// Every rule on one recipe line: each alternative must name a known
+/// ingredient, and naming one twice is a slip rather than a choice (ADR-11);
+/// the unit must be known; the amount must be positive and its range in order.
+void _checkLine(
+  List<ValidationIssue> issues,
+  RecipeLine line,
+  int index,
+  List<Object> basePath,
+  Set<String> knownIngredients,
+  Set<String> knownUnits,
+) {
+  final amount = formatAmount(line.amount);
+  final repeated = duplicateNameIndexes(line.ingredients).toSet();
+  addProblems(
+    issues,
+    [...basePath, 'lines', index],
+    [
+      for (var a = 0; a < line.ingredients.length; a++) ...[
+        knownIngredients.contains(nameKey(line.ingredients[a]))
+            ? null
+            : (
+                kind: ValidationIssueKind.unknownIngredient,
+                message: 'Unknown ingredient: "${line.ingredients[a]}"',
+              ),
+        repeated.contains(a)
+            ? (
+                kind: ValidationIssueKind.duplicateAlternative,
+                message:
+                    'Duplicate alternative on the line: '
+                    '"${line.ingredients[a]}"',
+              )
+            : null,
+      ],
+      knownUnits.contains(nameKey(line.unit))
+          ? null
+          : (
+              kind: ValidationIssueKind.unknownUnit,
+              message: 'Unknown unit: "${line.unit}"',
+            ),
+      line.amount.min <= 0
+          ? (
+              kind: ValidationIssueKind.amountNotPositive,
+              message: 'Amount must be positive: $amount',
+            )
+          : null,
+      line.amount.min > line.amount.max
+          ? (
+              kind: ValidationIssueKind.rangeOutOfOrder,
+              message: 'Range ends out of order: $amount',
+            )
+          : null,
+    ],
+  );
 }

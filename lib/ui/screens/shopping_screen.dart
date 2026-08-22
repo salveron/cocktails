@@ -4,10 +4,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../destinations.dart';
-import '../widgets/color_chip.dart';
-import '../widgets/editor_form.dart';
-import '../widgets/empty_state.dart';
-import '../widgets/entry_list.dart';
+import '../theme.dart';
+import '../wording.dart';
+import '../widgets/cards/bullet_runs.dart';
+import '../widgets/cards/entry_card.dart';
+import '../widgets/chips/color_marks.dart';
+import '../widgets/chips/tag_choices.dart';
+import '../widgets/forms/form_fields.dart';
+import '../widgets/lists/list_terms.dart';
+import '../widgets/notices/empty_state.dart';
 
 String _ingredientsOf(Purchase purchase) => purchase.ingredients.join(' + ');
 
@@ -80,17 +85,7 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
     // Off `tagFilter`'s own published picks rather than `_picked` again, so
     // nothing is dotted by a pick that stopped narrowing.
     final lit = wornInOrder(tags, filter?.picks ?? const []);
-    // Ranked among every basket of the size, then narrowed — the rank is bound
-    // before the tags drop any, so sifting gaps the numbering. Aiming keeps
-    // them all, the search having answered the picks itself, so it runs
-    // unbroken: which reading is in force is read off the gaps (ADR 24).
-    final onShow = [
-      for (final (rank, purchase)
-          in purchases
-              .where((purchase) => purchase.ingredients.length == budget)
-              .indexed)
-        if (filter?.test(purchase) ?? true) (rank: rank + 1, basket: purchase),
-    ];
+    final onShow = _ranked(purchases, budget, filter);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -103,24 +98,24 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
         ?filter?.row,
         Expanded(
           child: onShow.isEmpty
-              ? _emptyFor(
-                  collection,
-                  purchases,
-                  filter,
+              ? _EmptyBaskets(
+                  collection: collection,
+                  purchases: purchases,
+                  filter: filter,
                   aiming: aiming,
                   budget: budget,
                   restocking: restocking,
+                  onBudget: (budget) =>
+                      setState(() => _budgetOverride = budget),
                 )
-              : ListView.builder(
-                  padding: const EdgeInsets.only(bottom: 16),
-                  itemCount: onShow.length,
-                  itemBuilder: (context, index) => _basketCard(
-                    collection,
-                    onShow[index].basket,
-                    onShow[index].rank,
-                    lit: lit,
-                    worn: worn,
-                  ),
+              : _BasketList(
+                  onShow: onShow,
+                  collection: collection,
+                  lit: lit,
+                  worn: worn,
+                  expanded: _expanded,
+                  onToggle: (ingredients) =>
+                      setState(() => _expanded.toggle(ingredients)),
                 ),
         ),
       ],
@@ -159,46 +154,124 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
       picks: sifting.picks,
     );
   }
+}
 
-  Widget _basketCard(
-    Collection collection,
-    Purchase purchase,
-    int rank, {
-    required List<Tag> lit,
-    required Map<String, List<String>> worn,
-  }) {
-    final ingredients = _ingredientsOf(purchase);
-    return ExpandingRow(
-      open: _expanded.contains(ingredients),
-      title: Text('Shopping Cart #$rank'),
-      subtitle: ingredients,
-      trailing: MutedText(
-        _countOf(purchase),
-        style: Theme.of(context).textTheme.labelMedium,
-      ),
-      body: _Basket(
+typedef _RankedBasket = ({int rank, Purchase basket});
+
+/// Ranked among every basket of the size, then narrowed — the rank is bound
+/// before the tags drop any, so sifting gaps the numbering. Aiming keeps them
+/// all, the search having answered the picks itself, so it runs unbroken:
+/// which reading is in force is read off the gaps (ADR 24).
+List<_RankedBasket> _ranked(
+  List<Purchase> purchases,
+  int budget,
+  ListFilter<Purchase>? filter,
+) => [
+  for (final (rank, purchase)
+      in purchases
+          .where((purchase) => purchase.ingredients.length == budget)
+          .indexed)
+    if (filter?.test(purchase) ?? true) (rank: rank + 1, basket: purchase),
+];
+
+class _BasketList extends StatelessWidget {
+  const _BasketList({
+    required this.onShow,
+    required this.collection,
+    required this.lit,
+    required this.worn,
+    required this.expanded,
+    required this.onToggle,
+  });
+
+  final List<_RankedBasket> onShow;
+  final Collection collection;
+  final List<Tag> lit;
+  final Map<String, List<String>> worn;
+  final Set<String> expanded;
+  final void Function(String ingredients) onToggle;
+
+  @override
+  Widget build(BuildContext context) => ListView.builder(
+    padding: const EdgeInsets.only(bottom: 16),
+    itemCount: onShow.length,
+    itemBuilder: (context, index) {
+      final ingredients = _ingredientsOf(onShow[index].basket);
+      return _BasketCard(
         collection: collection,
-        purchase: purchase,
+        purchase: onShow[index].basket,
+        rank: onShow[index].rank,
         lit: lit,
         worn: worn,
-      ),
-      onToggle: () => setState(() => _expanded.toggle(ingredients)),
-    );
-  }
+        open: expanded.contains(ingredients),
+        onToggle: () => onToggle(ingredients),
+      );
+    },
+  );
+}
 
-  /// Why there is nothing to show, which is three different answers: no recipes
-  /// to be short of, nothing short of anything, or nothing on show worth the
-  /// money. Only the last leaves somewhere to go — the smallest size answering
-  /// under the tags in force, absent where none does — and it blames the picks
-  /// rather than the size where they are what emptied the screen.
-  Widget _emptyFor(
-    Collection collection,
-    List<Purchase> purchases,
-    ListFilter<Purchase>? filter, {
-    required bool aiming,
-    required int budget,
-    required bool restocking,
-  }) {
+class _BasketCard extends StatelessWidget {
+  const _BasketCard({
+    required this.collection,
+    required this.purchase,
+    required this.rank,
+    required this.lit,
+    required this.worn,
+    required this.open,
+    required this.onToggle,
+  });
+
+  final Collection collection;
+  final Purchase purchase;
+  final int rank;
+  final List<Tag> lit;
+  final Map<String, List<String>> worn;
+  final bool open;
+  final VoidCallback onToggle;
+
+  @override
+  Widget build(BuildContext context) => ExpandingRow(
+    open: open,
+    title: Text('Shopping Cart #$rank'),
+    subtitle: _ingredientsOf(purchase),
+    trailing: MutedText(
+      _countOf(purchase),
+      style: Theme.of(context).textTheme.labelMedium,
+    ),
+    body: _Basket(
+      collection: collection,
+      purchase: purchase,
+      lit: lit,
+      worn: worn,
+    ),
+    onToggle: onToggle,
+  );
+}
+
+/// Why there is nothing to show, which is three different answers: no recipes
+/// to be short of, nothing short of anything, or nothing on show worth the
+/// money.
+class _EmptyBaskets extends StatelessWidget {
+  const _EmptyBaskets({
+    required this.collection,
+    required this.purchases,
+    required this.filter,
+    required this.aiming,
+    required this.budget,
+    required this.restocking,
+    required this.onBudget,
+  });
+
+  final Collection collection;
+  final List<Purchase> purchases;
+  final ListFilter<Purchase>? filter;
+  final bool aiming;
+  final int budget;
+  final bool restocking;
+  final ValueChanged<int> onBudget;
+
+  @override
+  Widget build(BuildContext context) {
     if (collection.recipes.isEmpty) {
       return const EmptyState(
         icon: Icons.local_bar_outlined,
@@ -209,21 +282,66 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
       );
     }
     if (purchases.isEmpty) {
-      // Aiming, the picks went into the search, so an empty answer is about
-      // them rather than about the shelf: the untagged recipes may be short of
-      // plenty, and saying the bar wants for nothing would be false (ADR 24).
-      final aimed = aiming ? filter?.narrowing : null;
-      return EmptyState(
-        icon: Icons.shopping_cart_outlined,
-        title: 'Nothing to shop for',
-        message: switch (aimed) {
-          final aimed? => 'No shopping unlocks a recipe matching $aimed.',
-          null when restocking =>
-            'Every ingredient the recipes ask for is fully in stock.',
-          null => 'Every recipe here can be made from what is on the shelf.',
-        },
+      return _NothingToShopFor(
+        aiming: aiming,
+        filter: filter,
+        restocking: restocking,
       );
     }
+    return _NothingWorthBuying(
+      budget: budget,
+      filter: filter,
+      purchases: purchases,
+      onBudget: onBudget,
+    );
+  }
+}
+
+/// Aiming, the picks went into the search, so an empty answer is about them
+/// rather than about the shelf: the untagged recipes may be short of
+/// plenty, and saying the bar wants for nothing would be false (ADR 24).
+class _NothingToShopFor extends StatelessWidget {
+  const _NothingToShopFor({
+    required this.aiming,
+    required this.filter,
+    required this.restocking,
+  });
+
+  final bool aiming;
+  final ListFilter<Purchase>? filter;
+  final bool restocking;
+
+  @override
+  Widget build(BuildContext context) {
+    final aimed = aiming ? filter?.narrowing : null;
+    return EmptyState(
+      icon: Icons.shopping_cart_outlined,
+      title: 'Nothing to shop for',
+      message: switch (aimed) {
+        final aimed? => 'No shopping unlocks a recipe matching $aimed.',
+        null when restocking =>
+          'Every ingredient the recipes ask for is fully in stock.',
+        null => 'Every recipe here can be made from what is on the shelf.',
+      },
+    );
+  }
+}
+
+class _NothingWorthBuying extends StatelessWidget {
+  const _NothingWorthBuying({
+    required this.budget,
+    required this.filter,
+    required this.purchases,
+    required this.onBudget,
+  });
+
+  final int budget;
+  final ListFilter<Purchase>? filter;
+  final List<Purchase> purchases;
+  final ValueChanged<int> onBudget;
+
+  @override
+  Widget build(BuildContext context) {
     final narrowing = filter?.narrowing;
     final basket = budget == 1
         ? 'single ingredient'
@@ -248,7 +366,7 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
       action: elsewhere == null
           ? null
           : FilledButton.tonal(
-              onPressed: () => setState(() => _budgetOverride = elsewhere),
+              onPressed: () => onBudget(elsewhere),
               child: Text('Try ${counted(elsewhere, 'ingredient')}'),
             ),
     );
@@ -362,15 +480,15 @@ class _Basket extends ConsumerWidget {
         label: 'Unlocks',
         bullets: [
           for (final recipe in purchase.unlocks)
-            (name: recipe, trailing: _dotsOn(recipe)),
+            (name: recipe, trailing: _dotsOn(lit, worn, recipe)),
         ],
         onTap: (recipe) => reach(Destination.recipes, recipe),
       ),
     ]);
   }
+}
 
-  Widget? _dotsOn(String recipe) {
-    final dots = wornInOrder(lit, worn[recipe] ?? const []);
-    return dots.isEmpty ? null : TagDots(dots);
-  }
+Widget? _dotsOn(List<Tag> lit, Map<String, List<String>> worn, String recipe) {
+  final dots = wornInOrder(lit, worn[recipe] ?? const []);
+  return dots.isEmpty ? null : TagDots(dots);
 }

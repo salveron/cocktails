@@ -1,72 +1,14 @@
-/// A bar arriving by file: the pick, what it turned out to hold, and why it
-/// could not be read — one file read the same way wherever it was picked, on
-/// the one form that agrees to it (FR-DAT-4, FR-BAR-7). The readings are
-/// columns, so the screen showing one owns the scrolling.
+/// What an arriving file turned out to hold, kind by kind, read the same way
+/// wherever it was picked (FR-DAT-4, FR-BAR-7).
 library;
 
 import 'package:cocktails/domain/domain.dart';
-import 'package:cocktails/state/state.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'editor_form.dart';
-import 'entry_list.dart';
-import 'failures.dart';
-
-/// A file off the system's picker, decoded and judged before anything is done
-/// with it (FR-DAT-3/4). Null where nothing came back to judge: picking nothing
-/// is nothing done, and a picker that would not open says so where it stands
-/// rather than leaving the screen silent.
-Future<ImportReview?> pickBar(BuildContext context, WidgetRef ref) async {
-  final picker = ref.read(filePickerProvider);
-  final shelf = ref.read(shelfProvider.notifier);
-  ImportReview? review;
-  final went = await wentThrough(
-    ScaffoldMessenger.of(context),
-    'Could not read that file',
-    () async {
-      final text = await picker();
-      if (text != null) review = shelf.review(text);
-    },
-  );
-  return went ? review : null;
-}
-
-/// Why the file was not read, and where (FR-DAT-4), under the one sentence that
-/// matters — [standing], what is true despite it, which differs by what the
-/// file was about to be used for. There is nothing here to agree to.
-class RefusedFile extends StatelessWidget {
-  const RefusedFile(this.issues, {required this.standing, super.key});
-
-  final List<String> issues;
-  final String standing;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Icon(Icons.error_outline, color: theme.colorScheme.error),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                'This file cannot be read',
-                style: theme.textTheme.titleMedium,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        MutedText(standing),
-        const SizedBox(height: 16),
-        BulletRuns([bulletRun(issues)]),
-      ],
-    );
-  }
-}
+import '../../wording.dart';
+import '../lists/list_terms.dart' show ToggleMembership;
+import 'bullet_runs.dart';
+import 'entry_card.dart';
 
 /// Everything the file carries, kind by kind, each card opening to every name
 /// behind its count: a reader agreeing to a collection is owed sight of it, and
@@ -87,14 +29,31 @@ class _BarHoldingsState extends State<BarHoldings> {
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
-      for (final holding in _holdingsOf(widget.arriving)) _holdingCard(holding),
+      for (final holding in _holdingsOf(widget.arriving))
+        _HoldingCard(
+          holding: holding,
+          open: _open.contains(holding.kind),
+          onToggle: () => setState(() => _open.toggle(holding.kind)),
+        ),
     ],
   );
+}
 
-  /// Count as the title, the names as the line under it, the whole list when
-  /// opened. A kind holding none offers no chevron and answers no tap.
-  Widget _holdingCard(_HoldingGroup holding) {
-    final open = _open.contains(holding.kind);
+/// Count as the title, the names as the line under it, the whole list when
+/// opened. A kind holding none offers no chevron and answers no tap.
+class _HoldingCard extends StatelessWidget {
+  const _HoldingCard({
+    required this.holding,
+    required this.open,
+    required this.onToggle,
+  });
+
+  final _HoldingGroup holding;
+  final bool open;
+  final VoidCallback onToggle;
+
+  @override
+  Widget build(BuildContext context) {
     final empty = holding.count == 0;
     return ExpandingRow(
       margin: const EdgeInsets.symmetric(vertical: 4),
@@ -105,7 +64,7 @@ class _BarHoldingsState extends State<BarHoldings> {
           ? null
           : Icon(open ? Icons.expand_less : Icons.expand_more),
       body: BulletRuns(holding.runs),
-      onToggle: empty ? null : () => setState(() => _open.toggle(holding.kind)),
+      onToggle: empty ? null : onToggle,
     );
   }
 }

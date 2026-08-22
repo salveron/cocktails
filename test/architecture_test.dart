@@ -175,6 +175,53 @@ List<String> _foldViolations(String libPath, String source) => [
         'home for the rule (ADR 08)',
 ];
 
+/// ADR 25: `screens/` holds route destinations; `widgets/` holds what they
+/// are composed from. A widget importing a screen has reached past what hands
+/// it a way there into where that way lands — `app.dart`, which builds the
+/// shell, and a screen naming a sibling it pushes are the only legitimate
+/// routes in.
+List<String> _screenImportViolations(String libPath, String source) {
+  if (libPath == 'ui/app.dart' || libPath.startsWith('ui/screens/')) return [];
+  if (_layerOf(libPath) != 'ui') return [];
+  return [
+    for (final directive in _directivesOf(source))
+      if (directive.target.contains('screens/'))
+        '$libPath imports ${directive.target}: only app.dart and screens/ '
+            'may import a screen',
+  ];
+}
+
+/// `ui/` has no barrel, so nothing marks its public surface off from its own
+/// detail the way `src/` does for every other layer (docs/components.md
+/// "Boundary rules") — a package-qualified intra-`ui` import costs nothing
+/// today but makes the tree expensive to move again. Relative imports are
+/// what `git mv` and a search-and-replace can still follow.
+List<String> _intraUiImportViolations(String libPath, String source) {
+  if (_layerOf(libPath) != 'ui') return [];
+  return [
+    for (final directive in _directivesOf(source))
+      if (directive.target.startsWith('package:cocktails/ui/'))
+        '$libPath imports ${directive.target}: intra-ui imports must be '
+            'relative',
+  ];
+}
+
+/// ADR 25: a screen is a route destination, and its name says so — the
+/// file-naming half of what makes `screens/` a boundary rather than a
+/// convention.
+List<String> _screenNamingViolations(Iterable<String> screenFiles) => [
+  for (final path in screenFiles)
+    if (!path.endsWith('_screen.dart')) '$path is not named *_screen.dart',
+];
+
+/// ADR 25: nothing loose under `widgets/` — every file sorts into one of its
+/// groups, or the layout decays back into the flat bag it was.
+List<String> _looseWidgetViolations(Iterable<String> widgetFiles) => [
+  for (final path in widgetFiles)
+    if (!path.substring('ui/widgets/'.length).contains('/'))
+      '$path sits loose under ui/widgets/, outside every group',
+];
+
 /// A double belongs to the tests that stand it up. `MemoryBarStore` shipped in
 /// the binary for six milestones with `saveCount`, `savedBars` and `snapshots`
 /// on it — surface no screen reads, only an assertion does. Type names rather
@@ -333,6 +380,45 @@ void main() {
         ),
         isNotEmpty,
       );
+    });
+  });
+
+  // docs/adr/25-the-ui-groups-by-subject.md: screens/ holds route
+  // destinations, widgets/ holds what they are composed from, and every
+  // group under widgets/ names a kind of interface piece.
+  group('lib/ui/ layout (ADR 25)', () {
+    test(
+      'every file directly under lib/ui/screens/ is named *_screen.dart',
+      () {
+        final files = [
+          for (final entity in Directory('lib/ui/screens').listSync())
+            if (entity is File)
+              entity.path.substring(entity.path.indexOf('lib/') + 4),
+        ];
+        // Guards against a green sweep that walked nothing (wrong cwd).
+        expect(files, isNotEmpty);
+        expect(_screenNamingViolations(files), isEmpty);
+      },
+    );
+
+    test('no file sits loose under lib/ui/widgets/', () {
+      final files = [
+        for (final entity in Directory(
+          'lib/ui/widgets',
+        ).listSync(recursive: true))
+          if (entity is File)
+            entity.path.substring(entity.path.indexOf('lib/') + 4),
+      ];
+      expect(files, isNotEmpty);
+      expect(_looseWidgetViolations(files), isEmpty);
+    });
+
+    test('only app.dart and screens/ import a screen', () {
+      _expectNoneUnder('lib/ui', _screenImportViolations);
+    });
+
+    test('every intra-ui import is relative', () {
+      _expectNoneUnder('lib/ui', _intraUiImportViolations);
     });
   });
 
@@ -659,6 +745,86 @@ void main() {
       ).single;
       expect(violation, contains('ui/screens/foo.dart'));
       expect(violation, contains('barWriterProvider'));
+    });
+
+    test('a widget importing a screen is caught (ADR 25)', () {
+      expect(
+        _screenImportViolations(
+          'ui/widgets/forms/editor_form.dart',
+          "import '../../screens/units_screen.dart';",
+        ),
+        isNotEmpty,
+      );
+    });
+
+    test('app.dart importing a screen is not (ADR 25)', () {
+      expect(
+        _screenImportViolations(
+          'ui/app.dart',
+          "import 'screens/recipes_screen.dart';",
+        ),
+        isEmpty,
+      );
+    });
+
+    test('one screen importing another is not (ADR 25)', () {
+      expect(
+        _screenImportViolations(
+          'ui/screens/settings_screen.dart',
+          "import 'units_screen.dart';",
+        ),
+        isEmpty,
+      );
+    });
+
+    test('an intra-ui import off the barrel-less package path is caught', () {
+      expect(
+        _intraUiImportViolations(
+          'ui/screens/foo.dart',
+          "import 'package:cocktails/ui/theme.dart';",
+        ),
+        isNotEmpty,
+      );
+    });
+
+    test('the same import made relative is not', () {
+      expect(
+        _intraUiImportViolations(
+          'ui/screens/foo.dart',
+          "import '../theme.dart';",
+        ),
+        isEmpty,
+      );
+    });
+  });
+
+  group('lib/ui/ layout sanity checks (fake inputs)', () {
+    test('a screen not named *_screen.dart is caught', () {
+      expect(
+        _screenNamingViolations(['ui/screens/recipe_widgets.dart']),
+        isNotEmpty,
+      );
+    });
+
+    test('a screen named *_screen.dart is not', () {
+      expect(
+        _screenNamingViolations(['ui/screens/units_screen.dart']),
+        isEmpty,
+      );
+    });
+
+    test('a file loose under widgets/ is caught', () {
+      expect(
+        _looseWidgetViolations(['ui/widgets/arriving_bar.dart']),
+        isNotEmpty,
+      );
+    });
+
+    test('a file sorted into a group is not', () {
+      expect(
+        _looseWidgetViolations(['ui/widgets/cards/entry_card.dart']),
+        isEmpty,
+      );
     });
   });
 

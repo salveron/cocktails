@@ -1,42 +1,11 @@
 import 'package:cocktails/domain/domain.dart';
-import 'package:cocktails/ui/widgets/color_chip.dart';
-import 'package:cocktails/ui/widgets/tag_choices.dart';
-import 'package:cocktails/ui/widgets/vocabulary_dialogs.dart';
+import 'package:cocktails/ui/widgets/chips/color_marks.dart';
+import 'package:cocktails/ui/widgets/chips/tag_choices.dart';
+import 'package:cocktails/ui/widgets/dialogs/entry_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import '../harness.dart';
-
-/// What a dialog answered — filled in when it closes, so a test reads it after
-/// tapping its way out.
-final class Answer<T> {
-  T? value;
-}
-
-/// Pumps a button that opens the dialog, taps it, and settles — leaving the
-/// dialog on screen.
-Future<Answer<T>> openDialog<T>(
-  WidgetTester tester,
-  Future<T> Function(BuildContext context) open,
-) async {
-  final answer = Answer<T>();
-  await tester.pumpWidget(
-    MaterialApp(
-      home: Scaffold(
-        body: Builder(
-          builder: (context) => TextButton(
-            onPressed: () =>
-                open(context).then((value) => answer.value = value),
-            child: const Text('open'),
-          ),
-        ),
-      ),
-    ),
-  );
-  await tester.tap(find.text('open'));
-  await tester.pumpAndSettle();
-  return answer;
-}
+import '../../harness.dart';
 
 /// The real ingredient rules, with "gin" and "genever" already taken — the
 /// second an alias, so the dialog is judged against the whole namespace.
@@ -401,58 +370,6 @@ void main() {
       expect(saveEnabled(tester), isFalse);
       await type(tester, 'sour');
       expect(saveEnabled(tester), isTrue);
-    });
-  });
-
-  group('delete dialog', () {
-    Future<Answer<bool>> openDelete(
-      WidgetTester tester,
-      List<String> blockedBy,
-    ) => openDialog(
-      tester,
-      (context) => confirmDelete(
-        context,
-        what: 'gin',
-        blockedBy: blockedBy,
-        blockedByNoun: 'recipes',
-      ),
-    );
-
-    testWidgets('an unreferenced entry is deleted once confirmed', (
-      tester,
-    ) async {
-      final answer = await openDelete(tester, const []);
-      expect(find.text('Delete "gin"?'), findsOneWidget);
-      await tap(tester, find.text('Delete'));
-      expect(answer.value, isTrue);
-    });
-
-    testWidgets('cancelling leaves it alone', (tester) async {
-      final answer = await openDelete(tester, const []);
-      await tap(tester, find.text('Cancel'));
-      expect(answer.value, isFalse);
-    });
-
-    testWidgets('dismissed without an answer is no answer at all', (
-      tester,
-    ) async {
-      final answer = await openDelete(tester, const []);
-      await tester.tapAt(const Offset(10, 10));
-      await tester.pumpAndSettle();
-      expect(answer.value, isFalse);
-    });
-
-    testWidgets('a referenced entry names what stands in the way', (
-      tester,
-    ) async {
-      final answer = await openDelete(tester, const ['Negroni', 'Martini']);
-      expect(find.text('Cannot delete "gin"'), findsOneWidget);
-      expect(find.text('Remove it from these recipes first:'), findsOneWidget);
-      expect(find.text('• Negroni'), findsOneWidget);
-      expect(find.text('• Martini'), findsOneWidget);
-      expect(find.text('Delete'), findsNothing);
-      await tap(tester, find.text('Close'));
-      expect(answer.value, isFalse);
     });
   });
 }

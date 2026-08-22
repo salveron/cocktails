@@ -11,7 +11,7 @@ ADR 13 set bar for sixth dependency: *confined to one file, way out written down
 **Font Awesome `dice` on `font_awesome_flutter`, by caret.**
 
 - Two solid dice, silhouette survives at 24px. Lucide outlined pair crowds; second die reads as noise.
-- `RandomDraw.icon` carries widget, not `IconData`. Font Awesome glyphs non-square; `FaIcon` drops `SizedBox` Flutter's `Icon` imposes. Keeps font name out of `entry_list.dart`.
+- `RandomDraw.icon` carries widget, not `IconData`. Font Awesome glyphs non-square; `FaIcon` drops `SizedBox` Flutter's `Icon` imposes. Keeps the font name out of the shared list that draws it.
 - By caret (not pinned): steady release cadence, opposite of ADR 13's dormant package.
 - Fallback one line: any `IconData` wrapped in `Icon` is valid `RandomDraw.icon`; dropping package costs glyph, not redesign.
 

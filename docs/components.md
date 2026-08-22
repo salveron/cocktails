@@ -17,8 +17,9 @@ lib/
                                #   holds: Bar, BarMode, Transport, BarSource, Offer,
                                #   BarContent. Bar.summarised and Bar.refreshedAt are the
                                #   only writers of what a bar holds and when it changed.
-                               #   coherenceProblems is the one rule list validation.dart
-                               #   reports on; BarMode and Transport are Tokened
+                               #   coherenceProblems is the one rule list
+                               #   shelf_validation.dart reports on; BarMode and Transport
+                               #   are Tokened
       shelf_edits.dart         # extension ShelfEdits on Shelf — pure derivations,
                                #   the guest-bar refusal among them (ADR 23)
       collection.dart          # entities, Collection — one bar's contents — name lookups,
@@ -29,7 +30,11 @@ lib/
       list_edits.dart          # upserted/without — generic list edits collection_edits.dart
                                #   and shelf_edits.dart share, layer-private
       line_format.dart         # compact-line grammar
-      validation.dart          # ValidationIssue + rule set, otherNames
+      validation.dart          # ValidationIssue + collection's rule set, otherNames;
+                               #   checkName/addProblems/Problem, layer-private, shared with
+                               #   shelf_validation.dart
+      shelf_validation.dart    # validateShelf — the shelf's own rule set, on checkName
+                               #   and addProblems same as validation.dart's own
       availability.dart        # Availability, availabilityOf, canMake, stockOfLine, stockOf,
                                #   isShortLine — the optimizer's own reading of ADR 16
       scaling.dart             # ×N scaling, part↔ml display
@@ -49,7 +54,15 @@ lib/
                                #   transports that carry them (ADR 22)
       file_bar_channel.dart    # FR-BAR-7 — the picker's text, decoded
       yaml_codec.dart          # decode/encode of a bar and of the index, version gate
-      yaml_reader.dart         # YAML tree → collection parts, with source spans
+      yaml_bar_reader.dart     # YAML tree → a bar's own file parts (BarParts)
+      yaml_shelf_reader.dart   # YAML tree → the shelf index's parts (ShelfParts)
+      yaml_primitives.dart     # the generic reads and checks both share: checkKeys,
+                               #   readText/readBool/readInt/readDouble/readToken/
+                               #   readValue/readNames, forEachEntry, readEntries,
+                               #   readDisplay — one home for "display:" into a
+                               #   FixedUnit, the settings block's and a bar
+                               #   record's alike — briefValue, lineOfPath, report,
+                               #   stringValue, asString, EntryReader
       yaml_writer.dart         # canonical emitter
       file_bar_store.dart      # one file per bar, the index, atomic write, rotation
   state/
@@ -65,59 +78,24 @@ lib/
                                #   record, every record on it, availability, the optimizer,
                                #   each tag vocabulary sorted once for every screen reading it
   ui/                          # no barrel — leaves, imported directly; design in ui-design.md
-    app.dart                   # MaterialApp and the shell: app bar, gear, the stack, and
-                               #   the trail a jump leaves for back to undo (ADR 19)
-    destinations.dart          # what destinations a bar offers and how one screen asks
-                               #   another to reveal a named row — the same subject, so one
-                               #   file (ADR 19). The one provider outside the state layer
-    theme.dart                 # the seed colour, the two schemes, `dimmedInk` — the one
-                               #   dim, worn by a hint and by an ingredient the bar lacks
-    palette.dart               # the fixed hues — the tag palette, and the one traffic
-                               #   light worn by stock, by availability and by whose bar
-                               #   it is (`barModeColors`) — beside `neutralSwatch`, the
-                               #   ground a chip meaning nothing by its colour stands on
-                               #   (ADR 12), which is off scheme roles for that reason
-    screens/                   # one file per destination, plus settings, tags, units,
-                               #   amounts, shopping settings (FR-SET-2, ADR 24), recipe
-                               #   form, bars — the list that is also
-                               #   home wherever none is open — and the owner's view of
-                               #   what a bar is shared by, that last shaped by
-                               #   ui-design.md once it is settled. settings_screen holds
-                               #   both halves of the data exchange (ADR 18) and, on a
-                               #   guest bar, the refresh that stands in its import's
-                               #   place; bar_form_screen is where a file picked at either
-                               #   end is read and agreed to, founding and importing being
-                               #   one form reached two ways
-    widgets/                   # empty_state, search_field,
-                               #   failures — how the app says what it could not do: the
-                               #     load and refresh banners over every destination, the
-                               #     one wording of what a refresh came to, the pull a
-                               #     guest bar's lists answer (refreshOf), and the
-                               #     snackbar a refused action speaks through
-                               #   arriving_bar — one file arriving, read the same way
-                               #     wherever it was picked: the pick, the counts, and
-                               #     the refusal
-                               #   color_chip — the pill, chip, dot, the run of dots a name
-                               #     or a basket's recipe wears, the dotted name itself, and
-                               #     `chipRadius`, the corner a chip and its ink round to
-                               #   tag_choices — the row tags are picked from
-                               #   entry_list — the searchable list all four screens are:
-                               #     the orders it reads in, the spellings it searches by, the
-                               #     tag filter three screens narrow by (the shopping one
-                               #     taking the row without the list), the draw one of them
-                               #     offers over the rows on show, the row another destination
-                               #     asks it to reveal (ADR 19), the bulleted runs a card body
-                               #     names things in, the row itself and the margin it is
-                               #     inset by — the lists' own by default, overridden by a
-                               #     form that pads its page already — Set.toggle and
-                               #     counted — how many of a thing there are, in words.
-                               #     The one file that knows a list scrolls (ADR 13)
-                               #   vocabulary_dialogs — entry (name, aliases, colour, tags),
-                               #     a bare name where only that is asked for, delete,
-                               #     discard, plus VocabularyEntry and the one reading of
-                               #     issue paths into fields every form shares
-                               #   editor_form — the pushed editor both forms wear: the
-                               #     Save/discard frame and the self-growing row list
+    app.dart, destinations.dart, theme.dart, palette.dart, wording.dart   # the shell, the
+                               #   nav model, the theme, the fixed hues, and `counted` — each
+                               #   its own subject, none shared with five others (ADR 25)
+    screens/                   # route destinations, one per file, all *_screen.dart (ADR 25)
+                               #   — amounts, bar_form, bars, ingredients, recipe_form,
+                               #   recipes, settings, shopping, shopping_settings, tags, units
+    widgets/                   # everything else, grouped by subject, never by feature (ADR 25)
+      cards/                   # a list's rows and a recipe's own card — entry_card,
+                               #   bullet_runs, recipe_card, bar_holdings
+      chips/                   # colour read as a pill, a dot, or a picked-tag row —
+                               #   color_marks, tag_choices, base_spirit
+      dialogs/                 # the one AlertDialog shape and every dialog built on it —
+                               #   dialog_frame, confirm_dialog, entry_dialog, scale_dialog
+      forms/                   # the editor frame, its fields, and the ValidationIssue path
+                               #   reading — editor_form, form_fields, field_issues
+      lists/                   # the searchable list and its chrome — entry_list,
+                               #   list_controls, list_terms
+      notices/                 # empty states and failure banners — empty_state, failures
 test/                          # mirrors lib/, plus test/architecture_test.dart and
                                #   test/support/ — doubles and fixtures the app never
                                #   ships, MemoryBarStore among them
@@ -149,6 +127,10 @@ Dependencies point inward (`ui → state → data → domain`):
   (no barrel; `main.dart` imports leaves).
 - Within layer: `src/` files import by relative path.
 - Barrel re-exports own layer only (no sibling re-export).
+- Within `ui/` ([ADR 25](adr/25-the-ui-groups-by-subject.md)): only `app.dart` and files under 
+  `screens/` import `screens/`; every file directly under `screens/` is named `*_screen.dart`; 
+  nothing sits loose under `widgets/` — every file sorts into one of its groups; every intra-`ui` 
+  import is relative, never `package:cocktails/ui/…`.
 
 `test/architecture_test.dart` enforces via `import`/`export` directives (pure functions, 
 exercised on constructed inputs and real tree). It also pins the dependency list in 
@@ -160,7 +142,8 @@ behind a name comparison is `nameKey`'s ([ADR 08](adr/08-names-ignore-case.md)).
 fold rule does not apply — `file_bar_store` folds a bar's name into a file basename, which is a slug 
 rather than a comparison. Across the whole of `lib/` it reads one more: a type named `Memory…`, 
 `Fake…`, `Mock…` or `Stub…` is a test double, and a double lives in `test/support/` rather than in 
-what ships.
+what ships. The four `ui/`-only rules above are the same suite's, over the real tree and over 
+constructed fake inputs alike.
 
 ## Domain contracts
 

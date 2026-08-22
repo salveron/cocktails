@@ -5,10 +5,13 @@ import 'package:cocktails/state/state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../widgets/color_chip.dart';
-import '../widgets/empty_state.dart';
-import '../widgets/entry_list.dart';
-import '../widgets/vocabulary_dialogs.dart';
+import '../widgets/cards/entry_card.dart';
+import '../widgets/chips/color_marks.dart';
+import '../widgets/dialogs/confirm_dialog.dart';
+import '../widgets/dialogs/entry_dialog.dart';
+import '../widgets/lists/entry_list.dart';
+import '../widgets/lists/list_terms.dart';
+import '../widgets/notices/empty_state.dart';
 
 /// Both tag vocabularies, a tab each — add, rename with propagation, colour,
 /// and reference-blocked delete (FR-VOC-1/3/4). Designed in

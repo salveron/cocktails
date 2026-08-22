@@ -573,7 +573,9 @@ Map<Holding, int> summaryOf(Collection collection) => {
   Holding.unit: collection.units.length,
 };
 
-/// Tags [worn] names, in [vocabulary] order.
+/// Tags [worn] names, in [vocabulary] order — matched through `nameKey` (ADR
+/// 08), so a name recased in either survives, and one dropped from the
+/// vocabulary simply no longer matches rather than the caller failing on it.
 List<Tag> wornInOrder(List<Tag> vocabulary, Iterable<String> worn) {
   final names = nameKeys(worn);
   return [

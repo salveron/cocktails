@@ -1,8 +1,8 @@
 import 'package:cocktails/domain/domain.dart';
 import 'package:cocktails/state/state.dart';
 import 'package:cocktails/ui/screens/recipes_screen.dart';
-import 'package:cocktails/ui/widgets/color_chip.dart';
-import 'package:cocktails/ui/widgets/tag_choices.dart';
+import 'package:cocktails/ui/widgets/chips/color_marks.dart';
+import 'package:cocktails/ui/widgets/chips/tag_choices.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';

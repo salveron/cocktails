@@ -6,10 +6,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../destinations.dart';
-import '../widgets/color_chip.dart';
-import '../widgets/empty_state.dart';
-import '../widgets/entry_list.dart';
-import '../widgets/vocabulary_dialogs.dart';
+import '../wording.dart';
+import '../widgets/cards/bullet_runs.dart';
+import '../widgets/cards/entry_card.dart';
+import '../widgets/chips/color_marks.dart';
+import '../widgets/dialogs/confirm_dialog.dart';
+import '../widgets/dialogs/entry_dialog.dart';
+import '../widgets/lists/list_terms.dart' show ToggleMembership;
+import '../widgets/notices/empty_state.dart';
 import 'bar_form_screen.dart';
 
 /// A stamp as a reader tells the time: the largest whole unit it has been, and
@@ -89,7 +93,18 @@ class _BarsScreenState extends ConsumerState<BarsScreen> {
             )
           : ListView(
               padding: const EdgeInsets.only(top: 8, bottom: 88),
-              children: [for (final bar in bars) _barCard(bar, now)],
+              children: [
+                for (final bar in bars)
+                  _BarCard(
+                    bar: bar,
+                    now: now,
+                    open: _opened.contains(bar.id),
+                    onToggle: () => setState(() => _opened.toggle(bar.id)),
+                    onRename: () => unawaited(_rename(bar)),
+                    onDelete: () => unawaited(_delete(bar)),
+                    onOpen: () => unawaited(_open(bar)),
+                  ),
+              ],
             ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => unawaited(_add()),
@@ -97,77 +112,6 @@ class _BarsScreenState extends ConsumerState<BarsScreen> {
         child: const Icon(Icons.add),
       ),
     );
-  }
-
-  /// The name and how current the bar is while closed, what it holds once
-  /// opened. Whose bar it is rides beside the ⋮ as a chip, the mode being what
-  /// decides everything the bar offers (FR-BAR-3).
-  Widget _barCard(Bar bar, DateTime now) => ExpandingRow(
-    open: _opened.contains(bar.id),
-    title: Text(bar.name),
-    subtitle: _standing(bar, now),
-    hideSubtitleWhenOpen: false,
-    trailing: Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        BarModeChip(bar.mode),
-        RowMenu({
-          // Offered on a guest bar too: what a bar is called here is the
-          // reader's, as the unit it reads in is (FR-BAR-3, ADR 21).
-          'Rename': () => unawaited(_rename(bar)),
-          'Delete': () => unawaited(_delete(bar)),
-        }),
-      ],
-    ),
-    body: _body(bar),
-    onToggle: () => setState(() => _opened.toggle(bar.id)),
-  );
-
-  /// How long ago the bar last became what it holds — an owner's own edit, a
-  /// guest's last answer from its source (FR-BAR-5). Null where there is
-  /// nothing to say: a bar summarised before this device kept stamps has no
-  /// date to give, and says nothing rather than guessing one.
-  String? _standing(Bar bar, DateTime now) {
-    final at = bar.isOwned ? bar.updated : bar.refreshed;
-    if (at == null) return null;
-    final what = bar.isOwned ? 'Updated' : 'Refreshed';
-    return '$what: ${_agoInWords(now, at)}';
-  }
-
-  Widget _body(Bar bar) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      _counts(bar),
-      const SizedBox(height: 8),
-      // Right, where the card's one commit belongs and where every dialog in
-      // the app puts its own; filled tonal, being the thing the card opens for.
-      Align(
-        alignment: Alignment.centerRight,
-        child: FilledButton.tonal(
-          onPressed: () => unawaited(_open(bar)),
-          child: const Text('Open bar'),
-        ),
-      ),
-    ],
-  );
-
-  /// How much the bar holds, kind by kind, read off the record the list is
-  /// already holding — no file, no wait, no spinner over four numbers (ADR 20).
-  /// A bar whose file could not be read carries no summary and says so.
-  Widget _counts(Bar bar) {
-    final summary = bar.summary;
-    if (summary == null) {
-      return Text(
-        'This bar could not be read.',
-        style: TextStyle(color: Theme.of(context).colorScheme.error),
-      );
-    }
-    return BulletRuns([
-      bulletRun([
-        for (final holding in summary.entries)
-          counted(holding.value, holding.key.noun),
-      ]),
-    ]);
   }
 
   /// A crossing takes the reader to the bar itself rather than back to the gear
@@ -221,5 +165,109 @@ class _BarsScreenState extends ConsumerState<BarsScreen> {
   void _leave() {
     if (!mounted) return;
     Navigator.of(context).popUntil((route) => route.isFirst);
+  }
+}
+
+/// The name and how current the bar is while closed, what it holds once
+/// opened. Whose bar it is rides beside the ⋮ as a chip, the mode being what
+/// decides everything the bar offers (FR-BAR-3).
+class _BarCard extends StatelessWidget {
+  const _BarCard({
+    required this.bar,
+    required this.now,
+    required this.open,
+    required this.onToggle,
+    required this.onRename,
+    required this.onDelete,
+    required this.onOpen,
+  });
+
+  final Bar bar;
+  final DateTime now;
+  final bool open;
+  final VoidCallback onToggle;
+  final VoidCallback onRename;
+  final VoidCallback onDelete;
+  final VoidCallback onOpen;
+
+  @override
+  Widget build(BuildContext context) => ExpandingRow(
+    open: open,
+    title: Text(bar.name),
+    subtitle: _standing(bar, now),
+    hideSubtitleWhenOpen: false,
+    trailing: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        BarModeChip(bar.mode),
+        // Offered on a guest bar too: what a bar is called here is the
+        // reader's, as the unit it reads in is (FR-BAR-3, ADR 21).
+        RowMenu({'Rename': onRename, 'Delete': onDelete}),
+      ],
+    ),
+    body: _BarBody(bar: bar, onOpen: onOpen),
+    onToggle: onToggle,
+  );
+}
+
+/// How long ago the bar last became what it holds — an owner's own edit, a
+/// guest's last answer from its source (FR-BAR-5). Null where there is
+/// nothing to say: a bar summarised before this device kept stamps has no
+/// date to give, and says nothing rather than guessing one.
+String? _standing(Bar bar, DateTime now) {
+  final at = bar.isOwned ? bar.updated : bar.refreshed;
+  if (at == null) return null;
+  final what = bar.isOwned ? 'Updated' : 'Refreshed';
+  return '$what: ${_agoInWords(now, at)}';
+}
+
+class _BarBody extends StatelessWidget {
+  const _BarBody({required this.bar, required this.onOpen});
+
+  final Bar bar;
+  final VoidCallback onOpen;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      _BarCounts(bar),
+      const SizedBox(height: 8),
+      // Right, where the card's one commit belongs and where every dialog in
+      // the app puts its own; filled tonal, being the thing the card opens for.
+      Align(
+        alignment: Alignment.centerRight,
+        child: FilledButton.tonal(
+          onPressed: onOpen,
+          child: const Text('Open bar'),
+        ),
+      ),
+    ],
+  );
+}
+
+/// How much the bar holds, kind by kind, read off the record the list is
+/// already holding — no file, no wait, no spinner over four numbers (ADR 20).
+/// A bar whose file could not be read carries no summary and says so.
+class _BarCounts extends StatelessWidget {
+  const _BarCounts(this.bar);
+
+  final Bar bar;
+
+  @override
+  Widget build(BuildContext context) {
+    final summary = bar.summary;
+    if (summary == null) {
+      return Text(
+        'This bar could not be read.',
+        style: TextStyle(color: Theme.of(context).colorScheme.error),
+      );
+    }
+    return BulletRuns([
+      bulletRun([
+        for (final holding in summary.entries)
+          counted(holding.value, holding.key.noun),
+      ]),
+    ]);
   }
 }

@@ -3,7 +3,8 @@
 /// what a bar costs while it is not on show; the open bar's collection is the
 /// only one resident, which is what makes "nothing crosses" (FR-BAR-1) a fact
 /// rather than a rule. Coherence between a record's parts is Shelf's to keep,
-/// so validation.dart can read an untrusted index into bars and report on it.
+/// so shelf_validation.dart can read an untrusted index into bars and report
+/// on it.
 library;
 
 import 'collection.dart';
@@ -271,63 +272,72 @@ final class Shelf {
 /// The mode decides which half of a record a bar may carry: a guest refreshes
 /// from a source and has nothing of its own to give away, an owner shares and
 /// refreshes from nothing (FR-BAR-3/6). One list; [_requireCoherent] throws
-/// the first entry, and validation.dart's `_checkRecord` reports every one —
-/// so a rule, or its wording, changes in one place rather than two.
+/// the first entry, and shelf_validation.dart's `_checkRecord` reports every
+/// one — so a rule, or its wording, changes in one place rather than two.
 /// [duplicate] is the only fact `_checkRecord` needs back to place a
 /// [ValidationIssueKind] without this file naming one.
 List<({List<Object> path, String message, bool duplicate})> coherenceProblems(
   Bar bar,
-) {
-  final problems = <({List<Object> path, String message, bool duplicate})>[];
-  if (bar.isOwned) {
-    if (bar.source != null) {
-      problems.add((
-        path: const ['source'],
-        message: 'An owned bar refreshes from no source: "${bar.name}"',
-        duplicate: false,
-      ));
-    }
-    if (bar.refreshed != null) {
-      problems.add((
-        path: const ['refreshed'],
-        message: 'An owned bar has nothing to refresh: "${bar.name}"',
-        duplicate: false,
-      ));
-    }
-    final vias = <Transport>{};
-    for (var o = 0; o < bar.offers.length; o++) {
-      final via = bar.offers[o].via;
-      if (!vias.add(via)) {
-        problems.add((
-          path: ['offers', o],
-          message: 'Bar offered twice by ${via.token}: "${bar.name}"',
-          duplicate: true,
-        ));
-      }
-    }
-  } else {
-    if (bar.source == null) {
-      problems.add((
-        path: const ['source'],
-        message:
-            'A guest bar needs the source it refreshes from: "${bar.name}"',
-        duplicate: false,
-      ));
-    }
-    for (var o = 0; o < bar.offers.length; o++) {
+) => bar.isOwned ? _ownedProblems(bar) : _guestProblems(bar);
+
+typedef _CoherenceProblem = ({
+  List<Object> path,
+  String message,
+  bool duplicate,
+});
+
+List<_CoherenceProblem> _ownedProblems(Bar bar) {
+  final problems = <_CoherenceProblem>[];
+  if (bar.source != null) {
+    problems.add((
+      path: const ['source'],
+      message: 'An owned bar refreshes from no source: "${bar.name}"',
+      duplicate: false,
+    ));
+  }
+  if (bar.refreshed != null) {
+    problems.add((
+      path: const ['refreshed'],
+      message: 'An owned bar has nothing to refresh: "${bar.name}"',
+      duplicate: false,
+    ));
+  }
+  final vias = <Transport>{};
+  for (var o = 0; o < bar.offers.length; o++) {
+    final via = bar.offers[o].via;
+    if (!vias.add(via)) {
       problems.add((
         path: ['offers', o],
-        message: 'A guest bar is not this device\'s to share: "${bar.name}"',
-        duplicate: false,
+        message: 'Bar offered twice by ${via.token}: "${bar.name}"',
+        duplicate: true,
       ));
     }
-    if (bar.updated != null) {
-      problems.add((
-        path: const ['updated'],
-        message: 'A guest bar changes only when it refreshes: "${bar.name}"',
-        duplicate: false,
-      ));
-    }
+  }
+  return problems;
+}
+
+List<_CoherenceProblem> _guestProblems(Bar bar) {
+  final problems = <_CoherenceProblem>[];
+  if (bar.source == null) {
+    problems.add((
+      path: const ['source'],
+      message: 'A guest bar needs the source it refreshes from: "${bar.name}"',
+      duplicate: false,
+    ));
+  }
+  for (var o = 0; o < bar.offers.length; o++) {
+    problems.add((
+      path: ['offers', o],
+      message: 'A guest bar is not this device\'s to share: "${bar.name}"',
+      duplicate: false,
+    ));
+  }
+  if (bar.updated != null) {
+    problems.add((
+      path: const ['updated'],
+      message: 'A guest bar changes only when it refreshes: "${bar.name}"',
+      duplicate: false,
+    ));
   }
   return problems;
 }

@@ -5,16 +5,36 @@ import 'package:cocktails/state/state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../widgets/arriving_bar.dart';
-import '../widgets/editor_form.dart';
-import '../widgets/entry_list.dart';
-import '../widgets/failures.dart';
+import '../wording.dart';
+import '../widgets/cards/bar_holdings.dart';
+import '../widgets/forms/editor_form.dart';
+import '../widgets/forms/form_fields.dart';
+import '../widgets/notices/failures.dart';
 
 /// Where a file's contents end up. [own] and [replace] are one road at two
 /// distances — a bar of the reader's own, founded here or standing already —
 /// and which of the two is on offer follows from where the screen was reached
 /// from rather than from anything the reader picks.
 enum _Road { own, replace, guest }
+
+/// A file off the system's picker, decoded and judged before anything is done
+/// with it (FR-DAT-3/4). Null where nothing came back to judge: picking nothing
+/// is nothing done, and a picker that would not open says so where it stands
+/// rather than leaving the screen silent.
+Future<ImportReview?> pickBar(BuildContext context, WidgetRef ref) async {
+  final picker = ref.read(filePickerProvider);
+  final shelf = ref.read(shelfProvider.notifier);
+  ImportReview? review;
+  final went = await wentThrough(
+    ScaffoldMessenger.of(context),
+    'Could not read that file',
+    () async {
+      final text = await picker();
+      if (text != null) review = shelf.review(text);
+    },
+  );
+  return went ? review : null;
+}
 
 /// One pushed page for a bar arriving: what to call it, where its contents come
 /// from, and what becomes of the file (FR-BAR-2/7, FR-DAT-3). Founding and
@@ -201,43 +221,85 @@ class _BarFormScreenState extends ConsumerState<BarFormScreen> {
             'one this device made itself.',
           ),
         if (picked != null && arriving == null)
-          Padding(
-            padding: const EdgeInsets.only(top: 16),
-            child: RefusedFile(
-              picked.issues,
-              standing: _importing
-                  ? 'Nothing has changed. "$open" stands as it was.'
-                  : 'Nothing has been added. Pick another file, or leave the '
-                        'bar empty.',
-            ),
+          _RefusedFileNote(picked: picked, importing: _importing, open: open),
+        if (arriving != null)
+          _ArrivedContent(
+            arriving: arriving,
+            importing: _importing,
+            road: _road,
+            onPickRoad: (road) => _chose(road, open),
           ),
-        if (arriving != null) ...[
-          const SectionLabel('Mode'),
-          Segments(
-            values: [_importing ? _Road.replace : _Road.own, _Road.guest],
-            selected: _road,
-            labelOf: (road) => switch (road) {
-              _Road.own => 'Owned',
-              _Road.replace => 'Replace',
-              _Road.guest => 'Guest',
-            },
-            showSelectedIcon: true,
-            onPick: (road) => _chose(road, open),
-          ),
-          // One line each: the choice is read at a glance or not at all.
-          FieldNote(switch (_road) {
-            _Road.own => 'A copy to edit here. Nothing refreshes it.',
-            _Road.replace =>
-              'Replace everything this bar holds now. A copy is kept.',
-            _Road.guest =>
-              "The owner's copy, read-only. Refreshed from their file.",
-          }),
-          const SectionLabel('Contents'),
-          BarHoldings(arriving.collection),
-        ],
       ],
     );
   }
+}
+
+class _RefusedFileNote extends StatelessWidget {
+  const _RefusedFileNote({
+    required this.picked,
+    required this.importing,
+    required this.open,
+  });
+
+  final ImportReview picked;
+  final bool importing;
+  final String open;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(top: 16),
+    child: RefusedFile(
+      picked.issues,
+      standing: importing
+          ? 'Nothing has changed. "$open" stands as it was.'
+          : 'Nothing has been added. Pick another file, or leave the bar '
+                'empty.',
+    ),
+  );
+}
+
+class _ArrivedContent extends StatelessWidget {
+  const _ArrivedContent({
+    required this.arriving,
+    required this.importing,
+    required this.road,
+    required this.onPickRoad,
+  });
+
+  final BarContent arriving;
+  final bool importing;
+  final _Road road;
+  final void Function(_Road road) onPickRoad;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    mainAxisSize: MainAxisSize.min,
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      const SectionLabel('Mode'),
+      Segments(
+        values: [importing ? _Road.replace : _Road.own, _Road.guest],
+        selected: road,
+        labelOf: (road) => switch (road) {
+          _Road.own => 'Owned',
+          _Road.replace => 'Replace',
+          _Road.guest => 'Guest',
+        },
+        showSelectedIcon: true,
+        onPick: onPickRoad,
+      ),
+      // One line each: the choice is read at a glance or not at all.
+      FieldNote(switch (road) {
+        _Road.own => 'A copy to edit here. Nothing refreshes it.',
+        _Road.replace =>
+          'Replace everything this bar holds now. A copy is kept.',
+        _Road.guest =>
+          "The owner's copy, read-only. Refreshed from their file.",
+      }),
+      const SectionLabel('Contents'),
+      BarHoldings(arriving.collection),
+    ],
+  );
 }
 
 /// Where the bar's contents come from — the one file transport today, and where

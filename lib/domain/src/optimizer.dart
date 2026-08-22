@@ -121,7 +121,41 @@ List<Purchase> purchasesWithin(
   Set<String>? scoring,
 }) {
   if (budget < 1) return const [];
-  final gaps = <({Set<String> ingredients, String recipe})>[];
+  final (:gaps, :pool) = _gapsAndPool(
+    collection,
+    budget,
+    restocking: restocking,
+    buyingOptional: buyingOptional,
+  );
+  if (gaps.isEmpty) return const [];
+
+  final ingredients = pool.toList()..sort(compareNames);
+  final ids = {for (var i = 0; i < ingredients.length; i++) ingredients[i]: i};
+  final radix = ingredients.length + 1;
+  final closes = _closesOf(gaps, ids, radix);
+
+  final keptBySize = _keepBaskets(
+    ingredients.length,
+    budget,
+    closes,
+    radix,
+    scoring,
+    keptPerSize,
+  );
+  return _dressedPurchases(keptBySize, closes, radix, ingredients);
+}
+
+typedef _Gap = ({Set<String> ingredients, String recipe});
+
+/// Every recipe's own gaps, and the ingredients across all of them — the pool
+/// the search draws baskets from.
+({List<_Gap> gaps, Set<String> pool}) _gapsAndPool(
+  Collection collection,
+  int budget, {
+  required bool restocking,
+  required bool buyingOptional,
+}) {
+  final gaps = <_Gap>[];
   final pool = <String>{};
   for (final recipe in collection.recipes) {
     for (final gap in _gapsOf(
@@ -135,22 +169,38 @@ List<Purchase> purchasesWithin(
       pool.addAll(gap);
     }
   }
-  if (gaps.isEmpty) return const [];
+  return (gaps: gaps, pool: pool);
+}
 
-  final ingredients = pool.toList()..sort(compareNames);
-  final ids = {for (var i = 0; i < ingredients.length; i++) ingredients[i]: i};
-  final radix = ingredients.length + 1;
+/// Every gap packed into the ingredient-id key its basket search reads by.
+Map<int, Set<String>> _closesOf(
+  List<_Gap> gaps,
+  Map<String, int> ids,
+  int radix,
+) {
   final closes = <int, Set<String>>{};
   for (final gap in gaps) {
     final part = [for (final ingredient in gap.ingredients) ids[ingredient]!]
       ..sort();
     (closes[_packed(part, radix)] ??= <String>{}).add(gap.recipe);
   }
+  return closes;
+}
 
+/// Every basket up to [budget], scored and kept — the best [keptPerSize] of
+/// each size, richest first.
+List<List<_Kept>> _keepBaskets(
+  int ingredientCount,
+  int budget,
+  Map<int, Set<String>> closes,
+  int radix,
+  Set<String>? scoring,
+  int keptPerSize,
+) {
   final keptBySize = List.generate(budget + 1, (_) => <_Kept>[]);
   final yields = <int, int>{};
   final unlocks = <String>{};
-  for (final basket in _baskets(ingredients.length, budget)) {
+  for (final basket in _baskets(ingredientCount, budget)) {
     _unlockedBy(unlocks, basket, closes, radix);
     final yield = scoring == null
         ? unlocks.length
@@ -159,7 +209,17 @@ List<Purchase> purchasesWithin(
     if (yield == 0 || !_earnsItsKeep(basket, yield, yields, radix)) continue;
     _keep(keptBySize[basket.length], basket, yield, keptPerSize);
   }
+  return keptBySize;
+}
 
+/// The kept baskets as [Purchase]s, best first, each naming what it unlocks.
+List<Purchase> _dressedPurchases(
+  List<List<_Kept>> keptBySize,
+  Map<int, Set<String>> closes,
+  int radix,
+  List<String> ingredients,
+) {
+  final unlocks = <String>{};
   final purchases = <Purchase>[];
   for (final kept in [
     for (final bySize in keptBySize) ...bySize,

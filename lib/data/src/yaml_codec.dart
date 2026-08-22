@@ -7,7 +7,9 @@ import 'package:yaml/yaml.dart';
 
 import 'bar_store.dart';
 import 'sourced_issue.dart';
-import 'yaml_reader.dart';
+import 'yaml_bar_reader.dart';
+import 'yaml_primitives.dart';
+import 'yaml_shelf_reader.dart';
 import 'yaml_writer.dart';
 
 final class YamlCodec {

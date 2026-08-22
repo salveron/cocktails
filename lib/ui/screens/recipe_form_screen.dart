@@ -6,11 +6,13 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../widgets/editor_form.dart';
-import '../widgets/entry_list.dart';
-import '../widgets/failures.dart';
-import '../widgets/tag_choices.dart';
-import '../widgets/vocabulary_dialogs.dart';
+import '../widgets/chips/tag_choices.dart';
+import '../widgets/dialogs/confirm_dialog.dart';
+import '../widgets/forms/editor_form.dart';
+import '../widgets/forms/field_issues.dart';
+import '../widgets/forms/form_fields.dart';
+import '../widgets/lists/list_terms.dart' show ToggleMembership;
+import '../widgets/notices/failures.dart';
 
 /// One pushed page for creating and editing a recipe (FR-REC-1..5/8): the
 /// name, the ingredient lines typed in the file's own grammar, the tag picker,
@@ -37,6 +39,23 @@ class RecipeFormScreen extends ConsumerStatefulWidget {
 
   /// What the name field opens on — the query where a search found nothing.
   final String initialName;
+
+  /// Opens the recipe form and returns the saved name (null if cancelled or
+  /// unchanged).
+  static Future<String?> push(
+    BuildContext context, {
+    required List<Unit> units,
+    Recipe? original,
+    String initialName = '',
+  }) => Navigator.of(context).push<String>(
+    MaterialPageRoute(
+      builder: (_) => RecipeFormScreen(
+        units: units,
+        original: original,
+        initialName: initialName,
+      ),
+    ),
+  );
 
   @override
   ConsumerState<RecipeFormScreen> createState() => _RecipeFormScreenState();
@@ -256,43 +275,86 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
       discardTitle: 'Discard this recipe?',
       onSave: canSave ? () => unawaited(_save(collection, tags)) : null,
       children: [
-        TextField(
-          controller: _name,
+        _Fields(
+          name: _name,
+          lines: _lines.rows,
+          tags: tags,
+          chosenTags: _tags,
+          notes: _notes,
           autofocus: original == null,
-          decoration: InputDecoration(
-            hintText: 'Recipe name',
-            errorText: fieldError(_name.text, nameIssues),
-          ),
-        ),
-        const SectionLabel('Ingredients'),
-        for (var field = 0; field < _lines.rows.length; field++)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: TextField(
-              controller: _lines.rows[field],
-              decoration: InputDecoration(
-                hintText: '1.5 parts gin (base)',
-                errorText: syntax[field] ?? _saveProblems[field],
-              ),
-            ),
-          ),
-        if (tags.isNotEmpty) ...[
-          const SectionLabel('Tags'),
-          TagChoices(
-            tags: tags,
-            chosen: _tags,
-            onToggle: (tag) => setState(() => _tags.toggle(tag)),
-          ),
-        ],
-        const SectionLabel('Notes'),
-        TextField(
-          controller: _notes,
-          maxLines: null,
-          decoration: const InputDecoration(
-            hintText: 'Preparation, glassware, garnish…',
-          ),
+          nameIssues: nameIssues,
+          syntax: syntax,
+          saveProblems: _saveProblems,
+          onToggleTag: (tag) => setState(() => _tags.toggle(tag)),
         ),
       ],
     );
   }
+}
+
+/// Every field the form offers: the name, the ingredient lines, the tag picker
+/// where this collection carries any, the notes.
+class _Fields extends StatelessWidget {
+  const _Fields({
+    required this.name,
+    required this.lines,
+    required this.tags,
+    required this.chosenTags,
+    required this.notes,
+    required this.autofocus,
+    required this.nameIssues,
+    required this.syntax,
+    required this.saveProblems,
+    required this.onToggleTag,
+  });
+
+  final TextEditingController name;
+  final List<TextEditingController> lines;
+  final List<Tag> tags;
+  final Set<String> chosenTags;
+  final TextEditingController notes;
+  final bool autofocus;
+  final List<ValidationIssue> nameIssues;
+  final List<String?> syntax;
+  final Map<int, String> saveProblems;
+  final void Function(String tag) onToggleTag;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      TextField(
+        controller: name,
+        autofocus: autofocus,
+        decoration: InputDecoration(
+          hintText: 'Recipe name',
+          errorText: fieldError(name.text, nameIssues),
+        ),
+      ),
+      const SectionLabel('Ingredients'),
+      for (var field = 0; field < lines.length; field++)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: TextField(
+            controller: lines[field],
+            decoration: InputDecoration(
+              hintText: '1.5 parts gin (base)',
+              errorText: syntax[field] ?? saveProblems[field],
+            ),
+          ),
+        ),
+      if (tags.isNotEmpty) ...[
+        const SectionLabel('Tags'),
+        TagChoices(tags: tags, chosen: chosenTags, onToggle: onToggleTag),
+      ],
+      const SectionLabel('Notes'),
+      TextField(
+        controller: notes,
+        maxLines: null,
+        decoration: const InputDecoration(
+          hintText: 'Preparation, glassware, garnish…',
+        ),
+      ),
+    ],
+  );
 }

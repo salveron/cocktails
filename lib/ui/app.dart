@@ -2,6 +2,7 @@
 /// open bar offers, settings gear.
 library;
 
+import 'package:cocktails/domain/domain.dart';
 import 'package:cocktails/state/state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -13,8 +14,8 @@ import 'screens/recipes_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/shopping_screen.dart';
 import 'theme.dart';
-import 'widgets/empty_state.dart';
-import 'widgets/failures.dart';
+import 'widgets/notices/empty_state.dart';
+import 'widgets/notices/failures.dart';
 
 class CocktailsApp extends StatelessWidget {
   const CocktailsApp({super.key});
@@ -99,17 +100,7 @@ class _AppShellState extends ConsumerState<AppShell> {
     final offered = destinationsOf(open.mode);
     // Watched only to switch: which row was asked for is the serving screen's,
     // and this hears nothing of it.
-    ref.listen(revealProvider, (_, request) {
-      if (request == null) return;
-      // A request naming a row is a jump and leaves a way back; one naming only
-      // a destination is a landing, and a reader who has just crossed into a
-      // bar has nothing here to return from (docs/ui-design.md#bars).
-      if (request.name == null) {
-        _cross(request.destination);
-      } else {
-        _jumpTo(request.destination);
-      }
-    });
+    ref.listen(revealProvider, (_, request) => _handleReveal(request));
     return PopScope(
       // Back undoes a jump while there is one to undo, and leaves otherwise.
       // Settings is a route above this one, so its own back is untouched.
@@ -118,21 +109,7 @@ class _AppShellState extends ConsumerState<AppShell> {
         if (!didPop) setState(() => _current = _trail.removeLast());
       },
       child: Scaffold(
-        appBar: AppBar(
-          // The bar's name leads the title, the destination answering the
-          // smaller question (docs/ui-design.md#bars). Nothing else marks the
-          // bar, and the pushed screens above keep their own plain titles.
-          title: Text("${open.name}'s ${_current.label}"),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.settings_outlined),
-              tooltip: 'Settings',
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(builder: (_) => const SettingsScreen()),
-              ),
-            ),
-          ],
-        ),
+        appBar: _ShellAppBar(open: open, current: _current),
         body: Column(
           children: [
             const LoadIssues(),
@@ -148,20 +125,25 @@ class _AppShellState extends ConsumerState<AppShell> {
             ),
           ],
         ),
-        bottomNavigationBar: NavigationBar(
-          selectedIndex: offered.indexOf(_current),
-          onDestinationSelected: (index) => _cross(offered[index]),
-          destinations: [
-            for (final destination in offered)
-              NavigationDestination(
-                icon: Icon(destination.icon),
-                selectedIcon: Icon(destination.selectedIcon),
-                label: destination.label,
-              ),
-          ],
+        bottomNavigationBar: _ShellNavigationBar(
+          offered: offered,
+          current: _current,
+          onSelect: _cross,
         ),
       ),
     );
+  }
+
+  /// A request naming a row is a jump and leaves a way back; one naming only a
+  /// destination is a landing, and a reader who has just crossed into a bar
+  /// has nothing here to return from (docs/ui-design.md#bars).
+  void _handleReveal(Reveal? request) {
+    if (request == null) return;
+    if (request.name == null) {
+      _cross(request.destination);
+    } else {
+      _jumpTo(request.destination);
+    }
   }
 
   /// Switches to [destination], remembering what it left so back can undo it.
@@ -182,4 +164,57 @@ class _AppShellState extends ConsumerState<AppShell> {
     _trail.clear();
     _current = destination;
   });
+}
+
+/// The bar's name leads the title, the destination answering the smaller
+/// question (docs/ui-design.md#bars). Nothing else marks the bar, and the
+/// pushed screens above keep their own plain titles.
+class _ShellAppBar extends StatelessWidget implements PreferredSizeWidget {
+  const _ShellAppBar({required this.open, required this.current});
+
+  final Bar open;
+  final Destination current;
+
+  @override
+  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
+
+  @override
+  Widget build(BuildContext context) => AppBar(
+    title: Text("${open.name}'s ${current.label}"),
+    actions: [
+      IconButton(
+        icon: const Icon(Icons.settings_outlined),
+        tooltip: 'Settings',
+        onPressed: () => Navigator.of(
+          context,
+        ).push(MaterialPageRoute<void>(builder: (_) => const SettingsScreen())),
+      ),
+    ],
+  );
+}
+
+class _ShellNavigationBar extends StatelessWidget {
+  const _ShellNavigationBar({
+    required this.offered,
+    required this.current,
+    required this.onSelect,
+  });
+
+  final List<Destination> offered;
+  final Destination current;
+  final ValueChanged<Destination> onSelect;
+
+  @override
+  Widget build(BuildContext context) => NavigationBar(
+    selectedIndex: offered.indexOf(current),
+    onDestinationSelected: (index) => onSelect(offered[index]),
+    destinations: [
+      for (final destination in offered)
+        NavigationDestination(
+          icon: Icon(destination.icon),
+          selectedIcon: Icon(destination.selectedIcon),
+          label: destination.label,
+        ),
+    ],
+  );
 }

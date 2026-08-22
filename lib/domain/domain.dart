@@ -11,4 +11,5 @@ export 'src/names.dart' show nameKey, nameKeys, compareNames, NameComparison;
 export 'src/scaling.dart';
 export 'src/shelf.dart';
 export 'src/shelf_edits.dart';
-export 'src/validation.dart';
+export 'src/shelf_validation.dart';
+export 'src/validation.dart' hide checkName, addProblems, Problem;

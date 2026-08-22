@@ -5,8 +5,10 @@ import 'package:cocktails/state/state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../widgets/editor_form.dart';
-import '../widgets/vocabulary_dialogs.dart';
+import '../theme.dart';
+import '../widgets/forms/editor_form.dart';
+import '../widgets/forms/field_issues.dart';
+import '../widgets/forms/form_fields.dart';
 
 /// The unit amounts read in and what each of the others is worth (FR-SET-1),
 /// designed in docs/ui-design.md#amounts.
@@ -101,32 +103,16 @@ class _AmountsScreenState extends ConsumerState<AmountsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // The settings' own rules judge the rows, so a ratio the file would refuse
-    // is a ratio this screen refuses (ADR 05).
-    final issues = validateCollection(settings: _entered);
-    final refused = firstIssuePerField(
-      issues,
-      (issue) => switch (issue.path) {
-        ['settings', 'part_ml'] => FixedUnit.part,
-        ['settings', 'oz_ml'] => FixedUnit.oz,
-        _ => null,
-      },
-    );
-    final unread = {
-      for (final sized in _sizedUnits)
-        if (_typed(sized) == null) sized: 'Must be a number above zero',
-    };
-    // The sizes are the owner's and the pick the reader's, so a guest bar reads
-    // the rows and moves the pick alone (FR-BAR-3): the fields go quiet, and
-    // there is nothing of the sizes to be dirty about.
     final writer = ref.watch(barWriterProvider);
+    final issues = validateCollection(settings: _entered);
+    final errors = _errors(issues, writable: writer != null);
     return EditorScaffold(
       title: 'Amounts',
       dirty:
           (writer != null && _entered != _opened.settings) ||
           _display != _openedDisplay,
       discardTitle: 'Discard these amounts?',
-      onSave: issues.isEmpty && unread.isEmpty
+      onSave: issues.isEmpty && errors.isEmpty
           ? () => unawaited(_save(writer))
           : null,
       children: [
@@ -144,39 +130,44 @@ class _AmountsScreenState extends ConsumerState<AmountsScreen> {
           onPick: _pick,
         ),
         const SizedBox(height: 16),
-        // A table, so both rows' fields stand in line whatever the units
-        // around them are spelled like — and go on doing so under a reader's
-        // larger text, which no width written here would survive.
-        _sizes(unread, refused, writable: writer != null),
+        _SizeTable(
+          sizedUnits: _sizedUnits,
+          fields: _fields,
+          writable: writer != null,
+          unitsFor: _unitsFor,
+          errorFor: (sized) => errors[sized],
+          onEdit: _apply,
+        ),
       ],
     );
   }
 
-  Widget _sizes(
-    Map<FixedUnit, String> unread,
-    Map<FixedUnit, String> refused, {
+  /// The message each row's field shows: a row nobody may type in cannot be
+  /// wrong, and the owner's sizes are not this reader's to be told off for.
+  /// The settings' own rules judge the rows, so a ratio the file would refuse
+  /// is a ratio this screen refuses (ADR 05).
+  Map<FixedUnit, String> _errors(
+    List<ValidationIssue> issues, {
     required bool writable,
-  }) => Table(
-    columnWidths: const {
-      0: IntrinsicColumnWidth(),
-      1: FlexColumnWidth(),
-      2: IntrinsicColumnWidth(),
-    },
-    defaultVerticalAlignment: TableCellVerticalAlignment.baseline,
-    textBaseline: TextBaseline.alphabetic,
-    children: [
-      for (final sized in _sizedUnits)
-        _ratioRow(
-          row: _unitsFor(sized),
-          field: _fields[sized]!,
-          writable: writable,
-          // A row nobody may type in cannot be wrong, and the owner's sizes are
-          // not this reader's to be told off for.
-          error: writable ? unread[sized] ?? refused[sized] : null,
-          onEdit: () => _apply(sized),
-        ),
-    ],
-  );
+  }) {
+    if (!writable) return const {};
+    final refused = firstIssuePerField(
+      issues,
+      (issue) => switch (issue.path) {
+        ['settings', 'part_ml'] => FixedUnit.part,
+        ['settings', 'oz_ml'] => FixedUnit.oz,
+        _ => null,
+      },
+    );
+    final errors = <FixedUnit, String>{};
+    for (final sized in _sizedUnits) {
+      final message = _typed(sized) == null
+          ? 'Must be a number above zero'
+          : refused[sized];
+      if (message != null) errors[sized] = message;
+    }
+    return errors;
+  }
 
   /// Two writes, because the sizes go to the collection's file and the pick to
   /// the bar's record (ADR 21); each is a no-op where nothing moved. Two
@@ -187,6 +178,48 @@ class _AmountsScreenState extends ConsumerState<AmountsScreen> {
     await ref.read(shelfProvider.notifier).setDisplay(_display);
     if (mounted) Navigator.of(context).pop();
   }
+}
+
+/// A table, so both rows' fields stand in line whatever the units around them
+/// are spelled like — and go on doing so under a reader's larger text, which
+/// no width written here would survive.
+class _SizeTable extends StatelessWidget {
+  const _SizeTable({
+    required this.sizedUnits,
+    required this.fields,
+    required this.writable,
+    required this.unitsFor,
+    required this.errorFor,
+    required this.onEdit,
+  });
+
+  final List<FixedUnit> sizedUnits;
+  final Map<FixedUnit, TextEditingController> fields;
+  final bool writable;
+  final (FixedUnit, FixedUnit) Function(FixedUnit sized) unitsFor;
+  final String? Function(FixedUnit sized) errorFor;
+  final void Function(FixedUnit sized) onEdit;
+
+  @override
+  Widget build(BuildContext context) => Table(
+    columnWidths: const {
+      0: IntrinsicColumnWidth(),
+      1: FlexColumnWidth(),
+      2: IntrinsicColumnWidth(),
+    },
+    defaultVerticalAlignment: TableCellVerticalAlignment.baseline,
+    textBaseline: TextBaseline.alphabetic,
+    children: [
+      for (final sized in sizedUnits)
+        _ratioRow(
+          row: unitsFor(sized),
+          field: fields[sized]!,
+          writable: writable,
+          error: errorFor(sized),
+          onEdit: () => onEdit(sized),
+        ),
+    ],
+  );
 }
 
 /// Ratios read to four decimals — enough to spell a US ounce (29.5735) exactly,

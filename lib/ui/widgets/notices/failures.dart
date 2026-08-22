@@ -1,9 +1,10 @@
 /// What the app could not do, put to the reader: the two banners standing above
 /// every destination — the last load's issues (FR-DAT-4) and the open bar's last
-/// refresh where it did not land (FR-BAR-5) — and the snackbar an action refused
-/// speaks through. Two banners rather than one, a torn file on disk and a source
-/// that would not answer being different news; one home for the words, so a
-/// failure is worded once however the reader meets it.
+/// refresh where it did not land (FR-BAR-5) — the refusal a picked file gets,
+/// and the snackbar a refused action speaks through. Two banners rather than
+/// one, a torn file on disk and a source that would not answer being different
+/// news; one home for the words, so a failure is worded once however the
+/// reader meets it.
 library;
 
 import 'package:cocktails/domain/domain.dart';
@@ -11,6 +12,9 @@ import 'package:cocktails/state/state.dart';
 import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../theme.dart';
+import '../cards/bullet_runs.dart';
 
 /// What a load could not read (FR-DAT-4), above every destination until the
 /// reader dismisses it. Dismissal is of the issues on show rather than of the
@@ -58,11 +62,40 @@ class RefreshFailure extends ConsumerWidget {
   }
 }
 
-/// The pull a guest bar's lists answer (FR-BAR-5), null on an owned bar which
-/// has no source. [RefreshFailure] meets what it comes to.
-Future<void> Function()? refreshOf(WidgetRef ref, Bar? open) {
-  if (open == null || open.isOwned) return null;
-  return () => ref.read(shelfProvider.notifier).refresh(open.id);
+/// Why the file was not read, and where (FR-DAT-4), under the one sentence that
+/// matters — [standing], what is true despite it, which differs by what the
+/// file was about to be used for. There is nothing here to agree to.
+class RefusedFile extends StatelessWidget {
+  const RefusedFile(this.issues, {required this.standing, super.key});
+
+  final List<String> issues;
+  final String standing;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.error_outline, color: theme.colorScheme.error),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'This file cannot be read',
+                style: theme.textTheme.titleMedium,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        MutedText(standing),
+        const SizedBox(height: 16),
+        BulletRuns([bulletRun(issues)]),
+      ],
+    );
+  }
 }
 
 /// What a refresh of [bar] came to, in the app's own words, and null where

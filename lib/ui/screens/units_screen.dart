@@ -6,8 +6,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../widgets/editor_form.dart';
-import '../widgets/vocabulary_dialogs.dart';
+import '../theme.dart';
+import '../widgets/dialogs/confirm_dialog.dart';
+import '../widgets/forms/editor_form.dart';
+import '../widgets/forms/field_issues.dart';
 
 /// The measurement vocabulary (FR-VOC-5), edited in place: a row per unit and
 /// one Save for the screen, so two units can trade names in a single edit.
@@ -215,15 +217,35 @@ class _Fields extends StatelessWidget {
             ),
           ),
         ),
-        SizedBox(width: _trailingWidth, child: _trailing(context)),
+        SizedBox(
+          width: _trailingWidth,
+          child: _TrailingControl(
+            writable: writable,
+            row: row,
+            onDelete: onDelete,
+          ),
+        ),
       ],
     ),
   );
+}
 
-  Widget? _trailing(BuildContext context) {
+class _TrailingControl extends StatelessWidget {
+  const _TrailingControl({
+    required this.writable,
+    required this.row,
+    required this.onDelete,
+  });
+
+  final bool writable;
+  final _UnitRow row;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
     // Nothing on a guest bar: the lock marks the two units nobody may rename,
     // and worn by every row it would be saying something else (ADR 17).
-    if (!writable) return null;
+    if (!writable) return const SizedBox.shrink();
     if (row.locked) {
       return Tooltip(
         message: 'Fixed unit',
@@ -235,7 +257,7 @@ class _Fields extends StatelessWidget {
       );
     }
     return row.blank
-        ? null
+        ? const SizedBox.shrink()
         : IconButton(
             icon: const Icon(Icons.delete_outline),
             tooltip: 'Delete',

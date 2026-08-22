@@ -5,7 +5,7 @@ import 'package:cocktails/state/state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../widgets/editor_form.dart';
+import '../widgets/forms/form_fields.dart';
 
 /// What the optimizer is asked and where its screen starts (FR-SET-2, ADR 24),
 /// designed in docs/ui-design.md#shopping. Every control settles on the tap:
@@ -20,58 +20,78 @@ class ShoppingSettingsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final shopping = ref.watch(shoppingProvider);
-    void settle(ShoppingSettings edited) =>
-        unawaited(ref.read(shelfProvider.notifier).setShopping(edited));
     return Scaffold(
       appBar: AppBar(title: const Text('Shopping')),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
         children: [
-          const SectionLabel('Tags'),
-          Segments(
-            values: const [false, true],
-            selected: shopping.aiming,
-            labelOf: (aiming) => aiming ? 'Aim' : 'Sift',
-            onPick: (aiming) => settle(shopping.copyWith(aiming: aiming)),
-          ),
-          FieldNote(
-            shopping.aiming
-                ? 'Baskets rank by how many of those recipes they unlock.'
-                : 'Baskets are kept where every tag picked is unlocked.',
-          ),
-          const SectionLabel('Baskets'),
-          Segments(
-            values: basketCounts,
-            selected: shopping.keptPerSize,
-            labelOf: (keptPerSize) => '$keptPerSize',
-            onPick: (keptPerSize) =>
-                settle(shopping.copyWith(keptPerSize: keptPerSize)),
-          ),
-          const FieldNote('How many of each size the list offers.'),
-          const SectionLabel('Opens at'),
-          Segments(
-            values: budgets,
-            selected: shopping.budget,
-            labelOf: (budget) => '$budget',
-            onPick: (budget) => settle(shopping.copyWith(budget: budget)),
-          ),
-          const FieldNote('The budget the shopping screen starts on.'),
-          _Toggle(
-            title: 'Low too',
-            note: 'Start with what is running low counted as short.',
-            value: shopping.restocking,
-            onChanged: (on) => settle(shopping.copyWith(restocking: on)),
-          ),
-          _Toggle(
-            title: 'Optional lines',
-            note: 'Shop for the lines a recipe marks optional.',
-            value: shopping.buyingOptional,
-            onChanged: (on) => settle(shopping.copyWith(buyingOptional: on)),
+          _Entries(
+            shopping: shopping,
+            onSettle: (edited) =>
+                unawaited(ref.read(shelfProvider.notifier).setShopping(edited)),
           ),
         ],
       ),
     );
   }
+}
+
+/// Every control the optimizer is asked through, laid out in the order a
+/// reader meets them: what the tags mean, how many baskets, where the screen
+/// opens, and the two switches.
+class _Entries extends StatelessWidget {
+  const _Entries({required this.shopping, required this.onSettle});
+
+  final ShoppingSettings shopping;
+  final void Function(ShoppingSettings edited) onSettle;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      const SectionLabel('Tags'),
+      Segments(
+        values: const [false, true],
+        selected: shopping.aiming,
+        labelOf: (aiming) => aiming ? 'Aim' : 'Sift',
+        onPick: (aiming) => onSettle(shopping.copyWith(aiming: aiming)),
+      ),
+      FieldNote(
+        shopping.aiming
+            ? 'Baskets rank by how many of those recipes they unlock.'
+            : 'Baskets are kept where every tag picked is unlocked.',
+      ),
+      const SectionLabel('Baskets'),
+      Segments(
+        values: basketCounts,
+        selected: shopping.keptPerSize,
+        labelOf: (keptPerSize) => '$keptPerSize',
+        onPick: (keptPerSize) =>
+            onSettle(shopping.copyWith(keptPerSize: keptPerSize)),
+      ),
+      const FieldNote('How many of each size the list offers.'),
+      const SectionLabel('Opens at'),
+      Segments(
+        values: budgets,
+        selected: shopping.budget,
+        labelOf: (budget) => '$budget',
+        onPick: (budget) => onSettle(shopping.copyWith(budget: budget)),
+      ),
+      const FieldNote('The budget the shopping screen starts on.'),
+      _Toggle(
+        title: 'Low too',
+        note: 'Start with what is running low counted as short.',
+        value: shopping.restocking,
+        onChanged: (on) => onSettle(shopping.copyWith(restocking: on)),
+      ),
+      _Toggle(
+        title: 'Optional lines',
+        note: 'Shop for the lines a recipe marks optional.',
+        value: shopping.buyingOptional,
+        onChanged: (on) => onSettle(shopping.copyWith(buyingOptional: on)),
+      ),
+    ],
+  );
 }
 
 /// A switch and what it does, laid out as the pickers above are: the label at

@@ -48,7 +48,7 @@ final revealProvider = NotifierProvider<Reveals, Reveal?>(Reveals.new);
 
 /// The row [serving] has been asked for, taken as it is read, or null where
 /// [request] names another screen — ignored rather than cleared.
-String? takeReveal(WidgetRef ref, Reveal? request, Destination serving) {
+String? _takeReveal(WidgetRef ref, Reveal? request, Destination serving) {
   if (request == null || request.destination != serving) return null;
   ref.read(revealProvider.notifier).served();
   return request.name;
@@ -67,7 +67,7 @@ mixin RevealServing<T extends ConsumerStatefulWidget> on ConsumerState<T> {
   /// Let go by a post-frame callback once the frame carrying it goes out,
   /// rather than by `build` reading and clearing it.
   void serveReveal(Reveal? request) {
-    final name = takeReveal(ref, request, revealDestination);
+    final name = _takeReveal(ref, request, revealDestination);
     if (name == null) return;
     setState(() {
       prepareReveal(name);

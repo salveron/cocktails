@@ -6,11 +6,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../destinations.dart';
-import '../widgets/color_chip.dart';
-import '../widgets/empty_state.dart';
-import '../widgets/entry_list.dart';
-import '../widgets/failures.dart';
-import '../widgets/vocabulary_dialogs.dart';
+import '../widgets/cards/entry_card.dart';
+import '../widgets/chips/color_marks.dart';
+import '../widgets/chips/tag_choices.dart';
+import '../widgets/dialogs/confirm_dialog.dart';
+import '../widgets/dialogs/entry_dialog.dart';
+import '../widgets/lists/entry_list.dart';
+import '../widgets/lists/list_terms.dart';
+import '../widgets/notices/empty_state.dart';
 
 /// Every ingredient and what is left of it — searchable by name and by tag, one
 /// tap per stock change (FR-ING-1/2/3) — and the vocabulary itself: add, edit,
@@ -49,8 +52,14 @@ class _IngredientsScreenState extends ConsumerState<IngredientsScreen>
       entries: collection.ingredients,
       nameOf: (ingredient) => ingredient.name,
       spellingsOf: (ingredient) => ingredient.spellings,
-      rowOf: (ingredient) =>
-          _ingredientRow(writer, collection, tags, ingredient),
+      rowOf: (ingredient) => _IngredientRow(
+        tags: tags,
+        ingredient: ingredient,
+        writer: writer,
+        onEdit: () =>
+            unawaited(_editIngredient(writer!, collection, tags, ingredient)),
+        onDelete: () => unawaited(_delete(writer!, collection, ingredient)),
+      ),
       onAdd: writer == null
           ? null
           : (query) => _add(writer, collection, tags, query),
@@ -77,37 +86,6 @@ class _IngredientsScreenState extends ConsumerState<IngredientsScreen>
       ),
     );
   }
-
-  /// Row tap toggles stock (in → low → out → in); vocab actions use ⋮. On a
-  /// guest bar the stock is the owner's reading of their own shelf, so the row
-  /// keeps its chip and loses both — a tap that changed it would be the reader
-  /// judging one bar by another (FR-BAR-4).
-  EntryCard _ingredientRow(
-    BarWriter? writer,
-    Collection collection,
-    List<Tag> tags,
-    Ingredient ingredient,
-  ) => EntryCard(
-    title: DottedName(ingredient.name, tags: tags, worn: ingredient.tags),
-    trailing: Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        StockChip(ingredient.stock),
-        if (writer != null)
-          RowMenu({
-            'Edit': () => unawaited(
-              _editIngredient(writer, collection, tags, ingredient),
-            ),
-            'Delete': () => unawaited(_delete(writer, collection, ingredient)),
-          }),
-      ],
-    ),
-    onTap: writer == null
-        ? null
-        : () => unawaited(
-            writer.setStock(ingredient.name, ingredient.stock.next),
-          ),
-  );
 
   /// Returns true after adding; clears picked tags along with search.
   Future<bool> _add(
@@ -173,6 +151,46 @@ class _IngredientsScreenState extends ConsumerState<IngredientsScreen>
     );
     if (!confirmed || !context.mounted) return;
     await writer.removeIngredient(ingredient.name);
+  }
+}
+
+/// Row tap toggles stock (in → low → out → in); vocab actions use ⋮. On a
+/// guest bar the stock is the owner's reading of their own shelf, so the row
+/// keeps its chip and loses both — a tap that changed it would be the reader
+/// judging one bar by another (FR-BAR-4).
+class _IngredientRow extends StatelessWidget {
+  const _IngredientRow({
+    required this.tags,
+    required this.ingredient,
+    required this.writer,
+    required this.onEdit,
+    required this.onDelete,
+  });
+
+  final List<Tag> tags;
+  final Ingredient ingredient;
+  final BarWriter? writer;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    final writer = this.writer;
+    return EntryCard(
+      title: DottedName(ingredient.name, tags: tags, worn: ingredient.tags),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          StockChip(ingredient.stock),
+          if (writer != null) RowMenu({'Edit': onEdit, 'Delete': onDelete}),
+        ],
+      ),
+      onTap: writer == null
+          ? null
+          : () => unawaited(
+              writer.setStock(ingredient.name, ingredient.stock.next),
+            ),
+    );
   }
 }
 

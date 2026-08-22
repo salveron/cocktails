@@ -3,10 +3,10 @@ import 'package:cocktails/domain/domain.dart';
 import 'package:cocktails/state/state.dart';
 import 'package:cocktails/ui/app.dart';
 import 'package:cocktails/ui/theme.dart';
-import 'package:cocktails/ui/widgets/color_chip.dart';
-import 'package:cocktails/ui/widgets/entry_list.dart';
-import 'package:cocktails/ui/widgets/search_field.dart';
-import 'package:cocktails/ui/widgets/tag_choices.dart';
+import 'package:cocktails/ui/widgets/cards/entry_card.dart';
+import 'package:cocktails/ui/widgets/chips/color_marks.dart';
+import 'package:cocktails/ui/widgets/chips/tag_choices.dart';
+import 'package:cocktails/ui/widgets/lists/list_controls.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -272,6 +272,37 @@ Future<void> chooseOnRow(
   await tester.pumpAndSettle();
   await tester.tap(find.text(action));
   await tester.pumpAndSettle();
+}
+
+/// What a dialog answered — filled in when it closes, so a test reads it after
+/// tapping its way out.
+final class Answer<T> {
+  T? value;
+}
+
+/// Pumps a button that opens the dialog, taps it, and settles — leaving the
+/// dialog on screen.
+Future<Answer<T>> openDialog<T>(
+  WidgetTester tester,
+  Future<T> Function(BuildContext context) open,
+) async {
+  final answer = Answer<T>();
+  await tester.pumpWidget(
+    MaterialApp(
+      home: Scaffold(
+        body: Builder(
+          builder: (context) => TextButton(
+            onPressed: () =>
+                open(context).then((value) => answer.value = value),
+            child: const Text('open'),
+          ),
+        ),
+      ),
+    ),
+  );
+  await tester.tap(find.text('open'));
+  await tester.pumpAndSettle();
+  return answer;
 }
 
 /// The colour behind the chip reading [label]. The bang holds because a chip

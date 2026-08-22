@@ -1,11 +1,12 @@
-/// Colored widgets: chip (label + fill), tag and signal chips, dot, dotted
-/// name. Every one carries words or a tooltip — no meaning from hue alone.
+/// Colour as a chip or as a dot, where a chip's words would not fit: a tag, a
+/// stock level, a name worn by both (docs/ui-design.md#tag-and-stock-colours).
+/// Every chip carries words or a tooltip — no meaning from hue alone.
 library;
 
 import 'package:cocktails/domain/domain.dart';
 import 'package:flutter/material.dart';
 
-import '../palette.dart';
+import '../../palette.dart';
 
 /// A chip's outer corner — its ring, and the ripple of whatever makes it
 /// tappable. One home, so a chip and the ink under it cannot round differently.
@@ -91,7 +92,7 @@ class TagChip extends StatelessWidget {
 }
 
 /// The stock level in words — one home, so chip and dot cannot drift.
-String stockLabel(StockLevel stock) => switch (stock) {
+String _stockLabel(StockLevel stock) => switch (stock) {
   StockLevel.in_ => 'In stock',
   StockLevel.low => 'Low',
   StockLevel.out => 'Out',
@@ -105,7 +106,7 @@ class StockChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ColorChip(
-    stockLabel(stock),
+    _stockLabel(stock),
     swatch: stockColors(stock, Theme.of(context).brightness),
   );
 }
@@ -207,7 +208,7 @@ class StockDot extends StatelessWidget {
   @override
   Widget build(BuildContext context) => _Dot(
     stockColors(stock, Theme.of(context).brightness).fill,
-    tooltip: stockLabel(stock),
+    tooltip: _stockLabel(stock),
   );
 }
 

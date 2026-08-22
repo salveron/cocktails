@@ -186,8 +186,26 @@ what M36f settles.
   `summary`/`summaryOf`; `Collection`'s tag field order now matches `validateCollection` and the
   file format; `vocabulary_list.dart` → `entry_list.dart`, `channels.dart` → `refreshes.dart`,
   `telling.dart` → `failures.dart`, with `refreshOf` moved into the last of those. Depends: M36h.
-- [ ] **M36j** — Files find their size. Delivers: the four files over 600 lines split by subject,
-  widget-returning methods become widget classes. Depends: M36i.
+- [x] **M36j** — Files find their size, one home per role. Delivers: `lib/ui` regrouped by
+  subject, two siblings only — `screens/` (11 files, all `*_screen.dart`) and
+  `widgets/{cards,chips,dialogs,forms,lists,notices}` — replacing the flat `screens/`/`widgets/`
+  split that let a widget import a screen and let `recipe_widgets.dart` hold four unrelated things
+  ([ADR 25](adr/25-the-ui-groups-by-subject.md)); four checks in `test/architecture_test.dart`
+  enforce it. The files over 600 lines split by subject within that layout (`entry_list` into
+  itself/`list_controls`/`list_terms`; `recipes_screen` split six ways, its leftovers consolidated
+  into `cards/recipe_card`; `color_chip` merged with `color_dot` into `chips/color_marks`;
+  `editor_form` into itself/`form_fields`, the latter split again into itself/`field_issues` along
+  the ADR 05 path-reading it carried; `validation` into itself/`shelf_validation`; `yaml_reader`
+  into `yaml_bar_reader`/`yaml_shelf_reader`/`yaml_primitives`, the last gaining `readDisplay` as the
+  one home for a settings block's and a bar record's `display:` alike). `arriving_bar`,
+  `vocabulary_dialogs` and `short_asks` dissolved into the groups their members belonged to —
+  `promptForName` beside `promptEntry` in `entry_dialog`, `pickBar` beside its two callers in
+  `bar_form_screen`, the delete/discard presets beside `confirmDialog` in a new `confirm_dialog`;
+  `ScaleDialog` went private behind `promptForScale`, the shape every dialog now publishes.
+  `wording.dart` holds `counted` alone, its own dependency rather than a passenger in a file about
+  something else. 17 widget-returning methods became widget classes or top-level functions, 11
+  more the same build()-breakup commits had introduced among them; the long functions and
+  `build()`s over the line-count bar broken up. Depends: M36i.
 - [ ] **M36k** — The tests get a home. Delivers: `test/support/` as the fixture home, colliding
   fixture names settled, one state harness, the five test files over 1,000 lines split. Depends: M36j.
 

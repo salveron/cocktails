@@ -3,52 +3,21 @@ import 'dart:math';
 
 import 'package:cocktails/domain/domain.dart';
 import 'package:cocktails/state/state.dart';
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import '../destinations.dart';
-import '../palette.dart';
-import '../theme.dart';
-import '../widgets/color_chip.dart';
-import '../widgets/editor_form.dart';
-import '../widgets/empty_state.dart';
-import '../widgets/entry_list.dart';
-import '../widgets/failures.dart';
-import '../widgets/vocabulary_dialogs.dart';
+import '../widgets/cards/recipe_card.dart';
+import '../widgets/chips/base_spirit.dart';
+import '../widgets/chips/tag_choices.dart';
+import '../widgets/dialogs/confirm_dialog.dart';
+import '../widgets/dialogs/scale_dialog.dart';
+import '../widgets/lists/entry_list.dart';
+import '../widgets/lists/list_terms.dart';
+import '../widgets/notices/empty_state.dart';
+import '../widgets/notices/failures.dart';
 import 'recipe_form_screen.dart';
-
-/// A card's reading of its own amounts: the factor it multiplies them by
-/// (FR-REC-7) and the fixed unit they show in (FR-SET-1, this card only).
-/// Display alone — nothing here reaches the collection or the file.
-typedef _AmountView = ({int scale, FixedUnit unit});
-
-/// Where every card rests: unscaled, in the unit the bar reads in (ADR 21). A
-/// card is transformed by departing from *that*, not from the way the file
-/// writes it — so under an ml pick it is "(part)" that marks a card as read
-/// otherwise (ADR 17).
-_AmountView _resting(FixedUnit display) => (scale: 1, unit: display);
-
-/// What the list is narrowed to by base spirit (FR-DIS-4, ADR 12) — a record,
-/// so a null *spirit*, the recipes marking no base, is told apart from a null
-/// _pick_, which is no narrowing at all.
-typedef _BasePick = ({String? spirit});
-
-/// How a substitution group reads on a card — prose, where the grammar and the
-/// file keep the separator (ADR 11). Italic on the open card, so a word made of
-/// two letters is still seen between the ingredients it stands between.
-const _or = ' or ';
-const _italic = TextStyle(fontStyle: FontStyle.italic);
-
-/// What the name row adds while a card is reading its amounts otherwise.
-String? _viewNote(_AmountView view, _AmountView resting) {
-  final notes = [
-    if (view.scale != resting.scale) '×${view.scale}',
-    if (view.unit != resting.unit) view.unit.token,
-  ];
-  return notes.isEmpty ? null : '(${notes.join(', ')})';
-}
 
 /// Every recipe as a card that expands in place — the compact two lines, or
 /// the full view: tags, lines, notes (FR-DIS-2) — and the recipes themselves:
@@ -68,14 +37,14 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
 
   /// How an open card is reading its amounts (FR-REC-7), absent while it reads
   /// them as written — a way of looking at one card, which does not outlive it.
-  final _views = <String, _AmountView>{};
+  final _views = <String, AmountView>{};
 
   /// The tags narrowing the list (FR-DIS-3) — screen state like the order and
   /// the search, so nothing about a way of looking reaches the file.
   final _picked = <String>{};
 
   /// The base spirit narrowing it beside them, absent while it narrows nothing.
-  _BasePick? _base;
+  BasePick? _base;
 
   /// What the last roll landed on, so the next one moves off it (FR-DIS-5).
   String? _rolled;
@@ -121,31 +90,22 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
     // rather than inside rowOf, which the list calls from its itemBuilder: a
     // watch there is one whichever rows got built happen to register, not one
     // this build declares.
-    final resting = _resting(open?.display ?? FixedUnit.part);
+    final resting = restingView(open?.display ?? FixedUnit.part);
     return EntryCardList<Recipe>(
       entries: collection.recipes,
       nameOf: (recipe) => recipe.name,
-      spellingsOf: (recipe) => _spellings(collection, recipe),
-      rowOf: (recipe) => _recipeRow(
-        writer,
-        collection,
-        tags,
-        recipe,
-        availability[recipe.name],
-        resting: resting,
-      ),
+      spellingsOf: (recipe) => recipeSpellings(collection, recipe),
+      rowOf: (recipe) =>
+          _rowOf(collection, tags, recipe, availability, resting, writer),
       onAdd: writer == null ? null : (query) => _add(collection.units, query),
       reveal: revealing,
       onRefresh: refreshOf(ref, open),
       noun: 'recipe',
       plural: 'recipes',
-      filter: tagFilter(
-        tags: tags,
-        picked: _picked,
-        onToggle: (tag) => setState(() => _picked.toggle(tag)),
-        tagsOf: (recipe) => recipe.tags,
-        leading: _baseFilter(collection),
-      ),
+      filter: _filterFor(collection, tags),
+      // The button's face; the draw does the drawing and the opening
+      // (FR-DIS-5). Inlined at its one call site, taking the Font Awesome
+      // import with it — still one file, as ADR 14 requires.
       draw: (
         icon: const FaIcon(FontAwesomeIcons.dice),
         tooltip: 'Random pick',
@@ -168,78 +128,47 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
     );
   }
 
-  /// Sends the reader to the ingredient a line names, on the Ingredients screen
-  /// (FR-DIS-9). Under the ingredient's own name: a line may spell it any way
-  /// the vocabulary answers to (ADR 10), and a list finds its rows under
-  /// theirs.
-  void _goToIngredient(Collection collection, String ingredient) => ref
-      .read(revealProvider.notifier)
-      .ask(Destination.ingredients, collection.spellingOf(ingredient));
-
-  /// Compact or full when tapped; full hides summary since details appear
-  /// below. [availability] is derived from the collection this row is built
-  /// from, so there; an absent one draws no chip rather than standing on an
-  /// assertion.
-  Widget _recipeRow(
-    BarWriter? writer,
+  Widget _rowOf(
     Collection collection,
     List<Tag> tags,
     Recipe recipe,
-    Availability? availability, {
-    required _AmountView resting,
-  }) {
+    Map<String, Availability> availability,
+    AmountView resting,
+    BarWriter? writer,
+  ) {
     final expanded = _expanded.contains(recipe.name);
-    final view = _views[recipe.name] ?? resting;
-    final note = _viewNote(view, resting);
-    final summary = [
-      for (final line in recipe.lines) line.ingredients.join(_or),
-    ].join(' · ');
-    return ExpandingRow(
-      open: expanded,
-      title: expanded
-          ? Row(
-              children: [
-                Flexible(
-                  child: Text(recipe.name, overflow: TextOverflow.ellipsis),
-                ),
-                if (note != null)
-                  Padding(
-                    padding: const EdgeInsets.only(left: 6),
-                    child: MutedText(note),
-                  ),
-              ],
-            )
-          : DottedName(recipe.name, tags: tags, worn: recipe.tags),
-      subtitle: summary.isEmpty ? null : summary,
-      body: _Details(
-        collection: collection,
-        tags: tags,
-        recipe: recipe,
-        view: view,
-        resting: resting,
-        onReach: (ingredient) => _goToIngredient(collection, ingredient),
-      ),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (availability != null) AvailabilityChip(availability),
-          RowMenu({
-            // Only where there are amounts to transform: the choice is the
-            // open card's, and dies with it. It survives a guest bar, scaling
-            // being a way of reading the owner's line rather than a change to
-            // it (FR-BAR-4).
-            if (expanded)
-              'Scale & convert': () => unawaited(_scale(recipe, resting)),
-            if (writer != null) ...{
-              'Edit': () => unawaited(_editRecipe(collection.units, recipe)),
-              'Delete': () => unawaited(_delete(writer, recipe)),
-            },
-          }),
-        ],
-      ),
+    return RecipeRow(
+      collection: collection,
+      tags: tags,
+      recipe: recipe,
+      availability: availability[recipe.name],
+      resting: resting,
+      view: _views[recipe.name] ?? resting,
+      expanded: expanded,
       onToggle: () => _toggle(recipe.name),
+      onReach: (ingredient) => _goToIngredient(ref, collection, ingredient),
+      onScale: expanded ? () => unawaited(_scale(recipe, resting)) : null,
+      onEdit: writer == null
+          ? null
+          : () => unawaited(_editRecipe(collection.units, recipe)),
+      onDelete: writer == null
+          ? null
+          : () => unawaited(_delete(writer, recipe)),
     );
   }
+
+  ListFilter<Recipe>? _filterFor(Collection collection, List<Tag> tags) =>
+      tagFilter(
+        tags: tags,
+        picked: _picked,
+        onToggle: (tag) => setState(() => _picked.toggle(tag)),
+        tagsOf: (recipe) => recipe.tags,
+        leading: baseFilter(
+          collection,
+          base: _base,
+          onPick: (pick) => setState(() => _base = pick),
+        ),
+      );
 
   /// Draws one of the recipes on show that the bar can make now and opens it
   /// alone (FR-DIS-5), answering with its name so the list can put it on screen
@@ -269,66 +198,15 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
     return drawn.name;
   }
 
-  /// The base spirit chip and what it keeps (FR-DIS-4, ADR 12). A pick gone
-  /// stale — the ingredient renamed, deleted, or its last base mark cleared —
-  /// is absent from what the collection offers, and so stops narrowing rather
-  /// than emptying the list. Nothing marked anywhere leaves nothing to offer.
-  ListFilter<Recipe>? _baseFilter(Collection collection) {
-    final spirits = baseSpirits(collection);
-    if (spirits.isEmpty) return null;
-    final chosen = _standingPick(collection, spirits);
-    // What it narrows by is exactly what its sentence names, so the pick is
-    // spelled out once and read as both.
-    final narrowing = switch (chosen) {
-      null => null,
-      (spirit: null) => 'no base at all',
-      (spirit: final spirit) => '$spirit as its base',
-    };
-    return (
-      row: _BaseChip(
-        spirits: spirits,
-        chosen: chosen,
-        onPick: (pick) => setState(() => _base = pick),
-      ),
-      test: (recipe) => chosen == null || marksBase(recipe, chosen.spirit),
-      narrowing: narrowing,
-      picks: [?narrowing],
-    );
-  }
-
-  /// The pick as the collection spells it now, or null where it no longer
-  /// stands among [spirits]. An ingredient answers under its own name, so a
-  /// rename changing only its case goes on narrowing (ADR 08) and the chip
-  /// reads the new spelling; one renamed in earnest stops.
-  _BasePick? _standingPick(Collection collection, List<String> spirits) {
-    final pick = _base;
-    if (pick == null) return null;
-    final picked = pick.spirit;
-    if (picked == null) return pick;
-    final spirit = collection.spellingOf(picked);
-    return spirits.contains(spirit) ? (spirit: spirit) : null;
-  }
-
-  /// Opens form and returns saved name (null if cancelled or unchanged).
-  Future<String?> _openForm({
-    required List<Unit> units,
-    Recipe? original,
-    String initialName = '',
-  }) => Navigator.of(context).push<String>(
-    MaterialPageRoute(
-      builder: (_) => RecipeFormScreen(
-        units: units,
-        original: original,
-        initialName: initialName,
-      ),
-    ),
-  );
-
   /// The form, and every narrowing let go along with the search once it saves:
   /// a recipe wearing none of the picked tags, or built on another spirit,
   /// would otherwise land out of sight.
   Future<bool> _add(List<Unit> units, String query) async {
-    final saved = await _openForm(units: units, initialName: query);
+    final saved = await RecipeFormScreen.push(
+      context,
+      units: units,
+      initialName: query,
+    );
     if (saved != null && mounted) {
       setState(() {
         _picked.clear();
@@ -338,20 +216,13 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
     return saved != null;
   }
 
-  /// What a search reaches a recipe by: its name, and every spelling of every
-  /// ingredient it is built from (FR-DIS-2, FR-VOC-6). A line is held under its
-  /// ingredient's own name (ADR 10), so the vocabulary is what widens it to the
-  /// rest — and a line naming no ingredient still answers to what it says.
-  static List<String> _spellings(Collection collection, Recipe recipe) => [
-    recipe.name,
-    for (final line in recipe.lines)
-      for (final ingredient in line.ingredients)
-        ...(collection.ingredientNamed(ingredient)?.spellings ?? [ingredient]),
-  ];
-
   /// On rename, move expansion state from old name to new name.
   Future<void> _editRecipe(List<Unit> units, Recipe recipe) async {
-    final saved = await _openForm(units: units, original: recipe);
+    final saved = await RecipeFormScreen.push(
+      context,
+      units: units,
+      original: recipe,
+    );
     if (saved == null || saved == recipe.name || !mounted) return;
     setState(() {
       if (_expanded.remove(recipe.name)) _expanded.add(saved);
@@ -363,13 +234,11 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
   /// Reads the open card at another factor, in another unit, or both — for as
   /// long as it stays open (FR-REC-7). Nothing about the recipe changes, so
   /// the way back is [resting], the reading every other card is under.
-  Future<void> _scale(Recipe recipe, _AmountView resting) async {
-    final chosen = await showDialog<_AmountView>(
-      context: context,
-      builder: (_) => _ScaleDialog(
-        recipe: recipe.name,
-        view: _views[recipe.name] ?? resting,
-      ),
+  Future<void> _scale(Recipe recipe, AmountView resting) async {
+    final chosen = await promptForScale(
+      context,
+      recipe: recipe.name,
+      view: _views[recipe.name] ?? resting,
     );
     if (chosen == null || !mounted) return;
     setState(() {
@@ -395,304 +264,10 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
   }
 }
 
-/// What the list is narrowed to, and the menu settling it: any base, no base,
-/// or one of the spirits the collection is built on (FR-DIS-4, ADR 12). Shaped
-/// like the tag chips it stands among, but neutral — an ingredient's name is
-/// neither a tag nor a signal, and the chip names its own dimension so it
-/// cannot be read as a tag that happens to be called "Base".
-///
-/// The menu carries its pick wrapped, since a bare null selection is how
-/// [PopupMenuButton] reports a menu dismissed — and "Any base" is a null pick.
-class _BaseChip extends StatelessWidget {
-  const _BaseChip({
-    required this.spirits,
-    required this.chosen,
-    required this.onPick,
-  });
-
-  final List<String> spirits;
-  final _BasePick? chosen;
-  final void Function(_BasePick? pick) onPick;
-
-  @override
-  Widget build(BuildContext context) {
-    final chosen = this.chosen;
-    return PopupMenuButton<({_BasePick? pick})>(
-      tooltip: 'Base spirit',
-      borderRadius: chipRadius,
-      onSelected: (choice) => onPick(choice.pick),
-      itemBuilder: (context) => [
-        _item('Any base', null),
-        _item('No base', (spirit: null)),
-        for (final spirit in spirits) _item(spirit, (spirit: spirit)),
-      ],
-      // Ringed like a picked tag while it narrows, and ringed in the clear
-      // besides, so the chip stands in line with the tags either way.
-      child: ColorChip(
-        'Base: ${chosen == null ? 'Any' : chosen.spirit ?? 'None'}',
-        swatch: neutralSwatch(Theme.of(context).colorScheme),
-        chosen: chosen != null,
-        opensMenu: true,
-      ),
-    );
-  }
-
-  /// One offering, the one in force wearing the tick.
-  PopupMenuItem<({_BasePick? pick})> _item(String label, _BasePick? pick) =>
-      PopupMenuItem(
-        value: (pick: pick),
-        child: Row(
-          children: [
-            SizedBox(
-              width: 28,
-              child: pick == chosen ? const Icon(Icons.check, size: 18) : null,
-            ),
-            Text(label),
-          ],
-        ),
-      );
-}
-
-/// Full recipe card: tags, lines, notes; empty sections omitted.
-class _Details extends StatelessWidget {
-  const _Details({
-    required this.collection,
-    required this.tags,
-    required this.recipe,
-    required this.view,
-    required this.resting,
-    required this.onReach,
-  });
-
-  /// Read for the stock behind each line (FR-DIS-1), and for the ratios the
-  /// fixed units convert at (FR-SET-1).
-  final Collection collection;
-
-  final List<Tag> tags;
-  final Recipe recipe;
-
-  /// How this card is reading its amounts, [resting] until asked otherwise.
-  final _AmountView view;
-
-  /// Where the card would rest, so a body knows whether it has been asked to
-  /// read otherwise; the bar's pick is the notifier's to watch, not a card's.
-  final _AmountView resting;
-
-  /// Where an ingredient named on a line is kept (FR-DIS-9).
-  final void Function(String ingredient) onReach;
-
-  @override
-  Widget build(BuildContext context) {
-    final worn = wornInOrder(tags, recipe.tags);
-    final transformed = view != resting;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (worn.isNotEmpty) ...[
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [for (final tag in worn) TagChip(tag)],
-          ),
-          const SizedBox(height: 12),
-        ],
-        for (final line in recipe.lines)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 4),
-            child: _Line(
-              line,
-              measure: displayMeasure(
-                line,
-                collection.settings,
-                view.unit,
-                collection.units,
-                scale: view.scale,
-              ),
-              collection: collection,
-              transformed: transformed,
-              onReach: onReach,
-            ),
-          ),
-        if (recipe.notes.isNotEmpty) ...[
-          const SizedBox(height: 8),
-          Text(recipe.notes),
-        ],
-      ],
-    );
-  }
-}
-
-/// One line: the measure, the ingredients it may be built from, the mark — then
-/// a dot where the line is short (FR-DIS-1). An optional line is marked too:
-/// the dot reports the ingredient, and the line's own "(optional)" says it does
-/// not count against the verdict. Where a group has something on hand, the
-/// alternatives that are out fall to [dimmedInk], the ink an unfilled field's
-/// hint wears, so the eye lands on the one to reach for; where it has nothing,
-/// none dims and the dot carries it alone (ADR 11). A [transformed] card
-/// italicises the measure, the only part of the line that is then not what the
-/// recipe says.
-///
-/// Each ingredient it names reaches its row on the Ingredients screen
-/// (FR-DIS-9, ADR 19) — the name alone, so a group offers one target per
-/// alternative where a whole line could only ever offer the first. The measure,
-/// the "or" and the mark stay inert, naming nothing that is kept anywhere.
-class _Line extends StatefulWidget {
-  const _Line(
-    this.line, {
-    required this.measure,
-    required this.collection,
-    required this.transformed,
-    required this.onReach,
-  });
-
-  final RecipeLine line;
-  final String measure;
-  final Collection collection;
-  final bool transformed;
-  final void Function(String ingredient) onReach;
-
-  @override
-  State<_Line> createState() => _LineState();
-}
-
-class _LineState extends State<_Line> {
-  /// One per ingredient the line names. A recognizer outlives the build that
-  /// spans it and has to be let go by hand, so they are kept here rather than
-  /// made afresh each time; a line naming fewer than it did leaves a spare,
-  /// which costs nothing and goes with the card.
-  final _taps = <TapGestureRecognizer>[];
-
-  @override
-  void dispose() {
-    for (final tap in _taps) {
-      tap.dispose();
-    }
-    super.dispose();
-  }
-
-  /// The recognizer for the ingredient at [index], aimed afresh: the line it
-  /// spans may have been re-edited under it.
-  TapGestureRecognizer _tap(int index, String ingredient) {
-    while (_taps.length <= index) {
-      _taps.add(TapGestureRecognizer());
-    }
-    return _taps[index]..onTap = () => widget.onReach(ingredient);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final line = widget.line;
-    final collection = widget.collection;
-    final stock = stockOfLine(collection, line);
-    final dimmed = TextStyle(color: dimmedInk(Theme.of(context).colorScheme));
-    return Row(
-      children: [
-        Flexible(
-          child: Text.rich(
-            TextSpan(
-              children: [
-                TextSpan(
-                  text: widget.measure,
-                  style: widget.transformed ? _italic : null,
-                ),
-                for (var i = 0; i < line.ingredients.length; i++) ...[
-                  if (i == 0)
-                    const TextSpan(text: ' ')
-                  else
-                    const TextSpan(text: _or, style: _italic),
-                  TextSpan(
-                    text: line.ingredients[i],
-                    recognizer: _tap(i, line.ingredients[i]),
-                    style:
-                        stock != StockLevel.out &&
-                            stockOf(collection, line.ingredients[i]) ==
-                                StockLevel.out
-                        ? dimmed
-                        : null,
-                  ),
-                ],
-                TextSpan(text: lineMarkSuffix(line.mark)),
-              ],
-            ),
-          ),
-        ),
-        if (stock != StockLevel.in_)
-          Padding(
-            padding: const EdgeInsets.only(left: 6),
-            child: StockDot(stock),
-          ),
-      ],
-    );
-  }
-}
-
-/// Both readings settled in one place, applied on Apply and dropped on Cancel
-/// — the card behind stands as it was until then. Picking [_resting] again is
-/// the way back, so the dialog needs no reset of its own.
-class _ScaleDialog extends StatefulWidget {
-  const _ScaleDialog({required this.recipe, required this.view});
-
-  final String recipe;
-  final _AmountView view;
-
-  @override
-  State<_ScaleDialog> createState() => _ScaleDialogState();
-}
-
-class _ScaleDialogState extends State<_ScaleDialog> {
-  late _AmountView _view = widget.view;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return DialogFrame(
-      title: 'Scale & convert',
-      // Full width, so both controls start where the recipe's name does.
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      content: [
-        MutedText(widget.recipe, style: theme.textTheme.bodyMedium),
-        const SizedBox(height: 20),
-        _section(
-          'Scale',
-          Segments(
-            values: scaleFactors,
-            selected: _view.scale,
-            labelOf: (factor) => '×$factor',
-            onPick: (factor) =>
-                setState(() => _view = (scale: factor, unit: _view.unit)),
-          ),
-        ),
-        const SizedBox(height: 20),
-        _section(
-          'Show in',
-          Segments(
-            values: FixedUnit.values,
-            selected: _view.unit,
-            labelOf: (unit) => unit.token,
-            onPick: (unit) =>
-                setState(() => _view = (scale: _view.scale, unit: unit)),
-          ),
-        ),
-      ],
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
-        ),
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(_view),
-          child: const Text('Apply'),
-        ),
-      ],
-    );
-  }
-
-  Widget _section(String label, Widget control) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Text(label, style: Theme.of(context).textTheme.labelLarge),
-      const SizedBox(height: 8),
-      control,
-    ],
-  );
-}
+/// Sends the reader to the ingredient a line names, on the Ingredients screen
+/// (FR-DIS-9). Under the ingredient's own name: a line may spell it any way
+/// the vocabulary answers to (ADR 10), and a list finds its rows under theirs.
+void _goToIngredient(WidgetRef ref, Collection collection, String ingredient) =>
+    ref
+        .read(revealProvider.notifier)
+        .ask(Destination.ingredients, collection.spellingOf(ingredient));
