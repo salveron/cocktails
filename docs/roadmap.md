@@ -160,8 +160,19 @@ what M36f settles.
   `RevealServing`, the reveal field and read-and-forget two screens each carried;
   `recipeTagsProvider`/`ingredientTagsProvider` sorting each vocabulary once rather than per
   build. Depends: M36f.
-- [ ] **M36h** — One owner per value. Delivers: provider state no longer mirrored into `setState`,
-  `watch`/`read` used as the rule says, and `build` stops mutating state. Depends: M36g.
+- [x] **M36h** — One owner per value. Delivers: `shopping_screen`'s budget and restocking switch
+  read a nullable override over a live watch rather than a `late` mirror resynced by `ref.listen`,
+  so a default moved in Settings takes hold at once and moving one control no longer carries the
+  other off its own; `units_screen`/`amounts_screen` collapsed to the one `ConsumerStatefulWidget`
+  every other screen already is, an outer `ConsumerWidget` no longer freezing a snapshot a second
+  path through `ref` could also reach. `recipes_screen`'s roll and `bar_form_screen`'s suggestion
+  now take the value `build` already watches instead of reading the provider a second time;
+  `refreshOf` takes the watched bar rather than watching `openBarProvider` again itself; `BarsScreen`
+  ticks its own "ago" reading on a timer, `clockProvider` being a seam for the clock rather than a
+  stream of ticks. `VocabularyList`'s narrowing-detection and row placement, and `RevealServing`'s
+  one-shot reveal, no longer mutate state as a side effect of `build` — reactive on the actual input
+  that moves them, a post-frame callback standing in for `build` reading and clearing the reveal.
+  Depends: M36g.
 - [ ] **M36i** — One word per thing. Delivers: M36b's treatment applied to what M33–M36 left —
   "vocabulary" retired where it names no vocabulary, the write gate given one idiom, and the bar
   shapes named apart. Depends: M36h.

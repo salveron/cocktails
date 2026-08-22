@@ -71,8 +71,7 @@ class RefusedFile extends StatelessWidget {
 /// The pull a guest bar's lists answer (FR-BAR-5): its source asked again,
 /// whatever way it came — a newer file, for the file transport. Null on an
 /// owned bar, which has no source. `RefreshFailure` meets what it comes to.
-Future<void> Function()? refreshOf(WidgetRef ref) {
-  final open = ref.watch(openBarProvider);
+Future<void> Function()? refreshOf(WidgetRef ref, Bar? open) {
   if (open == null || open.isOwned) return null;
   return () => ref.read(shelfProvider.notifier).refresh(open.id);
 }

@@ -16,32 +16,22 @@ import '../widgets/vocabulary_dialogs.dart';
 /// On a guest bar it reads and no more (FR-BAR-4): the rows go quiet, the spare
 /// one and the deletes go, and the Save with them — which is also what lets the
 /// Save below take the writer as non-null.
-class UnitsScreen extends ConsumerWidget {
+class UnitsScreen extends ConsumerStatefulWidget {
   const UnitsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) =>
-      _UnitsForm(ref.watch(collectionProvider));
+  ConsumerState<UnitsScreen> createState() => _UnitsScreenState();
 }
 
-class _UnitsForm extends ConsumerStatefulWidget {
-  const _UnitsForm(this.collection);
-
+class _UnitsScreenState extends ConsumerState<UnitsScreen> {
   /// The vocabulary the rows open on; nothing else edits it while they stand.
-  final Collection collection;
+  late final Collection _opened = ref.read(collectionProvider);
 
-  @override
-  ConsumerState<_UnitsForm> createState() => _UnitsFormState();
-}
-
-class _UnitsFormState extends ConsumerState<_UnitsForm> {
   late final _rows = GrowingRows<_UnitRow>(
     blankRow: () => _row(const Unit('')),
     isBlank: (row) => row.blank,
     disposeRow: (row) => row.dispose(),
-    initial: [
-      for (final unit in widget.collection.units) _row(unit, was: unit.name),
-    ],
+    initial: [for (final unit in _opened.units) _row(unit, was: unit.name)],
   );
 
   _UnitRow _row(Unit unit, {String? was}) =>
@@ -53,9 +43,8 @@ class _UnitsFormState extends ConsumerState<_UnitsForm> {
     super.dispose();
   }
 
-  bool get _dirty => !listEquals([
-    for (final row in _rows.entered) row.unit,
-  ], widget.collection.units);
+  bool get _dirty =>
+      !listEquals([for (final row in _rows.entered) row.unit], _opened.units);
 
   @override
   Widget build(BuildContext context) {
@@ -110,7 +99,7 @@ class _UnitsFormState extends ConsumerState<_UnitsForm> {
   Future<void> _delete(_UnitRow row) async {
     final was = row.was;
     if (was != null) {
-      final blockedBy = widget.collection.recipesUsingUnit(was);
+      final blockedBy = _opened.recipesUsingUnit(was);
       if (blockedBy.isNotEmpty) {
         await sayWhatBlocks(
           context,

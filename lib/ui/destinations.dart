@@ -47,26 +47,25 @@ class Reveals extends Notifier<Reveal?> {
 final revealProvider = NotifierProvider<Reveals, Reveal?>(Reveals.new);
 
 /// The row [serving] has been asked for, taken as it is read, or null where
-/// [request] names another screen. The one home for what a screen serving a
-/// request owes: ignore what is not its own, and clear what is.
+/// [request] names another screen — ignored rather than cleared.
 String? takeReveal(WidgetRef ref, Reveal? request, Destination serving) {
   if (request == null || request.destination != serving) return null;
   ref.read(revealProvider.notifier).served();
   return request.name;
 }
 
-/// The name held and cleared for the one build that hands it to the list
-/// (ADR 19) — every reveal-serving screen's field and read-and-forget, once.
+/// The name held for the one build that hands it to the list (ADR 19).
 mixin RevealServing<T extends ConsumerStatefulWidget> on ConsumerState<T> {
   String? _revealing;
 
-  /// Where this screen's rows are asked for.
   Destination get revealDestination;
 
   /// What a reveal does beside holding the name — recipes_screen also drops
   /// its base pick and opens the card alone.
   void prepareReveal(String name);
 
+  /// Let go by a post-frame callback once the frame carrying it goes out,
+  /// rather than by `build` reading and clearing it.
   void serveReveal(Reveal? request) {
     final name = takeReveal(ref, request, revealDestination);
     if (name == null) return;
@@ -74,12 +73,11 @@ mixin RevealServing<T extends ConsumerStatefulWidget> on ConsumerState<T> {
       prepareReveal(name);
       _revealing = name;
     });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) setState(() => _revealing = null);
+    });
   }
 
-  /// Read through the build that carries it, so no later one reveals again.
-  String? consumeReveal() {
-    final revealing = _revealing;
-    _revealing = null;
-    return revealing;
-  }
+  /// What this build carries to the list; [serveReveal] owns when it clears.
+  String? get revealing => _revealing;
 }

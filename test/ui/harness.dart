@@ -158,16 +158,18 @@ MemoryBarStore corruptStore() {
 }
 
 /// The overrides the composition root makes, so a widget test reaches the real
-/// state layer over an in-memory store — and over the two seams data crosses
+/// state layer over an in-memory store — and over the three seams data crosses
 /// the edge by: [sharer] where a copy goes out to the system's sheet, [picker]
-/// where a file comes back off it (ADR 18).
+/// where a file comes back off it, [clock] where the reader's own moves
+/// (ADR 18).
 List<Override> _overrides(
   BarStore? store,
   Future<void> Function(String)? sharer,
   Future<String?> Function()? picker,
+  DateTime Function()? clock,
 ) => [
   barStoreProvider.overrideWithValue(store ?? MemoryBarStore.of(testBar())),
-  clockProvider.overrideWithValue(() => testNow),
+  clockProvider.overrideWithValue(clock ?? () => testNow),
   if (sharer != null) sharerProvider.overrideWithValue(sharer),
   if (picker != null) filePickerProvider.overrideWithValue(picker),
 ];
@@ -183,17 +185,21 @@ Widget scoped(
   BarStore? store,
   Future<void> Function(String)? sharer,
   Future<String?> Function()? picker,
-}) =>
-    ProviderScope(overrides: _overrides(store, sharer, picker), child: widget);
+  DateTime Function()? clock,
+}) => ProviderScope(
+  overrides: _overrides(store, sharer, picker, clock),
+  child: widget,
+);
 
 /// The whole app, pumped past its startup load.
 Future<void> pumpApp(
   WidgetTester tester, {
   BarStore? store,
   Future<String?> Function()? picker,
+  DateTime Function()? clock,
 }) async {
   await tester.pumpWidget(
-    scoped(const CocktailsApp(), store: store, picker: picker),
+    scoped(const CocktailsApp(), store: store, picker: picker, clock: clock),
   );
   await tester.pumpAndSettle();
 }
@@ -211,7 +217,7 @@ Future<void> pumpScreen(
   Future<String?> Function()? picker,
 }) async {
   final container = ProviderContainer(
-    overrides: _overrides(store, sharer, picker),
+    overrides: _overrides(store, sharer, picker, null),
   );
   addTearDown(container.dispose);
   await container.read(shelfProvider.future);

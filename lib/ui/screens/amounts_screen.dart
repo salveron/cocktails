@@ -10,22 +10,11 @@ import '../widgets/vocabulary_dialogs.dart';
 
 /// The unit amounts read in and what each of the others is worth (FR-SET-1),
 /// designed in docs/ui-design.md#amounts.
-class AmountsScreen extends ConsumerWidget {
+class AmountsScreen extends ConsumerStatefulWidget {
   const AmountsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) =>
-      _AmountsForm(ref.watch(collectionProvider));
-}
-
-class _AmountsForm extends ConsumerStatefulWidget {
-  const _AmountsForm(this.collection);
-
-  /// The settings the screen opens on; nothing else edits them while it stands.
-  final Collection collection;
-
-  @override
-  ConsumerState<_AmountsForm> createState() => _AmountsFormState();
+  ConsumerState<AmountsScreen> createState() => _AmountsScreenState();
 }
 
 /// A row per unit carrying a size of its own; ml is the anchor and carries
@@ -34,18 +23,26 @@ final _sizedUnits = FixedUnit.values
     .where((unit) => unit != FixedUnit.ml)
     .toList();
 
-class _AmountsFormState extends ConsumerState<_AmountsForm> {
+class _AmountsScreenState extends ConsumerState<AmountsScreen> {
+  /// The collection this screen opened on; nothing else edits it while it
+  /// stands.
+  late final Collection _opened = ref.read(collectionProvider);
+
+  /// What the bar read in when the screen opened — the pick's own baseline, so
+  /// a Save this screen makes can never revert a change a live watch here
+  /// could otherwise race (ADR 21).
+  late final FixedUnit _openedDisplay =
+      ref.read(openBarProvider)?.display ?? FixedUnit.part;
+
   /// What a Save would write. The rows are readings of it, never the other way
   /// round: a size the reader has not typed at keeps the number it had, so
   /// picking another unit cannot drift it.
-  late Settings _entered = widget.collection.settings;
+  late Settings _entered = _opened.settings;
 
   /// The pick, edited beside the sizes and saved to the bar rather than into
   /// the collection — the two belong to different people on a guest bar
   /// (ADR 21).
-  late FixedUnit _display = _saved;
-
-  FixedUnit get _saved => ref.read(openBarProvider)?.display ?? FixedUnit.part;
+  late FixedUnit _display = _openedDisplay;
 
   late final _fields = {
     for (final sized in _sizedUnits)
@@ -126,8 +123,8 @@ class _AmountsFormState extends ConsumerState<_AmountsForm> {
     return EditorScaffold(
       title: 'Amounts',
       dirty:
-          (writer != null && _entered != widget.collection.settings) ||
-          _display != _saved,
+          (writer != null && _entered != _opened.settings) ||
+          _display != _openedDisplay,
       discardTitle: 'Discard these amounts?',
       onSave: issues.isEmpty && unread.isEmpty
           ? () => unawaited(_save(writer))

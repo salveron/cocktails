@@ -37,12 +37,16 @@ class ShoppingScreen extends ConsumerStatefulWidget {
 }
 
 class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
-  /// Where the two controls stand. They open where the bar's settings say
-  /// (FR-SET-2) and move freely from there, writing neither back.
-  late int _budget = _opening.budget;
-  late bool _restocking = _opening.restocking;
-
-  Shopping get _opening => ref.read(shoppingProvider);
+  /// Where the two controls stand once the reader has moved them — absent
+  /// while a control still reads the bar's settings (FR-SET-2) live, so a
+  /// default moved in Settings takes hold at once there, and moving one
+  /// control never carries the other away from its own default (the shell
+  /// keeps this screen alive across a crossing, so there is no fresh build to
+  /// re-open on). Judged and written back to separately, each stands on its
+  /// own once picked, exactly as "move freely from there, writing neither
+  /// back" promises.
+  int? _budgetOverride;
+  bool? _restockingOverride;
 
   final _expanded = <String>{};
 
@@ -53,19 +57,10 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
   @override
   Widget build(BuildContext context) {
     if (!widget.showing) return const SizedBox.shrink();
-    // A default moved in Settings takes hold at once: the shell keeps this
-    // screen alive across a crossing, so waiting for a fresh one would leave
-    // the reader's own change unread until they left the bar (FR-SET-2).
-    ref.listen(shoppingProvider, (was, now) {
-      if (was?.budget == now.budget && was?.restocking == now.restocking) {
-        return;
-      }
-      setState(() {
-        _budget = now.budget;
-        _restocking = now.restocking;
-      });
-    });
-    final aiming = ref.watch(shoppingProvider).aiming;
+    final opening = ref.watch(shoppingProvider);
+    final budget = _budgetOverride ?? opening.budget;
+    final restocking = _restockingOverride ?? opening.restocking;
+    final aiming = opening.aiming;
     final collection = ref.watch(collectionProvider);
     final vocabulary = ref.watch(recipeTagsProvider);
     final worn = {
@@ -77,7 +72,7 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
     final purchases = ref.watch(
       purchasesProvider(
         ShoppingAsk(
-          restocking: _restocking,
+          restocking: restocking,
           aimedAt: aiming ? filter?.picks ?? const [] : const [],
         ),
       ),
@@ -92,7 +87,7 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
     final onShow = [
       for (final (rank, purchase)
           in purchases
-              .where((purchase) => purchase.ingredients.length == _budget)
+              .where((purchase) => purchase.ingredients.length == budget)
               .indexed)
         if (filter?.test(purchase) ?? true) (rank: rank + 1, basket: purchase),
     ];
@@ -100,15 +95,22 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _Controls(
-          budget: _budget,
-          restocking: _restocking,
-          onBudget: (budget) => setState(() => _budget = budget),
-          onRestocking: (on) => setState(() => _restocking = on),
+          budget: budget,
+          restocking: restocking,
+          onBudget: (budget) => setState(() => _budgetOverride = budget),
+          onRestocking: (on) => setState(() => _restockingOverride = on),
         ),
         ?filter?.row,
         Expanded(
           child: onShow.isEmpty
-              ? _emptyFor(collection, purchases, filter, aiming: aiming)
+              ? _emptyFor(
+                  collection,
+                  purchases,
+                  filter,
+                  aiming: aiming,
+                  budget: budget,
+                  restocking: restocking,
+                )
               : ListView.builder(
                   padding: const EdgeInsets.only(bottom: 16),
                   itemCount: onShow.length,
@@ -194,6 +196,8 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
     List<Purchase> purchases,
     ListFilter<Purchase>? filter, {
     required bool aiming,
+    required int budget,
+    required bool restocking,
   }) {
     if (collection.recipes.isEmpty) {
       return const EmptyState(
@@ -214,16 +218,16 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
         title: 'Nothing to shop for',
         message: switch (aimed) {
           final aimed? => 'No shopping unlocks a recipe matching $aimed.',
-          null when _restocking =>
+          null when restocking =>
             'Every ingredient the recipes ask for is fully in stock.',
           null => 'Every recipe here can be made from what is on the shelf.',
         },
       );
     }
     final narrowing = filter?.narrowing;
-    final basket = _budget == 1
+    final basket = budget == 1
         ? 'single ingredient'
-        : '$_budget-ingredient basket';
+        : '$budget-ingredient basket';
     final sizes = purchases
         .where((purchase) => filter?.test(purchase) ?? true)
         .map((purchase) => purchase.ingredients.length);
@@ -232,19 +236,19 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
         : sizes.reduce((a, b) => a < b ? a : b);
     return EmptyState(
       icon: Icons.shopping_cart_outlined,
-      title: 'Nothing worth buying in $_budget',
+      title: 'Nothing worth buying in $budget',
       message: switch (narrowing) {
         final narrowing? =>
           'No $basket here unlocks a recipe matching '
               '$narrowing.',
-        null when _budget == 1 =>
+        null when budget == 1 =>
           'No single ingredient unlocks a recipe on its own here.',
         null => 'Every $basket does no better than a smaller one inside it.',
       },
       action: elsewhere == null
           ? null
           : FilledButton.tonal(
-              onPressed: () => setState(() => _budget = elsewhere),
+              onPressed: () => setState(() => _budgetOverride = elsewhere),
               child: Text('Try ${counted(elsewhere, 'ingredient')}'),
             ),
     );

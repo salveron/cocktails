@@ -45,7 +45,6 @@ class _IngredientsScreenState extends ConsumerState<IngredientsScreen>
     // write with (FR-BAR-4, ADR 23).
     final writer = ref.watch(barWriterProvider);
     final vocabulary = ref.watch(ingredientTagsProvider);
-    final revealing = consumeReveal();
     return VocabularyList<Ingredient>(
       entries: collection.ingredients,
       nameOf: (ingredient) => ingredient.name,
@@ -55,7 +54,7 @@ class _IngredientsScreenState extends ConsumerState<IngredientsScreen>
           ? null
           : (query) => _add(writer, collection, vocabulary, query),
       reveal: revealing,
-      onRefresh: refreshOf(ref),
+      onRefresh: refreshOf(ref, ref.watch(openBarProvider)),
       noun: 'ingredient',
       plural: 'ingredients',
       orders: {

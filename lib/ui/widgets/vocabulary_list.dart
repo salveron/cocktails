@@ -354,12 +354,16 @@ class _VocabularyListState<T> extends State<VocabularyList<T>> {
   final _positions = ItemPositionsListener.create();
   String? _reveal;
 
-  /// What the reader last narrowed by, and whether they have narrowed since.
-  /// Narrowed again, what is on show is a different list, and a different list
-  /// is read from the top — where the collection changing under them, a rename
-  /// or an entry gone, leaves them where they were reading.
-  List<String>? _narrowedBy;
+  /// Whether the reader has narrowed since the list last settled: the search,
+  /// the order, or the filter's own picks moving, read off at exactly those
+  /// three — the collection changing under them (a rename, an entry gone)
+  /// never counts, so it leaves them where they were reading (ADR 19).
   bool _home = false;
+
+  /// The trimmed search as judged last for [_home] — the listener [_typed]
+  /// answers to fires on a bare cursor move too, so this is what tells that
+  /// apart from the text actually changing.
+  String _lastSearch = '';
 
   /// The row a draw landed on, washing to say which it is, and how many draws
   /// have landed — the count starting the wash over where one lands on the row
@@ -381,31 +385,48 @@ class _VocabularyListState<T> extends State<VocabularyList<T>> {
   List<String> _placed = const [];
   (String, bool)? _placedUnder;
 
+  /// [_placed], entries attached — what `build` draws. Kept current from
+  /// [_reposition] wherever an input that could move it actually does; `build`
+  /// only ever reads it back, never recomputes it.
+  List<T> _shown = const [];
+
   @override
   void initState() {
     super.initState();
     _search.addListener(_typed);
     _positions.itemPositions.addListener(_reach);
+    _reposition();
   }
 
-  void _typed() => setState(() {});
+  void _typed() => setState(() {
+    final text = _search.text.trim();
+    if (text != _lastSearch) _home = true;
+    _lastSearch = text;
+    _reposition();
+  });
 
   /// Every narrowing this list owns goes before the row is revealed (ADR 19).
-  /// The search is cleared without announcing itself: the build an update is
-  /// followed by reads the new text anyway, and `_notice` then marks the list
-  /// for home ahead of the reveal.
+  /// The search is cleared without announcing itself: the listener it would
+  /// otherwise ring is off for it, [_reposition] answering for the clear
+  /// itself once below.
   @override
   void didUpdateWidget(covariant VocabularyList<T> oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (!listEquals(oldWidget.filter?.picks, widget.filter?.picks)) {
+      _home = true;
+    }
     if (widget.reveal case final name?) {
       _reveal = name;
+      _home = true;
       _order = widget.orders.keys.first;
       _backwards = false;
+      _lastSearch = '';
       _search
         ..removeListener(_typed)
         ..clear()
         ..addListener(_typed);
     }
+    _reposition();
   }
 
   @override
@@ -419,13 +440,11 @@ class _VocabularyListState<T> extends State<VocabularyList<T>> {
   @override
   Widget build(BuildContext context) {
     final add = widget.onAdd;
-    _notice();
-    final matches = widget.entries.isEmpty ? <T>[] : _matches();
     return Scaffold(
       body: widget.entries.isEmpty
           ? _refreshable(widget.empty)
-          : _searchable(add, matches),
-      floatingActionButton: _buttons(add, matches),
+          : _searchable(add, _shown),
+      floatingActionButton: _buttons(add, _shown),
     );
   }
 
@@ -453,35 +472,19 @@ class _VocabularyListState<T> extends State<VocabularyList<T>> {
     );
   }
 
-  /// Notes what the reader is narrowing by — the search, the order, and the
-  /// filter's own picks — and marks the list for home where that has changed.
-  void _notice() {
-    final by = [
-      _search.text.trim(),
-      _order,
-      '$_backwards',
-      ...?widget.filter?.picks,
-    ];
-    final narrowedBy = _narrowedBy;
-    _home |= narrowedBy != null && !listEquals(narrowedBy, by);
-    _narrowedBy = by;
-  }
-
-  /// The entries on show: what the search reaches and the filter keeps, where
-  /// the placement stands them. Read once a build — placing has a memory.
-  List<T> _matches() {
+  /// The rows on show, unordered: what the search reaches and the filter
+  /// keeps.
+  List<T> _filtered() {
     final filter = widget.filter;
-    return _place(
-      widget.entries
-          .where(
-            (entry) =>
-                (widget.spellingsOf?.call(entry) ?? [widget.nameOf(entry)]).any(
-                  (spelling) => matchesQuery(spelling, _search.text),
-                ) &&
-                (filter?.test(entry) ?? true),
-          )
-          .toList(),
-    );
+    return widget.entries
+        .where(
+          (entry) =>
+              (widget.spellingsOf?.call(entry) ?? [widget.nameOf(entry)]).any(
+                (spelling) => matchesQuery(spelling, _search.text),
+              ) &&
+              (filter?.test(entry) ?? true),
+        )
+        .toList();
   }
 
   /// What stands over the list: the draw above the add, the two alike in size
@@ -659,17 +662,22 @@ class _VocabularyListState<T> extends State<VocabularyList<T>> {
   );
 
   /// Picking the order in force turns it around; picking another starts it the
-  /// way round it is written.
+  /// way round it is written — always a narrowing of its own (ADR 19).
   void _pick(String label) {
     _backwards = label == _order && !_backwards;
     _order = label;
+    _home = true;
+    _reposition();
   }
 
-  /// [matches] where the last placement put them, or freshly placed where that
-  /// placement no longer answers — the rows on show have changed, or another
-  /// order has been picked. Assigning through a build records where the rows
-  /// already stood; it settles nothing new, and asks for no frame.
-  List<T> _place(List<T> matches) {
+  /// Keeps [_shown] answering to what belongs on show, in the order it last
+  /// stood: [_placed] is freshly sorted only where the rows on show have
+  /// changed or another order has been picked, so a row never moves under the
+  /// finger editing it. Called wherever an input that could move either
+  /// actually does — never as a side effect of `build`, which only reads the
+  /// result back.
+  void _reposition() {
+    final matches = widget.entries.isEmpty ? <T>[] : _filtered();
     final names = {for (final entry in matches) widget.nameOf(entry)};
     final under = (_order, _backwards);
     // Names are unique within a vocabulary, so this is set equality.
@@ -691,7 +699,7 @@ class _VocabularyListState<T> extends State<VocabularyList<T>> {
       _placedUnder = under;
     }
     final entries = {for (final entry in matches) widget.nameOf(entry): entry};
-    return [for (final name in _placed) ?entries[name]];
+    _shown = [for (final name in _placed) ?entries[name]];
   }
 
   /// Clear search after adding so new entry appears.

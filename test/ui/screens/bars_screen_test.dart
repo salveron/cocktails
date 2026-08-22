@@ -54,8 +54,12 @@ void main() {
   );
 
   /// The screen as a reader reaches it: the gear, then the row that travels.
-  Future<void> openBars(WidgetTester tester, {BarStore? store}) async {
-    await pumpApp(tester, store: store ?? twoBars());
+  Future<void> openBars(
+    WidgetTester tester, {
+    BarStore? store,
+    DateTime Function()? clock,
+  }) async {
+    await pumpApp(tester, store: store ?? twoBars(), clock: clock);
     await tap(tester, find.byTooltip('Settings'));
     await tap(tester, find.text('Change bar'));
   }
@@ -96,6 +100,21 @@ void main() {
       expect(find.text('Updated: 3 hours ago'), findsNWidgets(2));
       // A guest bar dates its source's last answer, not an edit of its own.
       expect(find.text('Refreshed: 2 days ago'), findsOneWidget);
+    });
+
+    testWidgets('"ago" keeps pace while the screen stands, unasked', (
+      tester,
+    ) async {
+      var now = testNow;
+      await openBars(
+        tester,
+        store: shelfOf([home, anna], {}),
+        clock: () => now,
+      );
+      expect(find.text('Updated: 3 hours ago'), findsNWidgets(2));
+      now = now.add(const Duration(hours: 1));
+      await tester.pump(const Duration(minutes: 1));
+      expect(find.text('Updated: 4 hours ago'), findsNWidgets(2));
     });
 
     testWidgets('a bar never yet dated says nothing rather than guessing', (

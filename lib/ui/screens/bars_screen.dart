@@ -47,6 +47,26 @@ class _BarsScreenState extends ConsumerState<BarsScreen> {
   /// is counted on its record (ADR 20), so this is the whole of a card's state.
   final _opened = <String>{};
 
+  /// Keeps "ago" reading true while the screen stands: `clockProvider` names a
+  /// seam for the clock itself (ADR 18), not a stream of ticks, so nothing
+  /// else asks this build to run as time alone passes.
+  late final Timer _ticking;
+
+  @override
+  void initState() {
+    super.initState();
+    _ticking = Timer.periodic(
+      const Duration(minutes: 1),
+      (_) => setState(() {}),
+    );
+  }
+
+  @override
+  void dispose() {
+    _ticking.cancel();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     // Home is this screen wherever no bar is open, so a copy pushed from the

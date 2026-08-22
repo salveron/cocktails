@@ -117,14 +117,12 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
     // Null on a guest bar; every control that writes is built from it, so the
     // reading half of the screen goes on untouched (FR-BAR-4, ADR 23).
     final writer = ref.watch(barWriterProvider);
+    final open = ref.watch(openBarProvider);
     // The reading every card opens under, until one is scaled. Watched here
     // rather than inside rowOf, which the list calls from its itemBuilder: a
     // watch there is one whichever rows got built happen to register, not one
     // this build declares.
-    final resting = _resting(
-      ref.watch(openBarProvider)?.display ?? FixedUnit.part,
-    );
-    final revealing = consumeReveal();
+    final resting = _resting(open?.display ?? FixedUnit.part);
     return VocabularyList<Recipe>(
       entries: collection.recipes,
       nameOf: (recipe) => recipe.name,
@@ -139,7 +137,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
       ),
       onAdd: writer == null ? null : (query) => _add(collection.units, query),
       reveal: revealing,
-      onRefresh: refreshOf(ref),
+      onRefresh: refreshOf(ref, open),
       noun: 'recipe',
       plural: 'recipes',
       filter: tagFilter(
@@ -152,7 +150,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
       draw: (
         icon: const FaIcon(FontAwesomeIcons.dice),
         tooltip: 'Random pick',
-        draw: _roll,
+        draw: (onShow) => _roll(onShow, availability),
       ),
       orders: {
         // A recipe the pass has yet to judge ranks with the missing ones,
@@ -250,10 +248,14 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
   /// and the base pick all already hold; a second roll moves off the one
   /// standing. Everything else shuts, a roll being one answer rather than a
   /// pile of them. Nothing to draw from says so instead of doing nothing.
-  String? _roll(List<Recipe> onShow) {
+  ///
+  /// [availability] arrives from `build`'s own watch rather than a second read
+  /// here, so a roll never judges a card by an answer fresher than the chip it
+  /// is drawn beside.
+  String? _roll(List<Recipe> onShow, Map<String, Availability> availability) {
     final drawn = randomCanMake(
       onShow,
-      ref.read(availabilityProvider),
+      availability,
       _random,
       besides: _rolled,
     );

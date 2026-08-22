@@ -59,7 +59,8 @@ class _BarFormScreenState extends ConsumerState<BarFormScreen> {
     super.initState();
     _picked = widget.arriving;
     _road = widget.arriving == null ? _Road.own : _Road.replace;
-    _suggest();
+    // No build yet to watch it through, so this one read stands alone.
+    _suggest(ref.read(openBarProvider)?.name ?? '');
     _opened = (picked: _picked, road: _road, name: _name.text);
     _name.addListener(() => setState(() {}));
   }
@@ -90,17 +91,18 @@ class _BarFormScreenState extends ConsumerState<BarFormScreen> {
   /// not renaming; the two roads that found a bar start from the file's own
   /// name (ADR 21), and from nothing where there is no file to take one from.
   /// The text moves outside `setState`, the controller's own listener being
-  /// what asks for the frame.
-  void _suggest() {
+  /// what asks for the frame. [open] is `build`'s own watch of it, threaded
+  /// through rather than read again here.
+  void _suggest(String open) {
     final offered = switch (_road) {
-      _Road.replace => ref.read(openBarProvider)?.name ?? '',
+      _Road.replace => open,
       _Road.own || _Road.guest => _picked?.bar?.name ?? '',
     };
     if (_name.text == _suggested) _name.text = offered;
     _suggested = offered;
   }
 
-  Future<void> _pick() async {
+  Future<void> _pick(String open) async {
     final picked = await pickBar(context, ref);
     if (picked == null || !mounted) return;
     // A file that will not read leaves the roads where the screen opened them:
@@ -108,21 +110,21 @@ class _BarFormScreenState extends ConsumerState<BarFormScreen> {
     // collection.
     if (picked.bar == null) _road = _opened.road;
     setState(() => _picked = picked);
-    _suggest();
+    _suggest(open);
   }
 
-  void _dropFile() {
+  void _dropFile(String open) {
     setState(() {
       _picked = null;
       _road = _Road.own;
     });
-    _suggest();
+    _suggest(open);
   }
 
-  void _chose(_Road road) {
+  void _chose(_Road road, String open) {
     if (road == _road) return;
     setState(() => _road = road);
-    _suggest();
+    _suggest(open);
   }
 
   /// [arriving] is non-null on the two roads that need it: each is offered only
@@ -189,9 +191,9 @@ class _BarFormScreenState extends ConsumerState<BarFormScreen> {
         const SizedBox(height: 16),
         _Source(
           picked: picked != null,
-          onPick: () => unawaited(_pick()),
+          onPick: () => unawaited(_pick(open)),
           // An import has nothing to leave empty: the file is what it is for.
-          onDrop: _importing ? null : _dropFile,
+          onDrop: _importing ? null : () => _dropFile(open),
         ),
         if (picked == null)
           const FieldNote(
@@ -220,7 +222,7 @@ class _BarFormScreenState extends ConsumerState<BarFormScreen> {
               _Road.guest => 'Guest',
             },
             showSelectedIcon: true,
-            onPick: _chose,
+            onPick: (road) => _chose(road, open),
           ),
           // One line each: the choice is read at a glance or not at all.
           FieldNote(switch (_road) {
