@@ -58,16 +58,14 @@ class EntryCard extends StatelessWidget {
   }
 }
 
-/// An [EntryCard] that opens in place: [subtitle] shown only while
-/// collapsed unless [hideSubtitleWhenOpen] says otherwise (bars_screen keeps
-/// its standing line either way), [body] only while [open]. Built regardless
-/// of [open] — a body no reader can see costs nothing unlaid-out.
+/// An [EntryCard] that opens in place: [subtitle] shown only while collapsed,
+/// [body] only while [open]. Built regardless of [open] — a body no reader
+/// can see costs nothing unlaid-out.
 class ExpandingRow extends StatelessWidget {
   const ExpandingRow({
     required this.open,
     required this.title,
     this.subtitle,
-    this.hideSubtitleWhenOpen = true,
     this.trailing,
     this.body,
     this.onToggle,
@@ -78,7 +76,6 @@ class ExpandingRow extends StatelessWidget {
   final bool open;
   final Widget title;
   final String? subtitle;
-  final bool hideSubtitleWhenOpen;
   final Widget? trailing;
   final Widget? body;
   final VoidCallback? onToggle;
@@ -90,7 +87,7 @@ class ExpandingRow extends StatelessWidget {
     return EntryCard(
       margin: margin,
       title: title,
-      subtitle: subtitle == null || (open && hideSubtitleWhenOpen)
+      subtitle: subtitle == null || open
           ? null
           : Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis),
       trailing: trailing,

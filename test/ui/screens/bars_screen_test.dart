@@ -64,9 +64,16 @@ void main() {
     await tap(tester, find.text('Change bar'));
   }
 
-  /// Opens the card of the bar named [name].
-  Future<void> openCard(WidgetTester tester, String name) =>
+  /// Crosses into the bar named [name] — the tap the whole card is now.
+  Future<void> openBar(WidgetTester tester, String name) =>
       tap(tester, find.text(name));
+
+  /// [what], scoped to the card named [name] — two cards can answer the same
+  /// count, so a bare [bullet] cannot tell them apart.
+  Finder within(String name, Finder what) => find.descendant(
+    of: find.ancestor(of: find.text(name), matching: find.byType(Card)).first,
+    matching: what,
+  );
 
   /// The dialog's Delete, told apart from the card's own behind it.
   Future<void> agreeToDelete(WidgetTester tester) => tap(
@@ -85,15 +92,16 @@ void main() {
       expect(find.text('Anna'), findsOneWidget);
     });
 
-    testWidgets('a closed card keeps what the bar holds to itself', (
+    testWidgets('every card shows what its bar holds, unprompted', (
       tester,
     ) async {
       await openBars(tester);
-      expect(find.textContaining('recipe'), findsNothing);
+      expect(within('Home bar', bullet('1 recipe')), findsOneWidget);
+      expect(within('Anna', bullet('1 recipe')), findsOneWidget);
       expect(find.text('Open bar'), findsNothing);
     });
 
-    testWidgets('the closed card says how current the bar is', (tester) async {
+    testWidgets('a card says how current the bar is', (tester) async {
       await openBars(tester, store: shelfOf([home, anna, ada], {}));
       // The bar on show dates itself as every other does: opening one loads
       // nothing a card could report, so no card says which is loaded.
@@ -137,41 +145,30 @@ void main() {
       expect(chipColor(tester, 'Owned'), isNot(chipColor(tester, 'Guest')));
     });
 
-    testWidgets('a card opens onto what its bar holds', (tester) async {
+    testWidgets("a card's counts are read off its own bar", (tester) async {
       await openBars(tester);
-      await openCard(tester, 'Anna');
       // Read off Anna's own file: the list itself knows only the index.
-      expect(bullet('1 recipe'), findsOneWidget);
-      expect(bullet('2 ingredients'), findsOneWidget);
-      expect(bullet('0 tags'), findsOneWidget);
-      expect(bullet('${defaultUnits.length} units'), findsOneWidget);
+      expect(within('Anna', bullet('1 recipe')), findsOneWidget);
+      expect(within('Anna', bullet('2 ingredients')), findsOneWidget);
+      expect(within('Anna', bullet('0 tags')), findsOneWidget);
+      expect(
+        within('Anna', bullet('${defaultUnits.length} units')),
+        findsOneWidget,
+      );
     });
 
     testWidgets('the bar on show counts what is already resident', (
       tester,
     ) async {
       await openBars(tester);
-      await openCard(tester, 'Home bar');
-      expect(bullet('1 recipe'), findsOneWidget);
-      expect(bullet('2 ingredients'), findsOneWidget);
-    });
-
-    testWidgets('every bar offers the way in, the one loaded included', (
-      tester,
-    ) async {
-      await openBars(tester);
-      for (final name in ['Anna', 'Home bar']) {
-        await openCard(tester, name);
-        expect(find.text('Open bar'), findsOneWidget, reason: name);
-        await openCard(tester, name);
-      }
+      expect(within('Home bar', bullet('1 recipe')), findsOneWidget);
+      expect(within('Home bar', bullet('2 ingredients')), findsOneWidget);
     });
 
     testWidgets('what is done to a bar is behind the ⋮, not on the card', (
       tester,
     ) async {
       await openBars(tester);
-      await openCard(tester, 'Anna');
       expect(find.text('Rename'), findsNothing);
       expect(find.text('Delete'), findsNothing);
       expect(rowMenu('Anna'), findsOneWidget);
@@ -187,22 +184,12 @@ void main() {
       expect(find.text("Ada's bar"), findsNothing);
     });
 
-    testWidgets('a card closed again puts away what it held open', (
-      tester,
-    ) async {
-      await openBars(tester);
-      await openCard(tester, 'Anna');
-      await openCard(tester, 'Anna');
-      expect(bullet('1 recipe'), findsNothing);
-    });
-
     testWidgets('a bar whose file never landed counts as the empty one '
         'opening it would give', (tester) async {
       final never = Bar(id: 'new001', name: 'Cellar', mode: BarMode.owner);
       final store = shelfOf([home, never], {})
         ..barOutcomes[never.id] = const Empty();
       await openBars(tester, store: store);
-      await openCard(tester, 'Cellar');
       expect(bullet('0 recipes'), findsOneWidget);
     });
 
@@ -222,7 +209,6 @@ void main() {
         ),
       ]);
       await openBars(tester, store: store);
-      await openCard(tester, 'Torn');
       // Nothing was recovered, so "0 recipes" would be a lie about a bar that
       // may hold plenty.
       expect(find.text('This bar could not be read.'), findsOneWidget);
@@ -235,8 +221,7 @@ void main() {
       tester,
     ) async {
       await openBars(tester);
-      await openCard(tester, 'Anna');
-      await tap(tester, find.text('Open bar'));
+      await openBar(tester, 'Anna');
       // Past the gear it was reached through, onto the bar itself (FR-BAR-1).
       expect(find.byType(BarsScreen), findsNothing);
       expect(shellTitle('Recipes', bar: 'Anna'), findsOneWidget);
@@ -251,8 +236,7 @@ void main() {
       await typeInto(tester, find.byType(TextField).first, 'Negroni');
       await tap(tester, find.byTooltip('Settings'));
       await tap(tester, find.text('Change bar'));
-      await openCard(tester, 'Anna');
-      await tap(tester, find.text('Open bar'));
+      await openBar(tester, 'Anna');
       // The subtree is keyed by the open bar, so the search went with it.
       expect(
         tester.widget<TextField>(find.byType(TextField).first).controller?.text,
@@ -268,8 +252,7 @@ void main() {
       await goTo(tester, 'Ingredients');
       await tap(tester, find.byTooltip('Settings'));
       await tap(tester, find.text('Change bar'));
-      await openCard(tester, 'Home bar');
-      await tap(tester, find.text('Open bar'));
+      await openBar(tester, 'Home bar');
       // Nothing was read again, and the reader lands where the crossing would
       // have left them rather than back on the destination they came from.
       expect(find.byType(BarsScreen), findsNothing);
@@ -281,8 +264,7 @@ void main() {
       await goTo(tester, 'Shopping');
       await tap(tester, find.byTooltip('Settings'));
       await tap(tester, find.text('Change bar'));
-      await openCard(tester, 'Home bar');
-      await tap(tester, find.text('Open bar'));
+      await openBar(tester, 'Home bar');
       // A landing is not a jump: the reader chose the bar, so back is left
       // unclaimed rather than stepping them home to Shopping (ADR 19).
       expect(showing(tester), 'Recipes');

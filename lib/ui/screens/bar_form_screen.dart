@@ -277,16 +277,19 @@ class _ArrivedContent extends StatelessWidget {
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
       const SectionLabel('Mode'),
-      Segments(
-        values: [importing ? _Road.replace : _Road.own, _Road.guest],
-        selected: road,
-        labelOf: (road) => switch (road) {
-          _Road.own => 'Owned',
-          _Road.replace => 'Replace',
-          _Road.guest => 'Guest',
-        },
-        showSelectedIcon: true,
-        onPick: onPickRoad,
+      SizedBox(
+        width: double.infinity,
+        child: Segments(
+          values: [importing ? _Road.replace : _Road.own, _Road.guest],
+          selected: road,
+          labelOf: (road) => switch (road) {
+            _Road.own => 'Owned',
+            _Road.replace => 'Replace',
+            _Road.guest => 'Guest',
+          },
+          showSelectedIcon: true,
+          onPick: onPickRoad,
+        ),
       ),
       // One line each: the choice is read at a glance or not at all.
       FieldNote(switch (road) {

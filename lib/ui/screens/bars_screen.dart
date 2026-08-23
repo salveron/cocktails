@@ -12,7 +12,6 @@ import '../widgets/cards/entry_card.dart';
 import '../widgets/chips/color_marks.dart';
 import '../widgets/dialogs/confirm_dialog.dart';
 import '../widgets/dialogs/entry_dialog.dart';
-import '../widgets/lists/list_terms.dart' show ToggleMembership;
 import '../widgets/notices/empty_state.dart';
 import 'bar_form_screen.dart';
 
@@ -47,10 +46,6 @@ class BarsScreen extends ConsumerStatefulWidget {
 }
 
 class _BarsScreenState extends ConsumerState<BarsScreen> {
-  /// Which cards stand open. Nothing is fetched to open one: what a bar holds
-  /// is counted on its record (ADR 20), so this is the whole of a card's state.
-  final _opened = <String>{};
-
   /// Keeps "ago" reading true while the screen stands: `clockProvider` names a
   /// seam for the clock itself (ADR 18), not a stream of ticks, so nothing
   /// else asks this build to run as time alone passes.
@@ -98,8 +93,6 @@ class _BarsScreenState extends ConsumerState<BarsScreen> {
                   _BarCard(
                     bar: bar,
                     now: now,
-                    open: _opened.contains(bar.id),
-                    onToggle: () => setState(() => _opened.toggle(bar.id)),
                     onRename: () => unawaited(_rename(bar)),
                     onDelete: () => unawaited(_delete(bar)),
                     onOpen: () => unawaited(_open(bar)),
@@ -168,15 +161,14 @@ class _BarsScreenState extends ConsumerState<BarsScreen> {
   }
 }
 
-/// The name and how current the bar is while closed, what it holds once
-/// opened. Whose bar it is rides beside the ⋮ as a chip, the mode being what
-/// decides everything the bar offers (FR-BAR-3).
+/// The name and how current the bar is, and what it holds, standing open at
+/// all times — reaching a bar is the one thing this screen is for, so nothing
+/// here waits on a second tap. Whose bar it is rides beside the ⋮ as a chip,
+/// the mode being what decides everything the bar offers (FR-BAR-3).
 class _BarCard extends StatelessWidget {
   const _BarCard({
     required this.bar,
     required this.now,
-    required this.open,
-    required this.onToggle,
     required this.onRename,
     required this.onDelete,
     required this.onOpen,
@@ -184,30 +176,29 @@ class _BarCard extends StatelessWidget {
 
   final Bar bar;
   final DateTime now;
-  final bool open;
-  final VoidCallback onToggle;
   final VoidCallback onRename;
   final VoidCallback onDelete;
   final VoidCallback onOpen;
 
   @override
-  Widget build(BuildContext context) => ExpandingRow(
-    open: open,
-    title: Text(bar.name),
-    subtitle: _standing(bar, now),
-    hideSubtitleWhenOpen: false,
-    trailing: Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        BarModeChip(bar.mode),
-        // Offered on a guest bar too: what a bar is called here is the
-        // reader's, as the unit it reads in is (FR-BAR-3, ADR 21).
-        RowMenu({'Rename': onRename, 'Delete': onDelete}),
-      ],
-    ),
-    body: _BarBody(bar: bar, onOpen: onOpen),
-    onToggle: onToggle,
-  );
+  Widget build(BuildContext context) {
+    final standing = _standing(bar, now);
+    return EntryCard(
+      title: Text(bar.name),
+      subtitle: standing == null ? null : Text(standing),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          BarModeChip(bar.mode),
+          // Offered on a guest bar too: what a bar is called here is the
+          // reader's, as the unit it reads in is (FR-BAR-3, ADR 21).
+          RowMenu({'Rename': onRename, 'Delete': onDelete}),
+        ],
+      ),
+      body: _BarCounts(bar),
+      onTap: onOpen,
+    );
+  }
 }
 
 /// How long ago the bar last became what it holds — an owner's own edit, a
@@ -219,31 +210,6 @@ String? _standing(Bar bar, DateTime now) {
   if (at == null) return null;
   final what = bar.isOwned ? 'Updated' : 'Refreshed';
   return '$what: ${_agoInWords(now, at)}';
-}
-
-class _BarBody extends StatelessWidget {
-  const _BarBody({required this.bar, required this.onOpen});
-
-  final Bar bar;
-  final VoidCallback onOpen;
-
-  @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      _BarCounts(bar),
-      const SizedBox(height: 8),
-      // Right, where the card's one commit belongs and where every dialog in
-      // the app puts its own; filled tonal, being the thing the card opens for.
-      Align(
-        alignment: Alignment.centerRight,
-        child: FilledButton.tonal(
-          onPressed: onOpen,
-          child: const Text('Open bar'),
-        ),
-      ),
-    ],
-  );
 }
 
 /// How much the bar holds, kind by kind, read off the record the list is

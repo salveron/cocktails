@@ -63,24 +63,17 @@ already says a screen follows, and "…" on top of it says the same thing twice.
   the reader who deleted the bar they were standing in — one rule rather than a case for each. 
   Deleting the open bar is why: it leaves the reader on the list they are already on, where the app 
   choosing the next bar for them would be an arbitrary one.
-- **One card a bar, expanded in place** — the recipe card's own gesture 
-  ([recipes screen](#recipes-screen)). Closed it is the name, whether the bar is loaded, and how 
-  current it is; opened it is what the bar holds, kind by kind, and the way in. The screen that lists 
-  bars is the screen that manages them, and no second place holds half of it. **A card opens onto 
-  counts, never contents**: the list reads the index alone (ADR 20), and since the counts are on the 
-  record the card opens instantly and no second collection is ever resident.
+- **One card a bar, its counts always in view.** What a bar holds is counted on its record already 
+  (ADR 20), so nothing here is worth folding away behind a tap: the name, how current it is, and 
+  what it holds all stand at once. The screen that lists bars is the screen that manages them, and no 
+  second place holds half of it. **A card shows counts, never contents**: the list reads the index 
+  alone, and since the counts are on the record every card costs nothing to draw regardless.
 - **Rename and Delete sit behind the row's ⋮**, the control the ingredients and both tag lists already 
-  use for exactly this. Buttons on the card was the first shape, on the grounds that the card already 
-  opened to hold them; the ⋮ wins now that it is reachable **without** opening the card, which is 
-  what a reader wants for the two operations that do not care what the bar holds. **Open bar** stays 
-  a **filled tonal** button on the **right** of the body: it is the one thing the card is opened 
-  *for*, so it carries the weight the card's one commit deserves and stands where every dialog in 
-  the app puts its own. Right rather than left because the eye leaves a card at its trailing edge, 
-  and filled rather than flat because a card that opens to offer one action should not make that 
-  action the quietest thing on it. **Rename is offered on a guest bar too**: what a bar is called 
-  on this device is the reader's, exactly as the unit it reads in is (FR-BAR-3), and no refresh 
-  takes their name back ([ADR 21](adr/21-the-file-carries-one-bar.md)). The owner's name for it is 
-  where the field starts and nothing more.
+  use for exactly this — reachable without doing anything else to the card, which is what a reader 
+  wants for the two operations that do not care what the bar holds. **Rename is offered on a guest 
+  bar too**: what a bar is called on this device is the reader's, exactly as the unit it reads in is 
+  (FR-BAR-3), and no refresh takes their name back ([ADR 21](adr/21-the-file-carries-one-bar.md)). 
+  The owner's name for it is where the field starts and nothing more.
 - **The subtitle says how current, never ownership**: "Updated: 3 hours ago" for an owner's own edit 
   or "Refreshed: 2 days ago" for a guest's last answer from its source (FR-BAR-5). Coarse on purpose 
   — the question it settles is whether to refresh, which no count of seconds makes clearer. A bar the 
@@ -96,14 +89,18 @@ already says a screen follows, and "…" on top of it says the same thing twice.
   reading on that light; the hues win because the light is not really about stock but about what 
   the app will let a reader do here, and a guest bar is precisely the amber case — everything that 
   writes is missing from it (FR-BAR-4). The words carry the meaning either way, as on every chip.
-- **Open bar is offered on every bar, the loaded one included.** It used to be absent there, as the 
-  way the list said which bar was on show — but the subtitle says that now, in words, and an absent 
-  control that means "you are here" reads as one that is broken. On the bar already loaded there is 
-  nothing to read again, so it simply puts the reader where the crossing would have left them: the 
-  recipes, and no way back to the list, a bar the reader chose being nothing to return from.
-- **A tap opens the card; it never switches.** ui-design's first draft had the card itself do the 
-  crossing, which put a bar's every narrowing one stray tap from being thrown away. The crossing is 
-  now its own button, and the reader lands in the bar rather than back on the gear.
+- **A tap on the card opens the bar, on every bar, the loaded one included.** ui-design's first draft 
+  had the whole card do this and reverted it, worried a stray tap on a card was a stray tap into that 
+  bar with a bar's every narrowing thrown away with it; a dedicated button took over as the deliberate 
+  second tap that guarded against it, and stood absent on the loaded bar's own card as the way the 
+  list once said which bar was already on show. Cards standing open by default removes what that 
+  guard bought: a reader already sees a card's counts before ever tapping it, so the button was buying 
+  a second tap on every correct switch and no longer a second look. The stray-tap risk itself does not 
+  go away with it — reaching the wrong bar costs a return trip to Bars and the right tap, the same it 
+  always did — and is accepted here in that trade. The loaded bar's own card taps the same as any 
+  other, its subtitle rather than an absent control being what already says "you are here": tapping it 
+  puts the reader where the crossing would have left them, the recipes and no way back to the list, a 
+  bar already chosen being nothing to return from.
 - **The bar's name leads the title** — "Home bar's Recipes", "Anna's Ingredients". The destination 
   named alone was what the app bar carried while there was one collection; with several it answers 
   the smaller question. The bar's own destinations carry it and nothing else does: Settings, the 

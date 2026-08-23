@@ -48,13 +48,17 @@ class _Entries extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Column(
     mainAxisSize: MainAxisSize.min,
+    crossAxisAlignment: CrossAxisAlignment.start,
     children: [
       const SectionLabel('Tags'),
-      Segments(
-        values: const [false, true],
-        selected: shopping.aiming,
-        labelOf: (aiming) => aiming ? 'Aim' : 'Sift',
-        onPick: (aiming) => onSettle(shopping.copyWith(aiming: aiming)),
+      SizedBox(
+        width: double.infinity,
+        child: Segments(
+          values: const [false, true],
+          selected: shopping.aiming,
+          labelOf: (aiming) => aiming ? 'Aim' : 'Sift',
+          onPick: (aiming) => onSettle(shopping.copyWith(aiming: aiming)),
+        ),
       ),
       FieldNote(
         shopping.aiming
@@ -62,20 +66,26 @@ class _Entries extends StatelessWidget {
             : 'Baskets are kept where every tag picked is unlocked.',
       ),
       const SectionLabel('Baskets'),
-      Segments(
-        values: basketCounts,
-        selected: shopping.keptPerSize,
-        labelOf: (keptPerSize) => '$keptPerSize',
-        onPick: (keptPerSize) =>
-            onSettle(shopping.copyWith(keptPerSize: keptPerSize)),
+      SizedBox(
+        width: double.infinity,
+        child: Segments(
+          values: basketCounts,
+          selected: shopping.keptPerSize,
+          labelOf: (keptPerSize) => '$keptPerSize',
+          onPick: (keptPerSize) =>
+              onSettle(shopping.copyWith(keptPerSize: keptPerSize)),
+        ),
       ),
       const FieldNote('How many of each size the list offers.'),
       const SectionLabel('Opens at'),
-      Segments(
-        values: budgets,
-        selected: shopping.budget,
-        labelOf: (budget) => '$budget',
-        onPick: (budget) => onSettle(shopping.copyWith(budget: budget)),
+      SizedBox(
+        width: double.infinity,
+        child: Segments(
+          values: budgets,
+          selected: shopping.budget,
+          labelOf: (budget) => '$budget',
+          onPick: (budget) => onSettle(shopping.copyWith(budget: budget)),
+        ),
       ),
       const FieldNote('The budget the shopping screen starts on.'),
       _Toggle(
