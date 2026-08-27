@@ -1,58 +1,12 @@
 import 'package:cocktails/domain/domain.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'collection_test.dart' show tokenVocabulary, valueEquality;
-
-/// The source a guest bar refreshes from, as the index's own example writes it.
-const aSource = BarSource(
-  via: Transport.lan,
-  at: '_cocktails._tcp/5f2c9a',
-  from: 'Home bar (b3e)',
-);
-
-/// When a source last answered; UTC, as the index records it.
-final anHourAgo = DateTime.utc(2026, 8, 9, 18, 22, 4);
+import '../support/domain_test_support.dart';
 
 /// Something for a summary to count, small enough that the four numbers it
 /// answers with can be read at a glance.
 final _twoIngredients = Collection(
   ingredients: [Ingredient('gin'), Ingredient('campari')],
-);
-
-/// The two kinds of record, built so a test names only what it is about. Shared
-/// with shelf_edits_test.dart and validation_test.dart.
-Bar ownedBar({
-  String id = '5f2c9a',
-  String name = 'Home bar',
-  FixedUnit display = FixedUnit.part,
-  List<Offer> offers = const [],
-  DateTime? updated,
-  Map<Holding, int>? summary,
-}) => Bar(
-  id: id,
-  name: name,
-  mode: BarMode.owner,
-  display: display,
-  offers: offers,
-  updated: updated,
-  summary: summary,
-);
-
-Bar guestBar({
-  String id = 'b3e1d7',
-  String name = 'Ada\'s bar',
-  FixedUnit display = FixedUnit.part,
-  BarSource? source = aSource,
-  DateTime? refreshed,
-  Map<Holding, int>? summary,
-}) => Bar(
-  id: id,
-  name: name,
-  mode: BarMode.guest,
-  display: display,
-  source: source,
-  refreshed: refreshed,
-  summary: summary,
 );
 
 void main() {

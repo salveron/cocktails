@@ -1,5 +1,5 @@
-/// The in-memory [BarStore] double: the seam that keeps state and widget tests
-/// device-free (docs/components.md#data-contracts).
+/// Support no single layer owns: the in-memory [BarStore] double every suite
+/// runs over to stay device-free (docs/components.md#testing).
 library;
 
 import 'package:cocktails/data/data.dart';
@@ -17,24 +17,21 @@ base class MemoryBarStore implements BarStore {
   /// bar whose file never landed is on disk.
   final Map<String, Outcome<BarContent>> barOutcomes = {};
 
-  /// The records of the last [saveShelf], null until the first one.
+  /// What has been written, each null or empty until the first save of its
+  /// kind: the last index, every bar newest-per-id, how many writes landed in
+  /// all, and the last collection whichever bar it belonged to — [saved] being
+  /// the reading a one-bar test wants, [savedBars] the whole picture.
   ShelfIndex? savedShelf;
-
-  /// Every bar written, newest per id, and how many writes have landed in all.
   final Map<String, (Bar, Collection)> savedBars = {};
   int saveCount = 0;
-
-  /// The collection of the last [saveBar], whichever bar it was — the reading
-  /// a one-bar test wants, where [savedBars] is the whole picture.
   Collection? saved;
 
   MemoryBarStore([ShelfIndex? records])
     : shelfOutcome = records == null ? const Empty() : Ok(records);
 
-  /// A store already holding [bar] and its [collection] — the arrangement most
-  /// tests want, and the one a hand-built [barOutcomes] entry gets wrong by
-  /// leaving the index empty. Generative, so a specialising double can chain
-  /// to it.
+  /// A store already holding [bar] and its [collection] — what most tests want,
+  /// and what a hand-built [barOutcomes] entry gets wrong by leaving the index
+  /// empty. Generative, so a specialising double can chain to it.
   MemoryBarStore.of(Bar bar, [Collection? collection])
     : shelfOutcome = Ok((bars: [bar], openId: bar.id)) {
     barOutcomes[bar.id] = Ok((

@@ -1,10 +1,11 @@
 import 'package:cocktails/domain/domain.dart';
+import 'package:cocktails/ui/screens/amounts_screen.dart';
 import 'package:cocktails/ui/screens/settings_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import '../../support/memory_bar_store.dart';
-import '../harness.dart';
+import '../../support/ui_test_support.dart';
+import '../../support/test_support.dart';
 
 /// The screen as it is reached — through Settings, so leaving it has somewhere
 /// to go and the menu entry is exercised with it.
@@ -261,6 +262,54 @@ void main() {
       await tap(tester, find.text('Discard'));
       expect(find.text('Settings'), findsOneWidget);
       expect(store.saveCount, 0);
+    });
+  });
+
+  group('amounts on a guest bar', () {
+    /// The pick is a preference for reading someone else's collection; the
+    /// sizes are the owner's, the recipes having been written against them —
+    /// so both are on show and only one of them moves.
+    testWidgets('the sizes read and refuse the finger', (tester) async {
+      await pumpOver(
+        tester,
+        const AmountsScreen(),
+        smallCollection,
+        bar: testGuestBar(),
+      );
+      expect(find.byType(SegmentedButton<FixedUnit>), findsOneWidget);
+      final fields = tester.widgetList<TextField>(find.byType(TextField));
+      expect(fields, hasLength(2));
+      expect(fields.every((field) => field.enabled ?? true), isFalse);
+    });
+
+    testWidgets('an owned bar may type in them', (tester) async {
+      await pumpOver(tester, const AmountsScreen(), smallCollection);
+      expect(find.byType(SegmentedButton<FixedUnit>), findsOneWidget);
+      final fields = tester.widgetList<TextField>(find.byType(TextField));
+      expect(fields, hasLength(2));
+      expect(fields.every((field) => field.enabled ?? true), isTrue);
+    });
+
+    testWidgets('picking one saves it and leaves the collection alone', (
+      tester,
+    ) async {
+      final store = await pumpOver(
+        tester,
+        const AmountsScreen(),
+        smallCollection,
+        bar: testGuestBar(),
+      );
+      // The rows name ml too, so the segment is reached through its button.
+      await tap(
+        tester,
+        find.descendant(
+          of: find.byType(SegmentedButton<FixedUnit>),
+          matching: find.text('ml'),
+        ),
+      );
+      await tap(tester, find.text('Save'));
+      expect(store.savedShelf!.bars.single.display, FixedUnit.ml);
+      expect(store.saved, isNull, reason: "the owner's file is untouched");
     });
   });
 }

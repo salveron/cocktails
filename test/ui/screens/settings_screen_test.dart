@@ -1,16 +1,18 @@
 import 'package:cocktails/data/data.dart';
 import 'package:cocktails/domain/domain.dart';
+import 'package:cocktails/ui/screens/shopping_settings_screen.dart';
+import 'package:cocktails/ui/screens/tags_screen.dart';
 import 'package:cocktails/ui/screens/settings_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import '../../support/memory_bar_store.dart';
-import '../harness.dart';
+import '../../support/ui_test_support.dart';
+import '../../support/test_support.dart';
 
 /// A store that cannot write, so the one thing a failed replace must not do —
 /// leave for a collection that was never written — can be watched.
 final class _UnwritableStore extends MemoryBarStore {
-  _UnwritableStore() : super.of(testBar(), fixtureCollection);
+  _UnwritableStore() : super.of(testBar(), smallCollection);
 
   @override
   Future<void> saveBar(Bar bar, Collection collection) async =>
@@ -50,7 +52,7 @@ void main() {
       Future<void> Function(String)? sharer,
     }) async {
       final shared = <String>[];
-      final store = MemoryBarStore.of(testBar(), fixtureCollection);
+      final store = MemoryBarStore.of(testBar(), smallCollection);
       await pumpScreen(
         tester,
         const SettingsScreen(),
@@ -67,7 +69,7 @@ void main() {
       final (shared, store) = await exportOver(tester);
       expect(shared, ['memory:share']);
       // What went out is the collection on screen, not a file re-read (ADR 18).
-      expect(store.snapshots[ExportPurpose.share]?.$2, fixtureCollection);
+      expect(store.snapshots[ExportPurpose.share]?.$2, smallCollection);
     });
 
     testWidgets('the row acts where it stands, and does not travel', (
@@ -107,13 +109,13 @@ void main() {
     /// cannot be read off the store and pass for the file's.
     final pickedFile = fileOf(recipeCollection);
 
-    /// The Import row tapped over a store holding [fixtureCollection], with the
+    /// The Import row tapped over a store holding [smallCollection], with the
     /// system's picker answering [picked] — a file, nothing, or a refusal.
     Future<MemoryBarStore> importOver(
       WidgetTester tester,
       Future<String?> Function() picked,
     ) async {
-      final store = MemoryBarStore.of(testBar(), fixtureCollection);
+      final store = MemoryBarStore.of(testBar(), smallCollection);
       await pumpScreen(
         tester,
         const SettingsScreen(),
@@ -230,10 +232,7 @@ void main() {
       // from the open bar's own gear.
       await tap(tester, find.text('Save'));
       expect(store.saved, recipeCollection);
-      expect(
-        store.snapshots[ExportPurpose.beforeImport]?.$2,
-        fixtureCollection,
-      );
+      expect(store.snapshots[ExportPurpose.beforeImport]?.$2, smallCollection);
       expect(find.text('3 recipes imported.'), findsOneWidget);
     });
 
@@ -309,7 +308,7 @@ void main() {
       await pumpScreen(
         tester,
         const SettingsScreen(),
-        store: MemoryBarStore.of(testBar(), fixtureCollection),
+        store: MemoryBarStore.of(testBar(), smallCollection),
         picker: () async {
           final answer = second ? fileOf(Collection()) : pickedFile;
           second = true;
@@ -389,7 +388,7 @@ void main() {
     ) async {
       await pumpApp(
         tester,
-        store: MemoryBarStore.of(testBar(), fixtureCollection),
+        store: MemoryBarStore.of(testBar(), smallCollection),
         picker: () async => pickedFile,
       );
       await tap(tester, find.byTooltip('Settings'));
@@ -404,6 +403,120 @@ void main() {
       expect(shellTitle('Recipes', bar: 'Home bar'), findsOneWidget);
       expect(find.text('Whiskey Sour'), findsOneWidget);
       expect(find.text('3 recipes imported.'), findsOneWidget);
+    });
+  });
+
+  group('settings on a guest bar', () {
+    /// Whether the row named [title] answers a tap at all.
+    bool live(WidgetTester tester, String title) => tester
+        .widget<ListTile>(
+          find.ancestor(of: find.text(title), matching: find.byType(ListTile)),
+        )
+        .enabled;
+
+    testWidgets('what reads stays live, and only Shopping dims', (
+      tester,
+    ) async {
+      await pumpOver(
+        tester,
+        const SettingsScreen(),
+        smallCollection,
+        bar: testGuestBar(),
+      );
+      // The owner's vocabularies and sizes are the guest's to read (FR-BAR-4),
+      // so every row leading to one opens; the optimizer is absent there, so
+      // its settings are the one thing with nothing to say.
+      for (final row in ['Tags', 'Units', 'Amounts', 'Export', 'Change bar']) {
+        expect(live(tester, row), isTrue, reason: row);
+      }
+      expect(live(tester, 'Shopping'), isFalse);
+      // The file row is not dimmed but read the other way round: this bar takes
+      // no file in, and asks its source for one instead (FR-BAR-5).
+      expect(find.text('Import'), findsNothing);
+      expect(live(tester, 'Refresh'), isTrue);
+    });
+
+    testWidgets('the live rows open and the dimmed one leads nowhere', (
+      tester,
+    ) async {
+      await pumpOver(
+        tester,
+        const SettingsScreen(),
+        smallCollection,
+        bar: testGuestBar(),
+      );
+      await tap(tester, find.text('Shopping'));
+      expect(find.byType(ShoppingSettingsScreen), findsNothing);
+      await tap(tester, find.text('Tags'));
+      expect(find.byType(TagsScreen), findsOneWidget);
+    });
+
+    testWidgets('every row is live on an owned bar', (tester) async {
+      await pumpOver(tester, const SettingsScreen(), smallCollection);
+      for (final row in [
+        'Tags',
+        'Units',
+        'Amounts',
+        'Shopping',
+        'Export',
+        'Import',
+      ]) {
+        expect(live(tester, row), isTrue, reason: row);
+      }
+      // Nothing to ask: an owned bar has no source (FR-BAR-5).
+      expect(find.text('Refresh'), findsNothing);
+    });
+
+    /// A guest already holds what the file would carry (FR-DAT-1).
+    testWidgets('export works on a guest bar', (tester) async {
+      var shared = 0;
+      await pumpScreen(
+        tester,
+        const SettingsScreen(),
+        store: MemoryBarStore.of(testGuestBar(), smallCollection),
+        sharer: (_) async => shared++,
+      );
+      await tap(tester, find.text('Export'));
+      expect(shared, 1);
+    });
+  });
+
+  group('asking the source again, from the gear (FR-BAR-5)', () {
+    Future<void> askThere(WidgetTester tester) async {
+      await tap(tester, find.byTooltip('Settings'));
+      await tap(tester, find.text('Refresh'));
+    }
+
+    testWidgets('it lands, and says so where the lists cannot', (tester) async {
+      await pumpShell(
+        tester,
+        testGuestBar(),
+        picker: () async => fileOf(smallCollection),
+      );
+      await askThere(tester);
+      expect(find.text('Refreshed.'), findsOneWidget);
+      await tap(tester, find.byTooltip('Back'));
+      expect(find.text('Negroni'), findsOneWidget);
+    });
+
+    /// One answer, one telling: the banner would carry this where the reader
+    /// pulled for it, and has nothing left to say once the snackbar has.
+    testWidgets('what it came to is said here and not again behind', (
+      tester,
+    ) async {
+      await pumpShell(tester, testGuestBar(), picker: () async => damagedFile);
+      await askThere(tester);
+      expect(find.textContaining('could not be read'), findsOneWidget);
+      expect(find.textContaining('rye'), findsOneWidget);
+      await tap(tester, find.byTooltip('Back'));
+      expect(find.byType(MaterialBanner), findsNothing);
+      expect(find.text('Whiskey Sour'), findsOneWidget);
+    });
+
+    testWidgets('a reader who picks nothing is told nothing', (tester) async {
+      await pumpShell(tester, testGuestBar(), picker: () async => null);
+      await askThere(tester);
+      expect(find.byType(SnackBar), findsNothing);
     });
   });
 }

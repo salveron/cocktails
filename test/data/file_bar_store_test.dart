@@ -5,7 +5,7 @@ import 'package:cocktails/data/data.dart';
 import 'package:cocktails/domain/domain.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'bar_store_contract.dart';
+import '../support/data_test_support.dart';
 
 const codec = YamlCodec();
 

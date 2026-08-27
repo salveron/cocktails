@@ -6,8 +6,8 @@ import 'package:cocktails/ui/screens/shopping_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import '../support/memory_bar_store.dart';
-import 'harness.dart';
+import '../support/ui_test_support.dart';
+import '../support/test_support.dart';
 
 /// A store whose load blows up — the only way to reach the failure face.
 final class _FailingStore extends MemoryBarStore {
@@ -88,7 +88,7 @@ void main() {
     ) async {
       await pumpApp(
         tester,
-        store: MemoryBarStore.of(testBar(), fixtureCollection),
+        store: MemoryBarStore.of(testBar(), smallCollection),
       );
       final shell = tester.state(find.byType(AppShell));
       await tester.tap(find.text('Ingredients'));

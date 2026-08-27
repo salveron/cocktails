@@ -1,9 +1,10 @@
 import 'package:cocktails/domain/domain.dart';
+import 'package:cocktails/ui/destinations.dart';
+import 'package:cocktails/ui/screens/ingredients_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import '../support/memory_bar_store.dart';
-import 'harness.dart';
+import '../support/ui_test_support.dart';
 
 RecipeLine _line(List<String> ingredients, {LineMark? mark}) =>
     RecipeLine(const Amount(1), 'part', ingredients, mark: mark);
@@ -79,11 +80,9 @@ final longCollection = Collection(
   ],
 );
 
-Future<void> pumpShell(WidgetTester tester, [Collection? collection]) =>
-    pumpApp(
-      tester,
-      store: MemoryBarStore.of(testBar(), collection ?? reachingCollection),
-    );
+/// The shell over [reachingCollection], where every jump below starts.
+Future<void> pumpReaching(WidgetTester tester, [Collection? collection]) =>
+    pumpShell(tester, testBar(), collection: collection ?? reachingCollection);
 
 /// Opens the one basket worth buying two ingredients, whose card then names
 /// both ingredients and both recipes.
@@ -104,7 +103,7 @@ void main() {
     testWidgets('a basket\'s recipe opens on the Recipes (FR-DIS-9)', (
       tester,
     ) async {
-      await pumpShell(tester);
+      await pumpReaching(tester);
       await openBasket(tester);
       await tap(tester, bullet('Negroni'));
       expect(showing(tester), 'Recipes');
@@ -114,7 +113,7 @@ void main() {
     testWidgets('a basket\'s ingredient opens on the Ingredients screen', (
       tester,
     ) async {
-      await pumpShell(tester);
+      await pumpReaching(tester);
       await openBasket(tester);
       await tap(tester, bullet('sweet vermouth'));
       expect(showing(tester), 'Ingredients');
@@ -124,7 +123,7 @@ void main() {
     testWidgets('the revealed recipe is the only one left open', (
       tester,
     ) async {
-      await pumpShell(tester);
+      await pumpReaching(tester);
       await openRecipe(tester, 'Sidecar');
       await openBasket(tester);
       await tap(tester, bullet('Americano'));
@@ -136,7 +135,7 @@ void main() {
     testWidgets('a line reaches its ingredient on the Ingredients screen', (
       tester,
     ) async {
-      await pumpShell(tester);
+      await pumpReaching(tester);
       await openRecipe(tester, 'Negroni');
       // The name alone: the measure before it and the mark after are inert.
       await tester.tapOnText(find.textRange.ofSubstring('gin'));
@@ -148,7 +147,7 @@ void main() {
     testWidgets('a group offers one target per alternative (ADR 11)', (
       tester,
     ) async {
-      await pumpShell(tester);
+      await pumpReaching(tester);
       await openRecipe(tester, 'Sidecar');
       await tester.tapOnText(find.textRange.ofSubstring('rye'));
       await tester.pumpAndSettle();
@@ -158,7 +157,7 @@ void main() {
     testWidgets('a line spelling an ingredient otherwise reaches its own row', (
       tester,
     ) async {
-      await pumpShell(tester);
+      await pumpReaching(tester);
       await openRecipe(tester, 'Sidecar');
       await tester.tapOnText(find.textRange.ofSubstring('brandy'));
       await tester.pumpAndSettle();
@@ -171,7 +170,7 @@ void main() {
     testWidgets('the search and the picks in the way are cleared (ADR 19)', (
       tester,
     ) async {
-      await pumpShell(tester);
+      await pumpReaching(tester);
       await goTo(tester, 'Recipes');
       await search(tester, 'Negroni');
       await pickTag(tester, 'classic');
@@ -185,7 +184,7 @@ void main() {
     testWidgets('a base pick in the way is cleared too (FR-DIS-4)', (
       tester,
     ) async {
-      await pumpShell(tester);
+      await pumpReaching(tester);
       await goTo(tester, 'Recipes');
       await pickBase(tester, 'gin');
       expect(find.text('Americano'), findsNothing);
@@ -198,7 +197,7 @@ void main() {
     testWidgets('the order in the way goes back to the list\'s own', (
       tester,
     ) async {
-      await pumpShell(tester);
+      await pumpReaching(tester);
       await goTo(tester, 'Recipes');
       await sortBy(tester, 'Name');
       await openBasket(tester);
@@ -211,7 +210,7 @@ void main() {
     testWidgets('a row off the bottom of a long list is scrolled to', (
       tester,
     ) async {
-      await pumpShell(tester, longCollection);
+      await pumpReaching(tester, longCollection);
       await goTo(tester, 'Recipes');
       expect(find.text('Zzz Nightcap'), findsNothing);
       await goTo(tester, 'Shopping');
@@ -223,7 +222,7 @@ void main() {
     testWidgets('a narrowed list goes home first, then lands on the row', (
       tester,
     ) async {
-      await pumpShell(tester, longCollection);
+      await pumpReaching(tester, longCollection);
       await goTo(tester, 'Recipes');
       // Narrowed, the list is marked for home; the reveal waits on the
       // measurement that re-anchoring forces (ADR 13, ADR 19).
@@ -237,7 +236,7 @@ void main() {
     testWidgets('back undoes a jump and leaves the screen as it was', (
       tester,
     ) async {
-      await pumpShell(tester);
+      await pumpReaching(tester);
       await openBasket(tester);
       await tap(tester, bullet('Negroni'));
       await systemBack(tester);
@@ -247,7 +246,7 @@ void main() {
     });
 
     testWidgets('a chain of jumps unwinds one at a time', (tester) async {
-      await pumpShell(tester);
+      await pumpReaching(tester);
       await openBasket(tester);
       await tap(tester, bullet('Negroni'));
       await tester.tapOnText(find.textRange.ofSubstring('gin'));
@@ -262,7 +261,7 @@ void main() {
     testWidgets('a destination the reader chose clears the way back', (
       tester,
     ) async {
-      await pumpShell(tester);
+      await pumpReaching(tester);
       await openBasket(tester);
       await tap(tester, bullet('Negroni'));
       await goTo(tester, 'Ingredients');
@@ -275,7 +274,7 @@ void main() {
     testWidgets('the same row asked for twice is revealed twice', (
       tester,
     ) async {
-      await pumpShell(tester);
+      await pumpReaching(tester);
       await openBasket(tester);
       await tap(tester, bullet('Negroni'));
       await tap(tester, find.text('Negroni'));
@@ -284,6 +283,54 @@ void main() {
       await tap(tester, bullet('Negroni'));
       expect(showing(tester), 'Recipes');
       expect(cardOpen(tester, 'Negroni'), isTrue);
+    });
+  });
+
+  /// Which destinations the bottom bar is offering, in the order drawn.
+  List<String> barDestinations(WidgetTester tester) => [
+    for (final destination in tester.widgetList<NavigationDestination>(
+      find.descendant(
+        of: find.byType(NavigationBar),
+        matching: find.byType(NavigationDestination),
+      ),
+    ))
+      destination.label,
+  ];
+
+  group('what a bar offers', () {
+    test('an owned bar offers all three, a guest the two that read', () {
+      expect(destinationsOf(BarMode.owner), Destination.values);
+      expect(destinationsOf(BarMode.guest), [
+        Destination.recipes,
+        Destination.ingredients,
+      ]);
+    });
+
+    testWidgets('the shopping optimizer is absent on a guest, not empty', (
+      tester,
+    ) async {
+      await pumpShell(tester, testGuestBar());
+      expect(barDestinations(tester), ['Recipes', 'Ingredients']);
+      expect(find.byType(NavigationBar), findsOneWidget);
+    });
+
+    testWidgets('an owned bar keeps all three', (tester) async {
+      await pumpShell(tester, testBar());
+      expect(barDestinations(tester), ['Recipes', 'Ingredients', 'Shopping']);
+    });
+
+    /// The stack is indexed by position in the offered list, never by the
+    /// enum's own index — on a guest the two part company, and an off-by-one
+    /// here would draw the wrong screen under the right label.
+    testWidgets('the second destination draws the second screen', (
+      tester,
+    ) async {
+      await pumpShell(tester, testGuestBar());
+      await goTo(tester, 'Ingredients');
+      expect(showing(tester), 'Ingredients');
+      expect(find.byType(IngredientsScreen), findsOneWidget);
+      await goTo(tester, 'Recipes');
+      expect(showing(tester), 'Recipes');
     });
   });
 }

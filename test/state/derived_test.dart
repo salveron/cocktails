@@ -3,7 +3,8 @@ import 'package:cocktails/state/state.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import '../support/memory_bar_store.dart';
+import '../support/test_support.dart';
+import '../support/state_test_support.dart';
 
 void main() {
   final stored = Collection(
@@ -28,20 +29,12 @@ void main() {
     ],
   );
 
-  ProviderContainer containerFor(Collection collection) {
-    final container = ProviderContainer(
-      overrides: [
-        barStoreProvider.overrideWithValue(
-          MemoryBarStore.of(
-            Bar(id: 'a1b2c3', name: 'Home bar', mode: BarMode.owner),
-            collection,
-          ),
-        ),
-      ],
-    );
-    addTearDown(container.dispose);
-    return container;
-  }
+  ProviderContainer containerFor(Collection collection) => containerOver(
+    MemoryBarStore.of(
+      Bar(id: 'a1b2c3', name: 'Home bar', mode: BarMode.owner),
+      collection,
+    ),
+  );
 
   /// A container whose startup load has already resolved.
   Future<ProviderContainer> started(Collection collection) async {

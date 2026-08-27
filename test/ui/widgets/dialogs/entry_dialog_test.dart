@@ -5,7 +5,7 @@ import 'package:cocktails/ui/widgets/dialogs/entry_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import '../../harness.dart';
+import '../../../support/ui_test_support.dart';
 
 /// The real ingredient rules, with "gin" and "genever" already taken — the
 /// second an alias, so the dialog is judged against the whole namespace.

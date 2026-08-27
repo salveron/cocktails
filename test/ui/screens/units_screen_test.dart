@@ -1,10 +1,11 @@
 import 'package:cocktails/domain/domain.dart';
+import 'package:cocktails/ui/screens/units_screen.dart';
 import 'package:cocktails/ui/screens/settings_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import '../../support/memory_bar_store.dart';
-import '../harness.dart';
+import '../../support/ui_test_support.dart';
+import '../../support/test_support.dart';
 
 /// The screen as it is reached — through Settings, so leaving it has somewhere
 /// to go and the menu entry is exercised with it.
@@ -221,6 +222,40 @@ void main() {
       await tap(tester, find.text('Discard'));
       expect(find.text('Settings'), findsOneWidget);
       expect(store.saveCount, 0);
+    });
+  });
+
+  group('units on a guest bar', () {
+    testWidgets('the rows read and nothing writes them', (tester) async {
+      await pumpOver(
+        tester,
+        const UnitsScreen(),
+        smallCollection,
+        bar: testGuestBar(),
+      );
+      final fields = tester.widgetList<TextField>(find.byType(TextField));
+      // A name and a plural per unit, and no spare row inviting another.
+      expect(fields, hasLength(defaultUnits.length * 2));
+      expect(fields.every((field) => field.enabled ?? true), isFalse);
+      expect(find.text('Save'), findsNothing);
+      expect(find.byTooltip('Delete'), findsNothing);
+      expect(
+        find.byTooltip('Fixed unit'),
+        findsNothing,
+        reason: 'the lock marks the three nobody renames, not every row',
+      );
+    });
+
+    testWidgets('an owned bar keeps its spare row, its Save and its locks', (
+      tester,
+    ) async {
+      await pumpOver(tester, const UnitsScreen(), smallCollection);
+      expect(
+        find.byType(TextField),
+        findsNWidgets((defaultUnits.length + 1) * 2),
+      );
+      expect(find.text('Save'), findsOneWidget);
+      expect(find.byTooltip('Fixed unit'), findsNWidgets(3));
     });
   });
 }

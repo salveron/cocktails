@@ -1,9 +1,15 @@
+/// The support the other suites trust: `MemoryBarStore` answers the way the
+/// real store does, so a suite reading it is reading the store's behaviour and
+/// not the double's. Held here rather than under `test/data/` because its
+/// subject is support code, not a file under `lib/` (docs/components.md#testing).
+library;
+
 import 'package:cocktails/data/data.dart';
 import 'package:cocktails/domain/domain.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import '../support/memory_bar_store.dart';
-import 'bar_store_contract.dart';
+import 'support/data_test_support.dart';
+import 'support/test_support.dart';
 
 void main() {
   final collection = Collection(

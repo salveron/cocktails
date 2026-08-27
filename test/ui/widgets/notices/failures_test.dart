@@ -2,7 +2,7 @@ import 'package:cocktails/ui/widgets/notices/failures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import '../../harness.dart';
+import '../../../support/ui_test_support.dart';
 
 void main() {
   group('startup issues', () {

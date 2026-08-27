@@ -96,9 +96,13 @@ lib/
       lists/                   # the searchable list and its chrome — entry_list,
                                #   list_controls, list_terms
       notices/                 # empty states and failure banners — empty_state, failures
-test/                          # mirrors lib/, plus test/architecture_test.dart and
-                               #   test/support/ — doubles and fixtures the app never
-                               #   ships, MemoryBarStore among them
+test/                          # one file per lib/ file, named for it (see Testing)
+  architecture_test.dart       # the whole tree: imports, dependency list, ui/ layout
+  support_test.dart            # holds the support below to account
+  support/                     # everything under test/ that is not itself a test —
+                               #   test_support.dart for what several layers read,
+                               #   MemoryBarStore among it, then one file per layer:
+                               #   {domain,data,state,ui}_test_support.dart
 ```
 
 `domain/src/names.dart` holds the one fold behind every name comparison 
@@ -929,6 +933,36 @@ The controller is the UI's only route to the data layer; screens never hold a `B
 
 ## Testing
 
+### Where a test lives
+
+`test/` mirrors `lib/` one file to one file: `lib/domain/src/shelf.dart` is tested by 
+`test/domain/shelf_test.dart` and by nothing else, and that file tests nothing but what 
+`shelf.dart` owns. A test file is named for the source file whose behaviour it holds to account, 
+even where it drives that behaviour through the layer's barrel — `yaml_writer_test.dart` and 
+`yaml_bar_reader_test.dart` both call `YamlCodec`, because the barrel is the layer's only surface 
+([ADR 04](adr/04-module-boundaries.md)), but each is named for the file that owns what it checks. 
+Every file under a `test/` subfolder ends `_test.dart`.
+
+Two kinds of file are not a mirror of anything, and only those sit at the root of `test/`: 
+`architecture_test.dart`, which reads the whole tree, and `support_test.dart`, which holds the 
+support below to account. A layer-private file exercised only through its callers earns no test 
+file of its own — `list_edits.dart` and `yaml_primitives.dart` are read through the edits and 
+readers that call them.
+
+### Support
+
+Code under `test/` that is not itself a test is **support**, and that is the only word for it: no 
+harnesses, kits, fixtures or toolkits as separate categories. It lives in `test/support/`, one file 
+per layer — `domain_test_support.dart`, `data_test_support.dart`, `state_test_support.dart`, 
+`ui_test_support.dart` — with `test_support.dart` for what more than one layer reads, `MemoryBarStore` 
+among it. Names that say what a helper *asserts* rather than what kind of helper it is stay as they 
+are: `barStoreContract`, `tokenVocabulary`, `valueEquality`.
+
+What one test file alone reads stays in that file; what a second file reaches for moves to support. 
+That is the whole of the rule, and it is why no test file imports another.
+
+### Per layer
+
 - **Domain**: unit tests, no device. Pure functions; clock/randomness passed in. `Shelf`'s 
   invariants and its refusal to edit a guest bar's collection (ADR 23) are unit tests like any other.
 - **Data**: codec unit-tested (round-trip FR-DAT-5, broken-file decode with line numbers, a 
@@ -940,8 +974,10 @@ The controller is the UI's only route to the data layer; screens never hold a `B
 - **UI**: widget tests for critical flows. The file transport is composed from `filePickerProvider`, 
   so a widget test drives the *real* channel by overriding the picker alone — a pull answered with a 
   file, a damaged one, or nothing — and reaches `Unreachable` by seeding a bar sourced `cloud`, 
-  which this build has no adapter for. `test/ui/harness.dart` over the store and channel 
-  overrides.
+  which this build has no adapter for. `ui_test_support.dart` over the store and channel 
+  overrides. A rule crossing several screens is tested on each screen it reaches, in that screen's 
+  own file: what a guest bar refuses is `bar_writer_test.dart`'s one fact, and each screen's reading 
+  of it is that screen's.
 - **Boundaries**: `test/architecture_test.dart` enforces imports, the dependency list, the one 
   route to a write, the one fold behind a name, and that no double ships.
 
@@ -958,6 +994,6 @@ joins the table.
 
 One rule, one test: where a fact is pinned in two places a change has to visit both, and the second 
 one drifts. A rule holding over several types or vocabularies gets one parametrised body run over 
-each, not a copy each — `tokenVocabulary` and `valueEquality` in `test/domain/collection_test.dart`, 
-`vocabulary` in `collection_edits_test.dart`, `barStoreContract` in `test/data/`. Every case in such a 
-table carries a `reason` naming it, so a failure says which one.
+each, not a copy each — `tokenVocabulary` and `valueEquality` in `support/domain_test_support.dart`, 
+`barStoreContract` in `support/data_test_support.dart`, `vocabulary` in `collection_edits_test.dart`. 
+Every case in such a table carries a `reason` naming it, so a failure says which one.

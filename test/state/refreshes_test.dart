@@ -12,8 +12,8 @@ import 'package:cocktails/state/state.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import '../support/memory_bar_store.dart';
-import 'write_log.dart';
+import '../support/test_support.dart';
+import '../support/state_test_support.dart';
 
 /// Answers nothing until a test says so, so the order two refreshes land in is
 /// the test's to choose rather than the scheduler's.
@@ -105,18 +105,13 @@ void main() {
     return seeded;
   }
 
-  Future<ProviderContainer> started([MemoryBarStore? seeded]) async {
-    final container = ProviderContainer(
-      overrides: [
-        barStoreProvider.overrideWithValue(seeded ?? store),
-        clockProvider.overrideWithValue(() => now),
-        channelsProvider.overrideWithValue({channel.transport: channel}),
-      ],
-    );
-    addTearDown(container.dispose);
-    await container.read(shelfProvider.future);
-    return container;
-  }
+  Future<ProviderContainer> started([MemoryBarStore? seeded]) => startedOver(
+    seeded ?? store,
+    clock: () => now,
+    overrides: [
+      channelsProvider.overrideWithValue({channel.transport: channel}),
+    ],
+  );
 
   ShelfController controllerOf(ProviderContainer container) =>
       container.read(shelfProvider.notifier);

@@ -8,8 +8,8 @@ import 'package:cocktails/ui/screens/shopping_settings_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import '../../support/memory_bar_store.dart';
-import '../harness.dart';
+import '../../support/ui_test_support.dart';
+import '../../support/test_support.dart';
 
 void main() {
   Future<MemoryBarStore> pumpShoppingSettings(
@@ -18,7 +18,7 @@ void main() {
   ]) => pumpOver(
     tester,
     const ShoppingSettingsScreen(),
-    fixtureCollection,
+    smallCollection,
     bar: testBar(shopping: shopping),
   );
 

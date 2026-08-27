@@ -1,7 +1,7 @@
 import 'package:cocktails/domain/domain.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'shelf_test.dart' show aSource, anHourAgo, guestBar, ownedBar;
+import '../support/domain_test_support.dart';
 
 final _gin = Collection(ingredients: [Ingredient('gin')]);
 final _rum = Collection(ingredients: [Ingredient('rum')]);

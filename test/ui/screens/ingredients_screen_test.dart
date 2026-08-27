@@ -9,8 +9,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import '../../support/memory_bar_store.dart';
-import '../harness.dart';
+import '../../support/ui_test_support.dart';
+import '../../support/test_support.dart';
 
 /// Three tags over four ingredients, every combination the filter has to tell
 /// apart: one ingredient bare, one wearing a single tag, one wearing two.
@@ -30,7 +30,7 @@ final taggedCollection = Collection(
 
 /// Three ingredients over two levels, so an order and its reverse read differently
 /// and the tie between the two empty ones shows the A→Z under both.
-final orderedCollection = fixtureCollection.withIngredient(
+final orderedCollection = smallCollection.withIngredient(
   Ingredient('absinthe'),
 );
 
@@ -57,7 +57,7 @@ void main() {
     testWidgets('opens on what is in stock, each ingredient with its level', (
       tester,
     ) async {
-      await pumpIngredients(tester, fixtureCollection);
+      await pumpIngredients(tester, smallCollection);
       expect(rowTexts(tester), ['gin', 'In stock', 'campari', 'Out']);
     });
 
@@ -66,7 +66,7 @@ void main() {
     ) async {
       await pumpIngredients(
         tester,
-        fixtureCollection.withIngredient(
+        smallCollection.withIngredient(
           Ingredient('absinthe', stock: StockLevel.low),
         ),
       );
@@ -87,7 +87,7 @@ void main() {
     testWidgets('a tap moves the ingredient one step through its life', (
       tester,
     ) async {
-      final store = await pumpIngredients(tester, fixtureCollection);
+      final store = await pumpIngredients(tester, smallCollection);
 
       for (final expected in ['Low', 'Out', 'In stock']) {
         await tester.tap(find.text('gin'));
@@ -101,13 +101,13 @@ void main() {
     testWidgets('search narrows the list by name, ignoring case', (
       tester,
     ) async {
-      await pumpIngredients(tester, fixtureCollection);
+      await pumpIngredients(tester, smallCollection);
       await search(tester, 'CAMP');
       expect(rowTexts(tester), ['campari', 'Out']);
     });
 
     testWidgets('ignores space typed around the query', (tester) async {
-      await pumpIngredients(tester, fixtureCollection);
+      await pumpIngredients(tester, smallCollection);
       await search(tester, '  camp  ');
       expect(rowTexts(tester), ['campari', 'Out']);
     });
@@ -124,7 +124,7 @@ void main() {
     testWidgets('clearing the search brings the whole list back', (
       tester,
     ) async {
-      await pumpIngredients(tester, fixtureCollection);
+      await pumpIngredients(tester, smallCollection);
       await search(tester, 'camp');
       await tester.tap(find.byTooltip('Clear'));
       await tester.pumpAndSettle();
@@ -134,7 +134,7 @@ void main() {
     testWidgets('names the query when nothing matches, keeping the field', (
       tester,
     ) async {
-      await pumpIngredients(tester, fixtureCollection);
+      await pumpIngredients(tester, smallCollection);
       await search(tester, 'absinthe');
       expect(find.text('No ingredient here answers to "absinthe".'), findsOne);
       expect(find.byType(SearchField), findsOneWidget);
@@ -143,7 +143,7 @@ void main() {
     testWidgets(
       'the add button puts a new ingredient in the list, out of stock',
       (tester) async {
-        final store = await pumpIngredients(tester, fixtureCollection);
+        final store = await pumpIngredients(tester, smallCollection);
         await tap(tester, find.byTooltip('Add ingredient'));
         await type(tester, 'absinthe');
         await tap(tester, find.text('Save'));
@@ -163,7 +163,7 @@ void main() {
     testWidgets('a search that found nothing is one tap from creating it', (
       tester,
     ) async {
-      await pumpIngredients(tester, fixtureCollection);
+      await pumpIngredients(tester, smallCollection);
       await search(tester, 'absinthe');
       await tap(tester, find.text('Add "absinthe"'));
       // Saving without typing is what proves the query came along.
@@ -182,7 +182,7 @@ void main() {
     testWidgets('an add backed out of leaves the search where it was', (
       tester,
     ) async {
-      await pumpIngredients(tester, fixtureCollection);
+      await pumpIngredients(tester, smallCollection);
       await search(tester, 'camp');
       await tap(tester, find.byTooltip('Add ingredient'));
       await tap(tester, find.text('Cancel'));
@@ -192,7 +192,7 @@ void main() {
     testWidgets('renaming an ingredient follows it into the recipes', (
       tester,
     ) async {
-      final store = await pumpIngredients(tester, fixtureCollection);
+      final store = await pumpIngredients(tester, smallCollection);
       await chooseOnRow(tester, 'gin', 'Edit');
       // Its own name is not a duplicate of itself.
       expect(saveEnabled(tester), isTrue);
@@ -209,7 +209,7 @@ void main() {
     });
 
     testWidgets('an ingredient a recipe uses will not go', (tester) async {
-      final store = await pumpIngredients(tester, fixtureCollection);
+      final store = await pumpIngredients(tester, smallCollection);
       await chooseOnRow(tester, 'gin', 'Delete');
 
       expect(find.text('Cannot delete "gin"'), findsOneWidget);
@@ -224,7 +224,7 @@ void main() {
     ) async {
       final store = await pumpIngredients(
         tester,
-        fixtureCollection.withIngredient(Ingredient('absinthe')),
+        smallCollection.withIngredient(Ingredient('absinthe')),
       );
       await chooseOnRow(tester, 'absinthe', 'Delete');
 
@@ -237,7 +237,7 @@ void main() {
 
   group('aliases (ADR 10)', () {
     /// One ingredient answering to two spellings besides its own.
-    final aliasedCollection = fixtureCollection.withIngredient(
+    final aliasedCollection = smallCollection.withIngredient(
       Ingredient(
         'gin',
         stock: StockLevel.in_,
@@ -268,7 +268,7 @@ void main() {
     testWidgets('a new ingredient can be born answering to more than one', (
       tester,
     ) async {
-      final store = await pumpIngredients(tester, fixtureCollection);
+      final store = await pumpIngredients(tester, smallCollection);
       await tap(tester, find.byTooltip('Add ingredient'));
       await type(tester, 'bourbon');
       await typeAliases(tester, 'bourbon whiskey, bourbon whisky');
@@ -344,7 +344,7 @@ void main() {
     testWidgets('the orders keep out of sight until they are asked for', (
       tester,
     ) async {
-      await pumpIngredients(tester, fixtureCollection);
+      await pumpIngredients(tester, smallCollection);
       expect(find.byType(FilterChip), findsNothing);
 
       await openSort(tester);
@@ -471,7 +471,7 @@ void main() {
     testWidgets('the legend waits until the vocabulary has something in it', (
       tester,
     ) async {
-      await pumpIngredients(tester, fixtureCollection);
+      await pumpIngredients(tester, smallCollection);
       expect(find.byType(TagChoices), findsNothing);
 
       await pumpIngredients(tester);
@@ -605,6 +605,52 @@ void main() {
         'syrup',
       ]);
       expect(dotsOn(tester, 'gomme syrup'), ['homemade', 'syrup']);
+    });
+  });
+
+  group('a guest bar writes nothing here', () {
+    testWidgets('the ingredients screen offers no way to add an ingredient', (
+      tester,
+    ) async {
+      await pumpOver(
+        tester,
+        const IngredientsScreen(),
+        smallCollection,
+        bar: testGuestBar(),
+      );
+      expect(
+        find.widgetWithIcon(FloatingActionButton, Icons.add),
+        findsNothing,
+      );
+      expect(rowMenu('gin'), findsNothing);
+    });
+
+    /// The stock is the owner's reading of their own shelf: a tap that moved it
+    /// would be the reader judging one bar by another.
+    testWidgets('and tapping an ingredient does not move its stock', (
+      tester,
+    ) async {
+      final store = await pumpOver(
+        tester,
+        const IngredientsScreen(),
+        smallCollection,
+        bar: testGuestBar(),
+      );
+      expect(find.text('In stock'), findsOneWidget);
+      await tap(tester, find.text('gin'));
+      expect(find.text('In stock'), findsOneWidget);
+      expect(store.saved, isNull, reason: 'nothing reached the store');
+    });
+
+    testWidgets('an owned bar still offers every one of them', (tester) async {
+      await pumpOver(tester, const IngredientsScreen(), smallCollection);
+      expect(
+        find.widgetWithIcon(FloatingActionButton, Icons.add),
+        findsOneWidget,
+      );
+      expect(rowMenu('gin'), findsOneWidget);
+      await tap(tester, find.text('gin'));
+      expect(find.text('Low'), findsOneWidget);
     });
   });
 }

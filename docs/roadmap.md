@@ -206,8 +206,25 @@ what M36f settles.
   something else. 17 widget-returning methods became widget classes or top-level functions, 11
   more the same build()-breakup commits had introduced among them; the long functions and
   `build()`s over the line-count bar broken up. Depends: M36i.
-- [ ] **M36k** — The tests get a home. Delivers: `test/support/` as the fixture home, colliding
-  fixture names settled, one state harness, the five test files over 1,000 lines split. Depends: M36j.
+- [x] **M36k** — The tests mirror the code. Delivers: `test/` holding one file per `lib/` file, named
+  for it, testing nothing else — the [rule and its two exemptions](components.md#where-a-test-lives)
+  written down. Test files that had been split by size rejoined the file they belong to
+  (`collection_value_types_test.dart`, `validation_entries_test.dart`, `shelf_bars_test.dart`,
+  `recipes_screen_cards_test.dart`), and the yaml suite went the other way: one 1,609-line
+  `yaml_codec_test.dart` divided among the four files that actually own the behaviour —
+  `yaml_writer_test.dart` (the emitter), `yaml_bar_reader_test.dart` (a bar's file and every refusal
+  of it), `yaml_shelf_reader_test.dart` (the index), and `yaml_codec_test.dart` itself (the format
+  gate, the parse, the round trip). Two files with no counterpart found their subject:
+  `reaching_test.dart` became `destinations_test.dart`, which is what it had always tested, and
+  `guest_bar_test.dart` was distributed to the screen each of its groups drove, mirroring how `lib`
+  itself carries the rule — decided once in `bar_writer.dart`, now `bar_writer_test.dart`, and read
+  independently by six screens and `destinations.dart`. Coverage `lib` had none of came with it:
+  `entry_card_test.dart`, `entry_list_test.dart`, `bar_writer_test.dart`. Support was consolidated
+  under one word and one home: no more harnesses, kits or toolkits, just `test/support/` holding
+  `test_support.dart` for what several layers read and `{domain,data,state,ui}_test_support.dart`
+  for what one does — ten scattered files folded into five, and the last two test files importing
+  another test file (`shelf_edits_test.dart`, `shelf_validation_test.dart`, both reaching into
+  `shelf_test.dart`) cut. Depends: M36j.
 
 ## Phase 10 — A bar travels over the LAN
 

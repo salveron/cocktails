@@ -4,8 +4,8 @@ import 'package:cocktails/ui/screens/tags_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import '../../support/memory_bar_store.dart';
-import '../harness.dart';
+import '../../support/test_support.dart';
+import '../../support/ui_test_support.dart';
 
 /// Both vocabularies stocked, each holding one tag something references and one
 /// nothing does — so blocked and free deletes are both a tap away.
@@ -256,5 +256,47 @@ void main() {
         );
       },
     );
+  });
+
+  group('tags on a guest bar', () {
+    testWidgets('reads and offers no way to write', (tester) async {
+      await pumpOver(
+        tester,
+        const TagsScreen(),
+        smallCollection,
+        bar: testGuestBar(),
+      );
+      expect(find.text('classic'), findsOneWidget);
+      expect(find.byTooltip('Add recipe tag'), findsNothing);
+      expect(rowMenu('classic'), findsNothing);
+      await tap(tester, find.text('classic'));
+      expect(
+        find.byType(TextField),
+        findsOneWidget,
+        reason: 'the search alone — a tapped row opened no edit',
+      );
+    });
+
+    testWidgets('the search still narrows the owner\'s tags', (tester) async {
+      await pumpOver(
+        tester,
+        const TagsScreen(),
+        smallCollection,
+        bar: testGuestBar(),
+      );
+      await typeInto(tester, find.byType(TextField), 'zzz');
+      expect(find.text('Nothing matches'), findsOneWidget);
+      expect(
+        find.textContaining('Add "zzz"'),
+        findsNothing,
+        reason: 'nothing to add on someone else\'s bar',
+      );
+    });
+
+    testWidgets('an owned bar offers all three ways in', (tester) async {
+      await pumpOver(tester, const TagsScreen(), smallCollection);
+      expect(find.byTooltip('Add recipe tag'), findsOneWidget);
+      expect(rowMenu('classic'), findsOneWidget);
+    });
   });
 }

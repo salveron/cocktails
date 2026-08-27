@@ -5,8 +5,8 @@ import 'package:cocktails/ui/screens/bars_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import '../../support/memory_bar_store.dart';
-import '../harness.dart';
+import '../../support/ui_test_support.dart';
+import '../../support/test_support.dart';
 
 void main() {
   final annaCollection = Collection(
@@ -18,7 +18,7 @@ void main() {
   /// here reads as something a reader would recognise.
   final earlier = testNow.subtract(const Duration(hours: 3));
 
-  final home = testBar().summarised(fixtureCollection, at: earlier);
+  final home = testBar().summarised(smallCollection, at: earlier);
   final anna = Bar(
     id: 'anna01',
     name: 'Anna',
@@ -50,7 +50,7 @@ void main() {
 
   MemoryBarStore twoBars() => shelfOf(
     [home, anna],
-    {home.id: fixtureCollection, anna.id: annaCollection},
+    {home.id: smallCollection, anna.id: annaCollection},
   );
 
   /// The screen as a reader reaches it: the gear, then the row that travels.

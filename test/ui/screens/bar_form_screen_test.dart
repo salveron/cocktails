@@ -7,8 +7,8 @@ import 'package:cocktails/domain/domain.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import '../../support/memory_bar_store.dart';
-import '../harness.dart';
+import '../../support/ui_test_support.dart';
+import '../../support/test_support.dart';
 
 void main() {
   /// Three recipes and nine ingredients against the one recipe and two
@@ -16,13 +16,13 @@ void main() {
   /// the store and pass for the file's.
   final sharedFile = fileOf(recipeCollection);
 
-  /// The form as a reader reaches it, over a store holding [fixtureCollection]
+  /// The form as a reader reaches it, over a store holding [smallCollection]
   /// in one owned bar, with the system's picker answering [picked].
   Future<MemoryBarStore> openForm(
     WidgetTester tester, {
     Future<String?> Function()? picked,
   }) async {
-    final store = MemoryBarStore.of(testBar(), fixtureCollection);
+    final store = MemoryBarStore.of(testBar(), smallCollection);
     await pumpApp(tester, store: store, picker: picked);
     await tap(tester, find.byTooltip('Settings'));
     await tap(tester, find.text('Change bar'));

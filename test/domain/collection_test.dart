@@ -1,50 +1,471 @@
 import 'package:cocktails/domain/domain.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// What every enum written into the data format promises: the [tokens] it
-/// spells, in order, and a [fromToken] that reads back exactly those and
-/// answers null for anything else. One body for all four, so a token added to
-/// one enum is held to the same contract as the rest.
-void tokenVocabulary<T extends Enum>(
-  String name, {
-  required List<T> values,
-  required String Function(T value) token,
-  required T? Function(String) fromToken,
-  required List<String> tokens,
-  required String unknown,
-}) {
-  group('$name tokens', () {
-    test('match the data format', () {
-      expect([for (final value in values) token(value)], tokens);
-    });
-
-    test('fromToken round-trips every member', () {
-      for (final value in values) {
-        expect(fromToken(token(value)), value);
-      }
-    });
-
-    test('fromToken returns null for an unknown token', () {
-      expect(fromToken(unknown), isNull);
-    });
-  });
-}
-
-/// Value semantics, read the same way for every type carrying them: two builds
-/// of the same values are equal and hash alike, while each of [differing] — the
-/// same build with one field moved off its default — is not. Each field is
-/// named, so a broken `==` reports which one it stopped reading.
-void valueEquality<T>(T Function() build, Map<String, T> differing) {
-  test('equality and hashCode isolate each field', () {
-    expect(build(), build());
-    expect(build().hashCode, build().hashCode);
-    differing.forEach((field, moved) {
-      expect(build(), isNot(moved), reason: field);
-    });
-  });
-}
+import '../support/domain_test_support.dart';
 
 void main() {
+  group('Collection', () {
+    Collection build({
+      Settings settings = const Settings(partMl: 25),
+      List<Ingredient>? ingredients,
+      List<Tag> ingredientTags = const [Tag('oaked', color: TagColor.sand)],
+      List<Tag> recipeTags = const [Tag('sour', color: TagColor.rose)],
+      List<Recipe>? recipes,
+    }) => Collection(
+      settings: settings,
+      ingredients:
+          ingredients ??
+          [
+            Ingredient('bourbon', tags: const ['oaked']),
+          ],
+      ingredientTags: ingredientTags,
+      recipeTags: recipeTags,
+      recipes:
+          recipes ??
+          [
+            Recipe('Whiskey Sour', tags: ['sour']),
+          ],
+    );
+
+    test('starts empty with default settings and the shipped units', () {
+      final collection = Collection();
+      expect(collection.units, defaultUnits);
+      expect(collection.unitSpellings, contains('dashes'));
+      expect(collection.ingredients, isEmpty);
+      expect(collection.ingredientTags, isEmpty);
+      expect(collection.recipeTags, isEmpty);
+      expect(collection.recipes, isEmpty);
+      expect(collection.settings, const Settings());
+    });
+
+    test('rejects duplicate names within each kind', () {
+      expect(
+        () => Collection(ingredients: [Ingredient('gin'), Ingredient('gin')]),
+        throwsA(
+          isA<ArgumentError>().having(
+            (e) => e.message,
+            'message',
+            allOf(contains('ingredient'), contains('gin')),
+          ),
+        ),
+      );
+      expect(
+        () => Collection(
+          recipeTags: const [
+            Tag('sour', color: TagColor.rose),
+            Tag('sour', color: TagColor.teal),
+          ],
+        ),
+        throwsA(
+          isA<ArgumentError>().having(
+            (e) => e.message,
+            'message',
+            contains('recipe tag'),
+          ),
+        ),
+      );
+      expect(
+        () => Collection(
+          ingredientTags: const [
+            Tag('citrus', color: TagColor.sand),
+            Tag('citrus', color: TagColor.teal),
+          ],
+        ),
+        throwsA(
+          isA<ArgumentError>().having(
+            (e) => e.message,
+            'message',
+            contains('ingredient tag'),
+          ),
+        ),
+      );
+      expect(
+        () => Collection(recipes: [Recipe('Negroni'), Recipe('Negroni')]),
+        throwsArgumentError,
+      );
+    });
+
+    test('rejects a unit spelling another unit already answers to', () {
+      expect(
+        () => Collection(units: const [Unit('dash'), Unit('dash')]),
+        throwsA(
+          isA<ArgumentError>().having(
+            (e) => e.message,
+            'message',
+            allOf(contains('unit'), contains('dash')),
+          ),
+        ),
+      );
+      expect(
+        () => Collection(
+          units: const [
+            Unit('dash', plural: 'drop'),
+            Unit('drop'),
+          ],
+        ),
+        throwsArgumentError,
+      );
+    });
+
+    test('a plural written out as its own name is no collision', () {
+      expect(
+        Collection(units: const [Unit('ml', plural: 'ml')]).units,
+        hasLength(1),
+      );
+    });
+
+    test('rejects names that differ only in case (ADR 08)', () {
+      expect(
+        () => Collection(ingredients: [Ingredient('Gin'), Ingredient('gin')]),
+        throwsA(isA<ArgumentError>()),
+      );
+      expect(
+        () => Collection(recipes: [Recipe('Negroni'), Recipe('negroni')]),
+        throwsA(isA<ArgumentError>()),
+      );
+      expect(
+        () => Collection(
+          ingredientTags: const [
+            Tag('Citrus', color: TagColor.sand),
+            Tag('citrus', color: TagColor.teal),
+          ],
+        ),
+        throwsA(isA<ArgumentError>()),
+      );
+    });
+
+    test('allows the same name across kinds, both vocabularies included', () {
+      final collection = Collection(
+        ingredients: [Ingredient('sour')],
+        ingredientTags: const [Tag('sour', color: TagColor.sand)],
+        recipeTags: const [Tag('sour', color: TagColor.rose)],
+        recipes: [Recipe('sour')],
+      );
+      expect(collection.ingredients.single.name, 'sour');
+      expect(collection.ingredientTags.single.color, TagColor.sand);
+      expect(collection.recipeTags.single.color, TagColor.rose);
+    });
+
+    test('collections are unmodifiable', () {
+      final collection = Collection();
+      expect(
+        () => collection.ingredients.add(Ingredient('gin')),
+        throwsUnsupportedError,
+      );
+      for (final tags in [collection.ingredientTags, collection.recipeTags]) {
+        expect(
+          () => tags.add(const Tag('sour', color: TagColor.rose)),
+          throwsUnsupportedError,
+        );
+      }
+      expect(
+        () => collection.recipes.add(Recipe('Negroni')),
+        throwsUnsupportedError,
+      );
+    });
+
+    const classic = [Tag('classic', color: TagColor.rose)];
+    const peaty = [Tag('peaty', color: TagColor.sand)];
+
+    valueEquality(build, {
+      'settings': build(settings: const Settings()),
+      'ingredients': build(ingredients: [Ingredient('gin')]),
+      'ingredientTags': build(ingredientTags: peaty),
+      'recipeTags': build(recipeTags: classic),
+      'recipes': build(recipes: [Recipe('Negroni')]),
+    });
+
+    test('copyWith replaces one field and carries the rest', () {
+      final collection = build();
+      expect(collection.copyWith(), collection, reason: 'nothing named');
+      expect(
+        collection.copyWith(settings: const Settings()),
+        build(settings: const Settings()),
+        reason: 'settings',
+      );
+      expect(
+        collection.copyWith(ingredients: [Ingredient('gin')]),
+        build(ingredients: [Ingredient('gin')]),
+        reason: 'ingredients',
+      );
+      expect(
+        collection.copyWith(ingredientTags: peaty),
+        build(ingredientTags: peaty),
+        reason: 'ingredientTags',
+      );
+      expect(
+        collection.copyWith(recipeTags: classic),
+        build(recipeTags: classic),
+        reason: 'recipeTags',
+      );
+      expect(
+        collection.copyWith(recipes: [Recipe('Negroni')]),
+        build(recipes: [Recipe('Negroni')]),
+        reason: 'recipes',
+      );
+    });
+
+    test('copyWith still rejects a duplicate name', () {
+      expect(
+        () => build().copyWith(
+          ingredients: [Ingredient('gin'), Ingredient('gin')],
+        ),
+        throwsArgumentError,
+      );
+    });
+
+    group('name lookups', () {
+      test('answer with the entry of that name', () {
+        final collection = build();
+        expect(
+          collection.ingredientNamed('bourbon'),
+          Ingredient('bourbon', tags: const ['oaked']),
+        );
+        expect(collection.recipeNamed('Whiskey Sour')?.tags, ['sour']);
+        expect(collection.hasTag(TagKind.recipe, 'sour'), isTrue);
+        expect(collection.hasTag(TagKind.ingredient, 'oaked'), isTrue);
+      });
+
+      test('answer for an unknown name without throwing', () {
+        final collection = build();
+        expect(collection.ingredientNamed('gin'), isNull);
+        expect(collection.recipeNamed('Negroni'), isNull);
+        expect(collection.hasTag(TagKind.recipe, 'classic'), isFalse);
+        expect(collection.hasTag(TagKind.ingredient, 'peaty'), isFalse);
+      });
+
+      test('one vocabulary never answers for the other', () {
+        final collection = build();
+        expect(collection.hasTag(TagKind.recipe, 'oaked'), isFalse);
+        expect(collection.hasTag(TagKind.ingredient, 'sour'), isFalse);
+      });
+
+      test('an empty collection answers nothing', () {
+        final collection = Collection();
+        expect(collection.ingredientNamed('bourbon'), isNull);
+        expect(collection.recipeNamed('Whiskey Sour'), isNull);
+        expect(collection.hasTag(TagKind.recipe, 'sour'), isFalse);
+        expect(collection.hasTag(TagKind.ingredient, 'oaked'), isFalse);
+      });
+
+      test('repeated lookups keep answering, index and all', () {
+        final collection = build();
+        expect(collection.ingredientNamed('bourbon')?.name, 'bourbon');
+        expect(collection.ingredientNamed('bourbon')?.name, 'bourbon');
+        expect(collection.ingredientNamed('gin'), isNull);
+      });
+
+      test('answer however the name is capitalised (ADR 08)', () {
+        final collection = build();
+        expect(collection.ingredientNamed('BOURBON')?.name, 'bourbon');
+        expect(collection.recipeNamed('whiskey sour')?.name, 'Whiskey Sour');
+        expect(collection.hasTag(TagKind.recipe, 'Sour'), isTrue);
+        expect(collection.hasTag(TagKind.ingredient, 'Oaked'), isTrue);
+      });
+
+      test('a vocabulary answers to its kind', () {
+        final collection = build();
+        expect(collection.tagsOf(TagKind.recipe), collection.recipeTags);
+        expect(
+          collection.tagsOf(TagKind.ingredient),
+          collection.ingredientTags,
+        );
+      });
+
+      test('the name sets are the lists, ready for validation', () {
+        final collection = build();
+        expect(collection.recipeNames, {'Whiskey Sour'});
+        expect(collection.tagNames(TagKind.recipe), {'sour'});
+        expect(collection.tagNames(TagKind.ingredient), {'oaked'});
+        expect(
+          () => collection.tagNames(TagKind.recipe).add('tiki'),
+          throwsUnsupportedError,
+        );
+      });
+
+      test('an alias answers for the ingredient it belongs to (ADR 10)', () {
+        final collection = Collection(
+          ingredients: [
+            Ingredient(
+              'bourbon',
+              stock: StockLevel.in_,
+              aliases: const ['bourbon whiskey'],
+            ),
+          ],
+        );
+        expect(collection.ingredientNamed('bourbon whiskey')?.name, 'bourbon');
+        expect(collection.ingredientNamed('BOURBON WHISKEY')?.name, 'bourbon');
+        expect(collection.ingredientNamed('whiskey'), isNull);
+      });
+    });
+
+    group('ingredientSpellings', () {
+      final collection = Collection(
+        ingredients: [
+          Ingredient('bourbon', aliases: const ['bourbon whiskey']),
+          Ingredient('gin'),
+        ],
+      );
+
+      test('gathers names and aliases into one namespace', () {
+        expect(collection.ingredientSpellings(), {
+          'bourbon',
+          'bourbon whiskey',
+          'gin',
+        });
+        expect(Collection().ingredientSpellings(), isEmpty);
+      });
+
+      test('drops the whole entry it is told to leave out', () {
+        expect(collection.ingredientSpellings(except: 'bourbon'), {'gin'});
+        expect(collection.ingredientSpellings(except: 'BOURBON'), {'gin'});
+        expect(collection.ingredientSpellings(except: 'bourbon whiskey'), {
+          'bourbon',
+          'bourbon whiskey',
+          'gin',
+        });
+      });
+    });
+
+    group('one namespace for every spelling (ADR 10)', () {
+      test('an alias may not repeat another ingredient name', () {
+        expect(
+          () => Collection(
+            ingredients: [
+              Ingredient('bourbon', aliases: const ['Rye']),
+              Ingredient('rye'),
+            ],
+          ),
+          throwsArgumentError,
+        );
+      });
+
+      test('nor another ingredient alias', () {
+        expect(
+          () => Collection(
+            ingredients: [
+              Ingredient('bourbon', aliases: const ['whiskey']),
+              Ingredient('rye', aliases: const ['whiskey']),
+            ],
+          ),
+          throwsArgumentError,
+        );
+      });
+
+      test('nor its own entry name', () {
+        expect(
+          () => Collection(
+            ingredients: [
+              Ingredient('bourbon', aliases: const ['Bourbon']),
+            ],
+          ),
+          throwsArgumentError,
+        );
+      });
+
+      test(
+        'but two ingredients may alias the same name in other vocabularies',
+        () {
+          final collection = Collection(
+            ingredients: [
+              Ingredient('bourbon', aliases: const ['sour']),
+            ],
+            ingredientTags: const [Tag('sour', color: TagColor.sand)],
+            recipes: [Recipe('sour')],
+          );
+          expect(collection.ingredientNamed('sour')?.name, 'bourbon');
+        },
+      );
+    });
+  });
+
+  group('wornInOrder', () {
+    const vocabulary = [
+      Tag('classic', color: TagColor.rose),
+      Tag('sour', color: TagColor.sand),
+      Tag('tiki', color: TagColor.teal),
+    ];
+    List<String> namesOf(List<Tag> tags) => [for (final tag in tags) tag.name];
+
+    test('reads in vocabulary order, not the order they were worn', () {
+      expect(namesOf(wornInOrder(vocabulary, ['tiki', 'classic'])), [
+        'classic',
+        'tiki',
+      ]);
+    });
+
+    test('drops a name the vocabulary no longer holds', () {
+      expect(namesOf(wornInOrder(vocabulary, ['vintage', 'sour'])), ['sour']);
+    });
+
+    test('answers with the tags themselves, colours included', () {
+      expect(wornInOrder(vocabulary, ['sour']).single.color, TagColor.sand);
+    });
+
+    test('wearing none and a vocabulary of none both come out empty', () {
+      expect(wornInOrder(vocabulary, const []), isEmpty);
+      expect(wornInOrder(const [], const ['classic']), isEmpty);
+    });
+
+    test('a name wanted twice is answered once', () {
+      expect(namesOf(wornInOrder(vocabulary, ['sour', 'sour'])), ['sour']);
+    });
+
+    test('a name worn in another case is the same tag (ADR 08)', () {
+      expect(namesOf(wornInOrder(vocabulary, ['SOUR'])), ['sour']);
+    });
+  });
+
+  group('summaryOf', () {
+    test('counts each kind, and the four in the order a reader meets '
+        'them', () {
+      final collection = Collection(
+        units: const [Unit('part'), Unit('dash')],
+        ingredients: [Ingredient('gin'), Ingredient('campari')],
+        recipeTags: const [Tag('classic', color: TagColor.rose)],
+        ingredientTags: const [
+          Tag('italian', color: TagColor.teal),
+          Tag('juniper', color: TagColor.sand),
+        ],
+        recipes: [Recipe('Negroni')],
+      );
+      expect(summaryOf(collection).keys, Holding.values);
+      // The tags of both vocabularies under one count, as the screen managing
+      // them lists them (ADR 07).
+      expect(summaryOf(collection), {
+        Holding.recipe: 1,
+        Holding.ingredient: 2,
+        Holding.tag: 3,
+        Holding.unit: 2,
+      });
+    });
+
+    test('an empty collection still carries the units it opens with', () {
+      expect(summaryOf(Collection()), {
+        Holding.recipe: 0,
+        Holding.ingredient: 0,
+        Holding.tag: 0,
+        Holding.unit: defaultUnits.length,
+      });
+    });
+
+    test('every kind is named for the reader by its own noun', () {
+      expect(
+        [for (final holding in Holding.values) holding.noun],
+        ['recipe', 'ingredient', 'tag', 'unit'],
+      );
+    });
+
+    test('and written to the index under a token of its own (ADR 21)', () {
+      // Declared rather than the identifier or the noun: a summary already in
+      // an index must go on reading the same after either is renamed.
+      expect(
+        [for (final holding in Holding.values) holding.token],
+        ['recipe', 'ingredient', 'tag', 'unit'],
+      );
+    });
+  });
+
   // "in" rather than the in_ the language forces, and the palette spending no
   // colour the stock and availability signals need.
   tokenVocabulary(
@@ -548,468 +969,6 @@ void main() {
         recipe.copyWith(notes: 'stirred'),
         build(notes: 'stirred'),
         reason: 'notes',
-      );
-    });
-  });
-
-  group('Collection', () {
-    Collection build({
-      Settings settings = const Settings(partMl: 25),
-      List<Ingredient>? ingredients,
-      List<Tag> ingredientTags = const [Tag('oaked', color: TagColor.sand)],
-      List<Tag> recipeTags = const [Tag('sour', color: TagColor.rose)],
-      List<Recipe>? recipes,
-    }) => Collection(
-      settings: settings,
-      ingredients:
-          ingredients ??
-          [
-            Ingredient('bourbon', tags: const ['oaked']),
-          ],
-      ingredientTags: ingredientTags,
-      recipeTags: recipeTags,
-      recipes:
-          recipes ??
-          [
-            Recipe('Whiskey Sour', tags: ['sour']),
-          ],
-    );
-
-    test('starts empty with default settings and the shipped units', () {
-      final collection = Collection();
-      expect(collection.units, defaultUnits);
-      expect(collection.unitSpellings, contains('dashes'));
-      expect(collection.ingredients, isEmpty);
-      expect(collection.ingredientTags, isEmpty);
-      expect(collection.recipeTags, isEmpty);
-      expect(collection.recipes, isEmpty);
-      expect(collection.settings, const Settings());
-    });
-
-    test('rejects duplicate names within each kind', () {
-      expect(
-        () => Collection(ingredients: [Ingredient('gin'), Ingredient('gin')]),
-        throwsA(
-          isA<ArgumentError>().having(
-            (e) => e.message,
-            'message',
-            allOf(contains('ingredient'), contains('gin')),
-          ),
-        ),
-      );
-      expect(
-        () => Collection(
-          recipeTags: const [
-            Tag('sour', color: TagColor.rose),
-            Tag('sour', color: TagColor.teal),
-          ],
-        ),
-        throwsA(
-          isA<ArgumentError>().having(
-            (e) => e.message,
-            'message',
-            contains('recipe tag'),
-          ),
-        ),
-      );
-      expect(
-        () => Collection(
-          ingredientTags: const [
-            Tag('citrus', color: TagColor.sand),
-            Tag('citrus', color: TagColor.teal),
-          ],
-        ),
-        throwsA(
-          isA<ArgumentError>().having(
-            (e) => e.message,
-            'message',
-            contains('ingredient tag'),
-          ),
-        ),
-      );
-      expect(
-        () => Collection(recipes: [Recipe('Negroni'), Recipe('Negroni')]),
-        throwsArgumentError,
-      );
-    });
-
-    test('rejects a unit spelling another unit already answers to', () {
-      expect(
-        () => Collection(units: const [Unit('dash'), Unit('dash')]),
-        throwsA(
-          isA<ArgumentError>().having(
-            (e) => e.message,
-            'message',
-            allOf(contains('unit'), contains('dash')),
-          ),
-        ),
-      );
-      expect(
-        () => Collection(
-          units: const [
-            Unit('dash', plural: 'drop'),
-            Unit('drop'),
-          ],
-        ),
-        throwsArgumentError,
-      );
-    });
-
-    test('a plural written out as its own name is no collision', () {
-      expect(
-        Collection(units: const [Unit('ml', plural: 'ml')]).units,
-        hasLength(1),
-      );
-    });
-
-    test('rejects names that differ only in case (ADR 08)', () {
-      expect(
-        () => Collection(ingredients: [Ingredient('Gin'), Ingredient('gin')]),
-        throwsA(isA<ArgumentError>()),
-      );
-      expect(
-        () => Collection(recipes: [Recipe('Negroni'), Recipe('negroni')]),
-        throwsA(isA<ArgumentError>()),
-      );
-      expect(
-        () => Collection(
-          ingredientTags: const [
-            Tag('Citrus', color: TagColor.sand),
-            Tag('citrus', color: TagColor.teal),
-          ],
-        ),
-        throwsA(isA<ArgumentError>()),
-      );
-    });
-
-    test('allows the same name across kinds, both vocabularies included', () {
-      final collection = Collection(
-        ingredients: [Ingredient('sour')],
-        ingredientTags: const [Tag('sour', color: TagColor.sand)],
-        recipeTags: const [Tag('sour', color: TagColor.rose)],
-        recipes: [Recipe('sour')],
-      );
-      expect(collection.ingredients.single.name, 'sour');
-      expect(collection.ingredientTags.single.color, TagColor.sand);
-      expect(collection.recipeTags.single.color, TagColor.rose);
-    });
-
-    test('collections are unmodifiable', () {
-      final collection = Collection();
-      expect(
-        () => collection.ingredients.add(Ingredient('gin')),
-        throwsUnsupportedError,
-      );
-      for (final tags in [collection.ingredientTags, collection.recipeTags]) {
-        expect(
-          () => tags.add(const Tag('sour', color: TagColor.rose)),
-          throwsUnsupportedError,
-        );
-      }
-      expect(
-        () => collection.recipes.add(Recipe('Negroni')),
-        throwsUnsupportedError,
-      );
-    });
-
-    const classic = [Tag('classic', color: TagColor.rose)];
-    const peaty = [Tag('peaty', color: TagColor.sand)];
-
-    valueEquality(build, {
-      'settings': build(settings: const Settings()),
-      'ingredients': build(ingredients: [Ingredient('gin')]),
-      'ingredientTags': build(ingredientTags: peaty),
-      'recipeTags': build(recipeTags: classic),
-      'recipes': build(recipes: [Recipe('Negroni')]),
-    });
-
-    test('copyWith replaces one field and carries the rest', () {
-      final collection = build();
-      expect(collection.copyWith(), collection, reason: 'nothing named');
-      expect(
-        collection.copyWith(settings: const Settings()),
-        build(settings: const Settings()),
-        reason: 'settings',
-      );
-      expect(
-        collection.copyWith(ingredients: [Ingredient('gin')]),
-        build(ingredients: [Ingredient('gin')]),
-        reason: 'ingredients',
-      );
-      expect(
-        collection.copyWith(ingredientTags: peaty),
-        build(ingredientTags: peaty),
-        reason: 'ingredientTags',
-      );
-      expect(
-        collection.copyWith(recipeTags: classic),
-        build(recipeTags: classic),
-        reason: 'recipeTags',
-      );
-      expect(
-        collection.copyWith(recipes: [Recipe('Negroni')]),
-        build(recipes: [Recipe('Negroni')]),
-        reason: 'recipes',
-      );
-    });
-
-    test('copyWith still rejects a duplicate name', () {
-      expect(
-        () => build().copyWith(
-          ingredients: [Ingredient('gin'), Ingredient('gin')],
-        ),
-        throwsArgumentError,
-      );
-    });
-
-    group('name lookups', () {
-      test('answer with the entry of that name', () {
-        final collection = build();
-        expect(
-          collection.ingredientNamed('bourbon'),
-          Ingredient('bourbon', tags: const ['oaked']),
-        );
-        expect(collection.recipeNamed('Whiskey Sour')?.tags, ['sour']);
-        expect(collection.hasTag(TagKind.recipe, 'sour'), isTrue);
-        expect(collection.hasTag(TagKind.ingredient, 'oaked'), isTrue);
-      });
-
-      test('answer for an unknown name without throwing', () {
-        final collection = build();
-        expect(collection.ingredientNamed('gin'), isNull);
-        expect(collection.recipeNamed('Negroni'), isNull);
-        expect(collection.hasTag(TagKind.recipe, 'classic'), isFalse);
-        expect(collection.hasTag(TagKind.ingredient, 'peaty'), isFalse);
-      });
-
-      test('one vocabulary never answers for the other', () {
-        final collection = build();
-        expect(collection.hasTag(TagKind.recipe, 'oaked'), isFalse);
-        expect(collection.hasTag(TagKind.ingredient, 'sour'), isFalse);
-      });
-
-      test('an empty collection answers nothing', () {
-        final collection = Collection();
-        expect(collection.ingredientNamed('bourbon'), isNull);
-        expect(collection.recipeNamed('Whiskey Sour'), isNull);
-        expect(collection.hasTag(TagKind.recipe, 'sour'), isFalse);
-        expect(collection.hasTag(TagKind.ingredient, 'oaked'), isFalse);
-      });
-
-      test('repeated lookups keep answering, index and all', () {
-        final collection = build();
-        expect(collection.ingredientNamed('bourbon')?.name, 'bourbon');
-        expect(collection.ingredientNamed('bourbon')?.name, 'bourbon');
-        expect(collection.ingredientNamed('gin'), isNull);
-      });
-
-      test('answer however the name is capitalised (ADR 08)', () {
-        final collection = build();
-        expect(collection.ingredientNamed('BOURBON')?.name, 'bourbon');
-        expect(collection.recipeNamed('whiskey sour')?.name, 'Whiskey Sour');
-        expect(collection.hasTag(TagKind.recipe, 'Sour'), isTrue);
-        expect(collection.hasTag(TagKind.ingredient, 'Oaked'), isTrue);
-      });
-
-      test('a vocabulary answers to its kind', () {
-        final collection = build();
-        expect(collection.tagsOf(TagKind.recipe), collection.recipeTags);
-        expect(
-          collection.tagsOf(TagKind.ingredient),
-          collection.ingredientTags,
-        );
-      });
-
-      test('the name sets are the lists, ready for validation', () {
-        final collection = build();
-        expect(collection.recipeNames, {'Whiskey Sour'});
-        expect(collection.tagNames(TagKind.recipe), {'sour'});
-        expect(collection.tagNames(TagKind.ingredient), {'oaked'});
-        expect(
-          () => collection.tagNames(TagKind.recipe).add('tiki'),
-          throwsUnsupportedError,
-        );
-      });
-
-      test('an alias answers for the ingredient it belongs to (ADR 10)', () {
-        final collection = Collection(
-          ingredients: [
-            Ingredient(
-              'bourbon',
-              stock: StockLevel.in_,
-              aliases: const ['bourbon whiskey'],
-            ),
-          ],
-        );
-        expect(collection.ingredientNamed('bourbon whiskey')?.name, 'bourbon');
-        expect(collection.ingredientNamed('BOURBON WHISKEY')?.name, 'bourbon');
-        expect(collection.ingredientNamed('whiskey'), isNull);
-      });
-    });
-
-    group('ingredientSpellings', () {
-      final collection = Collection(
-        ingredients: [
-          Ingredient('bourbon', aliases: const ['bourbon whiskey']),
-          Ingredient('gin'),
-        ],
-      );
-
-      test('gathers names and aliases into one namespace', () {
-        expect(collection.ingredientSpellings(), {
-          'bourbon',
-          'bourbon whiskey',
-          'gin',
-        });
-        expect(Collection().ingredientSpellings(), isEmpty);
-      });
-
-      test('drops the whole entry it is told to leave out', () {
-        expect(collection.ingredientSpellings(except: 'bourbon'), {'gin'});
-        expect(collection.ingredientSpellings(except: 'BOURBON'), {'gin'});
-        expect(collection.ingredientSpellings(except: 'bourbon whiskey'), {
-          'bourbon',
-          'bourbon whiskey',
-          'gin',
-        });
-      });
-    });
-
-    group('one namespace for every spelling (ADR 10)', () {
-      test('an alias may not repeat another ingredient name', () {
-        expect(
-          () => Collection(
-            ingredients: [
-              Ingredient('bourbon', aliases: const ['Rye']),
-              Ingredient('rye'),
-            ],
-          ),
-          throwsArgumentError,
-        );
-      });
-
-      test('nor another ingredient alias', () {
-        expect(
-          () => Collection(
-            ingredients: [
-              Ingredient('bourbon', aliases: const ['whiskey']),
-              Ingredient('rye', aliases: const ['whiskey']),
-            ],
-          ),
-          throwsArgumentError,
-        );
-      });
-
-      test('nor its own entry name', () {
-        expect(
-          () => Collection(
-            ingredients: [
-              Ingredient('bourbon', aliases: const ['Bourbon']),
-            ],
-          ),
-          throwsArgumentError,
-        );
-      });
-
-      test(
-        'but two ingredients may alias the same name in other vocabularies',
-        () {
-          final collection = Collection(
-            ingredients: [
-              Ingredient('bourbon', aliases: const ['sour']),
-            ],
-            ingredientTags: const [Tag('sour', color: TagColor.sand)],
-            recipes: [Recipe('sour')],
-          );
-          expect(collection.ingredientNamed('sour')?.name, 'bourbon');
-        },
-      );
-    });
-  });
-
-  group('wornInOrder', () {
-    const vocabulary = [
-      Tag('classic', color: TagColor.rose),
-      Tag('sour', color: TagColor.sand),
-      Tag('tiki', color: TagColor.teal),
-    ];
-    List<String> namesOf(List<Tag> tags) => [for (final tag in tags) tag.name];
-
-    test('reads in vocabulary order, not the order they were worn', () {
-      expect(namesOf(wornInOrder(vocabulary, ['tiki', 'classic'])), [
-        'classic',
-        'tiki',
-      ]);
-    });
-
-    test('drops a name the vocabulary no longer holds', () {
-      expect(namesOf(wornInOrder(vocabulary, ['vintage', 'sour'])), ['sour']);
-    });
-
-    test('answers with the tags themselves, colours included', () {
-      expect(wornInOrder(vocabulary, ['sour']).single.color, TagColor.sand);
-    });
-
-    test('wearing none and a vocabulary of none both come out empty', () {
-      expect(wornInOrder(vocabulary, const []), isEmpty);
-      expect(wornInOrder(const [], const ['classic']), isEmpty);
-    });
-
-    test('a name wanted twice is answered once', () {
-      expect(namesOf(wornInOrder(vocabulary, ['sour', 'sour'])), ['sour']);
-    });
-
-    test('a name worn in another case is the same tag (ADR 08)', () {
-      expect(namesOf(wornInOrder(vocabulary, ['SOUR'])), ['sour']);
-    });
-  });
-
-  group('summaryOf', () {
-    test('counts each kind, and the four in the order a reader meets '
-        'them', () {
-      final collection = Collection(
-        units: const [Unit('part'), Unit('dash')],
-        ingredients: [Ingredient('gin'), Ingredient('campari')],
-        recipeTags: const [Tag('classic', color: TagColor.rose)],
-        ingredientTags: const [
-          Tag('italian', color: TagColor.teal),
-          Tag('juniper', color: TagColor.sand),
-        ],
-        recipes: [Recipe('Negroni')],
-      );
-      expect(summaryOf(collection).keys, Holding.values);
-      // The tags of both vocabularies under one count, as the screen managing
-      // them lists them (ADR 07).
-      expect(summaryOf(collection), {
-        Holding.recipe: 1,
-        Holding.ingredient: 2,
-        Holding.tag: 3,
-        Holding.unit: 2,
-      });
-    });
-
-    test('an empty collection still carries the units it opens with', () {
-      expect(summaryOf(Collection()), {
-        Holding.recipe: 0,
-        Holding.ingredient: 0,
-        Holding.tag: 0,
-        Holding.unit: defaultUnits.length,
-      });
-    });
-
-    test('every kind is named for the reader by its own noun', () {
-      expect(
-        [for (final holding in Holding.values) holding.noun],
-        ['recipe', 'ingredient', 'tag', 'unit'],
-      );
-    });
-
-    test('and written to the index under a token of its own (ADR 21)', () {
-      // Declared rather than the identifier or the noun: a summary already in
-      // an index must go on reading the same after either is renamed.
-      expect(
-        [for (final holding in Holding.values) holding.token],
-        ['recipe', 'ingredient', 'tag', 'unit'],
       );
     });
   });

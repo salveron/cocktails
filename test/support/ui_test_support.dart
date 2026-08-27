@@ -1,7 +1,14 @@
+/// Support the UI suites share: the `Bar`/`Collection` fixtures standing in for
+/// a reader's own, the overrides that put a widget test over the real state
+/// layer and an in-memory store, and the pump/tap/finder helpers every screen
+/// test reads its widgets through (docs/components.md#testing).
+library;
+
 import 'package:cocktails/data/data.dart';
 import 'package:cocktails/domain/domain.dart';
 import 'package:cocktails/state/state.dart';
 import 'package:cocktails/ui/app.dart';
+import 'package:cocktails/ui/screens/recipes_screen.dart';
 import 'package:cocktails/ui/theme.dart';
 import 'package:cocktails/ui/widgets/cards/entry_card.dart';
 import 'package:cocktails/ui/widgets/chips/color_marks.dart';
@@ -11,10 +18,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import '../support/memory_bar_store.dart';
+import 'test_support.dart';
 
-/// Two ingredients under one recipe — enough for every "not empty" screen.
-final fixtureCollection = Collection(
+/// Two ingredients under one recipe — the least a screen needs to be drawn
+/// with something on it, and what every "not empty" case is read over.
+final smallCollection = Collection(
   ingredients: [
     Ingredient('gin', stock: StockLevel.in_),
     Ingredient('campari'),
@@ -102,15 +110,22 @@ Bar testBar({
 /// Another owner's, read as it stood at its last refresh (FR-BAR-3) — the
 /// counterpart to [testBar], so one screen can be judged in both modes. The
 /// source is what makes it a guest at all: a bar with none is refused.
-Bar guestBar({String name = "Ada's bar", FixedUnit display = FixedUnit.part}) =>
-    Bar(
-      id: 'guest1',
-      name: name,
-      mode: BarMode.guest,
-      display: display,
-      source: const BarSource(via: Transport.file, at: 'ada.yaml', from: 'Ada'),
-      refreshed: testNow.subtract(const Duration(days: 2)),
-    );
+///
+/// Named apart from `domain/shelf_test.dart`'s own `guestBar`: that one builds
+/// a bare model `Bar` with a summary set directly, for the merge rules a
+/// `Collection` never enters; this one is read by widget tests, which reach
+/// its counts by summarising a real [Collection] over it.
+Bar testGuestBar({
+  String name = "Ada's bar",
+  FixedUnit display = FixedUnit.part,
+}) => Bar(
+  id: 'guest1',
+  name: name,
+  mode: BarMode.guest,
+  display: display,
+  source: const BarSource(via: Transport.file, at: 'ada.yaml', from: 'Ada'),
+  refreshed: testNow.subtract(const Duration(days: 2)),
+);
 
 /// [collection] as a bar's file — the shape a picked document actually has
 /// from format 2 on: the owner's name and the unit it reads in ride with the
@@ -134,7 +149,7 @@ recipes:
     lines: ["2 parts rye"]
 ''';
 
-/// A store whose bar file did not decode, recovered onto [fixtureCollection].
+/// A store whose bar file did not decode, recovered onto [smallCollection].
 MemoryBarStore corruptStore() {
   final bar = testBar();
   return MemoryBarStore((bars: [bar], openId: bar.id))
@@ -142,7 +157,7 @@ MemoryBarStore corruptStore() {
       [
         SourcedIssue(
           ValidationIssue(
-            const ['recipes', 0],
+            const [],
             ValidationIssueKind.unknownIngredient,
             'Unknown ingredient: "rye"',
           ),
@@ -152,10 +167,14 @@ MemoryBarStore corruptStore() {
       recovered: (
         name: bar.name,
         display: bar.display,
-        collection: fixtureCollection,
+        collection: smallCollection,
       ),
     );
 }
+
+/// What the clock answers under test, so anything a screen dates reads the
+/// same on every run.
+final testNow = DateTime.utc(2026, 8, 14, 12);
 
 /// The overrides the composition root makes, so a widget test reaches the real
 /// state layer over an in-memory store — and over the three seams data crosses
@@ -173,10 +192,6 @@ List<Override> _overrides(
   if (sharer != null) sharerProvider.overrideWithValue(sharer),
   if (picker != null) filePickerProvider.overrideWithValue(picker),
 ];
-
-/// What the clock answers under test, so anything a screen dates reads the
-/// same on every run.
-final testNow = DateTime.utc(2026, 8, 14, 12);
 
 /// [widget] under those overrides, meeting the startup load itself — which is
 /// what the app does and what only the app does.
@@ -613,3 +628,343 @@ Color dotColor(WidgetTester tester, String name) =>
                 .decoration
             as BoxDecoration)
         .color!;
+
+const names = ['Daiquiri', 'Negroni', 'Whiskey Sour'];
+
+Future<MemoryBarStore> pumpRecipes(
+  WidgetTester tester, [
+  Collection? collection,
+  FixedUnit display = FixedUnit.part,
+]) => pumpOver(
+  tester,
+  const RecipesScreen(),
+  collection ?? recipeCollection,
+  display: display,
+);
+
+/// The recipe names on screen, in list order — [roster] naming which
+/// collection's, so a summary line is never mistaken for a row.
+Iterable<String?> namesOn(WidgetTester tester, [List<String> roster = names]) =>
+    rowTexts(tester).where(roster.contains);
+
+/// The three verdicts at once (FR-DIS-1), and an optional line the verdict
+/// passes over though the card still marks it. Its A→Z runs against its
+/// availability, so the two orders can never be read for each other.
+const stocked = ['Campari Shot', 'Gin Shot', 'Negroni'];
+
+final stockedCollection = Collection(
+  ingredients: [
+    Ingredient('gin', stock: StockLevel.in_),
+    Ingredient('campari', stock: StockLevel.low),
+    Ingredient('sweet vermouth'),
+  ],
+  recipes: [
+    Recipe(
+      'Gin Shot',
+      lines: const [
+        RecipeLine(Amount(1), 'part', ['gin']),
+        RecipeLine(Amount(1), 'dash', [
+          'sweet vermouth',
+        ], mark: LineMark.optional),
+      ],
+    ),
+    Recipe(
+      'Campari Shot',
+      lines: const [
+        RecipeLine(Amount(1), 'part', ['campari']),
+      ],
+    ),
+    Recipe(
+      'Negroni',
+      lines: const [
+        RecipeLine(Amount(1), 'part', ['gin']),
+        RecipeLine(Amount(1), 'part', ['campari']),
+        RecipeLine(Amount(1), 'part', ['sweet vermouth']),
+      ],
+    ),
+  ],
+);
+
+/// A collection long enough that a row can be drawn from beyond the fold: two
+/// worth making at either end of the alphabet, nothing but missing ones between
+/// (ADR 13). Read by name, so availability cannot bring the far one forward.
+final longCollection = Collection(
+  ingredients: [
+    Ingredient('gin', stock: StockLevel.in_),
+    Ingredient('vodka'),
+  ],
+  recipes: [
+    Recipe(
+      'Aviation',
+      lines: const [
+        RecipeLine(Amount(1), 'part', ['gin']),
+      ],
+    ),
+    for (var filler = 1; filler <= 38; filler++)
+      Recipe(
+        'Filler ${filler.toString().padLeft(2, '0')}',
+        lines: const [
+          RecipeLine(Amount(1), 'part', ['vodka']),
+        ],
+      ),
+    Recipe(
+      'Zombie',
+      lines: const [
+        RecipeLine(Amount(1), 'part', ['gin']),
+      ],
+    ),
+  ],
+);
+
+/// Two worth making side by side at the top, each carrying a body tall enough
+/// to move whatever stands below it, and filler enough to leave the list
+/// scrollable. A draw here always lands on a row the reader can already see —
+/// which the package reaches by measuring pixels rather than by index, and so
+/// the one case a stale measurement throws off (ADR 13).
+const crowded = ['Aviation', 'Bramble'];
+
+final crowdedCollection = Collection(
+  ingredients: [
+    Ingredient('gin', stock: StockLevel.in_),
+    Ingredient('vodka'),
+  ],
+  recipes: [
+    for (final name in crowded)
+      Recipe(
+        name,
+        notes: 'Stir over ice.\nStrain.\nTwist of lemon.',
+        lines: const [
+          RecipeLine(Amount(1), 'part', ['gin']),
+        ],
+      ),
+    for (var filler = 1; filler <= 20; filler++)
+      Recipe(
+        'Filler ${filler.toString().padLeft(2, '0')}',
+        lines: const [
+          RecipeLine(Amount(1), 'part', ['vodka']),
+        ],
+      ),
+  ],
+);
+
+/// Two worth making on different bases, so a base pick is seen to govern what
+/// a roll may land on — without it the draw would move between them.
+final basedCollection = Collection(
+  ingredients: [
+    Ingredient('gin', stock: StockLevel.in_),
+    Ingredient('white rum', stock: StockLevel.in_),
+  ],
+  recipes: [
+    Recipe(
+      'Gin Fizz',
+      lines: const [
+        RecipeLine(Amount(1), 'part', ['gin'], mark: LineMark.base),
+      ],
+    ),
+    Recipe(
+      'Rum Fizz',
+      lines: const [
+        RecipeLine(Amount(1), 'part', ['white rum'], mark: LineMark.base),
+      ],
+    ),
+  ],
+);
+
+/// Two bases with rows enough behind each, and a tag on every second one, so
+/// every way of narrowing leaves a list that still scrolls — where a reader is
+/// put is a question with an answer only while there is somewhere else to be.
+const spirits = {'gin': 'Gin', 'vodka': 'Vodka'};
+
+final spiritedCollection = Collection(
+  ingredients: [
+    for (final spirit in spirits.keys)
+      Ingredient(spirit, stock: StockLevel.in_),
+  ],
+  recipeTags: const [Tag('sour', color: TagColor.sand)],
+  recipes: [
+    for (final spirit in spirits.entries)
+      for (var row = 1; row <= 20; row++)
+        Recipe(
+          '${spirit.value} ${row.toString().padLeft(2, '0')}',
+          tags: row.isEven ? const ['sour'] : const [],
+          lines: [
+            RecipeLine(const Amount(1), 'part', [
+              spirit.key,
+            ], mark: LineMark.base),
+          ],
+        ),
+  ],
+);
+
+/// A tag nothing wears, so the chips alone can empty the list.
+final untriedCollection = recipeCollection.withTag(
+  TagKind.recipe,
+  const Tag('tiki', color: TagColor.teal),
+);
+
+/// A recipe naming its tag in a case the vocabulary does not use — what a hand
+/// edit to an exported file leaves behind, and what `validateCollection`
+/// accepts, tag references resolving by the fold (ADR 08).
+final recasedTagCollection = recipeCollection.withRecipe(
+  recipeCollection.recipes
+      .firstWhere((recipe) => recipe.name == 'Whiskey Sour')
+      .copyWith(tags: const ['Sour', 'classic']),
+);
+
+/// An ingredient answering to a second name, so a search can reach a recipe by
+/// a spelling no line of it holds (FR-VOC-6).
+final aliasedCollection = recipeCollection.withIngredient(
+  Ingredient('gin', aliases: const ['juniper']),
+  replacing: 'gin',
+);
+
+/// What the verdict chip on the row named [name] reads.
+String verdictOn(WidgetTester tester, String name) => tester
+    .widget<Text>(
+      find.descendant(
+        of: find.descendant(
+          of: find.ancestor(
+            of: find.text(name),
+            matching: find.byType(ListTile),
+          ),
+          matching: find.byType(AvailabilityChip),
+        ),
+        matching: find.byType(Text),
+      ),
+    )
+    .data!;
+
+/// Two recipes of nothing but groups: one line for each way a group can read —
+/// an ingredient on hand, only a low one, nothing at all — and one carrying a
+/// mark, so the mark is seen to govern the group rather than an ingredient of
+/// it.
+final substitutedCollection = Collection(
+  ingredients: [
+    Ingredient('campari', stock: StockLevel.low),
+    Ingredient('cognac'),
+    Ingredient('gin', stock: StockLevel.in_),
+    Ingredient('sweet vermouth'),
+    Ingredient('vodka', stock: StockLevel.in_),
+  ],
+  recipes: [
+    Recipe(
+      'Sidecar',
+      lines: const [
+        RecipeLine(Amount(1), 'part', ['cognac', 'vodka']),
+        RecipeLine(Amount(1), 'part', ['cognac', 'campari']),
+        RecipeLine(Amount(1), 'part', ['cognac', 'sweet vermouth']),
+      ],
+    ),
+    Recipe(
+      'Gimlet',
+      lines: const [
+        RecipeLine(Amount(1), 'part', ['gin', 'vodka'], mark: LineMark.base),
+      ],
+    ),
+  ],
+);
+
+/// The runs the line reading [line] is drawn from — the one place a test
+/// reaches into a line's spans, however it means to judge them.
+List<TextSpan> runsOn(WidgetTester tester, String line) =>
+    (tester.widget<Text>(find.text(line)).textSpan! as TextSpan).children!
+        .cast<TextSpan>();
+
+/// The ingredients on the line reading [line] drawn in the dimmed ink — the
+/// ones a group offers that the bar cannot supply. They are the only runs
+/// carrying a colour of their own, so the colour is what tells them apart.
+List<String> dimmedOn(WidgetTester tester, String line) => [
+  for (final run in runsOn(tester, line))
+    if (run.style?.color != null) run.text!,
+];
+
+/// The ink those ingredients wear; fails the test where the line dims nothing.
+Color dimInkOn(WidgetTester tester, String line) => runsOn(
+  tester,
+  line,
+).firstWhere((run) => run.style?.color != null).style!.color!;
+
+/// What the dot beside the line reading [line] reports, or null when that line
+/// carries none — which is how an in-stock ingredient reads.
+StockLevel? dotOnLine(WidgetTester tester, String line) {
+  final dots = tester
+      .widgetList<StockDot>(
+        find.descendant(
+          of: find
+              .ancestor(of: find.text(line), matching: find.byType(Row))
+              .first,
+          matching: find.byType(StockDot),
+        ),
+      )
+      .toList();
+  return dots.isEmpty ? null : dots.single.stock;
+}
+
+/// The runs of the line reading [line] drawn in italics, joined: the "or" of a
+/// group, and the measure of a card not reading the amounts as written.
+String italicOn(WidgetTester tester, String line) => [
+  for (final run in runsOn(tester, line))
+    if (run.style?.fontStyle == FontStyle.italic) run.text!,
+].join();
+
+/// The reader who pours in ml (FR-SET-1) — a part is 30 ml, so the Negroni's
+/// three lines land on round numbers. A pick rather than a collection now: it
+/// is the bar's, not the recipes' (ADR 21).
+const inMillilitres = FixedUnit.ml;
+
+/// Settles that card's own dialog on [factor] and [unit], leaving whatever it
+/// does not name where the dialog opened it.
+Future<void> scale(
+  WidgetTester tester,
+  String name, {
+  int? factor,
+  String? unit,
+  String button = 'Apply',
+}) async {
+  await chooseOnRow(tester, name, 'Scale & convert');
+  if (factor != null) await tap(tester, find.text('×$factor'));
+  if (unit != null) await tap(tester, find.text(unit));
+  await tap(tester, find.text(button));
+}
+
+ProviderContainer _containerOn(WidgetTester tester) =>
+    ProviderScope.containerOf(
+      tester.element(find.byType(RecipesScreen)),
+      listen: false,
+    );
+
+/// The reading unit settled elsewhere while this screen stands (FR-SET-1) —
+/// the bar's, not the collection's (ADR 21), so nothing the list watches for
+/// its rows changes with it.
+Future<void> setDisplay(WidgetTester tester, FixedUnit display) async {
+  await _containerOn(tester).read(shelfProvider.notifier).setDisplay(display);
+  await tester.pumpAndSettle();
+}
+
+/// The collection rewritten under the reader, without their having touched
+/// anything: [recipe]'s notes, so every row is built afresh while what is on
+/// show, and the order it is in, both stand exactly as they did.
+Future<void> rewriteUnder(WidgetTester tester, String recipe) async {
+  final container = _containerOn(tester);
+  final collection = container.read(collectionProvider);
+  await container
+      .read(barWriterProvider)!
+      .upsertRecipe(
+        collection.recipeNamed(recipe)!.copyWith(notes: 'Stirred.'),
+      );
+  await tester.pumpAndSettle();
+}
+
+/// The whole shell over [bar], pumped past its startup load — [picker] being
+/// what the system's file picker answers a refresh with (FR-BAR-7). The one way
+/// a test reaches behaviour that only exists once the shell is standing.
+Future<void> pumpShell(
+  WidgetTester tester,
+  Bar bar, {
+  Collection? collection,
+  Future<String?> Function()? picker,
+}) => pumpApp(
+  tester,
+  store: MemoryBarStore.of(bar, collection ?? recipeCollection),
+  picker: picker,
+);
