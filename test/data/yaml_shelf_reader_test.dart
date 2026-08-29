@@ -263,7 +263,7 @@ bars:
         'bars:\n'
         '  - {id: a1, name: Ada, mode: owner}\n',
       );
-      expect(issues.single.issue.message, contains('open names no bar'));
+      expect(issues.single.issue.message, contains('not on the shelf'));
     });
 
     test('a duplicate id is reported', () {

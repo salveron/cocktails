@@ -47,15 +47,12 @@ const _barKeys = {
 };
 
 Bar? _readBar(YamlNode node, List<Object> path, List<ValidationIssue> issues) {
-  if (node is! YamlMap) {
-    report(issues, path, 'Bar entry must be a mapping', node);
-    return null;
-  }
-  checkKeys(node, _barKeys, path, issues);
-  final id = readText(node, 'id', path, issues, required: true);
-  final name = readText(node, 'name', path, issues, required: true);
+  final map = readMapping(node, path, issues, 'Bar entry', _barKeys);
+  if (map == null) return null;
+  final id = readText(map, 'id', path, issues, required: true);
+  final name = readText(map, 'name', path, issues, required: true);
   final mode = readToken(
-    node,
+    map,
     'mode',
     path,
     issues,
@@ -63,16 +60,16 @@ Bar? _readBar(YamlNode node, List<Object> path, List<ValidationIssue> issues) {
     values: BarMode.values,
     required: true,
   );
-  final display = readDisplay(node, path, issues);
-  final offers = _readOffers(node, path, issues);
-  final refreshed = _readStamp(node, 'refreshed', path, issues);
-  final updated = _readStamp(node, 'updated', path, issues);
-  final source = _readSource(node.nodes['source'], [...path, 'source'], issues);
-  final shopping = _readShopping(node.nodes['shopping'], [
+  final display = readDisplay(map, path, issues);
+  final offers = _readOffers(map, path, issues);
+  final refreshed = _readStamp(map, 'refreshed', path, issues);
+  final updated = _readStamp(map, 'updated', path, issues);
+  final source = _readSource(map.nodes['source'], [...path, 'source'], issues);
+  final shopping = _readShopping(map.nodes['shopping'], [
     ...path,
     'shopping',
   ], issues);
-  final summary = _readHolds(node.nodes['holds'], [...path, 'holds'], issues);
+  final summary = _readHolds(map.nodes['holds'], [...path, 'holds'], issues);
   if (id == null || name == null || mode == null) return null;
   return Bar(
     id: id,
@@ -111,23 +108,28 @@ ShoppingSettings _readShopping(
   List<ValidationIssue> issues,
 ) {
   const standing = ShoppingSettings();
-  if (node == null) return standing;
-  if (node is! YamlMap) {
-    report(issues, path, 'shopping must be a mapping', node);
-    return standing;
-  }
-  const keys = {'aim', 'budget', 'low', 'most', 'optional'};
-  checkKeys(node, keys, path, issues);
+  const keys = {
+    ShoppingSettings.aimToken,
+    ShoppingSettings.budgetToken,
+    ShoppingSettings.lowToken,
+    ShoppingSettings.mostToken,
+    ShoppingSettings.optionalToken,
+  };
+  final map = readMapping(node, path, issues, 'shopping', keys);
+  if (map == null) return standing;
   bool flag(String key, bool standing) =>
-      readBool(node, key, path, issues) ?? standing;
+      readBool(map, key, path, issues) ?? standing;
   int count(String key, int standing) =>
-      readInt(node, key, path, issues) ?? standing;
+      readInt(map, key, path, issues) ?? standing;
   return ShoppingSettings(
-    aiming: flag('aim', standing.aiming),
-    budget: count('budget', standing.budget),
-    restocking: flag('low', standing.restocking),
-    keptPerSize: count('most', standing.keptPerSize),
-    buyingOptional: flag('optional', standing.buyingOptional),
+    aiming: flag(ShoppingSettings.aimToken, standing.aiming),
+    budget: count(ShoppingSettings.budgetToken, standing.budget),
+    restocking: flag(ShoppingSettings.lowToken, standing.restocking),
+    keptPerSize: count(ShoppingSettings.mostToken, standing.keptPerSize),
+    buyingOptional: flag(
+      ShoppingSettings.optionalToken,
+      standing.buyingOptional,
+    ),
   );
 }
 
@@ -154,15 +156,13 @@ Map<Holding, int>? _readHolds(
   List<Object> path,
   List<ValidationIssue> issues,
 ) {
-  if (node == null) return null;
-  if (node is! YamlMap) {
-    report(issues, path, 'holds must be a mapping', node);
-    return null;
-  }
-  checkKeys(node, {for (final h in Holding.values) h.token}, path, issues);
+  final map = readMapping(node, path, issues, 'holds', {
+    for (final h in Holding.values) h.token,
+  });
+  if (map == null) return null;
   final holds = <Holding, int>{};
   for (final holding in Holding.values) {
-    final count = readInt(node, holding.token, path, issues, atLeast: 0);
+    final count = readInt(map, holding.token, path, issues, atLeast: 0);
     if (count == null) return null;
     holds[holding] = count;
   }
@@ -174,15 +174,15 @@ Offer? _readOffer(
   List<Object> path,
   List<ValidationIssue> issues,
 ) {
-  if (node is! YamlMap) {
-    report(issues, path, 'Offer entry must be a mapping', node);
-    return null;
-  }
-  checkKeys(node, const {'via', 'guests'}, path, issues);
-  final via = _readTransport(node, path, issues);
+  final map = readMapping(node, path, issues, 'Offer entry', const {
+    'via',
+    'guests',
+  });
+  if (map == null) return null;
+  final via = _readTransport(map, path, issues);
   return via == null
       ? null
-      : (via: via, guests: readNames(node, 'guests', path, issues, 'Guest'));
+      : (via: via, guests: readNames(map, 'guests', path, issues, 'Guest'));
 }
 
 BarSource? _readSource(
@@ -190,15 +190,15 @@ BarSource? _readSource(
   List<Object> path,
   List<ValidationIssue> issues,
 ) {
-  if (node == null) return null;
-  if (node is! YamlMap) {
-    report(issues, path, 'source must be a mapping', node);
-    return null;
-  }
-  checkKeys(node, const {'via', 'at', 'from'}, path, issues);
-  final via = _readTransport(node, path, issues);
-  final at = readText(node, 'at', path, issues, required: true);
-  final from = readText(node, 'from', path, issues, required: true);
+  final map = readMapping(node, path, issues, 'source', const {
+    'via',
+    'at',
+    'from',
+  });
+  if (map == null) return null;
+  final via = _readTransport(map, path, issues);
+  final at = readText(map, 'at', path, issues, required: true);
+  final from = readText(map, 'from', path, issues, required: true);
   return via == null || at == null || from == null
       ? null
       : BarSource(via: via, at: at, from: from);

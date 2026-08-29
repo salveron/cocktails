@@ -19,8 +19,7 @@ int compareNames(String a, String b) => nameKey(a).compareTo(nameKey(b));
 /// Whether [name] already stands in [seen]; adds it either way.
 bool repeatsName(Set<String> seen, String name) => !seen.add(nameKey(name));
 
-/// Whether [name] is not the one being excluded (ADR-08) — the "everyone but
-/// this one" rule a rename shares with every vocabulary it can appear in.
+/// Whether [name] is not the one being excluded (ADR-08).
 bool isOtherName(String name, String? except) =>
     except == null || !name.sameName(except);
 
@@ -32,6 +31,10 @@ List<int> duplicateNameIndexes(List<String> names) {
       if (repeatsName(seen, names[i])) i,
   ];
 }
+
+/// Wording shared by collection.dart's throw and validation.dart's report.
+String duplicateNameMessage(String kind, String name) =>
+    'Duplicate $kind name: "$name"';
 
 /// Element-wise equality check.
 bool listEquals<T>(List<T> a, List<T> b) {

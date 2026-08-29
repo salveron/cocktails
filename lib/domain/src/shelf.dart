@@ -224,15 +224,12 @@ final class Shelf {
   Shelf({List<Bar> bars = const [], this.openId, Collection? collection})
     : bars = List.unmodifiable(bars),
       collection = collection ?? Collection() {
-    final seen = <String>{};
-    for (final bar in this.bars) {
-      if (!seen.add(bar.id)) {
-        throw ArgumentError('Duplicate bar id: "${bar.id}"');
-      }
-      _requireCoherent(bar);
+    final problems = shelfProblems(bars: this.bars, openId: openId);
+    if (problems.isNotEmpty) {
+      throw ArgumentError(problems.first.message);
     }
-    if (openId != null && !seen.contains(openId)) {
-      throw ArgumentError('Open bar is not on the shelf: "$openId"');
+    for (final bar in this.bars) {
+      _requireCoherent(bar);
     }
   }
 
@@ -285,6 +282,36 @@ typedef _CoherenceProblem = ({
   String message,
   bool duplicate,
 });
+
+/// The shelf's own coherence, beyond any one bar's ([coherenceProblems]): no
+/// two bars share an id — compared exactly, ADR-08's fold being a rule for
+/// names, not ids — and the open bar, if any, is one of them. The [Shelf]
+/// constructor throws the first; shelf_validation.dart's `validateShelf`
+/// reports every one, so the rule and its wording live once for both.
+List<({List<Object> path, String message, bool duplicate})> shelfProblems({
+  required List<Bar> bars,
+  String? openId,
+}) {
+  final problems = <_CoherenceProblem>[];
+  final seen = <String>{};
+  for (var i = 0; i < bars.length; i++) {
+    if (!seen.add(bars[i].id)) {
+      problems.add((
+        path: ['bars', i, 'id'],
+        message: 'Duplicate bar id: "${bars[i].id}"',
+        duplicate: true,
+      ));
+    }
+  }
+  if (openId != null && !seen.contains(openId)) {
+    problems.add((
+      path: const ['open'],
+      message: 'Open bar is not on the shelf: "$openId"',
+      duplicate: false,
+    ));
+  }
+  return problems;
+}
 
 List<_CoherenceProblem> _ownedProblems(Bar bar) {
   final problems = <_CoherenceProblem>[];

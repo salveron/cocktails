@@ -24,9 +24,18 @@ final class ShoppingSettings {
   final bool restocking;
 
   /// The best few of each size (ADR 15), and whether an optional line is short
-  /// at all (FR-REC-3). Read and written under its own wire token, `most`.
+  /// at all (FR-REC-3).
   final int keptPerSize;
   final bool buyingOptional;
+
+  /// Wire tokens, declared here rather than left as bare literals in data/
+  /// (collection.dart's rule for every other value): a rename of the field
+  /// above must not move the format.
+  static const aimToken = 'aim';
+  static const budgetToken = 'budget';
+  static const lowToken = 'low';
+  static const mostToken = 'most';
+  static const optionalToken = 'optional';
 
   const ShoppingSettings({
     this.aiming = false,

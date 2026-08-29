@@ -10,32 +10,34 @@ import 'validation.dart';
 /// bars may carry one (FR-BAR-1). Paths follow the index's keys, `open`
 /// before `bars` as the file writes them.
 List<ValidationIssue> validateShelf({required List<Bar> bars, String? openId}) {
-  final issues = <ValidationIssue>[];
-  final ids = {for (final bar in bars) bar.id};
-  if (openId != null && !ids.contains(openId)) {
-    issues.add(
-      ValidationIssue(
-        const ['open'],
-        ValidationIssueKind.malformedValue,
-        'open names no bar on the shelf: "$openId"',
-      ),
-    );
-  }
-  final seen = <String>{};
+  final structural = shelfProblems(bars: bars, openId: openId);
+  final issues = <ValidationIssue>[
+    for (final problem in structural)
+      if (problem.path.first == 'open')
+        ValidationIssue(
+          problem.path,
+          ValidationIssueKind.malformedValue,
+          problem.message,
+        ),
+  ];
+  final duplicateIds = {
+    for (final problem in structural)
+      if (problem.path.first == 'bars') problem.path[1] as int: problem.message,
+  };
   for (var i = 0; i < bars.length; i++) {
-    _checkBar(issues, bars[i], i, seen);
+    _checkBar(issues, bars[i], i, duplicateIds[i]);
   }
   return issues;
 }
 
 /// One bar's id (empty, and duplicate among ids minted rather than written —
-/// compared exactly, ADR-08's fold being a rule for names, not ids), its name,
-/// and the half of its record its mode allows it.
+/// [shelfProblems] already found which), its name, and the half of its
+/// record its mode allows it.
 void _checkBar(
   List<ValidationIssue> issues,
   Bar bar,
   int index,
-  Set<String> seenIds,
+  String? duplicateIdMessage,
 ) {
   addProblems(
     issues,
@@ -44,11 +46,11 @@ void _checkBar(
       bar.id.isEmpty
           ? (kind: ValidationIssueKind.emptyName, message: 'Empty bar id')
           : null,
-      seenIds.add(bar.id)
+      duplicateIdMessage == null
           ? null
           : (
               kind: ValidationIssueKind.duplicateName,
-              message: 'Duplicate bar id: "${bar.id}"',
+              message: duplicateIdMessage,
             ),
     ],
   );

@@ -138,11 +138,11 @@ String _stamp(DateTime at) =>
 /// nothing in it has moved, and a reader hand-editing one key should find the
 /// other four beside it rather than have to know what they defaulted to.
 String _shopping(ShoppingSettings shopping) => _flowMap([
-  'aim: ${shopping.aiming}',
-  'budget: ${shopping.budget}',
-  'low: ${shopping.restocking}',
-  'most: ${shopping.keptPerSize}',
-  'optional: ${shopping.buyingOptional}',
+  '${ShoppingSettings.aimToken}: ${shopping.aiming}',
+  '${ShoppingSettings.budgetToken}: ${shopping.budget}',
+  '${ShoppingSettings.lowToken}: ${shopping.restocking}',
+  '${ShoppingSettings.mostToken}: ${shopping.keptPerSize}',
+  '${ShoppingSettings.optionalToken}: ${shopping.buyingOptional}',
 ]);
 
 /// Every kind, in [Holding]'s own order and including the zeroes: a summary

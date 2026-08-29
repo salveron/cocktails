@@ -246,7 +246,12 @@ asked the question.
   with `channels_test.dart` taking the group that already tested it. `loadIssuesProvider` read
   as a second subject was not one: every assertion on it observes a load through the controller
   that is its only writer, so it stays. Depends: M36k.
-- [ ] **M38** — One home per algorithm: domain and data. Delivers: the three bar rules written once rather than twice, one `Outcome` reading in `ShelfController`, one `readMapping` behind eleven copies, the shopping wire tokens beside the fields they name. Depends: M37.
+- [x] **M38** — One home per algorithm: domain and data. Delivers: `shelfProblems` and
+  `duplicateNameMessage` behind the shelf's and the collection's own duplicate rules, one
+  `Outcome`-reading helper behind `ShelfController`'s two collection reads, `readMapping` behind
+  every "must be a mapping" guard in `yaml_bar_reader.dart` and `yaml_shelf_reader.dart`, and
+  `ShoppingSettings`'s wire tokens declared beside the fields they name rather than left as bare
+  literals in `data/`. Depends: M37.
 - [ ] **M39** — One home per algorithm: UI. Delivers: one write-gate idiom across three list screens, `bars_screen`'s two missing `mounted` guards, three declarations moved to files that own them, `ListFilter.picks` split by meaning, card and row settled. Depends: M38.
 - [ ] **M40** — The domain finds its shape. Delivers: [ADR 26](adr/), `domain/src/{collection,shopping,shelf}/` over four shared files, `Bar.shopping` owner-only, and the renames the move carries. Depends: M39.
 - [ ] **M41** — The tests find their level. Delivers: `barChannelContract` and an override escape hatch before Phase 11 needs them, `ui_test_support` split three ways, `architecture_test`'s sanity block as a table. Depends: M40.

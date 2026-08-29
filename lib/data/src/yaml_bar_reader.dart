@@ -91,15 +91,14 @@ String _readBarName(YamlMap root, List<ValidationIssue> issues) =>
 /// belongs to the reader, so [readDisplay] takes it out separately (ADR 21).
 Settings _readSettings(YamlNode? node, List<ValidationIssue> issues) {
   const defaults = Settings();
-  if (node is! YamlMap) {
-    if (node != null) {
-      report(issues, const ['settings'], 'settings must be a mapping', node);
-    }
-    return defaults;
-  }
   const path = ['settings'];
-  checkKeys(node, const {'part_ml', 'oz_ml', 'display'}, path, issues);
-  double? size(String key) => readDouble(node, key, path, issues);
+  final map = readMapping(node, path, issues, 'settings', const {
+    'part_ml',
+    'oz_ml',
+    'display',
+  });
+  if (map == null) return defaults;
+  double? size(String key) => readDouble(map, key, path, issues);
   return Settings(
     partMl: size('part_ml') ?? defaults.partMl,
     ozMl: size('oz_ml') ?? defaults.ozMl,
@@ -112,13 +111,13 @@ Unit? _readUnit(
   List<Object> path,
   List<ValidationIssue> issues,
 ) {
-  if (node is! YamlMap) {
-    report(issues, path, 'Unit entry must be a mapping', node);
-    return null;
-  }
-  checkKeys(node, const {'name', 'plural'}, path, issues);
-  final name = readText(node, 'name', path, issues, required: true);
-  final plural = readText(node, 'plural', path, issues) ?? '';
+  final map = readMapping(node, path, issues, 'Unit entry', const {
+    'name',
+    'plural',
+  });
+  if (map == null) return null;
+  final name = readText(map, 'name', path, issues, required: true);
+  final plural = readText(map, 'plural', path, issues) ?? '';
   return name == null ? null : Unit(name, plural: plural);
 }
 
@@ -127,15 +126,17 @@ Ingredient? _readIngredient(
   List<Object> path,
   List<ValidationIssue> issues,
 ) {
-  if (node is! YamlMap) {
-    report(issues, path, 'Ingredient entry must be a mapping', node);
-    return null;
-  }
-  checkKeys(node, const {'name', 'stock', 'tags', 'aliases'}, path, issues);
-  final name = readText(node, 'name', path, issues, required: true);
+  final map = readMapping(node, path, issues, 'Ingredient entry', const {
+    'name',
+    'stock',
+    'tags',
+    'aliases',
+  });
+  if (map == null) return null;
+  final name = readText(map, 'name', path, issues, required: true);
   final stock =
       readToken(
-        node,
+        map,
         'stock',
         path,
         issues,
@@ -143,8 +144,8 @@ Ingredient? _readIngredient(
         values: StockLevel.values,
       ) ??
       StockLevel.out;
-  final aliases = readNames(node, 'aliases', path, issues, 'Alias');
-  final tags = readNames(node, 'tags', path, issues, 'Tag');
+  final aliases = readNames(map, 'aliases', path, issues, 'Alias');
+  final tags = readNames(map, 'tags', path, issues, 'Tag');
   return name == null
       ? null
       : Ingredient(name, stock: stock, aliases: aliases, tags: tags);
@@ -152,14 +153,14 @@ Ingredient? _readIngredient(
 
 /// Unlike `stock`, `color` is required; every tag carries one (ADR-07).
 Tag? _readTag(YamlNode node, List<Object> path, List<ValidationIssue> issues) {
-  if (node is! YamlMap) {
-    report(issues, path, 'Tag entry must be a mapping', node);
-    return null;
-  }
-  checkKeys(node, const {'name', 'color'}, path, issues);
-  final name = readText(node, 'name', path, issues, required: true);
+  final map = readMapping(node, path, issues, 'Tag entry', const {
+    'name',
+    'color',
+  });
+  if (map == null) return null;
+  final name = readText(map, 'name', path, issues, required: true);
   final color = readToken(
-    node,
+    map,
     'color',
     path,
     issues,
@@ -176,18 +177,15 @@ Recipe? _readRecipe(
   List<ValidationIssue> issues,
   List<Unit> units,
 ) {
-  if (node is! YamlMap) {
-    report(issues, path, 'Recipe entry must be a mapping', node);
-    return null;
-  }
   // `made` is accepted and ignored, whatever it holds: the key left the product
   // with FR-REC-6, and a file already on a device keeps opening (ADR 21).
   const keys = {'name', 'tags', 'lines', 'notes', 'made'};
-  checkKeys(node, keys, path, issues);
-  final name = readText(node, 'name', path, issues, required: true);
-  final tags = readNames(node, 'tags', path, issues, 'Tag');
+  final map = readMapping(node, path, issues, 'Recipe entry', keys);
+  if (map == null) return null;
+  final name = readText(map, 'name', path, issues, required: true);
+  final tags = readNames(map, 'tags', path, issues, 'Tag');
   final lines = <RecipeLine>[];
-  forEachEntry(node, 'lines', path, issues, (entryNode, entryPath) {
+  forEachEntry(map, 'lines', path, issues, (entryNode, entryPath) {
     final text = stringValue(entryNode, entryPath, issues, 'Recipe line');
     if (text == null) return;
     final parsed = tryParseRecipeLine(text, units);
@@ -204,7 +202,7 @@ Recipe? _readRecipe(
       lines.add(line);
     }
   });
-  final notes = readText(node, 'notes', path, issues) ?? '';
+  final notes = readText(map, 'notes', path, issues) ?? '';
   if (name == null) return null;
   return Recipe(name, tags: tags, lines: lines, notes: notes);
 }

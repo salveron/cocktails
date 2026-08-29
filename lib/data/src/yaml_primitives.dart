@@ -53,6 +53,27 @@ MapEntry<YamlNode, YamlNode>? _entryNamed(YamlMap map, String key) {
   return null;
 }
 
+/// [node] as a mapping, its keys checked against [known] — the guard, the
+/// null check and the key check every reader repeats before reading fields
+/// off one. Null where [node] is absent (the caller's own default stands,
+/// unreported) or where it named something else, reported as [what] "must
+/// be a mapping".
+YamlMap? readMapping(
+  YamlNode? node,
+  List<Object> path,
+  List<ValidationIssue> issues,
+  String what,
+  Set<String> known,
+) {
+  if (node == null) return null;
+  if (node is! YamlMap) {
+    report(issues, path, '$what must be a mapping', node);
+    return null;
+  }
+  checkKeys(node, known, path, issues);
+  return node;
+}
+
 /// Unknown keys are structural errors; misspelled keys silently lose data.
 void checkKeys(
   YamlMap map,

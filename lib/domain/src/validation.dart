@@ -336,7 +336,7 @@ List<ValidationIssue> checkName(
 
 Problem _duplicateProblem(String entity, String name) => (
   kind: ValidationIssueKind.duplicateName,
-  message: 'Duplicate $entity name: "$name"',
+  message: duplicateNameMessage(entity, name),
 );
 
 /// All non-null problems as issues sharing one [path].

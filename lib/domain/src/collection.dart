@@ -587,6 +587,6 @@ List<Tag> wornInOrder(List<Tag> vocabulary, Iterable<String> worn) {
 void _requireUniqueNames(String kind, List<String> names) {
   final duplicates = duplicateNameIndexes(names);
   if (duplicates.isNotEmpty) {
-    throw ArgumentError('Duplicate $kind name: "${names[duplicates.first]}"');
+    throw ArgumentError(duplicateNameMessage(kind, names[duplicates.first]));
   }
 }

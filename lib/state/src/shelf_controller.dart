@@ -18,9 +18,8 @@ final shelfProvider = AsyncNotifierProvider<ShelfController, Shelf>(
 );
 
 /// What the last load — startup or crossing — turned up (FR-DAT-4). Ordinary
-/// state written by the load itself: a field read off the controller would only
-/// be right while every write set it before the shelf moved, which is an
-/// invariant nothing could enforce.
+/// state: a field on the controller would only be right while every write set
+/// it before the shelf moved, an invariant nothing could enforce.
 final loadIssuesProvider = NotifierProvider<LoadIssuesController, List<String>>(
   LoadIssuesController.new,
 );
@@ -72,10 +71,9 @@ final class ShelfController extends AsyncNotifier<Shelf> {
 
   /// An index written before a bar was ever summarised carries no counts for
   /// it, and the bar list reads counts alone (ADR 20). Each such bar is read
-  /// once here, under the startup spinner, and the index is written back
-  /// holding what they turned out to be — so this runs once per bar, ever. A
-  /// bar that cannot be read keeps its absent summary rather than gaining one
-  /// saying it holds nothing.
+  /// once here, under the startup spinner, and written back holding the count
+  /// — so this runs once per bar, ever. One that cannot be read keeps its
+  /// absent summary rather than gaining one saying it holds nothing.
   Future<Shelf> _summarising(BarStore store, Shelf shelf) async {
     final counted = <Bar>[];
     for (final bar in shelf.bars) {
@@ -102,7 +100,11 @@ final class ShelfController extends AsyncNotifier<Shelf> {
   /// unreadable and no backup decoded. A file that never landed is the empty
   /// collection opening it would give, which is a real answer.
   Future<Collection?> _readableCollectionOf(BarStore store, String id) async =>
-      switch (await store.loadBar(id)) {
+      _collectionFrom(await store.loadBar(id));
+
+  /// The one outcome reading: as is here, coalesced in [_collectionOf].
+  static Collection? _collectionFrom(Outcome<BarContent> outcome) =>
+      switch (outcome) {
         Ok(:final value) => value.collection,
         Empty() => Collection(),
         Rejected(:final recovered) => recovered?.collection,
@@ -129,12 +131,7 @@ final class ShelfController extends AsyncNotifier<Shelf> {
     if (loaded is Rejected<BarContent>) {
       issues.addAll(_described(loaded.issues));
     }
-    return switch (loaded) {
-      Ok(:final value) => value.collection,
-      Empty() => Collection(),
-      Rejected(:final recovered) => recovered?.collection ?? Collection(),
-      Unreachable() => Collection(),
-    };
+    return _collectionFrom(loaded) ?? Collection();
   }
 
   /// The unit amounts read in: on the controller rather than the writer, being
@@ -347,10 +344,9 @@ final class ShelfController extends AsyncNotifier<Shelf> {
   void _report(List<String> issues) =>
       ref.read(loadIssuesProvider.notifier).report(issues);
 
-  /// Publish, then persist only what moved: a stock tap rewrites one bar's file
-  /// and a unit pick only the index, neither rotating the other's backups. A
-  /// collection is written only where the bar under it stayed put — which tells
-  /// an edit from a crossing, whose collection came up from disk already.
+  /// Publish, then persist only what moved: a stock tap rewrites one bar's
+  /// file, a unit pick only the index, and a crossing — its collection
+  /// already up from disk — neither, so no backup rotates needlessly.
   Future<void> _publish(Shelf edited) async {
     final standing = state.requireValue;
     if (edited == standing) return;
