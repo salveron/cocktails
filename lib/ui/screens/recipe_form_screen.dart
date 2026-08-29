@@ -6,13 +6,13 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../toggling.dart';
 import '../widgets/chips/tag_choices.dart';
 import '../widgets/dialogs/confirm_dialog.dart';
 import '../widgets/forms/editor_form.dart';
 import '../widgets/forms/field_issues.dart';
 import '../widgets/forms/form_fields.dart';
-import '../widgets/lists/list_terms.dart' show ToggleMembership;
-import '../widgets/notices/failures.dart';
+import '../widgets/notices/snackbar.dart';
 
 /// One pushed page for creating and editing a recipe (FR-REC-1..5/8): the
 /// name, the ingredient lines typed in the file's own grammar, the tag picker,

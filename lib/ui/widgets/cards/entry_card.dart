@@ -61,8 +61,8 @@ class EntryCard extends StatelessWidget {
 /// An [EntryCard] that opens in place: [subtitle] shown only while collapsed,
 /// [body] only while [open]. Built regardless of [open] — a body no reader
 /// can see costs nothing unlaid-out.
-class ExpandingRow extends StatelessWidget {
-  const ExpandingRow({
+class ExpandingCard extends StatelessWidget {
+  const ExpandingCard({
     required this.open,
     required this.title,
     this.subtitle,

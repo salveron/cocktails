@@ -135,7 +135,7 @@ class _BarsScreenState extends ConsumerState<BarsScreen> {
       hintText: 'What to name it',
       initial: bar.name,
     );
-    if (name == null) return;
+    if (name == null || !mounted) return;
     await ref.read(shelfProvider.notifier).renameBar(bar.id, name);
   }
 
@@ -149,7 +149,7 @@ class _BarsScreenState extends ConsumerState<BarsScreen> {
       cancel: 'Cancel',
       confirm: 'Delete',
     );
-    if (!agreed) return;
+    if (!agreed || !mounted) return;
     await ref.read(shelfProvider.notifier).removeBar(bar.id);
   }
 

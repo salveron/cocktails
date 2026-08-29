@@ -252,7 +252,16 @@ asked the question.
   every "must be a mapping" guard in `yaml_bar_reader.dart` and `yaml_shelf_reader.dart`, and
   `ShoppingSettings`'s wire tokens declared beside the fields they name rather than left as bare
   literals in `data/`. Depends: M37.
-- [ ] **M39** — One home per algorithm: UI. Delivers: one write-gate idiom across three list screens, `bars_screen`'s two missing `mounted` guards, three declarations moved to files that own them, `ListFilter.picks` split by meaning, card and row settled. Depends: M38.
+- [x] **M39** — One home per algorithm: UI. Delivers: one write-gate idiom across `recipes_screen`,
+  `ingredients_screen` and `tags_screen` — a caller-built `RowMenu` actions map rather than nullable
+  callbacks or a force-unwrapped writer; `bars_screen`'s two missing `mounted` guards after an
+  awaited dialog, and `ingredients_screen` settled on bare `mounted` over `context.mounted`;
+  `ToggleMembership` moved to a new loose `ui/toggling.dart` (three of its importers were not
+  lists), `AmountView`/`restingView` moved into `scale_dialog.dart` (no longer forcing a dialog to
+  import a card for a typedef), and `say`/`wentThrough` split into a new `notices/snackbar.dart`
+  (used for successes as often as failures); `ListFilter.tagPicks` added beside `picks` so a tag
+  filter's names and a base filter's prose can no longer collide in one field; `RecipeRow` →
+  `RecipeCard`, `_IngredientRow` → `_IngredientCard`, `ExpandingRow` → `ExpandingCard`. Depends: M38.
 - [ ] **M40** — The domain finds its shape. Delivers: [ADR 26](adr/), `domain/src/{collection,shopping,shelf}/` over four shared files, `Bar.shopping` owner-only, and the renames the move carries. Depends: M39.
 - [ ] **M41** — The tests find their level. Delivers: `barChannelContract` and an override escape hatch before Phase 11 needs them, `ui_test_support` split three ways, `architecture_test`'s sanity block as a table. Depends: M40.
 - [ ] **M42** — The docs say less, and mean it. Delivers: the signature fences out of [components.md](components.md), the roadmap's history to git, the ADRs' amendment narration trimmed, and an anchor-resolution check over all 115 links. Depends: M41.

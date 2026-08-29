@@ -5,8 +5,8 @@ library;
 import 'package:cocktails/domain/domain.dart';
 import 'package:flutter/material.dart';
 
+import '../../toggling.dart';
 import '../../wording.dart';
-import '../lists/list_terms.dart' show ToggleMembership;
 import 'bullet_runs.dart';
 import 'entry_card.dart';
 
@@ -55,7 +55,7 @@ class _HoldingCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final empty = holding.count == 0;
-    return ExpandingRow(
+    return ExpandingCard(
       margin: const EdgeInsets.symmetric(vertical: 4),
       open: open,
       title: Text(counted(holding.count, holding.kind.noun)),

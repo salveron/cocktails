@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../destinations.dart';
 import '../theme.dart';
+import '../toggling.dart';
 import '../wording.dart';
 import '../widgets/cards/bullet_runs.dart';
 import '../widgets/cards/entry_card.dart';
@@ -78,13 +79,13 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
       purchasesProvider(
         ShoppingQuery(
           restocking: restocking,
-          aimedAt: aiming ? filter?.picks ?? const [] : const [],
+          aimedAt: aiming ? filter?.tagPicks ?? const [] : const [],
         ),
       ),
     );
     // Off `tagFilter`'s own published picks rather than `_picked` again, so
     // nothing is dotted by a pick that stopped narrowing.
-    final lit = wornInOrder(tags, filter?.picks ?? const []);
+    final lit = wornInOrder(tags, filter?.tagPicks ?? const []);
     final onShow = _ranked(purchases, budget, filter);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -150,8 +151,9 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
     return (
       row: sifting.row,
       test: (_) => true,
-      narrowing: sifting.picks.isEmpty ? null : 'any tag picked',
+      narrowing: sifting.tagPicks.isEmpty ? null : 'any tag picked',
       picks: sifting.picks,
+      tagPicks: sifting.tagPicks,
     );
   }
 }
@@ -230,7 +232,7 @@ class _BasketCard extends StatelessWidget {
   final VoidCallback onToggle;
 
   @override
-  Widget build(BuildContext context) => ExpandingRow(
+  Widget build(BuildContext context) => ExpandingCard(
     open: open,
     title: Text('Shopping Cart #$rank'),
     subtitle: _ingredientsOf(purchase),

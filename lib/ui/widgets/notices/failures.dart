@@ -1,10 +1,10 @@
 /// What the app could not do, put to the reader: the two banners standing above
 /// every destination — the last load's issues (FR-DAT-4) and the open bar's last
-/// refresh where it did not land (FR-BAR-5) — the refusal a picked file gets,
-/// and the snackbar a refused action speaks through. Two banners rather than
-/// one, a torn file on disk and a source that would not answer being different
-/// news; one home for the words, so a failure is worded once however the
-/// reader meets it.
+/// refresh where it did not land (FR-BAR-5) — and the refusal a picked file
+/// gets. Two banners rather than one, a torn file on disk and a source that
+/// would not answer being different news; one home for the words, so a
+/// failure is worded once however the reader meets it. `snackbar.dart` carries
+/// the shape a spoken message takes, failure or success alike.
 library;
 
 import 'package:cocktails/domain/domain.dart';
@@ -117,28 +117,6 @@ String _because(UnreachableReason why) => switch (why) {
   UnreachableReason.notFound => 'its source could not be found.',
   UnreachableReason.withdrawn => 'its owner has stopped sharing it.',
 };
-
-/// Puts [text] on the snackbar the messenger already knows — the one shape
-/// every message reaches a reader through, [wentThrough]'s failure included.
-void say(ScaffoldMessengerState messenger, String text) =>
-    messenger.showSnackBar(SnackBar(content: Text(text)));
-
-/// Runs [action] and answers whether it got through, [refusal] leading the
-/// snackbar where it did not. Every failure speaks, not only the `Exception`s:
-/// nothing caught would read as nothing happening, the one outcome worse.
-Future<bool> wentThrough(
-  ScaffoldMessengerState messenger,
-  String refusal,
-  Future<void> Function() action,
-) async {
-  try {
-    await action();
-    return true;
-  } catch (error) {
-    say(messenger, '$refusal: $error');
-    return false;
-  }
-}
 
 class _Banner extends StatelessWidget {
   const _Banner(this.said, {required this.onDismiss});

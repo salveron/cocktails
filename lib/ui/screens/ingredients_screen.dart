@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../destinations.dart';
+import '../toggling.dart';
 import '../widgets/cards/entry_card.dart';
 import '../widgets/chips/color_marks.dart';
 import '../widgets/chips/tag_choices.dart';
@@ -52,13 +53,23 @@ class _IngredientsScreenState extends ConsumerState<IngredientsScreen>
       entries: collection.ingredients,
       nameOf: (ingredient) => ingredient.name,
       spellingsOf: (ingredient) => ingredient.spellings,
-      rowOf: (ingredient) => _IngredientRow(
+      rowOf: (ingredient) => _IngredientCard(
         tags: tags,
         ingredient: ingredient,
-        writer: writer,
-        onEdit: () =>
-            unawaited(_editIngredient(writer!, collection, tags, ingredient)),
-        onDelete: () => unawaited(_delete(writer!, collection, ingredient)),
+        onTap: writer == null
+            ? null
+            : () => unawaited(
+                writer.setStock(ingredient.name, ingredient.stock.next),
+              ),
+        actions: writer == null
+            ? const {}
+            : {
+                'Edit': () => unawaited(
+                  _editIngredient(writer, collection, tags, ingredient),
+                ),
+                'Delete': () =>
+                    unawaited(_delete(writer, collection, ingredient)),
+              },
       ),
       onAdd: writer == null
           ? null
@@ -102,7 +113,7 @@ class _IngredientsScreenState extends ConsumerState<IngredientsScreen>
       tags: tags,
       initial: query,
     );
-    if (added == null || !context.mounted) return false;
+    if (added == null || !mounted) return false;
     await writer.upsertIngredient(
       Ingredient(added.name, aliases: added.aliases, tags: added.tags),
     );
@@ -127,7 +138,7 @@ class _IngredientsScreenState extends ConsumerState<IngredientsScreen>
       chosen: ingredient.tags,
       initial: ingredient.name,
     );
-    if (edited == null || !context.mounted) return;
+    if (edited == null || !mounted) return;
     await writer.upsertIngredient(
       ingredient.copyWith(
         name: edited.name,
@@ -149,7 +160,7 @@ class _IngredientsScreenState extends ConsumerState<IngredientsScreen>
       blockedBy: collection.recipesUsingIngredient(ingredient.name),
       blockedByNoun: 'recipes',
     );
-    if (!confirmed || !context.mounted) return;
+    if (!confirmed || !mounted) return;
     await writer.removeIngredient(ingredient.name);
   }
 }
@@ -157,41 +168,30 @@ class _IngredientsScreenState extends ConsumerState<IngredientsScreen>
 /// Row tap toggles stock (in → low → out → in); vocab actions use ⋮. On a
 /// guest bar the stock is the owner's reading of their own shelf, so the row
 /// keeps its chip and loses both — a tap that changed it would be the reader
-/// judging one bar by another (FR-BAR-4).
-class _IngredientRow extends StatelessWidget {
-  const _IngredientRow({
+/// judging one bar by another (FR-BAR-4). [onTap] and [actions] arrive built
+/// from the screen's own writer, empty or null where it has none.
+class _IngredientCard extends StatelessWidget {
+  const _IngredientCard({
     required this.tags,
     required this.ingredient,
-    required this.writer,
-    required this.onEdit,
-    required this.onDelete,
+    required this.onTap,
+    required this.actions,
   });
 
   final List<Tag> tags;
   final Ingredient ingredient;
-  final BarWriter? writer;
-  final VoidCallback onEdit;
-  final VoidCallback onDelete;
+  final VoidCallback? onTap;
+  final Map<String, VoidCallback> actions;
 
   @override
-  Widget build(BuildContext context) {
-    final writer = this.writer;
-    return EntryCard(
-      title: DottedName(ingredient.name, tags: tags, worn: ingredient.tags),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          StockChip(ingredient.stock),
-          if (writer != null) RowMenu({'Edit': onEdit, 'Delete': onDelete}),
-        ],
-      ),
-      onTap: writer == null
-          ? null
-          : () => unawaited(
-              writer.setStock(ingredient.name, ingredient.stock.next),
-            ),
-    );
-  }
+  Widget build(BuildContext context) => EntryCard(
+    title: DottedName(ingredient.name, tags: tags, worn: ingredient.tags),
+    trailing: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [StockChip(ingredient.stock), RowMenu(actions)],
+    ),
+    onTap: onTap,
+  );
 }
 
 /// The vocabulary's own rules over the entry as the dialog has it — every

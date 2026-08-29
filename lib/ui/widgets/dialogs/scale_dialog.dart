@@ -6,9 +6,14 @@ import 'package:cocktails/domain/domain.dart';
 import 'package:flutter/material.dart';
 
 import '../../theme.dart';
-import '../cards/recipe_card.dart';
 import '../forms/form_fields.dart';
 import 'dialog_frame.dart';
+
+/// A card's own scale factor and display unit; display only (FR-REC-7, FR-SET-1).
+typedef AmountView = ({int scale, FixedUnit unit});
+
+/// Where a card rests until scaled or converted (ADR 17, ADR 21).
+AmountView restingView(FixedUnit display) => (scale: 1, unit: display);
 
 /// Reads the open card at another factor, in another unit, or both — for as
 /// long as it stays open (FR-REC-7). Nothing about the recipe changes, so the

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../widgets/notices/failures.dart';
+import '../widgets/notices/snackbar.dart';
 import 'amounts_screen.dart';
 import 'bar_form_screen.dart';
 import 'bars_screen.dart';

@@ -94,6 +94,9 @@ ListFilter<Recipe>? baseFilter(
     test: (recipe) => chosen == null || marksBase(recipe, chosen.spirit),
     narrowing: narrowing,
     picks: [?narrowing],
+    // Not a tag: a base spirit has no place among names a caller would
+    // search or dot recipes by.
+    tagPicks: const [],
   );
 }
 

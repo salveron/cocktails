@@ -8,13 +8,8 @@ import 'package:flutter/material.dart';
 
 import '../../theme.dart';
 import '../chips/color_marks.dart';
+import '../dialogs/scale_dialog.dart';
 import 'entry_card.dart';
-
-/// A card's own scale factor and display unit; display only (FR-REC-7, FR-SET-1).
-typedef AmountView = ({int scale, FixedUnit unit});
-
-/// Where a card rests until scaled or converted (ADR 17, ADR 21).
-AmountView restingView(FixedUnit display) => (scale: 1, unit: display);
 
 String? _viewNote(AmountView view, AmountView resting) {
   final notes = [
@@ -36,12 +31,12 @@ List<String> recipeSpellings(Collection collection, Recipe recipe) => [
 ];
 
 /// [availability] arrives from the screen's own watch, so this never draws a
-/// chip off an answer fresher than the one used to judge the row. [onScale]
-/// is offered whenever the card is open — it survives a guest bar, scaling
-/// being a way of reading the owner's line rather than a change to it
-/// (FR-BAR-4); [onEdit]/[onDelete] only where the caller has a writer.
-class RecipeRow extends StatelessWidget {
-  const RecipeRow({
+/// chip off an answer fresher than the one used to judge the row. [actions]
+/// is the caller's own — built from a writer where it has one, "Scale &
+/// convert" surviving a guest bar besides, scaling being a way of reading the
+/// owner's line rather than a change to it (FR-BAR-4).
+class RecipeCard extends StatelessWidget {
+  const RecipeCard({
     required this.collection,
     required this.tags,
     required this.recipe,
@@ -51,9 +46,7 @@ class RecipeRow extends StatelessWidget {
     required this.expanded,
     required this.onToggle,
     required this.onReach,
-    this.onScale,
-    this.onEdit,
-    this.onDelete,
+    required this.actions,
     super.key,
   });
 
@@ -66,9 +59,7 @@ class RecipeRow extends StatelessWidget {
   final bool expanded;
   final VoidCallback onToggle;
   final void Function(String ingredient) onReach;
-  final VoidCallback? onScale;
-  final VoidCallback? onEdit;
-  final VoidCallback? onDelete;
+  final Map<String, VoidCallback> actions;
 
   @override
   Widget build(BuildContext context) {
@@ -76,9 +67,9 @@ class RecipeRow extends StatelessWidget {
     final summary = [
       for (final line in recipe.lines) line.ingredients.join(_orSeparator),
     ].join(' · ');
-    return ExpandingRow(
+    return ExpandingCard(
       open: expanded,
-      title: _recipeRowTitle(
+      title: _recipeCardTitle(
         recipe,
         tags,
         expanded: expanded,
@@ -97,11 +88,7 @@ class RecipeRow extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (availability != null) AvailabilityChip(availability),
-          RowMenu({
-            'Scale & convert': ?onScale,
-            'Edit': ?onEdit,
-            'Delete': ?onDelete,
-          }),
+          RowMenu(actions),
         ],
       ),
       onToggle: onToggle,
@@ -111,7 +98,7 @@ class RecipeRow extends StatelessWidget {
 
 /// The name, dotted by its tags while compact; expanded, plain with the note
 /// on how it is being read.
-Widget _recipeRowTitle(
+Widget _recipeCardTitle(
   Recipe recipe,
   List<Tag> tags, {
   required bool expanded,

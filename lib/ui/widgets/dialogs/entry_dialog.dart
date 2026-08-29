@@ -7,9 +7,9 @@ import 'package:cocktails/domain/domain.dart';
 import 'package:flutter/material.dart';
 
 import '../../palette.dart';
+import '../../toggling.dart';
 import '../chips/tag_choices.dart';
 import '../forms/field_issues.dart';
-import '../lists/list_terms.dart' show ToggleMembership;
 import 'dialog_frame.dart';
 
 /// What the entry dialog settles: the name, the spellings the entry also

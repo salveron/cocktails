@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import '../destinations.dart';
+import '../toggling.dart';
 import '../widgets/cards/recipe_card.dart';
 import '../widgets/chips/base_spirit.dart';
 import '../widgets/chips/tag_choices.dart';
@@ -16,7 +17,7 @@ import '../widgets/dialogs/scale_dialog.dart';
 import '../widgets/lists/entry_list.dart';
 import '../widgets/lists/list_terms.dart';
 import '../widgets/notices/empty_state.dart';
-import '../widgets/notices/failures.dart';
+import '../widgets/notices/snackbar.dart';
 import 'recipe_form_screen.dart';
 
 /// Every recipe as a card that expands in place — the compact two lines, or
@@ -137,7 +138,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
     BarWriter? writer,
   ) {
     final expanded = _expanded.contains(recipe.name);
-    return RecipeRow(
+    return RecipeCard(
       collection: collection,
       tags: tags,
       recipe: recipe,
@@ -147,13 +148,13 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
       expanded: expanded,
       onToggle: () => _toggle(recipe.name),
       onReach: (ingredient) => _goToIngredient(ref, collection, ingredient),
-      onScale: expanded ? () => unawaited(_scale(recipe, resting)) : null,
-      onEdit: writer == null
-          ? null
-          : () => unawaited(_editRecipe(collection.units, recipe)),
-      onDelete: writer == null
-          ? null
-          : () => unawaited(_delete(writer, recipe)),
+      actions: {
+        if (expanded)
+          'Scale & convert': () => unawaited(_scale(recipe, resting)),
+        if (writer != null)
+          'Edit': () => unawaited(_editRecipe(collection.units, recipe)),
+        if (writer != null) 'Delete': () => unawaited(_delete(writer, recipe)),
+      },
     );
   }
 

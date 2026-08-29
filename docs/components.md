@@ -83,9 +83,10 @@ lib/
                                #   record, every record on it, availability, the optimizer,
                                #   each tag vocabulary sorted once for every screen reading it
   ui/                          # no barrel — leaves, imported directly; design in ui-design.md
-    app.dart, destinations.dart, theme.dart, palette.dart, wording.dart   # the shell, the
-                               #   nav model, the theme, the fixed hues, and `counted` — each
-                               #   its own subject, none shared with five others (ADR 25)
+    app.dart, destinations.dart, theme.dart, palette.dart, wording.dart, toggling.dart   # the
+                               #   shell, the nav model, the theme, the fixed hues, `counted`,
+                               #   and `ToggleMembership` — each its own subject, read by more
+                               #   than one of screens/ and widgets/ (ADR 25)
     screens/                   # route destinations, one per file, all *_screen.dart (ADR 25)
                                #   — amounts, bar_form, bars, ingredients, recipe_form,
                                #   recipes, settings, shopping, shopping_settings, tags, units
@@ -100,7 +101,8 @@ lib/
                                #   reading — editor_form, form_fields, field_issues
       lists/                   # the searchable list and its chrome — entry_list,
                                #   list_controls, list_terms
-      notices/                 # empty states and failure banners — empty_state, failures
+      notices/                 # empty states, failure banners, and the snackbar every message
+                               #   reaches a reader through — empty_state, failures, snackbar
 test/                          # one file per lib/ file, named for it (see Testing)
   architecture_test.dart       # the whole tree: imports, dependency list, ui/ layout
   support_test.dart            # holds the support below to account
