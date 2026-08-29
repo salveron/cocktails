@@ -169,9 +169,9 @@ class _RecipeDetails extends StatelessWidget {
             padding: const EdgeInsets.only(bottom: 4),
             child: _RecipeLineRow(
               line,
-              measure: displayMeasure(
+              measure: scaledAmountText(
                 line,
-                collection.settings,
+                collection.unitSizes,
                 view.unit,
                 collection.units,
                 scale: view.scale,

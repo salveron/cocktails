@@ -100,9 +100,12 @@ List<Offer> _readOffers(
 
 /// What the optimizer is asked, key by key over the defaults (FR-SET-2, ADR
 /// 24): a record written before any of it could be set carries none of them and
-/// reads as the answer the app gave then. Whether the numbers make sense is
+/// reads as the answer the app gave then. Null where the key is absent
+/// altogether — an owner's own default and a guest's null are [Bar]'s to
+/// supply, mode being what tells them apart (ADR 21, ADR 24). Whether the
+/// numbers make sense, and whether a guest may carry one at all, is
 /// `validateShelf`'s, this being the one place they are merely read.
-ShoppingSettings _readShopping(
+ShoppingSettings? _readShopping(
   YamlNode? node,
   List<Object> path,
   List<ValidationIssue> issues,
@@ -116,7 +119,7 @@ ShoppingSettings _readShopping(
     ShoppingSettings.optionalToken,
   };
   final map = readMapping(node, path, issues, 'shopping', keys);
-  if (map == null) return standing;
+  if (map == null) return null;
   bool flag(String key, bool standing) =>
       readBool(map, key, path, issues) ?? standing;
   int count(String key, int standing) =>

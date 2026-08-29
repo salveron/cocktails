@@ -90,7 +90,7 @@ final class YamlCodec {
     if (issues.isNotEmpty) return null;
     issues.addAll(
       validateCollection(
-        settings: parts.settings,
+        unitSizes: parts.unitSizes,
         units: parts.units,
         ingredients: parts.ingredients,
         ingredientTags: parts.ingredientTags,
@@ -106,7 +106,7 @@ final class YamlCodec {
       name: parts.name,
       display: parts.display,
       collection: Collection(
-        settings: parts.settings,
+        unitSizes: parts.unitSizes,
         units: parts.units,
         ingredients: parts.ingredients,
         ingredientTags: parts.ingredientTags,

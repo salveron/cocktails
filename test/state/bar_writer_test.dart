@@ -51,10 +51,10 @@ void main() {
   });
 
   group('mutations', () {
-    test('setSettings replaces the settings', () async {
+    test('setUnitSizes replaces the sizes', () async {
       final container = await started();
-      await writerOf(container).setSettings(const Settings(partMl: 25));
-      expect(collectionOf(container).settings, const Settings(partMl: 25));
+      await writerOf(container).setUnitSizes(const UnitSizes(partMl: 25));
+      expect(collectionOf(container).unitSizes, const UnitSizes(partMl: 25));
     });
 
     test('upsertIngredient adds and replaces by name', () async {

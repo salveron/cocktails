@@ -89,7 +89,7 @@ recipes: []
     });
 
     test('writes non-default settings', () {
-      final collection = Collection(settings: const Settings(partMl: 22.5));
+      final collection = Collection(unitSizes: const UnitSizes(partMl: 22.5));
       expect(
         encoded(collection, display: FixedUnit.ml),
         contains(

@@ -190,24 +190,24 @@ void main() {
 
     test('absent settings keys keep their defaults', () {
       final collection = decoded('format: 1\nsettings:\n  part_ml: 25\n');
-      expect(collection.settings, const Settings(partMl: 25));
+      expect(collection.unitSizes, const UnitSizes(partMl: 25));
     });
 
     test('a file written before the ounce had a size still reads (ADR 17)', () {
       final payload = payloadOf(
         'format: 1\nsettings:\n  part_ml: 25\n  display: ml\n',
       );
-      expect(payload.collection.settings, const Settings(partMl: 25));
+      expect(payload.collection.unitSizes, const UnitSizes(partMl: 25));
       // The pick comes out beside the sizes, not inside them (ADR 21).
       expect(payload.display, FixedUnit.ml);
-      expect(payload.collection.settings.ozMl, const Settings().ozMl);
+      expect(payload.collection.unitSizes.ozMl, const UnitSizes().ozMl);
     });
 
     test('an ounce sized by hand is read and written back', () {
       final payload = payloadOf(
         'format: 1\nsettings:\n  oz_ml: 30\n  display: oz\n',
       );
-      expect(payload.collection.settings, const Settings(ozMl: 30));
+      expect(payload.collection.unitSizes, const UnitSizes(ozMl: 30));
       expect(payload.display, FixedUnit.oz);
       expect(
         encoded(payload.collection, display: payload.display),

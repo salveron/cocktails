@@ -44,10 +44,19 @@ stay on the device. The reading unit leaves the collection and lives on the bar.
   written before they existed decodes as a bar not yet summarised, which is a state the reader
   repairs rather than refuses; a `holds:` missing a kind is dropped whole rather than patched with
   zeroes, a partial count being indistinguishable from a bar that holds nothing.
-- **`Bar.display` holds the reading unit; `Settings` holds only the two ml sizes.** The pick
+- **`Bar.display` holds the reading unit; `UnitSizes` holds only the two ml sizes.** The pick
   physically cannot ride in the payload, so no refresh can lose it and no code has to remember not
   to take it. It still travels in the file, inside `settings:` where a reader expects it, as a
-  starting value for whoever establishes a bar from it.
+  starting value for whoever establishes a bar from it. **Amended:** `Settings` is
+  `UnitSizes` from here on — the rename this bullet already argued for by never storing a reading
+  unit on it.
+- **Amended:** `shopping:` joins the guest-refused half of the record beside `source`,
+  `refreshed` and `updated`. `ShoppingSettings` stood non-nullable with a default on every bar,
+  guest included, though [ADR 24](24-the-tags-may-aim-the-optimizer.md) already put the destination
+  that reads it out of a guest's reach — dead data a hand-edited file could set without either
+  constructor or `validateShelf` objecting. `Bar.shopping` is now `ShoppingSettings?`, null on a
+  guest and refused wherever one is found anyway, the same "refused on the wrong mode" rule this
+  ADR already applies to the other three.
 - **Establishing takes the file's `name:` and `display`; refreshing keeps the bar's.** One
   difference, at two call sites, spelled by the type: a decode answers a `BarContent` and the caller
   says what becomes of each of its three parts. `Bar.refreshedAt` cannot reach either — it takes the
@@ -82,7 +91,7 @@ stay on the device. The reading unit leaves the collection and lives on the bar.
 
 ## Consequences
 
-- `Settings` is two fields, and `displayMeasure` takes the pick as a parameter beside them.
+- `UnitSizes` is two fields, and `scaledAmountText` takes the pick as a parameter beside them.
 - The bar's name and reading unit stand in two files at once, the bar's own and the index. The index
   is the authority; the file's copies are read only where a bar is established or the index rebuilt.
   On a guest bar the two disagree from the first rename onward, and that is the correct reading: the

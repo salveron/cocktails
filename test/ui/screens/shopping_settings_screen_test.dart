@@ -30,7 +30,7 @@ void main() {
   );
 
   ShoppingSettings asked(MemoryBarStore store) =>
-      store.savedShelf!.bars.single.shopping;
+      store.savedShelf!.bars.single.shopping!;
 
   group('shopping settings', () {
     testWidgets('every control opens where the record stands', (tester) async {

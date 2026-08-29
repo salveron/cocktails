@@ -23,13 +23,13 @@ final _flowUnsafe = RegExp(r'[,\[\]{}:]');
 /// a bar from this carries over, and the collection (ADR 21).
 String encodeBar(BarContent payload) {
   final collection = payload.collection;
-  final settings = collection.settings;
+  final unitSizes = collection.unitSizes;
   final sections = [
     'format: $storeFormatVersion\n'
         'name: ${_scalar(payload.name)}',
     'settings:\n'
-        '  part_ml: ${formatNumber(settings.partMl)}\n'
-        '  oz_ml: ${formatNumber(settings.ozMl)}\n'
+        '  part_ml: ${formatNumber(unitSizes.partMl)}\n'
+        '  oz_ml: ${formatNumber(unitSizes.ozMl)}\n'
         '  display: ${payload.display.token}',
     _section('units', collection.units.map(_unitEntry)),
     _section('ingredients', collection.ingredients.map(_ingredientEntry)),
@@ -112,14 +112,15 @@ List<String> _barEntry(Bar bar) {
   final updated = bar.updated;
   final source = bar.source;
   final summary = bar.summary;
+  final shopping = bar.shopping;
   return [
     _flowMap([
       'id: ${_scalar(bar.id, inFlow: true)}',
       'name: ${_scalar(bar.name, inFlow: true)}',
       'mode: ${bar.mode.token}',
       'display: ${bar.display.token}',
-      if (bar.shopping != const ShoppingSettings())
-        'shopping: ${_shopping(bar.shopping)}',
+      if (shopping != null && shopping != const ShoppingSettings())
+        'shopping: ${_shopping(shopping)}',
       if (bar.offers.isNotEmpty)
         'offers: [${bar.offers.map(_offer).join(', ')}]',
       // Quoted: a timestamp's colons would end the scalar in flow context.

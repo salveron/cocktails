@@ -215,6 +215,20 @@ bars:
         );
         expect(issues.single.issue.message, contains('Budget must be one of'));
       });
+
+      // ADR 21, ADR 24 amended: a guest reads another's collection and asks
+      // no optimizer of its own, so a hand-edited index naming one is a
+      // malformed record, not a value merely out of range.
+      test('a guest naming one at all is refused, located at the key', () {
+        final issue = indexRejected(
+          'format: 2\nopen:\n'
+          'bars:\n'
+          '  - {id: b3e1d7, name: Ada\'s bar, mode: guest, '
+          'source: {via: lan, at: a, from: b}, shopping: {budget: 2}}\n',
+        ).single.issue;
+        expect(issue.location, 'bars[0].shopping');
+        expect(issue.message, contains('optimizer'));
+      });
     });
 
     test('an empty shelf round-trips, open naming nothing', () {

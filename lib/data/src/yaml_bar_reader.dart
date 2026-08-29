@@ -17,7 +17,7 @@ final class BarParts {
   /// The unit the file reads amounts in, taken only where a bar is established
   /// and never on a refresh (ADR 21).
   final FixedUnit display;
-  final Settings settings;
+  final UnitSizes unitSizes;
   final List<Unit> units;
   final List<Ingredient> ingredients;
   final List<Tag> ingredientTags;
@@ -28,7 +28,7 @@ final class BarParts {
   BarParts({
     required this.name,
     required this.display,
-    required this.settings,
+    required this.unitSizes,
     required this.units,
     required this.ingredients,
     required this.ingredientTags,
@@ -59,8 +59,8 @@ BarParts readBarParts(YamlMap root) {
   final settingsNode = root.nodes['settings'];
   return BarParts(
     name: _readBarName(root, issues),
-    // Settings first, so the block's issues read in the file's own order.
-    settings: _readSettings(settingsNode, issues),
+    // Sizes first, so the block's issues read in the file's own order.
+    unitSizes: _readUnitSizes(settingsNode, issues),
     display: readDisplay(settingsNode, const ['settings'], issues),
     units: units,
     ingredients: readEntries(root, 'ingredients', issues, _readIngredient),
@@ -89,8 +89,8 @@ String _readBarName(YamlMap root, List<ValidationIssue> issues) =>
 
 /// The two sizes, which are the owner's. `display` sits in the same block but
 /// belongs to the reader, so [readDisplay] takes it out separately (ADR 21).
-Settings _readSettings(YamlNode? node, List<ValidationIssue> issues) {
-  const defaults = Settings();
+UnitSizes _readUnitSizes(YamlNode? node, List<ValidationIssue> issues) {
+  const defaults = UnitSizes();
   const path = ['settings'];
   final map = readMapping(node, path, issues, 'settings', const {
     'part_ml',
@@ -99,7 +99,7 @@ Settings _readSettings(YamlNode? node, List<ValidationIssue> issues) {
   });
   if (map == null) return defaults;
   double? size(String key) => readDouble(map, key, path, issues);
-  return Settings(
+  return UnitSizes(
     partMl: size('part_ml') ?? defaults.partMl,
     ozMl: size('oz_ml') ?? defaults.ozMl,
   );

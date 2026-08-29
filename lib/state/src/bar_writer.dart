@@ -32,8 +32,8 @@ final class BarWriter {
 
   const BarWriter(this._controller);
 
-  Future<void> setSettings(Settings settings) =>
-      _commit((collection) => collection.withSettings(settings));
+  Future<void> setUnitSizes(UnitSizes unitSizes) =>
+      _commit((collection) => collection.withUnitSizes(unitSizes));
 
   /// Units vocabulary whole; renames reach measured lines in one edit (FR-VOC-5).
   Future<void> setUnits(List<UnitEdit> units) =>

@@ -262,7 +262,22 @@ asked the question.
   (used for successes as often as failures); `ListFilter.tagPicks` added beside `picks` so a tag
   filter's names and a base filter's prose can no longer collide in one field; `RecipeRow` →
   `RecipeCard`, `_IngredientRow` → `_IngredientCard`, `ExpandingRow` → `ExpandingCard`. Depends: M38.
-- [ ] **M40** — The domain finds its shape. Delivers: [ADR 26](adr/), `domain/src/{collection,shopping,shelf}/` over four shared files, `Bar.shopping` owner-only, and the renames the move carries. Depends: M39.
+- [x] **M40** — The domain finds its shape. Delivers: 13 `domain/src/` files become 25 across
+  `collection/`, `shopping/` and `shelf/` plus four loose files read by more than one
+  (`names.dart`, `tokens.dart`, `issues.dart`, `list_edits.dart`), in the one-way chain new
+  [ADR 26](adr/26-the-domain-groups-by-responsibility.md) names and `architecture_test.dart`
+  enforces; `Holding`/`summaryOf` moved from `collection.dart` to `shelf/bar.dart`, the record they
+  summarise rather than the collection they count; `ShoppingSettings` moved out of
+  `optimizer.dart`, which never read it, into its own `shopping_settings.dart`, dropping the
+  `shelf.dart → optimizer.dart` back edge. `Bar.shopping` is now `ShoppingSettings?` — null on a
+  guest and refused wherever a hand-edited index or a stray write leaves one anyway
+  ([ADR 21](adr/21-the-file-carries-one-bar.md) and
+  [ADR 24](adr/24-the-tags-may-aim-the-optimizer.md) amended), the one behaviour change the
+  milestone carries. The renames the move settles: `Settings` → `UnitSizes` and
+  `Collection.settings` → `Collection.unitSizes`; `measureText` → `amountText` and
+  `displayMeasure` → `scaledAmountText`; `line_format.dart` → `recipe_line.dart`, `discovery.dart`
+  → `recipe_discovery.dart`, `scaling.dart` → `amount_scaling.dart`. `test/domain/` mirrors the
+  tree file for file, matching M36k's rule. Depends: M39.
 - [ ] **M41** — The tests find their level. Delivers: `barChannelContract` and an override escape hatch before Phase 11 needs them, `ui_test_support` split three ways, `architecture_test`'s sanity block as a table. Depends: M40.
 - [ ] **M42** — The docs say less, and mean it. Delivers: the signature fences out of [components.md](components.md), the roadmap's history to git, the ADRs' amendment narration trimmed, and an anchor-resolution check over all 115 links. Depends: M41.
 

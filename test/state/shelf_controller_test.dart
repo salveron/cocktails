@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:cocktails/data/data.dart';
 import 'package:cocktails/domain/domain.dart';
+import 'package:cocktails/domain/src/shelf/bar.dart' show summaryOf;
 import 'package:cocktails/state/state.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter_test/flutter_test.dart';

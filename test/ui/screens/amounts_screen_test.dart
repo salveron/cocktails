@@ -131,7 +131,7 @@ void main() {
       // The ounce did not move under it — the second row's reading did.
       expect(ratioRows(tester), ['1 part = 45 ml', '1 part = 1.5216 oz']);
       await tap(tester, find.text('Save'));
-      expect(store.saved!.settings, const Settings(partMl: 45));
+      expect(store.saved!.unitSizes, const UnitSizes(partMl: 45));
     });
 
     testWidgets('the second sets what an ounce is worth, the part standing', (
@@ -141,7 +141,7 @@ void main() {
       await typeInto(tester, ratioField(1), '1');
       expect(ratioRows(tester), ['1 part = 30 ml', '1 part = 1 oz']);
       await tap(tester, find.text('Save'));
-      expect(store.saved!.settings, const Settings(ozMl: 30));
+      expect(store.saved!.unitSizes, const UnitSizes(ozMl: 30));
     });
 
     testWidgets('a row reading across both follows the one that moved', (
@@ -162,7 +162,7 @@ void main() {
       await typeInto(tester, ratioField(1), '30');
       expect(ratioRows(tester), ['1 part = 25 ml', '1 oz = 30 ml']);
       await tap(tester, find.text('Save'));
-      expect(store.saved!.settings, const Settings(partMl: 25, ozMl: 30));
+      expect(store.saved!.unitSizes, const UnitSizes(partMl: 25, ozMl: 30));
       expect(store.savedShelf?.bars.single.display, FixedUnit.ml);
     });
 
@@ -239,7 +239,7 @@ void main() {
       await typeInto(tester, ratioField(0), '20');
       expect(saveEnabled(tester), isTrue);
       await tap(tester, find.text('Save'));
-      expect(store.saved!.settings, const Settings(partMl: 20));
+      expect(store.saved!.unitSizes, const UnitSizes(partMl: 20));
     });
   });
 

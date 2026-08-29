@@ -12,37 +12,52 @@ lib/
   main.dart                    # ProviderScope, store and channel overrides, CocktailsApp
   domain/
     domain.dart                # barrel — the only domain import other layers use
-    src/
-      shelf.dart               # Shelf, the root above Collection (ADR 20), and the bar it
-                               #   holds: Bar, BarMode, Transport, BarSource, Offer,
-                               #   BarContent. Bar.summarised and Bar.refreshedAt are the
-                               #   only writers of what a bar holds and when it changed.
-                               #   coherenceProblems is the one rule list
-                               #   shelf_validation.dart reports on; BarMode and Transport
-                               #   are Tokened
-      shelf_edits.dart         # extension ShelfEdits on Shelf — pure derivations,
-                               #   the guest-bar refusal among them (ADR 23)
-      collection.dart          # entities, Collection — one bar's contents — name lookups,
-                               #   wornInOrder, the unit vocabulary and its lookup (ADR 09).
-                               #   Tokened + enumFromToken, layer-private, back every
-                               #   token-carrying enum's fromToken
-      collection_edits.dart    # extension CollectionEdits on Collection — pure derivations
-      list_edits.dart          # upserted/without — generic list edits collection_edits.dart
-                               #   and shelf_edits.dart share, layer-private
-      line_format.dart         # compact-line grammar
-      validation.dart          # ValidationIssue + collection's rule set, otherNames;
-                               #   checkName/addProblems/Problem, layer-private, shared with
-                               #   shelf_validation.dart
-      shelf_validation.dart    # validateShelf — the shelf's own rule set, on checkName
-                               #   and addProblems same as validation.dart's own
-      availability.dart        # Availability, availabilityOf, canMake, stockOfLine, stockOf,
-                               #   isShortLine — the optimizer's own reading of ADR 16
-      scaling.dart             # ×N scaling, part↔ml display
-      discovery.dart           # basesOf, baseSpirits, marksBase, randomCanMake
-      optimizer.dart           # Purchase, purchasesWithin — what to buy next
+    src/                       # loose, collection/, shopping/, shelf/, in a one-way chain
+                               #   (ADR 26): shelf/ -> shopping/ -> collection/ -> loose
       names.dart               # exported: nameKey, nameKeys, sameName, compareNames.
                                #   Layer-private: repeatsName, duplicateNameIndexes,
                                #   listEquals
+      tokens.dart              # Tokened + enumFromToken, layer-private, back every
+                               #   token-carrying enum's fromToken
+      issues.dart              # ValidationIssue, ValidationIssueKind; checkName/
+                               #   addProblems/Problem layer-private, shared by
+                               #   collection_validation.dart and shelf_validation.dart
+      list_edits.dart          # upserted/without — generic list edits collection_edits.dart
+                               #   and shelf_edits.dart share, layer-private
+      collection/              # what one bar contains, and every question asked of it
+        collection.dart        # the root — Collection, name lookups, memoised
+        amount.dart            # Amount
+        unit.dart               # FixedUnit, Unit, defaultUnits, part/ml/oz, isReservedUnit,
+                               #   UnitLookup
+        unit_sizes.dart        # UnitSizes — the two ml sizes (ADR 17, ADR 21)
+        ingredient.dart        # StockLevel, Ingredient
+        ingredient_stock.dart  # stockOf, stockOfLine, isShortLine — the optimizer's own
+                               #   reading of ADR 16
+        tag.dart               # TagColor, TagKind, Tag, wornInOrder
+        recipe.dart            # Recipe
+        recipe_line.dart       # LineMark, RecipeLine, alternativeSeparator, amountText —
+                               #   the compact-line grammar
+        recipe_availability.dart # Availability, availabilityOf, canMake
+        recipe_discovery.dart  # recipesWearing, basesOf, baseSpirits, marksBase,
+                               #   randomCanMake
+        amount_scaling.dart    # scaleFactors, scaledAmountText — ×N scaling, part↔ml display
+        collection_edits.dart  # extension CollectionEdits on Collection — pure derivations
+        collection_validation.dart # validateCollection, otherNames — the collection's own
+                               #   rule set
+      shopping/                # what the optimizer is asked, and what it answers
+        shopping_settings.dart # ShoppingSettings, budgets, basketCounts
+        optimizer.dart         # Purchase, purchasesWithin — what to buy next
+      shelf/                   # how the device holds many bars, and shares them
+        bar.dart               # Bar, BarMode, BarContent — the bar it holds, `shopping` null
+                               #   on a guest (ADR 21, ADR 24). Holding, summaryOf — what a
+                               #   bar's summary counts. coherenceProblems — the one rule list
+                               #   shelf_validation.dart reports on
+        shelf.dart             # Shelf, the root above Collection (ADR 20), and its two rules
+        sharing.dart           # Transport, BarSource, Offer, UnreachableReason
+        shelf_edits.dart       # extension ShelfEdits on Shelf — pure derivations,
+                               #   the guest-bar refusal among them (ADR 23)
+        shelf_validation.dart  # validateShelf — the shelf's own rule set, on issues.dart's
+                               #   checkName and addProblems
   data/
     data.dart                  # barrel — the store, the channels, the codec, their results
     src/
@@ -142,6 +157,9 @@ Dependencies point inward (`ui → state → data → domain`):
   `screens/` import `screens/`; every file directly under `screens/` is named `*_screen.dart`; 
   nothing sits loose under `widgets/` — every file sorts into one of its groups; every intra-`ui` 
   import is relative, never `package:cocktails/ui/…`.
+- Within `domain/src/` ([ADR 26](adr/26-the-domain-groups-by-responsibility.md)): every file is
+  loose or sits in `collection/`, `shopping/`, or `shelf/`; a folder never imports one later in its
+  own chain — `shelf/ → shopping/ → collection/ → loose`.
 
 `test/architecture_test.dart` enforces via `import`/`export` directives (pure functions, 
 exercised on constructed inputs and real tree). It also pins the dependency list in 
@@ -186,7 +204,7 @@ final class Bar {
   final String name;             // a label: two bars may carry one (FR-BAR-1)
   final BarMode mode;
   final FixedUnit display;       // the reader's pick, outliving every refresh (FR-SET-1)
-  final ShoppingSettings shopping; // the reader's too, and here for the same reason (FR-SET-2)
+  final ShoppingSettings? shopping; // the owner's, null on a guest (FR-SET-2, ADR 21, ADR 24)
   final List<Offer> offers;      // an owner's, one per way it is shared (FR-BAR-6)
   final BarSource? source;       // a guest's, with…
   final DateTime? refreshed;     // …when that source last answered
@@ -212,9 +230,9 @@ extension ShelfEdits on Shelf {         // shelf_edits.dart, as CollectionEdits 
 
 `Shelf`'s constructor throws `ArgumentError` on a broken shelf, the programmer contract `Collection`'s own 
 constructor already keeps: ids unique, `openId` naming a bar that exists, and the mode deciding which 
-half of a record a bar may carry — a guest carries the source it refreshes from and offers nothing, 
-being no device's to give away twice, while an owner carries neither source nor refresh time and 
-offers a bar once per transport. That coherence sits on `Shelf` rather than on `Bar` for the reason 
+half of a record a bar may carry — a guest carries the source it refreshes from, offers nothing 
+(being no device's to give away twice), and asks no optimizer of its own, while an owner carries 
+neither source nor refresh time and offers a bar once per transport. That coherence sits on `Shelf` rather than on `Bar` for the reason 
 `Ingredient` has no invariants and `Collection` has them all: `validateShelf` takes bars already 
 built, so a rule `Bar`'s constructor kept would be one an untrusted index could never be *reported* 
 on — it would crash on the way in instead. `collection` is an empty `Collection` while no bar 
@@ -236,7 +254,7 @@ store. It never touches `display` — the payload's own is read only where a bar
 
 ### Entities and the collection root
 
-`Ingredient`, `Tag`, `Amount`, `RecipeLine`, `Settings`, `Recipe`, `Collection` are 
+`Ingredient`, `Tag`, `Amount`, `RecipeLine`, `UnitSizes`, `Recipe`, `Collection` are 
 immutable `final class` values with structural equality. Collections wrapped `List.unmodifiable` 
 — lists not `const`-constructible.
 
@@ -260,7 +278,7 @@ Two identity conventions:
 - **A unit is an entry, not an enum** ([ADR 09](adr/09-units-are-a-vocabulary.md)). `Collection.units`
   is the vocabulary, `RecipeLine.unit` a name into it, and the three the app leans on are `FixedUnit` 
   ([ADR 17](adr/17-the-fixed-units-interconvert.md)) — one enum for the units no one may rename and 
-  the readings `Bar.display` chooses among, since they are the same three. `Settings` holds 
+  the readings `Bar.display` chooses among, since they are the same three. `UnitSizes` holds 
   each one's size in ml (`partMl`, `ozMl`, ml being the anchor at 1), so `ratio` derives any pair 
   rather than storing it, and `withRatio` writes one back — moving the trailing unit's size, so 
   redefining the part leaves the ounce where it stood. The pick itself is not there: the sizes are 
@@ -348,7 +366,7 @@ Every edit is a pure derivation returning a new `Collection`, in `extension Coll
 so `collection.dart` holds shape and invariants:
 
 ```dart
-Collection withSettings(Settings settings);
+Collection withUnitSizes(UnitSizes unitSizes);
 typedef UnitEdit = ({Unit unit, String? was});        // the row and the name it came from
 Collection withUnits(List<UnitEdit> edits);                // the whole vocabulary, renames propagated
 Collection withCanonicalIngredientNames();                 // every line under its ingredient's own name
@@ -384,7 +402,7 @@ Three rules: edit for missing entry returns unchanged (stale name can't crash). 
 existing name throws `ArgumentError` (programmer contract). Removal never cascades (caller asks 
 `recipesUsing…` first for blocking message).
 
-`copyWith` on multi-field values (`Settings`, `Ingredient`, `Tag`, `RecipeLine`, `Recipe`, `Collection`, 
+`copyWith` on multi-field values (`UnitSizes`, `Ingredient`, `Tag`, `RecipeLine`, `Recipe`, `Collection`, 
 `Bar`); rename and stock built from it. `Amount` is rebuilt whole. One nullable field needs its own 
 hatch, since null is `copyWith`'s "keep what you have": `RecipeLine.marked` clears the mark.
 
@@ -407,7 +425,7 @@ String formatAmount(Amount amount);
 String formatNumber(double value);            // canonical number text — amounts, part_ml
 ```
 
-Grammar in [architecture.md](architecture.md#data-format). This file enforces syntax; value rules in validation. Both halves take the vocabulary (ADR 09): it decides what counts as a unit and how an amount is spelled, and the line stores the unit's own name whichever spelling was typed. The unit is optional and may be plural on the way in; `formatRecipeLine` writes the canonical form for the file and the form alike. Alternatives split on `/` ([ADR 11](adr/11-substitutions-on-the-line.md)), lexically and after the mark, so the group is never resolved here. `measureText` stays public in `src/` and out of the barrel — the display transform builds its measure from that same piece rather than a second spelling of it; the body is private, since a card writes its own from `ingredients` and `lineMarkSuffix`, in prose rather than in the file's separator.
+Grammar in [architecture.md](architecture.md#data-format). This file enforces syntax; value rules in collection_validation.dart. Both halves take the vocabulary (ADR 09): it decides what counts as a unit and how an amount is spelled, and the line stores the unit's own name whichever spelling was typed. The unit is optional and may be plural on the way in; `formatRecipeLine` writes the canonical form for the file and the form alike. Alternatives split on `/` ([ADR 11](adr/11-substitutions-on-the-line.md)), lexically and after the mark, so the group is never resolved here. `amountText` stays public in `src/` and out of the barrel — the display transform builds its measure from that same piece rather than a second spelling of it; the body is private, since a card writes its own from `ingredients` and `lineMarkSuffix`, in prose rather than in the file's separator.
 
 ### Validation
 
@@ -465,16 +483,16 @@ All pure functions of `Collection`. Algorithms in [architecture.md](architecture
 
 ```dart
 const scaleFactors = [1, 2, 3, 4];                    // what a recipe view offers (FR-REC-7)
-String displayMeasure(RecipeLine line, Settings settings, List<Unit> units,
+String scaledAmountText(RecipeLine line, UnitSizes unitSizes, List<Unit> units,
     {required FixedUnit display, int scale = 1});
 
-Set<String> basesOf(Recipe recipe);                   // discovery.dart — FR-DIS-4, ADR 12
+Set<String> basesOf(Recipe recipe);                   // recipe_discovery.dart — FR-DIS-4, ADR 12
 List<String> baseSpirits(Collection collection);
 bool marksBase(Recipe recipe, String? spirit);        // null asks for the unmarked
 
-bool canMake(Availability? availability);             // availability.dart — low counts
+bool canMake(Availability? availability);             // recipe_availability.dart — low counts
 Recipe? randomCanMake(Iterable<Recipe> candidates, Map<String, Availability> availability,
-    Random random, {String? besides});                // discovery.dart — FR-DIS-5
+    Random random, {String? besides});                // recipe_discovery.dart — FR-DIS-5
 
 Set<String> recipesWearing(Collection collection, Iterable<String> tags);  // ADR 24 — a union
 
@@ -514,7 +532,7 @@ will let the screen ask for one size at a time off a single search.
 `restocking` is what "short" means ([ADR 16](adr/16-the-optimizer-buys-what-is-running-low.md), 
 FR-DIS-7): off, a line standing at out; on, a line short of full stock, so the ingredients running low 
 join the pool and the goal becomes ready rather than merely makeable. Decided in one place, 
-`isShortLine` (availability.dart) — the same reading `availabilityOf` judges "missing" by — so the 
+`isShortLine` (ingredient_stock.dart) — the same reading `availabilityOf` judges "missing" by — so the 
 whole search below reads "short", never "out", and it costs the algorithm nothing. 
 `canMake` does not move: the traffic light, the recipe order and the random pick all go on reading 
 low as makeable, and it is the optimizer's own goal that shifts.
@@ -525,7 +543,7 @@ short of on their own — they close nothing alone, so a basket carrying one is 
 whatever the budget was. That is what lets the screen search once and read a size off the result 
 ([ui-design.md](ui-design.md#shopping-screen)); it is pinned by test rather than asserted here.
 
-`displayMeasure` is how a card reads a line's amounts (FR-REC-7, FR-SET-1). The measure is the only 
+`scaledAmountText` is how a card reads a line's amounts (FR-REC-7, FR-SET-1). The measure is the only 
 half that transforms, so it is the only half returned — and marking it as the card's own rather than 
 the recipe's is what the split was for. The card writes the body itself, one alternative at a time 
 (ADR 11). `display` is a parameter beside the sizes rather than a field inside them, since the two 
@@ -943,9 +961,9 @@ The controller is the UI's only route to the data layer; screens never hold a `B
 
 ### Where a test lives
 
-`test/` mirrors `lib/` one file to one file: `lib/domain/src/shelf.dart` is tested by 
-`test/domain/shelf_test.dart` and by nothing else, and that file tests nothing but what 
-`shelf.dart` owns. A test file is named for the source file whose behaviour it holds to account, 
+`test/` mirrors `lib/` one file to one file: `lib/domain/src/shelf/bar.dart` is tested by 
+`test/domain/shelf/bar_test.dart` and by nothing else, and that file tests nothing but what 
+`bar.dart` owns. A test file is named for the source file whose behaviour it holds to account, 
 even where it drives that behaviour through the layer's barrel — `yaml_writer_test.dart` and 
 `yaml_bar_reader_test.dart` both call `YamlCodec`, because the barrel is the layer's only surface 
 ([ADR 04](adr/04-module-boundaries.md)), but each is named for the file that owns what it checks. 

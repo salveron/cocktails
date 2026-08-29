@@ -39,7 +39,7 @@ class _AmountsScreenState extends ConsumerState<AmountsScreen> {
   /// What a Save would write. The rows are readings of it, never the other way
   /// round: a size the reader has not typed at keeps the number it had, so
   /// picking another unit cannot drift it.
-  late Settings _entered = _opened.settings;
+  late UnitSizes _entered = _opened.unitSizes;
 
   /// The pick, edited beside the sizes and saved to the bar rather than into
   /// the collection — the two belong to different people on a guest bar
@@ -104,12 +104,12 @@ class _AmountsScreenState extends ConsumerState<AmountsScreen> {
   @override
   Widget build(BuildContext context) {
     final writer = ref.watch(barWriterProvider);
-    final issues = validateCollection(settings: _entered);
+    final issues = validateCollection(unitSizes: _entered);
     final errors = _errors(issues, writable: writer != null);
     return EditorScaffold(
       title: 'Amounts',
       dirty:
-          (writer != null && _entered != _opened.settings) ||
+          (writer != null && _entered != _opened.unitSizes) ||
           _display != _openedDisplay,
       discardTitle: 'Discard these amounts?',
       onSave: issues.isEmpty && errors.isEmpty
@@ -174,7 +174,7 @@ class _AmountsScreenState extends ConsumerState<AmountsScreen> {
   /// surfaces with them: the sizes are the owner's, the pick the reader's on a
   /// guest bar as on their own (FR-BAR-3), so a guest saves the pick alone.
   Future<void> _save(BarWriter? writer) async {
-    await writer?.setSettings(_entered);
+    await writer?.setUnitSizes(_entered);
     await ref.read(shelfProvider.notifier).setDisplay(_display);
     if (mounted) Navigator.of(context).pop();
   }

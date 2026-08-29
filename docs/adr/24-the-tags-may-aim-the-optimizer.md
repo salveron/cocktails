@@ -85,3 +85,8 @@ a fifth scalar is a fifth chance for one to go missing on a refresh.
   migration runs and a store written by an older build stays legible.
 - A setting the shopping screen reads is a setting a guest bar cannot reach, the destination being
   absent there (FR-BAR-4). Its Settings row dims like the vocabularies' used to.
+- **Amended:** the destination being absent was UI enforcement alone — the record itself held
+  a `ShoppingSettings` on every bar, guest included, defaulted rather than refused. `Bar.shopping` is
+  now `ShoppingSettings?`, null on a guest and refused where one is found anyway
+  ([ADR 21](21-the-file-carries-one-bar.md) amended), so a guest carrying no optimizer of its own is
+  a fact the record keeps rather than one the UI merely hides.

@@ -222,6 +222,52 @@ List<String> _looseWidgetViolations(Iterable<String> widgetFiles) => [
       '$path sits loose under ui/widgets/, outside every group',
 ];
 
+/// ADR 26: `collection/` -> `shopping/` -> `shelf/` -> loose is domain's own
+/// one-way chain — the folders a `domain/src/` folder may import, itself
+/// excluded, keyed by name.
+const _domainChain = {
+  'collection': <String>{},
+  'shopping': {'collection'},
+  'shelf': {'collection', 'shopping'},
+};
+
+/// The `domain/src/`-relative [srcPath]'s folder, or null for a loose file.
+String? _domainFolderOf(String srcPath) {
+  for (final folder in _domainChain.keys) {
+    if (srcPath.startsWith('$folder/')) return folder;
+  }
+  return null;
+}
+
+/// ADR 26: nothing loose under `domain/src/` beyond the four files every
+/// folder may read — a fifth folder, or a file sorted into none, decays the
+/// layout the same way an unsorted `ui/widgets/` file would (ADR 25).
+List<String> _domainLayoutViolations(Iterable<String> srcPaths) => [
+  for (final path in srcPaths)
+    if (path.contains('/') && _domainFolderOf(path) == null)
+      'domain/src/$path sits outside collection/, shopping/, and shelf/',
+];
+
+/// ADR 26: a `domain/src/` folder importing one later in its own chain —
+/// `collection/` reaching into `shopping/` or `shelf/`, or `shopping/`
+/// reaching into `shelf/`.
+List<String> _domainChainViolations(String libPath, String source) {
+  if (!libPath.startsWith('domain/src/')) return [];
+  final fromFolder = _domainFolderOf(libPath.substring('domain/src/'.length));
+  if (fromFolder == null) return [];
+  final allowed = _domainChain[fromFolder]!;
+  return [
+    for (final directive in _directivesOf(source))
+      if (_targetLibPath(libPath, directive.target) case final target?)
+        if (target.startsWith('domain/src/'))
+          if (_domainFolderOf(target.substring('domain/src/'.length))
+              case final targetFolder?)
+            if (targetFolder != fromFolder && !allowed.contains(targetFolder))
+              '$libPath depends on ${directive.target}: $fromFolder must not '
+                  'depend on $targetFolder',
+  ];
+}
+
 /// A double belongs to the tests that stand it up. `MemoryBarStore` shipped in
 /// the binary for six milestones with `saveCount`, `savedBars` and `snapshots`
 /// on it — surface no screen reads, only an assertion does. Type names rather
@@ -419,6 +465,31 @@ void main() {
 
     test('every intra-ui import is relative', () {
       _expectNoneUnder('lib/ui', _intraUiImportViolations);
+    });
+  });
+
+  // docs/adr/26-the-domain-groups-by-responsibility.md: domain/src/ groups
+  // into collection/, shopping/ and shelf/, plus loose files read by more
+  // than one, in a one-way chain the same discipline ADR 04 gives the app's
+  // four layers.
+  group('lib/domain/ layout (ADR 26)', () {
+    test('every file under domain/src/ is loose or in collection/, shopping/, '
+        'or shelf/', () {
+      final files = [
+        for (final entity in Directory(
+          'lib/domain/src',
+        ).listSync(recursive: true))
+          if (entity is File)
+            entity.path.substring(
+              entity.path.indexOf('domain/src/') + 'domain/src/'.length,
+            ),
+      ];
+      expect(files, isNotEmpty);
+      expect(_domainLayoutViolations(files), isEmpty);
+    });
+
+    test('no domain/src/ folder imports one later in its own chain', () {
+      _expectNoneUnder('lib/domain', _domainChainViolations);
     });
   });
 
@@ -825,6 +896,65 @@ void main() {
         _looseWidgetViolations(['ui/widgets/cards/entry_card.dart']),
         isEmpty,
       );
+    });
+  });
+
+  group('lib/domain/ layout sanity checks (fake inputs)', () {
+    test('a file loose at domain/src/ is not a violation', () {
+      expect(_domainLayoutViolations(['names.dart']), isEmpty);
+    });
+
+    test('a file sorted into one of the three folders is not', () {
+      expect(_domainLayoutViolations(['collection/unit.dart']), isEmpty);
+    });
+
+    test('a file under a fourth folder is caught', () {
+      expect(_domainLayoutViolations(['discovery/recipe.dart']), isNotEmpty);
+    });
+
+    test('collection/ reaching into shopping/ is caught', () {
+      expect(
+        _domainChainViolations(
+          'domain/src/collection/collection.dart',
+          "import '../shopping/shopping_settings.dart';",
+        ),
+        isNotEmpty,
+      );
+    });
+
+    test('shopping/ reaching into shelf/ is caught', () {
+      expect(
+        _domainChainViolations(
+          'domain/src/shopping/optimizer.dart',
+          "import '../shelf/bar.dart';",
+        ),
+        isNotEmpty,
+      );
+    });
+
+    test('shelf/ reaching into shopping/ and collection/ is not', () {
+      expect(
+        _domainChainViolations(
+          'domain/src/shelf/bar.dart',
+          "import '../shopping/shopping_settings.dart';\n"
+              "import '../collection/collection.dart';",
+        ),
+        isEmpty,
+      );
+    });
+
+    test('a folder importing a loose file is not', () {
+      expect(
+        _domainChainViolations(
+          'domain/src/collection/collection.dart',
+          "import '../names.dart';",
+        ),
+        isEmpty,
+      );
+    });
+
+    test('a loose file importing nothing folder-specific is not scanned', () {
+      expect(_domainChainViolations('domain/src/names.dart', ''), isEmpty);
     });
   });
 

@@ -96,7 +96,7 @@ void main() {
   group('round trip (FR-DAT-5)', () {
     test('encode → decode → encode is the identity on canonical text', () {
       final collection = Collection(
-        settings: const Settings(partMl: 22.5),
+        unitSizes: const UnitSizes(partMl: 22.5),
         ingredients: [
           Ingredient('bourbon', stock: StockLevel.in_),
           Ingredient('true', tags: const ['no']),
