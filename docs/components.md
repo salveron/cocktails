@@ -48,7 +48,9 @@ lib/
     src/
       sourced_issue.dart       # SourcedIssue, and Outcome<T> — one shape a load, a decode
                                #   and a fetch each answer with
-      bar_store.dart           # the storage interface
+      bar_store.dart           # the storage interface, ShelfIndex and newBarId.
+                               #   Layer-private: isStorableBarId, which only the file
+                               #   adapter asks before naming a file
       bar_channel.dart         # the sharing seam: transport and fetch, the two every
                                #   transport has; offering and finding land with the
                                #   transports that carry them (ADR 22)
@@ -71,9 +73,12 @@ lib/
       shelf_controller.dart    # the one writable provider (ADR 23)
       bar_writer.dart          # the write surface, handed out for an owned bar only
       seams.dart               # store, clock, share sheet, picker — one provider each
-                               #   (ADR 18); the clock so the domain needs none
-      refreshes.dart           # the transports resolved, the refreshes in flight and
-                               #   what they failed with, the offers standing (ADR 22)
+                               #   (ADR 18); the clock so the domain needs none. Knows no
+                               #   domain type, so it imports none
+      channels.dart            # which transport has an adapter in this build, and what a
+                               #   file-picked bar is kept under (ADR 22)
+      refreshes.dart           # the refreshes in flight and what they failed with — work
+                               #   the reader may walk away from (FR-BAR-5)
       derived.dart             # read-only over the shelf: the open bar's collection and
                                #   record, every record on it, availability, the optimizer,
                                #   each tag vocabulary sorted once for every screen reading it
@@ -709,7 +714,7 @@ caller and never off the payload: the file's `name:` is a starting value the scr
 and what the reader leaves there is what the bar is called (ADR 21). `addOwnedBar`'s `from` is
 FR-BAR-2's "created from a file": the contents and the reading unit arrive and no source is kept, so
 nothing about such a bar refreshes. `addGuestBar` keeps the source, which is what a refresh asks
-again. `fileSource` is `refreshes.dart`'s republication of `FileBarChannel.source`, so a screen
+again. `fileSource` is `channels.dart`'s republication of `FileBarChannel.source`, so a screen
 founding a guest bar from a pick names a transport and never builds an address (ADR 22) — `ui/` may
 not import `data/` at all.
 
@@ -841,7 +846,8 @@ watches it at all (FR-BAR-4).
 
 Refreshing and sharing are the app's first work outliving the gesture that started it, and the 
 **fifth kind of state**: not collection, not derived, not screen-local, not one screen's request of 
-another, but a job the reader may walk away from. Both live in `refreshes.dart`.
+another, but a job the reader may walk away from. A refresh in flight lives in
+`refreshes.dart`; the transports one is resolved through, in `channels.dart`.
 
 `refreshesProvider` — `Map<String, RefreshState>` by bar id: `Reaching`, or what it last failed with 
 and when, until it is `told`, which is what dismissing the banner and reporting it in a snackbar 

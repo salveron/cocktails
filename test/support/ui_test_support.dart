@@ -357,11 +357,6 @@ Future<void> tap(WidgetTester tester, Finder target) async {
   await tester.pumpAndSettle();
 }
 
-Future<void> longPress(WidgetTester tester, Finder target) async {
-  await tester.longPress(target);
-  await tester.pumpAndSettle();
-}
-
 /// Types [text] into [target] and lets the frame settle.
 Future<void> typeInto(WidgetTester tester, Finder target, String text) async {
   await tester.enterText(target, text);

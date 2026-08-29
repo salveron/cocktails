@@ -2,6 +2,7 @@
 library;
 
 export 'src/bar_writer.dart';
+export 'src/channels.dart';
 export 'src/derived.dart';
 export 'src/refreshes.dart';
 export 'src/seams.dart';

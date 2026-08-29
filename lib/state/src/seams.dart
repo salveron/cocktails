@@ -5,7 +5,6 @@ library;
 import 'dart:convert';
 
 import 'package:cocktails/data/data.dart';
-import 'package:cocktails/domain/domain.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
@@ -38,6 +37,3 @@ final filePickerProvider = Provider<Future<String?> Function()>(
 /// input throws over substituting U+FFFD, the same loss made quieter.
 Future<String> pickedText(XFile picked) async =>
     utf8.decode(await picked.readAsBytes());
-
-/// What a picked file turned out to be (FR-DAT-4). Never both.
-typedef ImportReview = ({BarContent? bar, List<String> issues});

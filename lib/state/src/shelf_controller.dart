@@ -7,6 +7,7 @@ import 'package:cocktails/domain/domain.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'bar_writer.dart';
+import 'channels.dart';
 import 'refreshes.dart';
 import 'seams.dart';
 
@@ -30,6 +31,9 @@ final class LoadIssuesController extends Notifier<List<String>> {
 
   void report(List<String> issues) => state = List.unmodifiable(issues);
 }
+
+/// What a picked file turned out to be (FR-DAT-4). Never both.
+typedef ImportReview = ({BarContent? bar, List<String> issues});
 
 final class ShelfController extends AsyncNotifier<Shelf> {
   /// Reads the index and opens the bar it names (FR-DAT-4).

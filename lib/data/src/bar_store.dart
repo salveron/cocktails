@@ -37,8 +37,8 @@ abstract interface class BarStore {
 enum ExportPurpose { share, beforeImport, beforeDelete }
 
 /// Six hex characters — keeps chance out of the domain (ADR 20).
-String newBarId([Random? random]) {
-  final draw = random ?? Random();
+String newBarId() {
+  final draw = Random();
   return [
     for (var i = 0; i < 6; i++) draw.nextInt(16).toRadixString(16),
   ].join();

@@ -136,20 +136,6 @@ void main() {
     await refreshing;
   }
 
-  group('the channels a build offers', () {
-    test('the file transport is wired to the picker beside it', () {
-      final container = ProviderContainer(
-        overrides: [filePickerProvider.overrideWithValue(() async => null)],
-      );
-      addTearDown(container.dispose);
-      final channels = container.read(channelsProvider);
-      expect(channels[Transport.file], isA<FileBarChannel>());
-      // Declared ahead of its adapter, so the index's format need not move
-      // when one lands (ADR 22).
-      expect(channels[Transport.cloud], isNull);
-    });
-  });
-
   group('adding a guest bar', () {
     test('it lands read-only, opened, and keeping its source', () async {
       final container = await started();

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:cocktails/data/data.dart';
+import 'package:cocktails/data/src/bar_store.dart' show isStorableBarId;
 import 'package:cocktails/domain/domain.dart';
 import 'package:flutter_test/flutter_test.dart';
 

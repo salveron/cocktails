@@ -2,7 +2,7 @@
 library;
 
 export 'src/bar_channel.dart';
-export 'src/bar_store.dart';
+export 'src/bar_store.dart' hide isStorableBarId;
 export 'src/file_bar_channel.dart';
 export 'src/file_bar_store.dart';
 export 'src/sourced_issue.dart';

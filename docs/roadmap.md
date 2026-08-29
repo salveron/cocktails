@@ -1,6 +1,6 @@
 # Roadmap
 
-Milestones in dependency order. Scope: [requirements.md](requirements.md); design: [architecture.md](architecture.md), [components.md](components.md), [ui-design.md](ui-design.md); rationale: [ADRs](adr/). Phases 0–6: single bar; Phases 7–8 and 10–11: FR-BAR-1..9; Phase 9 carries no new requirement.
+Milestones in dependency order. Scope: [requirements.md](requirements.md); design: [architecture.md](architecture.md), [components.md](components.md), [ui-design.md](ui-design.md); rationale: [ADRs](adr/). Phases 0–6: single bar; Phases 7–8 and 11–12: FR-BAR-1..9; Phases 9–10 carry no new requirement.
 
 ## Phase 0 — Foundation
 
@@ -226,11 +226,37 @@ what M36f settles.
   another test file (`shelf_edits_test.dart`, `shelf_validation_test.dart`, both reaching into
   `shelf_test.dart`) cut. Depends: M36j.
 
-## Phase 10 — A bar travels over the LAN
+## Phase 10 — Every file names what it is responsible for
 
-- [ ] **M37** — Owner offers bar nearby. Delivers: FR-BAR-8, DNS-SD package, dart:io server, internet permission, sharingProvider, [ADR 22](adr/22-a-bar-travels-behind-one-seam.md). Depends: M36k.
-- [ ] **M38** — Guest finds one. Delivers: FR-BAR-8, browse service type, GET refresh, two instances discriminated by bar id (FR-BAR-1/5). Depends: M37.
+Phase 9 asked whether a file was too big and whether a word meant one thing. It never asked what a
+file is *responsible for*, which is why `collection.dart` holds eight subjects, `availability.dart`
+mixes recipe availability with ingredient stock, and the shelf imports the optimizer for a value on
+`Bar`. One behaviour change only: `Bar.shopping` takes the mode rule every other mode-specific field
+already keeps. It stands before the LAN so the second `BarChannel` lands in a domain that has been
+asked the question.
 
-## Phase 11 — A bar travels over the cloud
+- [x] **M37** — Dead weight and misfiled declarations. Delivers: `newBarId`'s `Random`
+  parameter gone, no call site having ever supplied one, and `longPress` with it; `data.dart`
+  hiding `isStorableBarId`, which only the file adapter asks, `file_bar_store_test` reaching it
+  through `src/` as `names_test` already did (the six domain names under the same rule wait for
+  M40, where the barrel is restated against the new tree rather than twice); `ImportReview`
+  moved off `seams.dart` to the controller whose method returns it, leaving the seams knowing
+  no domain type at all and importing none; `refreshes.dart` split into `channels.dart` — the
+  registry Phase 11 grows — and the refreshes in flight its own doc had always claimed alone,
+  with `channels_test.dart` taking the group that already tested it. `loadIssuesProvider` read
+  as a second subject was not one: every assertion on it observes a load through the controller
+  that is its only writer, so it stays. Depends: M36k.
+- [ ] **M38** — One home per algorithm: domain and data. Delivers: the three bar rules written once rather than twice, one `Outcome` reading in `ShelfController`, one `readMapping` behind eleven copies, the shopping wire tokens beside the fields they name. Depends: M37.
+- [ ] **M39** — One home per algorithm: UI. Delivers: one write-gate idiom across three list screens, `bars_screen`'s two missing `mounted` guards, three declarations moved to files that own them, `ListFilter.picks` split by meaning, card and row settled. Depends: M38.
+- [ ] **M40** — The domain finds its shape. Delivers: [ADR 26](adr/), `domain/src/{collection,shopping,shelf}/` over four shared files, `Bar.shopping` owner-only, and the renames the move carries. Depends: M39.
+- [ ] **M41** — The tests find their level. Delivers: `barChannelContract` and an override escape hatch before Phase 11 needs them, `ui_test_support` split three ways, `architecture_test`'s sanity block as a table. Depends: M40.
+- [ ] **M42** — The docs say less, and mean it. Delivers: the signature fences out of [components.md](components.md), the roadmap's history to git, the ADRs' amendment narration trimmed, and an anchor-resolution check over all 115 links. Depends: M41.
 
-- [ ] **M39** — Cloud adapter. Delivers: FR-BAR-9, backend chosen via [ADR 22](adr/22-a-bar-travels-behind-one-seam.md), one identity (NFR-3), guests named, refresh from anywhere. Depends: M38.
+## Phase 11 — A bar travels over the LAN
+
+- [ ] **M43** — Owner offers bar nearby. Delivers: FR-BAR-8, DNS-SD package, dart:io server, internet permission, sharingProvider, [ADR 22](adr/22-a-bar-travels-behind-one-seam.md). Depends: M42.
+- [ ] **M44** — Guest finds one. Delivers: FR-BAR-8, browse service type, GET refresh, two instances discriminated by bar id (FR-BAR-1/5). Depends: M43.
+
+## Phase 12 — A bar travels over the cloud
+
+- [ ] **M45** — Cloud adapter. Delivers: FR-BAR-9, backend chosen via [ADR 22](adr/22-a-bar-travels-behind-one-seam.md), one identity (NFR-3), guests named, refresh from anywhere. Depends: M44.
