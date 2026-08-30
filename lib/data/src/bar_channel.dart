@@ -11,3 +11,17 @@ abstract interface class BarChannel {
   /// Every refresh; null is nothing asked (a picker dismissed), not [Unreachable].
   Future<Outcome<BarContent>?> fetch(BarSource source);
 }
+
+/// The owner's half, which only some transports have (FR-BAR-6): a file is
+/// handed over rather than offered, so there is nothing to withdraw after it.
+abstract interface class BarOfferings {
+  Transport get transport;
+
+  /// Offering a bar already offered is how it is renamed, the way it is
+  /// reached staying as it was.
+  Future<void> offer(String barId, String name);
+
+  /// Stops the offer and nothing else: a guest keeps what it holds, and its
+  /// next refresh is what tells it the source is gone.
+  Future<void> withdraw(String barId);
+}

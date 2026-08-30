@@ -185,7 +185,7 @@ offer or withdraw while a file was the only way a bar travelled.
   port, the offered list and one unguessable path per bar, 404 for everything else; the bytes read
   through the store, so a served copy is the bar's own export
   ([ADR 22](adr/22-a-bar-travels-behind-one-seam.md)). Depends: M43.
-- [ ] **M45** — An offer announces, a withdrawal silences. Delivers: `BarOfferings` on the
+- [x] **M45** — An offer announces, a withdrawal silences. Delivers: `BarOfferings` on the
   [sharing seam](components.md#the-sharing-seam), one service instance per device, up with the first
   offer and down with the last (FR-BAR-6, NFR-5). Depends: M44.
 - [ ] **M46** — The offer is the reader's to make. Delivers: `offering`/`withdrawing` on

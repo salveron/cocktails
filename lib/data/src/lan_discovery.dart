@@ -33,12 +33,25 @@ class LanService {
 /// A live announcement, [name] being what the network granted rather than what
 /// was asked: a clash is settled by suffix, so this is the name to keep and the
 /// one a guest asks for again (ADR 27).
-class LanAnnouncement {
+abstract interface class LanAnnouncement {
+  String get name;
+
+  Future<void> stop();
+}
+
+/// How one is made, so what owns an announcement is testable without a device:
+/// the platform crosses here and nowhere above it (ADR 18).
+typedef LanAnnouncer =
+    Future<LanAnnouncement> Function({required String name, required int port});
+
+final class _Broadcast implements LanAnnouncement {
+  @override
   final String name;
   final BonsoirBroadcast _broadcast;
 
-  const LanAnnouncement(this.name, this._broadcast);
+  const _Broadcast(this.name, this._broadcast);
 
+  @override
   Future<void> stop() => _broadcast.stop();
 }
 
@@ -58,7 +71,7 @@ Future<LanAnnouncement> announce({
       .first
       .timeout(lanAnnounceWindow);
   await broadcast.start();
-  return LanAnnouncement((await started).service.name, broadcast);
+  return _Broadcast((await started).service.name, broadcast);
 }
 
 /// Every device answering [lanServiceType] within [within], one entry each: a

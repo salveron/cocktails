@@ -4,11 +4,13 @@
 /// stores into (docs/components.md#testing).
 library;
 
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:cocktails/data/data.dart';
 import 'package:cocktails/domain/domain.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:yaml/yaml.dart';
 
 const codec = YamlCodec();
 
@@ -306,4 +308,40 @@ void barChannelContract(
       contains('no activity'),
     );
   });
+}
+
+/// A request to a LAN server over the loopback, standing in for the guest that
+/// would otherwise be a second device (docs/components.md#testing).
+Future<({int status, String body})> askServer(
+  int port,
+  String path, {
+  String method = 'GET',
+}) async {
+  final client = HttpClient();
+  try {
+    final request = await client.open(method, '127.0.0.1', port, path);
+    final response = await request.close();
+    return (
+      status: response.statusCode,
+      body: await utf8.decodeStream(response),
+    );
+  } finally {
+    client.close();
+  }
+}
+
+/// What the server on [port] says it offers, read by id the way a guest reads
+/// it (FR-BAR-1) — the document parsed rather than its text, so the emitter's
+/// layout stays pinned in its own test alone.
+Future<Map<String, ({String name, String path})>> offeredOn(int port) async {
+  final listed = await askServer(port, '/bars');
+  expect(listed.status, 200);
+  final bars = (loadYaml(listed.body) as YamlMap)['bars'] as YamlList;
+  return {
+    for (final bar in bars)
+      bar['id'] as String: (
+        name: bar['name'] as String,
+        path: bar['path'] as String,
+      ),
+  };
 }

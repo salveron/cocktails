@@ -47,6 +47,10 @@ final class LanBarServer {
 
   void withdraw(String barId) => _offered.remove(barId);
 
+  /// Whether anything is offered at all — what an announcement's life is
+  /// measured by, a device sharing nothing announcing nothing (NFR-5).
+  bool get isOffering => _offered.isNotEmpty;
+
   Future<void> stop() => _socket.close(force: true);
 
   Future<void> _answer(HttpRequest request) async {

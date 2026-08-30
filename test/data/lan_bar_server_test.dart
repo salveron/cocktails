@@ -3,12 +3,10 @@
 /// the list *looks* like is the emitter's, and is pinned in its own test.
 library;
 
-import 'dart:convert';
-import 'dart:io';
-
 import 'package:cocktails/data/src/lan_bar_server.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:yaml/yaml.dart';
+
+import '../support/data_test_support.dart';
 
 void main() {
   /// A server over [bars], a bar id answering the bytes kept for it and any
@@ -19,42 +17,6 @@ void main() {
     return server;
   }
 
-  Future<({int status, String body})> ask(
-    LanBarServer server,
-    String path, {
-    String method = 'GET',
-  }) async {
-    final client = HttpClient();
-    try {
-      final request = await client.open(method, '127.0.0.1', server.port, path);
-      final response = await request.close();
-      return (
-        status: response.statusCode,
-        body: await utf8.decodeStream(response),
-      );
-    } finally {
-      client.close();
-    }
-  }
-
-  /// What the list says, read the way a guest will read it — by id, since that
-  /// is what tells two bars of one name apart (FR-BAR-1). Reading the document
-  /// rather than its text keeps the emitter's layout out of this file.
-  Future<Map<String, ({String name, String path})>> offered(
-    LanBarServer server,
-  ) async {
-    final listed = await ask(server, '/bars');
-    expect(listed.status, 200);
-    final bars = (loadYaml(listed.body) as YamlMap)['bars'] as YamlList;
-    return {
-      for (final bar in bars)
-        bar['id'] as String: (
-          name: bar['name'] as String,
-          path: bar['path'] as String,
-        ),
-    };
-  }
-
   test('the port it binds is one the system handed out', () async {
     final server = await serving({});
     expect(server.port, greaterThan(0));
@@ -62,7 +24,7 @@ void main() {
 
   test('a device offering nothing names no bar', () async {
     final server = await serving({'a1': 'first bar'});
-    expect(await offered(server), isEmpty);
+    expect(await offeredOn(server.port), isEmpty);
   });
 
   /// 128 bits of it: the path is the whole of a shared bar's protection, so a
@@ -70,7 +32,7 @@ void main() {
   test('an offered bar is named, and given a path nobody guesses', () async {
     final server = await serving({'a1': 'first bar'});
     server.offer('a1', 'Home bar');
-    final listed = await offered(server);
+    final listed = await offeredOn(server.port);
     expect(listed.keys, ['a1']);
     expect(listed['a1']!.name, 'Home bar');
     expect(listed['a1']!.path, matches(RegExp(r'^[0-9a-f]{32}$')));
@@ -80,7 +42,10 @@ void main() {
     final server = await serving({'a1': 'first bar', 'b2': 'second bar'});
     server.offer('a1', 'Home bar');
     server.offer('b2', 'Other bar');
-    final served = await ask(server, '/${(await offered(server))['a1']!.path}');
+    final served = await askServer(
+      server.port,
+      '/${(await offeredOn(server.port))['a1']!.path}',
+    );
     expect(served.status, 200);
     expect(served.body, 'first bar');
   });
@@ -90,7 +55,7 @@ void main() {
     final server = await serving({'a1': 'first bar', 'b2': 'second bar'});
     server.offer('a1', 'Home bar');
     server.offer('b2', 'Other bar');
-    final listed = await offered(server);
+    final listed = await offeredOn(server.port);
     expect(listed['a1']!.path, isNot(listed['b2']!.path));
   });
 
@@ -99,9 +64,9 @@ void main() {
   test('offering a bar again keeps the path it already had', () async {
     final server = await serving({'a1': 'first bar'});
     server.offer('a1', 'Home bar');
-    final before = (await offered(server))['a1']!.path;
+    final before = (await offeredOn(server.port))['a1']!.path;
     server.offer('a1', 'Renamed bar');
-    final after = (await offered(server))['a1']!;
+    final after = (await offeredOn(server.port))['a1']!;
     expect(after.path, before);
     expect(after.name, 'Renamed bar');
   });
@@ -111,17 +76,17 @@ void main() {
     () async {
       final server = await serving({'a1': 'first bar'});
       server.offer('a1', 'Home bar');
-      final path = (await offered(server))['a1']!.path;
+      final path = (await offeredOn(server.port))['a1']!.path;
       server.withdraw('a1');
-      expect(await offered(server), isEmpty);
-      expect((await ask(server, '/$path')).status, 404);
+      expect(await offeredOn(server.port), isEmpty);
+      expect((await askServer(server.port, '/$path')).status, 404);
     },
   );
 
   test('a path nobody was given is refused', () async {
     final server = await serving({'a1': 'first bar'});
     server.offer('a1', 'Home bar');
-    expect((await ask(server, '/${'0' * 32}')).status, 404);
+    expect((await askServer(server.port, '/${'0' * 32}')).status, 404);
   });
 
   /// The bar is offered, so it is listed; the store having lost it is not one
@@ -129,19 +94,19 @@ void main() {
   test('an offered bar the store cannot answer for is refused', () async {
     final server = await serving({});
     server.offer('a1', 'Home bar');
-    final path = (await offered(server))['a1']!.path;
-    expect((await ask(server, '/$path')).status, 404);
+    final path = (await offeredOn(server.port))['a1']!.path;
+    expect((await askServer(server.port, '/$path')).status, 404);
   });
 
   test('anything but a GET is refused, the list included', () async {
     final server = await serving({'a1': 'first bar'});
     server.offer('a1', 'Home bar');
-    expect((await ask(server, '/bars', method: 'POST')).status, 404);
+    expect((await askServer(server.port, '/bars', method: 'POST')).status, 404);
   });
 
   test('a path outside the two it answers is refused', () async {
     final server = await serving({'a1': 'first bar'});
-    expect((await ask(server, '/')).status, 404);
-    expect((await ask(server, '/bars/a1')).status, 404);
+    expect((await askServer(server.port, '/')).status, 404);
+    expect((await askServer(server.port, '/bars/a1')).status, 404);
   });
 }

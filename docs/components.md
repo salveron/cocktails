@@ -50,6 +50,7 @@ lib/
       file_bar_channel.dart    # the file transport: the picker's text, decoded (FR-BAR-7)
       lan_discovery.dart       # the one file naming a DNS-SD package (ADR 27)
       lan_bar_server.dart      # the offered list, and each offered bar's bytes (ADR 22)
+      lan_bar_channel.dart     # the LAN's owner half: offer announces, withdrawal silences
       yaml_codec.dart          # decode/encode of a bar and of the index, version gate
       yaml_bar_reader.dart     # YAML tree → a bar's own file parts
       yaml_shelf_reader.dart   # YAML tree → the shelf index's parts
@@ -437,11 +438,15 @@ minted by the side that knows the transport, so nothing above `data/` ever build
 file transport has none to build, and `FileBarChannel.source` is the one empty address every 
 file-sourced bar keeps.
 
-The owner's side — `BarOfferings` (offer/withdraw, FR-BAR-6) and `BarFinder` (`nearby`, FR-BAR-8) — 
-lands with the LAN channel that first implements them, along with the `Found` entry a browse 
-answers. `BarOfferings` takes and drops one bar by id, and the adapter behind it owns everything that 
-comes up with an offer and goes down with the last — one server and one service instance per device, 
-never per bar ([ADR 22](adr/22-a-bar-travels-behind-one-seam.md)). It is handed *the bytes of a bar 
+The owner's side is `BarOfferings` (offer/withdraw, FR-BAR-6), which `LanBarChannel` is the first and 
+so far only transport to answer — a file is handed over rather than offered, so nothing follows it to 
+withdraw. It takes and drops one bar by id, and owns everything that comes up with an offer and goes 
+down with the last — one server and one service instance per device, never per bar 
+([ADR 22](adr/22-a-bar-travels-behind-one-seam.md)). Both are held as the futures that raise them, so 
+two offers at once raise one of each between them. The announcement crosses the platform behind a 
+`LanAnnouncer`, which is what lets the whole lifecycle be tested against a real loopback server with 
+only the announcing stood in for. `BarFinder` (`nearby`, FR-BAR-8) and the `Found` entry a browse 
+answers land with the guest's half. It is handed *the bytes of a bar 
 id* rather than a `BarStore`: an offered bar is usually not the one on show and only one collection 
 is resident (ADR 20), so the composition root supplies a function over a load and the canonical 
 emitter — the seam `filePickerProvider` already is, and what keeps a test free of a socket. 
