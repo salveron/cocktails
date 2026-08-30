@@ -48,6 +48,7 @@ lib/
       bar_store.dart           # the storage interface and the shelf index
       bar_channel.dart         # the sharing seam every transport answers (ADR 22)
       file_bar_channel.dart    # the file transport: the picker's text, decoded (FR-BAR-7)
+      lan_discovery.dart       # the one file naming a DNS-SD package (ADR 27)
       yaml_codec.dart          # decode/encode of a bar and of the index, version gate
       yaml_bar_reader.dart     # YAML tree → a bar's own file parts
       yaml_shelf_reader.dart   # YAML tree → the shelf index's parts
@@ -646,6 +647,12 @@ true of a handful of domain/data helpers (`list_edits.dart`, `yaml_primitives.da
 of a small `ui/` widget or dialog whose whole behaviour is driven by the screen test that composes
 it (`dialog_frame.dart`, `field_issues.dart`, `empty_state.dart`, most of `cards/`, `chips/` and
 `forms/` alike).
+
+**A plugin has no implementation under `flutter test`**, so what only a device can answer is not a 
+test here at all: `lan_discovery.dart` is exercised by hand against a target and its findings are 
+written to [platform facts](architecture.md#platform-facts) rather than held by a suite 
+([ADR 27](adr/27-nearby-comes-off-bonsoir.md)). Everything above it takes the seam instead, which is 
+what keeps the rest of the LAN transport testable without one.
 
 ### Support
 

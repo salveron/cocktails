@@ -58,6 +58,14 @@ android {
     }
 
     buildTypes {
+        debug {
+            // Its own app, so it can never be asked to update the release one:
+            // the signatures differ, and the only way past that is the
+            // uninstall described above, which takes every bar with it. The
+            // share provider's authority is ${applicationId}-derived and
+            // follows this suffix on its own.
+            applicationIdSuffix = ".debug"
+        }
         release {
             signingConfig = signingConfigs.findByName("release")
         }

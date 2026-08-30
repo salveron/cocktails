@@ -11,6 +11,10 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  # DNS-SD for the LAN transport, confined to lan_discovery.dart under the
+  # ADR 13 bar (ADR 27). By caret: it still releases, which ADR 14 reads as
+  # the cheaper half of that risk.
+  bonsoir: ^7.1.5
   # The document picker, the share sheet's other half (ADR 18). By caret: a
   # finished plugin surface published by flutter.dev is stable, not dormant.
   file_selector: ^1.1.0

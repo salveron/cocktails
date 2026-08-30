@@ -1,4 +1,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- The LAN transport's own, declared rather than inherited from the
+         discovery plugin, which merges the same two in silently: this is
+         where the app's platform facts are read from (ADR 22, ADR 27). -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE"/>
     <application
         android:label="Cocktails"
         android:name="${applicationName}"

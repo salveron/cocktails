@@ -176,7 +176,7 @@ lands bottom-up: the package proven on a device before a server rests on it, the
 anything announces it, and the owner's side before the guest's — FR-BAR-6 having had nothing to
 offer or withdraw while a file was the only way a bar travelled.
 
-- [ ] **M43** — Nearby is proven, and confined. Delivers: a DNS-SD package under the
+- [x] **M43** — Nearby is proven, and confined. Delivers: a DNS-SD package under the
   [ADR 13](adr/13-lists-scroll-by-index.md) bar — one file, the way out written down — the pick and
   its pinning ([ADR 22](adr/22-a-bar-travels-behind-one-seam.md)), a register-and-browse round trip
   proven on the device, and the permissions it actually asks for

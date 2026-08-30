@@ -36,11 +36,10 @@ composition root.** Shapes in [components.md](../components.md#the-sharing-seam)
 - **Three interfaces, not one**: every transport fetches; only some offer and withdraw; only one
   finds. A way that cannot do a thing carries no method for it, so the file channel is honestly
   one method wide.
-- **LAN = DNS-SD for finding, our own HTTP for carrying.** Discovery needs a package — `bonsoir`
-  and `nsd` are the candidates, both registering and browsing on Android; `multicast_dns`
-  (flutter.dev) is ruled out because it only browses, and the owner's side is the half we cannot do
-  without. The pick, its version and its pinning are settled in the change that takes it, under the
-  ADR 13 bar (one file, way out written down) and the ADR 14 pinning rule.
+- **LAN = DNS-SD for finding, our own HTTP for carrying.** Discovery costs a package and the
+  transfer none. Which package, at what version and pinned how, is
+  [ADR 27](27-nearby-comes-off-bonsoir.md)'s — taken under the ADR 13 bar, so one file names it and
+  the way out of it is written down.
 - **One server and one service instance per device, not per bar.** The device announces itself once
   and its `dart:io` `HttpServer` answers two things: what it offers — each bar's id, its name, and
   the unguessable path its bytes are at — and those bytes. Announcing the device is what lets a

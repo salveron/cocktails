@@ -12,10 +12,13 @@ Technical design for [requirements.md](requirements.md); direction [vision.md](v
   ergonomics rather than structure ([ADR 13](adr/13-lists-scroll-by-index.md)), and the bar it sets 
   for the next: confined to one file, with the way out written down. `font_awesome_flutter` is the 
   next, taken under that bar ([ADR 14](adr/14-the-dice-comes-off-font-awesome.md)) — by caret where 
-  the other is pinned, a package that still releases being the safer for keeping up with. Sharing 
-  over a network adds to this list under the same bar 
-  ([ADR 22](adr/22-a-bar-travels-behind-one-seam.md)); the list is pinned to pubspec.yaml by test, 
-  so a package is named here in the change that takes it and never ahead of it.
+  the other is pinned, a package that still releases being the safer for keeping up with. `bonsoir` is 
+  the third taken under that bar and the first that speaks to a network — DNS-SD for the LAN 
+  transport, confined to one file with its replacement written down 
+  ([ADR 27](adr/27-nearby-comes-off-bonsoir.md), [ADR 22](adr/22-a-bar-travels-behind-one-seam.md)), 
+  by caret on the same reading as the one above. It brings the largest transitive tail here yet, five 
+  sub-packages and a D-Bus stack under the Linux one; the list is pinned to pubspec.yaml by test, so 
+  a package is named here in the change that takes it and never ahead of it.
 
 ## System overview
 
@@ -262,8 +265,8 @@ written before it existed reads as the answer the app gave then and no migration
 - The copy leaves through the Android share sheet, over the `FileProvider` `share_plus` ships 
   ([ADR 18](adr/18-data-crosses-the-edge-in-a-system-sheet.md)); the plugin re-copies it into 
   `cacheDir/share_plus/`, so the receiving app sees the basename above. The share provider's 
-  manifest entry is the plugin's own; the internet permission the LAN transport needs is the first 
-  that is ours (ADR 22).
+  manifest entry is the plugin's own, unlike the LAN transport's permissions two bullets down, which 
+  are the first that are ours (ADR 22).
 - A file comes back through `ACTION_OPEN_DOCUMENT` on `file_selector`, so no layer here holds a 
   `content://` URI. The Android plugin answers with an `XFile.fromData` — the bytes, not a path to 
   them — and `XFile.readAsString` **drops the encoding asked of it** on that branch, decoding byte 
@@ -272,6 +275,24 @@ written before it existed reads as the answer the app gave then and no migration
   nets are written and never read: nothing in the app opens one, and app-private storage puts them 
   past the reader as well. What they buy is that the bytes are still there — for a later version to 
   offer, or for `adb` to pull — not a way back today.
+- DNS-SD announces and browses through the plugin's own platform APIs 
+  ([ADR 27](adr/27-nearby-comes-off-bonsoir.md)), and the app declares `INTERNET` and 
+  `CHANGE_WIFI_MULTICAST_STATE` itself rather than inheriting the same two the plugin merges in. 
+  **A service is reached at an address, never at a name**: a resolved service carries both, but 
+  Android resolves no `.local` hostname from a socket, so the address is what a fetch may use. Proven 
+  on the round trip, which also settled two things worth not rediscovering: the address may come back 
+  **IPv6-only** — the development machine answers one global IPv6 address and no IPv4 — so a URL 
+  built from it has to bracket the host; and a service is announced with its port but *found* without 
+  one, the port arriving only with the resolve, so nothing may be reached off a found service alone. 
+  The phone answered the rest: a register and a browse ask for **nothing beyond those two** — 
+  `NEARBY_WIFI_DEVICES` gates the Wi-Fi APIs rather than the NSD path, and discovery runs without it.
+- **A runtime local-network prompt is coming, and is dated rather than sudden.** `targetSdk` is 
+  Flutter's default taken as it moves, 36 today, and the NSD path asks for no permission of its own at 
+  that target (above). Android 16 makes local-network access 
+  restrictable opt-in, and Android 17 makes it mandatory behind `ACCESS_LOCAL_NETWORK` — a runtime 
+  permission with a system dialog. The day that default reaches 37 the reader meets it the first time 
+  they offer or look for a bar, and a refusal needs wording FR-BAR-8 does not have 
+  ([ADR 27](adr/27-nearby-comes-off-bonsoir.md)).
 - Android Auto Backup carries the whole app-private data directory, declared in `backup_rules.xml` 
   (API 24–30) and `data_extraction_rules.xml` (31+, cloud backup and device transfer alike). The 
   `root` domain rather than `file`: `path_provider`'s documents directory is `app_flutter/`, a 
@@ -279,8 +300,12 @@ written before it existed reads as the answer the app gave then and no migration
   hundreds of recipes run to single-digit MB, ×4 for the rolling backups beside them — inside the 
   25 MB quota, which is what makes carrying the rotation affordable rather than worth excluding 
   (neither rules format has a wildcard to exclude it with).
-- Application ID: `dev.salveron.cocktails`.
-- Minimum Android: Flutter's own default, taken as it moves (minSdk 24 today).
+- Application ID: `dev.salveron.cocktails`, and `.debug` besides on a debug build, so a device run 
+  installs its own app rather than asking to update the release one: the signatures differ, and the 
+  only way past that is the uninstall that takes every bar on the device with it. The share 
+  provider's authority is derived from the id and follows the suffix by itself. A debug build has 
+  its own storage, so what a device run reads is never the reader's own bars.
+- Minimum Android: Flutter's own default, taken as it moves (minSdk 24, targetSdk 36 today).
 - UI: English only.
 
 ## Build & distribution
