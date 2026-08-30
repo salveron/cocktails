@@ -5,7 +5,11 @@ import 'package:cocktails/ui/widgets/dialogs/entry_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import '../../../support/ui_test_support.dart';
+import '../../../support/ui_finders.dart';
+
+/// The one comma-separated field an ingredient's other spellings are typed
+/// into.
+final aliasesField = field('Also known as (comma-separated)');
 
 /// The real ingredient rules, with "gin" and "genever" already taken — the
 /// second an alias, so the dialog is judged against the whole namespace.

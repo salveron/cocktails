@@ -3,13 +3,20 @@ import 'package:cocktails/ui/screens/recipes_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import '../../support/ui_test_support.dart';
-import '../../support/test_support.dart';
+import '../../support/memory_bar_store.dart';
+import '../../support/ui_finders.dart';
+import '../../support/ui_fixtures.dart';
+import '../../support/ui_harness.dart';
 
 Future<MemoryBarStore> pumpList(
   WidgetTester tester, [
   Collection? collection,
 ]) => pumpOver(tester, const RecipesScreen(), collection ?? recipeCollection);
+
+final notesField = field('Preparation, glassware, garnish…');
+
+Future<void> openAdd(WidgetTester tester) =>
+    tap(tester, find.widgetWithIcon(FloatingActionButton, Icons.add));
 
 /// The error under the line field at [index], or null while it carries none.
 String? lineError(WidgetTester tester, int index) =>

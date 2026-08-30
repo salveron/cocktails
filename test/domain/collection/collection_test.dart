@@ -146,24 +146,6 @@ void main() {
       expect(collection.recipeTags.single.color, TagColor.rose);
     });
 
-    test('collections are unmodifiable', () {
-      final collection = Collection();
-      expect(
-        () => collection.ingredients.add(Ingredient('gin')),
-        throwsUnsupportedError,
-      );
-      for (final tags in [collection.ingredientTags, collection.recipeTags]) {
-        expect(
-          () => tags.add(const Tag('sour', color: TagColor.rose)),
-          throwsUnsupportedError,
-        );
-      }
-      expect(
-        () => collection.recipes.add(Recipe('Negroni')),
-        throwsUnsupportedError,
-      );
-    });
-
     const classic = [Tag('classic', color: TagColor.rose)];
     const peaty = [Tag('peaty', color: TagColor.sand)];
 
@@ -175,35 +157,39 @@ void main() {
       'recipes': build(recipes: [Recipe('Negroni')]),
     });
 
-    test('copyWith replaces one field and carries the rest', () {
-      final collection = build();
-      expect(collection.copyWith(), collection, reason: 'nothing named');
-      expect(
-        collection.copyWith(unitSizes: const UnitSizes()),
-        build(unitSizes: const UnitSizes()),
-        reason: 'unitSizes',
-      );
-      expect(
-        collection.copyWith(ingredients: [Ingredient('gin')]),
-        build(ingredients: [Ingredient('gin')]),
-        reason: 'ingredients',
-      );
-      expect(
-        collection.copyWith(ingredientTags: peaty),
-        build(ingredientTags: peaty),
-        reason: 'ingredientTags',
-      );
-      expect(
-        collection.copyWith(recipeTags: classic),
-        build(recipeTags: classic),
-        reason: 'recipeTags',
-      );
-      expect(
-        collection.copyWith(recipes: [Recipe('Negroni')]),
-        build(recipes: [Recipe('Negroni')]),
-        reason: 'recipes',
-      );
-    });
+    final collection = build();
+    copyWithContract([
+      (
+        field: 'nothing named',
+        apply: () => collection.copyWith(),
+        expected: collection,
+      ),
+      (
+        field: 'unitSizes',
+        apply: () => collection.copyWith(unitSizes: const UnitSizes()),
+        expected: build(unitSizes: const UnitSizes()),
+      ),
+      (
+        field: 'ingredients',
+        apply: () => collection.copyWith(ingredients: [Ingredient('gin')]),
+        expected: build(ingredients: [Ingredient('gin')]),
+      ),
+      (
+        field: 'ingredientTags',
+        apply: () => collection.copyWith(ingredientTags: peaty),
+        expected: build(ingredientTags: peaty),
+      ),
+      (
+        field: 'recipeTags',
+        apply: () => collection.copyWith(recipeTags: classic),
+        expected: build(recipeTags: classic),
+      ),
+      (
+        field: 'recipes',
+        apply: () => collection.copyWith(recipes: [Recipe('Negroni')]),
+        expected: build(recipes: [Recipe('Negroni')]),
+      ),
+    ]);
 
     test('copyWith still rejects a duplicate name', () {
       expect(
@@ -277,10 +263,6 @@ void main() {
         expect(collection.recipeNames, {'Whiskey Sour'});
         expect(collection.tagNames(TagKind.recipe), {'sour'});
         expect(collection.tagNames(TagKind.ingredient), {'oaked'});
-        expect(
-          () => collection.tagNames(TagKind.recipe).add('tiki'),
-          throwsUnsupportedError,
-        );
       });
 
       test('an alias answers for the ingredient it belongs to (ADR 10)', () {

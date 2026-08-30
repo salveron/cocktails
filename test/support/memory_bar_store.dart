@@ -1,13 +1,12 @@
-/// Support no single layer owns: the in-memory [BarStore] double every suite
-/// runs over to stay device-free (docs/components.md#testing).
+/// The in-memory [BarStore] double every suite runs over to stay device-free
+/// (docs/components.md#testing).
 library;
 
 import 'package:cocktails/data/data.dart';
 import 'package:cocktails/domain/domain.dart';
 
-/// `base` rather than `final`: a test that needs one method to fail — a load
-/// that throws, a save that cannot write — specialises that one and inherits
-/// the rest, instead of standing up a sixth implementation of the interface.
+/// `base` rather than `final`: a test needing one method to fail specialises
+/// that one and inherits the rest, rather than a sixth implementation.
 base class MemoryBarStore implements BarStore {
   /// What the next [loadShelf] returns; a test seeds [Rejected] to exercise
   /// the recovery path. Every [saveShelf] replaces it.

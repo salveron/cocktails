@@ -4,8 +4,10 @@ import 'package:cocktails/ui/screens/settings_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import '../../support/ui_test_support.dart';
-import '../../support/test_support.dart';
+import '../../support/ui_finders.dart';
+import '../../support/ui_fixtures.dart';
+import '../../support/ui_harness.dart';
+import '../../support/memory_bar_store.dart';
 
 /// The screen as it is reached — through Settings, so leaving it has somewhere
 /// to go and the menu entry is exercised with it.

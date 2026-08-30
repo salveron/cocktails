@@ -5,8 +5,10 @@ import 'package:cocktails/ui/widgets/chips/tag_choices.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import '../../support/ui_test_support.dart';
-import '../../support/test_support.dart';
+import '../../support/ui_finders.dart';
+import '../../support/ui_fixtures.dart';
+import '../../support/ui_harness.dart';
+import '../../support/memory_bar_store.dart';
 
 RecipeLine _line(String ingredient) =>
     RecipeLine(const Amount(1), 'part', [ingredient]);

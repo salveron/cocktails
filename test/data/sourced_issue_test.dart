@@ -2,6 +2,8 @@ import 'package:cocktails/data/data.dart';
 import 'package:cocktails/domain/domain.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../support/domain_test_support.dart';
+
 void main() {
   final issue = ValidationIssue(
     const ['recipes', 0, 'lines', 2],
@@ -10,10 +12,11 @@ void main() {
   );
 
   group('SourcedIssue', () {
-    test('carries value equality', () {
-      expect(SourcedIssue(issue, 5), SourcedIssue(issue, 5));
-      expect(SourcedIssue(issue, 5).hashCode, SourcedIssue(issue, 5).hashCode);
-      expect(SourcedIssue(issue, 5), isNot(SourcedIssue(issue, 6)));
+    valueEquality(() => SourcedIssue(issue, 5), {
+      'line': SourcedIssue(issue, 6),
+    });
+
+    test('a null line is equal to another', () {
       expect(SourcedIssue(issue, null), SourcedIssue(issue, null));
     });
 

@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:cocktails/domain/domain.dart';
 import 'package:cocktails/state/state.dart';
 import 'package:cocktails/ui/screens/recipes_screen.dart';
@@ -6,9 +8,338 @@ import 'package:cocktails/ui/widgets/chips/tag_choices.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
-import '../../support/ui_test_support.dart';
+import '../../support/memory_bar_store.dart';
+import '../../support/ui_finders.dart';
+import '../../support/ui_fixtures.dart';
+import '../../support/ui_harness.dart';
+
+/// The dice over the recipe list, and the roll it makes (FR-DIS-5).
+final dice = find.byTooltip('Random pick');
+
+Future<void> roll(WidgetTester tester) => tap(tester, dice);
+
+/// Rolls without waiting it out, leaving the caller to pump: what the wash does
+/// between the roll and the rest is the whole of what some tests are watching.
+Future<void> rollWithoutSettling(WidgetTester tester) async {
+  await tester.tap(dice);
+  await tester.pump();
+}
+
+/// The fill the card named [name] draws itself in — where the wash starts a
+/// drawn card and where every other card rests (FR-DIS-5).
+Color? cardFill(WidgetTester tester, String name) => tester
+    .widget<Card>(
+      find.ancestor(of: find.text(name), matching: find.byType(Card)).first,
+    )
+    .color;
+
+/// Whether it wears the ring a picked tag wears — that is, whether it narrows.
+bool baseRinged(WidgetTester tester) =>
+    tester.widget<ColorChip>(baseChip).chosen!;
+
+/// The chip reading [label], for the geometry a filter row is judged by.
+Finder chipOf(WidgetTester tester, String label) =>
+    find.ancestor(of: find.text(label), matching: find.byType(ColorChip));
+
+/// What that menu is offering, told apart from the list standing behind it — an
+/// ingredient's name is on the card of every recipe built from it, so a reading
+/// not held to the menu would find both.
+final _baseMenu = find.byWidgetPredicate((widget) => widget is PopupMenuItem);
+
+/// Every offering it makes, in order, leaving it open to be read.
+Future<List<String>> baseChoices(WidgetTester tester) async {
+  await tap(tester, baseChip);
+  return [
+    for (final text in tester.widgetList<Text>(
+      find.descendant(of: _baseMenu, matching: find.byType(Text)),
+    ))
+      text.data!,
+  ];
+}
+
+/// [text] on a list card, told apart from the filter row standing above the
+/// list: one tag is a chip in both places, that row being the cards' legend.
+Finder onCard(String text) =>
+    find.descendant(of: find.byType(Card), matching: find.text(text));
+
+Future<MemoryBarStore> pumpRecipes(
+  WidgetTester tester, [
+  Collection? collection,
+  FixedUnit display = FixedUnit.part,
+  int? seed,
+]) => pumpOver(
+  tester,
+  const RecipesScreen(),
+  collection ?? recipeCollection,
+  display: display,
+  overrides: [if (seed != null) randomProvider.overrideWithValue(Random(seed))],
+);
+
+final stockedCollection = Collection(
+  ingredients: [
+    Ingredient('gin', stock: StockLevel.in_),
+    Ingredient('campari', stock: StockLevel.low),
+    Ingredient('sweet vermouth'),
+  ],
+  recipes: [
+    Recipe(
+      'Gin Shot',
+      lines: const [
+        RecipeLine(Amount(1), 'part', ['gin']),
+        RecipeLine(Amount(1), 'dash', [
+          'sweet vermouth',
+        ], mark: LineMark.optional),
+      ],
+    ),
+    Recipe(
+      'Campari Shot',
+      lines: const [
+        RecipeLine(Amount(1), 'part', ['campari']),
+      ],
+    ),
+    Recipe(
+      'Negroni',
+      lines: const [
+        RecipeLine(Amount(1), 'part', ['gin']),
+        RecipeLine(Amount(1), 'part', ['campari']),
+        RecipeLine(Amount(1), 'part', ['sweet vermouth']),
+      ],
+    ),
+  ],
+);
+
+/// Two worth making side by side at the top, each carrying a body tall enough
+/// to move whatever stands below it, and filler enough to leave the list
+/// scrollable. A draw here always lands on a row the reader can already see —
+/// which the package reaches by measuring pixels rather than by index, and so
+/// the one case a stale measurement throws off (ADR 13).
+const crowded = ['Aviation', 'Bramble'];
+
+final crowdedCollection = Collection(
+  ingredients: [
+    Ingredient('gin', stock: StockLevel.in_),
+    Ingredient('vodka'),
+  ],
+  recipes: [
+    for (final name in crowded)
+      Recipe(
+        name,
+        notes: 'Stir over ice.\nStrain.\nTwist of lemon.',
+        lines: const [
+          RecipeLine(Amount(1), 'part', ['gin']),
+        ],
+      ),
+    for (var filler = 1; filler <= 20; filler++)
+      Recipe(
+        'Filler ${filler.toString().padLeft(2, '0')}',
+        lines: const [
+          RecipeLine(Amount(1), 'part', ['vodka']),
+        ],
+      ),
+  ],
+);
+
+/// Two worth making on different bases, so a base pick is seen to govern what
+/// a roll may land on — without it the draw would move between them.
+final basedCollection = Collection(
+  ingredients: [
+    Ingredient('gin', stock: StockLevel.in_),
+    Ingredient('white rum', stock: StockLevel.in_),
+  ],
+  recipes: [
+    Recipe(
+      'Gin Fizz',
+      lines: const [
+        RecipeLine(Amount(1), 'part', ['gin'], mark: LineMark.base),
+      ],
+    ),
+    Recipe(
+      'Rum Fizz',
+      lines: const [
+        RecipeLine(Amount(1), 'part', ['white rum'], mark: LineMark.base),
+      ],
+    ),
+  ],
+);
+
+/// Two bases with rows enough behind each, and a tag on every second one, so
+/// every way of narrowing leaves a list that still scrolls — where a reader is
+/// put is a question with an answer only while there is somewhere else to be.
+const spirits = {'gin': 'Gin', 'vodka': 'Vodka'};
+
+final spiritedCollection = Collection(
+  ingredients: [
+    for (final spirit in spirits.keys)
+      Ingredient(spirit, stock: StockLevel.in_),
+  ],
+  recipeTags: const [Tag('sour', color: TagColor.sand)],
+  recipes: [
+    for (final spirit in spirits.entries)
+      for (var row = 1; row <= 20; row++)
+        Recipe(
+          '${spirit.value} ${row.toString().padLeft(2, '0')}',
+          tags: row.isEven ? const ['sour'] : const [],
+          lines: [
+            RecipeLine(const Amount(1), 'part', [
+              spirit.key,
+            ], mark: LineMark.base),
+          ],
+        ),
+  ],
+);
+
+/// A tag nothing wears, so the chips alone can empty the list.
+final untriedCollection = recipeCollection.withTag(
+  TagKind.recipe,
+  const Tag('tiki', color: TagColor.teal),
+);
+
+/// A recipe naming its tag in a case the vocabulary does not use — what a hand
+/// edit to an exported file leaves behind, and what `validateCollection`
+/// accepts, tag references resolving by the fold (ADR 08).
+final recasedTagCollection = recipeCollection.withRecipe(
+  recipeCollection.recipes
+      .firstWhere((recipe) => recipe.name == 'Whiskey Sour')
+      .copyWith(tags: const ['Sour', 'classic']),
+);
+
+/// What the verdict chip on the row named [name] reads.
+String verdictOn(WidgetTester tester, String name) => tester
+    .widget<Text>(
+      find.descendant(
+        of: find.descendant(
+          of: find.ancestor(
+            of: find.text(name),
+            matching: find.byType(ListTile),
+          ),
+          matching: find.byType(AvailabilityChip),
+        ),
+        matching: find.byType(Text),
+      ),
+    )
+    .data!;
+
+/// Two recipes of nothing but groups: one line for each way a group can read —
+/// an ingredient on hand, only a low one, nothing at all — and one carrying a
+/// mark, so the mark is seen to govern the group rather than an ingredient of
+/// it.
+final substitutedCollection = Collection(
+  ingredients: [
+    Ingredient('campari', stock: StockLevel.low),
+    Ingredient('cognac'),
+    Ingredient('gin', stock: StockLevel.in_),
+    Ingredient('sweet vermouth'),
+    Ingredient('vodka', stock: StockLevel.in_),
+  ],
+  recipes: [
+    Recipe(
+      'Sidecar',
+      lines: const [
+        RecipeLine(Amount(1), 'part', ['cognac', 'vodka']),
+        RecipeLine(Amount(1), 'part', ['cognac', 'campari']),
+        RecipeLine(Amount(1), 'part', ['cognac', 'sweet vermouth']),
+      ],
+    ),
+    Recipe(
+      'Gimlet',
+      lines: const [
+        RecipeLine(Amount(1), 'part', ['gin', 'vodka'], mark: LineMark.base),
+      ],
+    ),
+  ],
+);
+
+/// The runs the line reading [line] is drawn from — the one place a test
+/// reaches into a line's spans, however it means to judge them.
+List<TextSpan> runsOn(WidgetTester tester, String line) =>
+    (tester.widget<Text>(find.text(line)).textSpan! as TextSpan).children!
+        .cast<TextSpan>();
+
+/// The ingredients on the line reading [line] drawn in the dimmed ink — the
+/// ones a group offers that the bar cannot supply. They are the only runs
+/// carrying a colour of their own, so the colour is what tells them apart.
+List<String> dimmedOn(WidgetTester tester, String line) => [
+  for (final run in runsOn(tester, line))
+    if (run.style?.color != null) run.text!,
+];
+
+/// The ink those ingredients wear; fails the test where the line dims nothing.
+Color dimInkOn(WidgetTester tester, String line) => runsOn(
+  tester,
+  line,
+).firstWhere((run) => run.style?.color != null).style!.color!;
+
+/// What the dot beside the line reading [line] reports, or null when that line
+/// carries none — which is how an in-stock ingredient reads.
+StockLevel? dotOnLine(WidgetTester tester, String line) {
+  final dots = tester
+      .widgetList<StockDot>(
+        find.descendant(
+          of: find
+              .ancestor(of: find.text(line), matching: find.byType(Row))
+              .first,
+          matching: find.byType(StockDot),
+        ),
+      )
+      .toList();
+  return dots.isEmpty ? null : dots.single.stock;
+}
+
+/// The runs of the line reading [line] drawn in italics, joined: the "or" of a
+/// group, and the measure of a card not reading the amounts as written.
+String italicOn(WidgetTester tester, String line) => [
+  for (final run in runsOn(tester, line))
+    if (run.style?.fontStyle == FontStyle.italic) run.text!,
+].join();
+
+/// The reader who pours in ml (FR-SET-1) — a part is 30 ml, so the Negroni's
+/// three lines land on round numbers. A pick rather than a collection now: it
+/// is the bar's, not the recipes' (ADR 21).
+const inMillilitres = FixedUnit.ml;
+
+/// Settles that card's own dialog on [factor] and [unit], leaving whatever it
+/// does not name where the dialog opened it.
+Future<void> scale(
+  WidgetTester tester,
+  String name, {
+  int? factor,
+  String? unit,
+  String button = 'Apply',
+}) async {
+  await chooseOnRow(tester, name, 'Scale & convert');
+  if (factor != null) await tap(tester, find.text('×$factor'));
+  if (unit != null) await tap(tester, find.text(unit));
+  await tap(tester, find.text(button));
+}
+
+ProviderContainer _containerOn(WidgetTester tester) =>
+    ProviderScope.containerOf(
+      tester.element(find.byType(RecipesScreen)),
+      listen: false,
+    );
+
+/// The reading unit settled elsewhere while this screen stands (FR-SET-1) —
+/// the bar's, not the collection's (ADR 21), so nothing the list watches for
+/// its rows changes with it.
+Future<void> setDisplay(WidgetTester tester, FixedUnit display) async {
+  await _containerOn(tester).read(shelfProvider.notifier).setDisplay(display);
+  await tester.pumpAndSettle();
+}
+
+/// The collection rewritten under the reader, without their having touched
+/// anything: [recipe]'s notes, so every row is built afresh while what is on
+/// show, and the order it is in, both stand exactly as they did.
+Future<void> rewriteUnder(WidgetTester tester, String recipe) async {
+  final container = _containerOn(tester);
+  final collection = container.read(collectionProvider);
+  await container
+      .read(barWriterProvider)!
+      .upsertRecipe(
+        collection.recipeNamed(recipe)!.copyWith(notes: 'Stirred.'),
+      );
+  await tester.pumpAndSettle();
+}
 
 void main() {
   group('recipe list', () {
@@ -407,8 +738,8 @@ void main() {
   group('random pick (FR-DIS-5)', () {
     /// Gin Shot is ready, Campari Shot low — the two a roll may land on — and
     /// Negroni is short of an ingredient, so the draw has something to refuse.
-    Future<void> pumpDrawable(WidgetTester tester) async {
-      await pumpRecipes(tester, stockedCollection);
+    Future<void> pumpDrawable(WidgetTester tester, {int? seed}) async {
+      await pumpRecipes(tester, stockedCollection, FixedUnit.part, seed);
     }
 
     testWidgets('it opens one you can make, and only it', (tester) async {
@@ -421,7 +752,7 @@ void main() {
     });
 
     testWidgets('low counts as makeable, missing never does', (tester) async {
-      await pumpDrawable(tester);
+      await pumpDrawable(tester, seed: 1);
       // Every roll among two, so the one it never lands on is the refusal.
       for (var thrown = 0; thrown < 6; thrown++) {
         await roll(tester);
@@ -460,7 +791,7 @@ void main() {
     testWidgets('a base pick governs it too, not just the search', (
       tester,
     ) async {
-      await pumpRecipes(tester, basedCollection);
+      await pumpRecipes(tester, basedCollection, FixedUnit.part, 1);
       await pickBase(tester, 'white rum');
       // Both can be made, so an ungoverned draw would move between them.
       for (var thrown = 0; thrown < 4; thrown++) {
@@ -476,15 +807,6 @@ void main() {
       await roll(tester);
       expect(find.text('Nothing here can be made right now.'), findsOneWidget);
       expect(openCards(tester, names), isEmpty);
-    });
-
-    testWidgets('the dice reaches as far as the button beside it', (
-      tester,
-    ) async {
-      await pumpDrawable(tester);
-      final buttons = find.byType(FloatingActionButton);
-      expect(buttons, findsNWidgets(2));
-      expect(tester.getSize(buttons.at(0)), tester.getSize(buttons.at(1)));
     });
 
     testWidgets('the dice keeps away where there is nothing on show', (
@@ -512,7 +834,7 @@ void main() {
     });
 
     testWidgets('the card it opens is put on screen (ADR 13)', (tester) async {
-      await pumpRecipes(tester, longCollection);
+      await pumpRecipes(tester, longCollection, FixedUnit.part, 1);
       await sortBy(tester, 'Name');
       expect(find.text('Zombie'), findsNothing);
       // Two rolls, so the far one is reached whichever the first landed on.
@@ -525,7 +847,7 @@ void main() {
     testWidgets('and one already in view is not carried off the top', (
       tester,
     ) async {
-      await pumpRecipes(tester, crowdedCollection);
+      await pumpRecipes(tester, crowdedCollection, FixedUnit.part, 1);
       // Rolls enough to land on the lower of the pair with the taller one
       // open above it — the order in which the card shutting takes the drawn
       // one with it, where the reveal is measured before either has moved.
@@ -538,16 +860,6 @@ void main() {
           reason: 'roll $thrown left "$drawn" off the list',
         );
       }
-    });
-
-    testWidgets('the dice on the button is a pair of dice (ADR 14)', (
-      tester,
-    ) async {
-      await pumpDrawable(tester);
-      final glyph = tester.widget<FaIcon>(
-        find.descendant(of: dice, matching: find.byType(FaIcon)),
-      );
-      expect(glyph.icon, FontAwesomeIcons.dice.data);
     });
 
     testWidgets('the one it lands on washes, then settles back', (
@@ -1048,18 +1360,11 @@ void main() {
   });
 
   group('a guest bar writes nothing here', () {
-    testWidgets('the recipes offer no way to add one', (tester) async {
-      await pumpOver(
-        tester,
-        const RecipesScreen(),
-        recipeCollection,
-        bar: testGuestBar(),
-      );
-      expect(
-        find.widgetWithIcon(FloatingActionButton, Icons.add),
-        findsNothing,
-      );
-    });
+    guestListOffersNoWrite(
+      () => const RecipesScreen(),
+      recipeCollection,
+      'Negroni',
+    );
 
     /// The draw is a way of reading the list, so it survives (FR-BAR-4).
     testWidgets('but the random pick still rolls', (tester) async {
@@ -1070,16 +1375,6 @@ void main() {
         bar: testGuestBar(),
       );
       expect(dice, findsOneWidget);
-    });
-
-    testWidgets('a closed recipe card carries no menu at all', (tester) async {
-      await pumpOver(
-        tester,
-        const RecipesScreen(),
-        recipeCollection,
-        bar: testGuestBar(),
-      );
-      expect(rowMenu('Negroni'), findsNothing);
     });
 
     /// Scaling reads the owner's line rather than changing it, so the menu

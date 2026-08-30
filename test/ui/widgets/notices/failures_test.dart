@@ -2,7 +2,8 @@ import 'package:cocktails/ui/widgets/notices/failures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import '../../../support/ui_test_support.dart';
+import '../../../support/ui_fixtures.dart';
+import '../../../support/ui_harness.dart';
 
 void main() {
   group('startup issues', () {

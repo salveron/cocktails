@@ -6,8 +6,10 @@ import 'package:cocktails/ui/screens/settings_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import '../../support/ui_test_support.dart';
-import '../../support/test_support.dart';
+import '../../support/ui_finders.dart';
+import '../../support/ui_fixtures.dart';
+import '../../support/ui_harness.dart';
+import '../../support/memory_bar_store.dart';
 
 /// A store that cannot write, so the one thing a failed replace must not do —
 /// leave for a collection that was never written — can be watched.

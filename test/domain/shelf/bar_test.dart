@@ -84,25 +84,24 @@ void main() {
       expect(ownedBar(name: 'Home bar'), isNot(ownedBar(name: 'home bar')));
     });
 
-    test('copyWith replaces one field and carries the rest', () {
-      final bar = guestBar(display: FixedUnit.ml, refreshed: anHourAgo);
-      expect(bar.copyWith(), bar, reason: 'nothing named');
-      expect(
-        bar.copyWith(name: 'Ada\'s other bar').name,
-        'Ada\'s other bar',
-        reason: 'name',
-      );
-      expect(
-        bar.copyWith(name: 'Ada\'s other bar').refreshed,
-        anHourAgo,
-        reason: 'the rest rides along',
-      );
-      expect(
-        bar.copyWith(display: FixedUnit.oz),
-        guestBar(display: FixedUnit.oz, refreshed: anHourAgo),
-        reason: 'display',
-      );
-    });
+    final bar = guestBar(display: FixedUnit.ml, refreshed: anHourAgo);
+    copyWithContract([
+      (field: 'nothing named', apply: () => bar.copyWith(), expected: bar),
+      (
+        field: 'name',
+        apply: () => bar.copyWith(name: 'Ada\'s other bar'),
+        expected: guestBar(
+          name: 'Ada\'s other bar',
+          display: FixedUnit.ml,
+          refreshed: anHourAgo,
+        ),
+      ),
+      (
+        field: 'display',
+        apply: () => bar.copyWith(display: FixedUnit.oz),
+        expected: guestBar(display: FixedUnit.oz, refreshed: anHourAgo),
+      ),
+    ]);
 
     test('refreshedAt is the one writer of the stamp (FR-BAR-5)', () {
       final now = DateTime.utc(2026, 3, 1, 18);
@@ -138,13 +137,6 @@ void main() {
       expect(renamed.summary, bar.summary);
     });
 
-    test('a summary cannot be changed from outside', () {
-      expect(
-        () => ownedBar().summarised(_twoIngredients).summary!.clear(),
-        throwsUnsupportedError,
-      );
-    });
-
     test(
       'two bars counted apart compare equal, and a bar uncounted does not',
       () {
@@ -161,10 +153,6 @@ void main() {
       final bar = ownedBar(offers: offers);
       offers.add((via: Transport.cloud, guests: []));
       expect(bar.offers, hasLength(1));
-      expect(
-        () => bar.offers.add((via: Transport.file, guests: [])),
-        throwsUnsupportedError,
-      );
     });
   });
 

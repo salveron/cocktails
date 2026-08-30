@@ -1,6 +1,8 @@
 import 'package:cocktails/domain/domain.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../support/domain_test_support.dart';
+
 void main() {
   const kind = ValidationIssueKind.emptyName;
 
@@ -27,47 +29,16 @@ void main() {
       );
     });
 
-    test(
-      'equal path values, kind and message are equal, even from separate lists',
-      () {
-        final a = ValidationIssue(['recipes', 0, 'lines', 2], kind, 'oops');
-        final b = ValidationIssue(['recipes', 0, 'lines', 2], kind, 'oops');
-        expect(identical(a.path, b.path), isFalse);
-        expect(a, b);
-      },
-    );
-
-    test('hashCode agrees for equal issues', () {
-      final a = ValidationIssue(['recipes', 0, 'lines', 2], kind, 'oops');
-      final b = ValidationIssue(['recipes', 0, 'lines', 2], kind, 'oops');
-      expect(a.hashCode, b.hashCode);
-    });
-
-    test('differing path is not equal', () {
-      expect(
-        ValidationIssue(['recipes', 0], kind, 'oops'),
-        isNot(ValidationIssue(['recipes', 1], kind, 'oops')),
-      );
-    });
-
-    test('differing kind is not equal', () {
-      expect(
-        ValidationIssue(['recipes', 0], kind, 'oops'),
-        isNot(
-          ValidationIssue(
-            ['recipes', 0],
-            ValidationIssueKind.duplicateName,
-            'oops',
-          ),
-        ),
-      );
-    });
-
-    test('differing message is not equal', () {
-      expect(
-        ValidationIssue(['recipes', 0], kind, 'oops'),
-        isNot(ValidationIssue(['recipes', 0], kind, 'other')),
-      );
+    // Each build's own path is a fresh list, so this also proves equality
+    // reads the path's values rather than its identity.
+    valueEquality(() => ValidationIssue(['recipes', 0], kind, 'oops'), {
+      'path': ValidationIssue(['recipes', 1], kind, 'oops'),
+      'kind': ValidationIssue(
+        ['recipes', 0],
+        ValidationIssueKind.duplicateName,
+        'oops',
+      ),
+      'message': ValidationIssue(['recipes', 0], kind, 'other'),
     });
   });
 }

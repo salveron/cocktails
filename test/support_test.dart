@@ -9,7 +9,7 @@ import 'package:cocktails/domain/domain.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'support/data_test_support.dart';
-import 'support/test_support.dart';
+import 'support/memory_bar_store.dart';
 
 void main() {
   final collection = Collection(

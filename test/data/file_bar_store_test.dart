@@ -28,7 +28,7 @@ Collection collectionOf(String ingredient) =>
 final home = Bar(id: 'a1b2c3', name: 'Home bar', mode: BarMode.owner);
 final beach = Bar(id: 'd4e5f6', name: 'Beach bar', mode: BarMode.owner);
 
-BarContent payloadOf(Bar bar, Collection collection) =>
+BarContent contentOf(Bar bar, Collection collection) =>
     (name: bar.name, display: bar.display, collection: collection);
 
 /// A format-1 file as this app wrote them before ADR 21 — the shape a device
@@ -109,7 +109,7 @@ void main() {
     test('a hand-written bar file decodes into its payload', () async {
       writeFile(
         barName(home.id),
-        codec.encode(payloadOf(home, collectionOf('gin'))),
+        codec.encode(contentOf(home, collectionOf('gin'))),
       );
       final outcome = await store.loadBar(home.id) as Ok<BarContent>;
       expect(outcome.value.collection, collectionOf('gin'));
@@ -120,7 +120,7 @@ void main() {
       writeFile(barName(home.id), 'not: a bar\n');
       writeFile(
         backupName(barName(home.id), 1),
-        codec.encode(payloadOf(home, collectionOf('gin'))),
+        codec.encode(contentOf(home, collectionOf('gin'))),
       );
       final outcome = await store.loadBar(home.id) as Rejected<BarContent>;
       expect(outcome.recovered?.collection, collectionOf('gin'));
@@ -135,7 +135,7 @@ void main() {
     });
 
     test('an id that could name a path is refused, never resolved', () async {
-      writeFile('secrets.yaml', codec.encode(payloadOf(home, Collection())));
+      writeFile('secrets.yaml', codec.encode(contentOf(home, Collection())));
       final outcome = await store.loadBar('../secrets') as Rejected<BarContent>;
       expect(outcome.issues.single.issue.message, contains('does not name'));
     });
@@ -146,7 +146,7 @@ void main() {
       await store.saveBar(home, collectionOf('gin'));
       expect(
         readFile(barName(home.id)),
-        codec.encode(payloadOf(home, collectionOf('gin'))),
+        codec.encode(contentOf(home, collectionOf('gin'))),
       );
     });
 
@@ -171,11 +171,11 @@ void main() {
       }
       expect(
         readFile(backupName(barName(home.id), 1)),
-        codec.encode(payloadOf(home, collectionOf('rum'))),
+        codec.encode(contentOf(home, collectionOf('rum'))),
       );
       expect(
         readFile(backupName(barName(home.id), 2)),
-        codec.encode(payloadOf(home, collectionOf('gin'))),
+        codec.encode(contentOf(home, collectionOf('gin'))),
       );
     });
 
@@ -194,7 +194,7 @@ void main() {
       ]);
       expect(
         readFile(barName(home.id)),
-        codec.encode(payloadOf(home, collectionOf('vodka'))),
+        codec.encode(contentOf(home, collectionOf('vodka'))),
       );
       // One write, so one rotation: 'rum' never reached the disk.
       expect(fileNamed(backupName(barName(home.id), 2)).existsSync(), isFalse);
@@ -227,7 +227,7 @@ void main() {
       );
       expect(
         readFile(barName(home.id)),
-        codec.encode(payloadOf(home, collectionOf('gin'))),
+        codec.encode(contentOf(home, collectionOf('gin'))),
       );
       expect(fileNamed(backupName(barName(home.id), 1)).existsSync(), isFalse);
     });
@@ -290,11 +290,11 @@ void main() {
       await store.exportSnapshot(home, collectionOf('rum'));
       expect(
         readFile('home-bar.yaml'),
-        codec.encode(payloadOf(home, collectionOf('rum'))),
+        codec.encode(contentOf(home, collectionOf('rum'))),
       );
       expect(
         readFile(barName(home.id)),
-        codec.encode(payloadOf(home, collectionOf('gin'))),
+        codec.encode(contentOf(home, collectionOf('gin'))),
       );
     });
 
@@ -303,7 +303,7 @@ void main() {
       await store.exportSnapshot(home, collectionOf('rum'));
       expect(
         readFile(barName(home.id)),
-        codec.encode(payloadOf(home, collectionOf('gin'))),
+        codec.encode(contentOf(home, collectionOf('gin'))),
       );
     });
 
@@ -329,15 +329,15 @@ void main() {
       // another just staged.
       expect(
         readFile('home-bar.yaml'),
-        codec.encode(payloadOf(home, collectionOf('gin'))),
+        codec.encode(contentOf(home, collectionOf('gin'))),
       );
       expect(
         readFile(beforeImportName),
-        codec.encode(payloadOf(home, collectionOf('rum'))),
+        codec.encode(contentOf(home, collectionOf('rum'))),
       );
       expect(
         readFile(beforeDeleteName),
-        codec.encode(payloadOf(home, collectionOf('vodka'))),
+        codec.encode(contentOf(home, collectionOf('vodka'))),
       );
     });
   });

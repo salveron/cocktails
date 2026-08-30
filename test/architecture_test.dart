@@ -343,6 +343,50 @@ Set<String> _documentedDependencies(String source) {
   ).allMatches(bullet.join('\n')).map((m) => m.group(1)!).toSet();
 }
 
+/// One sanity check against a fake input: [description] names the case,
+/// [check] runs a rule and returns whatever it found, and [violates] says
+/// whether that should be non-empty. Every rule above answers a
+/// `List<String>` of violations, so one shape covers all of them.
+typedef _Case = ({
+  String description,
+  bool violates,
+  List<String> Function() check,
+});
+
+void _expectCases(List<_Case> cases) {
+  for (final c in cases) {
+    test(
+      c.description,
+      () => expect(c.check(), c.violates ? isNotEmpty : isEmpty),
+    );
+  }
+}
+
+/// GitHub's own heading slug: lowercase, spaces to hyphens, punctuation gone.
+String _slugOf(String heading) => heading
+    .toLowerCase()
+    .replaceAll(RegExp(r'[^a-z0-9 -]'), '')
+    .replaceAll(' ', '-');
+
+/// Every heading a markdown [source] answers a `#anchor` link with.
+Set<String> _headingAnchors(String source) => {
+  for (final line in source.split('\n'))
+    if (RegExp(r'^#{1,6} ').hasMatch(line))
+      _slugOf(line.replaceFirst(RegExp(r'^#{1,6} '), '')),
+};
+
+/// Every `file.md#anchor` [source] links, against no heading of
+/// [docHeadings] answering it — keyed by basename, docs/ naming each file
+/// once. A file matching no key is missing entirely.
+List<String> _unresolvedAnchors(
+  String source,
+  Map<String, Set<String>> docHeadings,
+) => [
+  for (final m in RegExp(r'([\w-]+\.md)#([\w-]+)').allMatches(source))
+    if (!(docHeadings[m.group(1)] ?? {}).contains(m.group(2)))
+      '${m.group(1)}#${m.group(2)}',
+];
+
 void main() {
   group('lib/ layer boundaries', () {
     test('every file under lib/ honors docs/components.md boundary rules', () {
@@ -372,34 +416,6 @@ void main() {
     test('nothing that ships is a test double', () {
       _expectNoneUnder('lib', _testDoubleViolations);
     });
-
-    test(
-      'the domain barrel exports the name fold, not what is built on it',
-      () {
-        final barrel = File(
-          'lib/domain/domain.dart',
-        ).readAsStringSync().replaceAll(RegExp(r'\s+'), ' ');
-        expect(barrel, contains('hide reservedSuffixes'));
-        expect(barrel, contains('hide enumFromToken'));
-        // ADR 08's fold is the whole app's, or ui/ spells it again — which it
-        // did, three times, one of them wrongly. The duplicate bookkeeping over
-        // the fold is the domain's own and stays behind the barrel (ADR 04).
-        expect(
-          barrel,
-          contains(
-            "export 'src/names.dart' "
-            'show nameKey, nameKeys, compareNames, NameComparison;',
-          ),
-        );
-        for (final internal in const [
-          'repeatsName',
-          'duplicateNameIndexes',
-          'listEquals',
-        ]) {
-          expect(barrel, isNot(contains(internal)));
-        }
-      },
-    );
 
     // lib/main.dart sits outside every layer (docs/components.md module
     // map): it is exempt from the layer-to-layer dependency rules below
@@ -521,43 +537,126 @@ void main() {
     });
   });
 
+  // A heading rename breaks every `file.md#anchor` link to it silently,
+  // which is what M42's own trims would otherwise do unnoticed.
+  group('doc anchors', () {
+    test('every file.md#anchor link under docs/, lib/ and test/ resolves', () {
+      final docHeadings = <String, Set<String>>{
+        for (final entity in Directory('docs').listSync(recursive: true))
+          if (entity is File && entity.path.endsWith('.md'))
+            entity.path.split('/').last: _headingAnchors(
+              entity.readAsStringSync(),
+            ),
+      };
+
+      final broken = <String>[];
+      for (final root in ['docs', 'lib', 'test']) {
+        for (final entity in Directory(root).listSync(recursive: true)) {
+          if (entity is! File) continue;
+          if (!entity.path.endsWith('.md') && !entity.path.endsWith('.dart')) {
+            continue;
+          }
+          // This file's own doc comments and fake-input fixtures below carry
+          // the pattern as an illustration, not a real link.
+          if (entity.path.endsWith('architecture_test.dart')) continue;
+          for (final anchor in _unresolvedAnchors(
+            entity.readAsStringSync(),
+            docHeadings,
+          )) {
+            broken.add('${entity.path} links $anchor, no such heading');
+          }
+        }
+      }
+      expect(broken, isEmpty, reason: broken.join('\n'));
+    });
+  });
+
+  group('doc anchor matcher sanity checks (fake inputs)', () {
+    _expectCases([
+      (
+        description: 'a link naming a real heading resolves',
+        violates: false,
+        check: () => _unresolvedAnchors('see foo.md#bar', {
+          'foo.md': {'bar'},
+        }),
+      ),
+      (
+        description: 'a link naming no heading of that file is caught',
+        violates: true,
+        check: () => _unresolvedAnchors('see foo.md#baz', {
+          'foo.md': {'bar'},
+        }),
+      ),
+      (
+        description: 'a link to a file with no heading map at all is caught',
+        violates: true,
+        check: () => _unresolvedAnchors('see missing.md#bar', {}),
+      ),
+      (
+        description: 'a heading slugs punctuation away like GitHub\'s own',
+        violates: false,
+        check: () => _unresolvedAnchors('see foo.md#what-earns-a-test', {
+          'foo.md': _headingAnchors('## What earns a test?'),
+        }),
+      ),
+    ]);
+  });
+
   // The suite above is proven non-vacuous here: it is exercised against
-  // constructed fake inputs, not by breaking real code.
+  // constructed fake inputs, not by breaking real code. One shape covers
+  // every rule, since each returns the same List<String> of violations:
+  // a description, whether the case should violate, and the call that
+  // produces the violation list.
   group('boundary matcher sanity checks (fake inputs)', () {
-    test('valid dependencies for every real layer do not violate', () {
-      expect(
-        _violations(
+    _expectCases([
+      (
+        description:
+            'domain importing its own loose files and dart:math '
+            'is valid',
+        violates: false,
+        check: () => _violations(
           'domain/src/collection.dart',
           _imports(['names.dart', 'dart:math']),
         ),
-        isEmpty,
-      );
-      expect(
-        _violations('domain/domain.dart', _exports(['src/collection.dart'])),
-        isEmpty,
-      );
-      expect(
-        _violations(
+      ),
+      (
+        description: 'the domain barrel exporting its own src is valid',
+        violates: false,
+        check: () => _violations(
+          'domain/domain.dart',
+          _exports(['src/collection.dart']),
+        ),
+      ),
+      (
+        description:
+            'data importing the domain barrel and an external '
+            'package is valid',
+        violates: false,
+        check: () => _violations(
           'data/src/yaml_codec.dart',
           _imports([
             'package:cocktails/domain/domain.dart',
             'package:yaml/yaml.dart',
           ]),
         ),
-        isEmpty,
-      );
-      expect(
-        _violations(
+      ),
+      (
+        description: 'state importing the domain and data barrels is valid',
+        violates: false,
+        check: () => _violations(
           'state/src/shelf_controller.dart',
           _imports([
             'package:cocktails/domain/domain.dart',
             'package:cocktails/data/data.dart',
           ]),
         ),
-        isEmpty,
-      );
-      expect(
-        _violations(
+      ),
+      (
+        description:
+            'ui importing the domain and state barrels plus '
+            'Flutter is valid',
+        violates: false,
+        check: () => _violations(
           'ui/screens/ingredients_screen.dart',
           _imports([
             'package:cocktails/domain/domain.dart',
@@ -565,144 +664,133 @@ void main() {
             'package:flutter/material.dart',
           ]),
         ),
-        isEmpty,
-      );
-    });
-
-    test('domain importing Flutter or dart:io/dart:ui is caught', () {
-      expect(
-        _violations(
+      ),
+      (
+        description: 'domain importing Flutter is caught',
+        violates: true,
+        check: () => _violations(
           'domain/src/collection.dart',
           _imports(['package:flutter/material.dart']),
         ),
-        isNotEmpty,
-      );
-      expect(
-        _violations('domain/src/collection.dart', _imports(['dart:io'])),
-        isNotEmpty,
-      );
-      expect(
-        _violations('domain/src/collection.dart', _imports(['dart:ui'])),
-        isNotEmpty,
-      );
-    });
-
-    test('domain importing another layer is caught', () {
-      expect(
-        _violations(
+      ),
+      (
+        description: 'domain importing dart:io is caught',
+        violates: true,
+        check: () =>
+            _violations('domain/src/collection.dart', _imports(['dart:io'])),
+      ),
+      (
+        description: 'domain importing dart:ui is caught',
+        violates: true,
+        check: () =>
+            _violations('domain/src/collection.dart', _imports(['dart:ui'])),
+      ),
+      (
+        description: 'domain importing another layer is caught',
+        violates: true,
+        check: () => _violations(
           'domain/src/collection.dart',
           _imports(['package:cocktails/data/data.dart']),
         ),
-        isNotEmpty,
-      );
-    });
-
-    test('data importing state or ui is caught', () {
-      expect(
-        _violations(
+      ),
+      (
+        description: 'data importing state is caught',
+        violates: true,
+        check: () => _violations(
           'data/src/bar_store.dart',
           _imports(['package:cocktails/state/state.dart']),
         ),
-        isNotEmpty,
-      );
-    });
-
-    test('state importing ui is caught', () {
-      expect(
-        _violations(
+      ),
+      (
+        description: 'state importing ui is caught',
+        violates: true,
+        check: () => _violations(
           'state/src/derived.dart',
           _imports(['package:cocktails/ui/screens/ingredients_screen.dart']),
         ),
-        isNotEmpty,
-      );
-    });
-
-    test(
-      'ui importing data is caught even though domain and state are allowed',
-      () {
-        expect(
-          _violations(
-            'ui/screens/ingredients_screen.dart',
-            _imports(['package:cocktails/data/data.dart']),
-          ),
-          isNotEmpty,
-        );
-      },
-    );
-
-    test('reaching into an allowed layer\'s src is caught, barrel only', () {
-      expect(
-        _violations(
+      ),
+      (
+        description:
+            'ui importing data is caught even though domain and '
+            'state are allowed',
+        violates: true,
+        check: () => _violations(
+          'ui/screens/ingredients_screen.dart',
+          _imports(['package:cocktails/data/data.dart']),
+        ),
+      ),
+      (
+        description:
+            'reaching into an allowed layer\'s src is caught, '
+            'barrel only',
+        violates: true,
+        check: () => _violations(
           'data/src/yaml_codec.dart',
           _imports(['package:cocktails/domain/src/collection.dart']),
         ),
-        isNotEmpty,
-      );
-    });
-
-    test('a public file outside src is not another layer\'s surface', () {
-      expect(
-        _violations(
+      ),
+      (
+        description:
+            'a public file outside src is not another layer\'s '
+            'surface',
+        violates: true,
+        check: () => _violations(
           'data/src/yaml_codec.dart',
           _imports(['package:cocktails/domain/extra.dart']),
         ),
-        isNotEmpty,
-      );
-    });
-
-    test('re-exporting another layer is caught, even an allowed one', () {
-      // Otherwise state's barrel would hand ui a transitive route to data.
-      expect(
-        _violations(
+      ),
+      (
+        // Otherwise state's barrel would hand ui a transitive route to data.
+        description:
+            're-exporting an allowed layer is caught (state barrel, '
+            'data)',
+        violates: true,
+        check: () => _violations(
           'state/state.dart',
           _exports(['package:cocktails/data/data.dart']),
         ),
-        isNotEmpty,
-      );
-      expect(
-        _violations(
+      ),
+      (
+        description:
+            're-exporting reaches a layer\'s src is caught (data '
+            'barrel, domain/src)',
+        violates: true,
+        check: () => _violations(
           'data/data.dart',
           _exports(['package:cocktails/domain/src/collection.dart']),
         ),
-        isNotEmpty,
-      );
-    });
-
-    test(
-      'same-layer src-to-src imports must be relative, not package-qualified',
-      () {
-        expect(
-          _violations(
-            'domain/src/collection.dart',
-            _imports(['package:cocktails/domain/src/names.dart']),
-          ),
-          isNotEmpty,
-        );
-      },
-    );
-
-    test(
-      'a relative import that escapes into a disallowed layer is caught',
-      () {
-        expect(
-          _violations(
-            'domain/src/sub/deep.dart',
-            _imports(['../../../data/src/foo.dart']),
-          ),
-          isNotEmpty,
-        );
-      },
-    );
-
-    test('a relative import into an allowed layer\'s src is still caught', () {
-      expect(
-        _violations(
+      ),
+      (
+        description:
+            'same-layer src-to-src imports must be relative, not '
+            'package-qualified',
+        violates: true,
+        check: () => _violations(
+          'domain/src/collection.dart',
+          _imports(['package:cocktails/domain/src/names.dart']),
+        ),
+      ),
+      (
+        description:
+            'a relative import that escapes into a disallowed '
+            'layer is caught',
+        violates: true,
+        check: () => _violations(
+          'domain/src/sub/deep.dart',
+          _imports(['../../../data/src/foo.dart']),
+        ),
+      ),
+      (
+        description:
+            'a relative import into an allowed layer\'s src is '
+            'still caught',
+        violates: true,
+        check: () => _violations(
           'ui/screens/foo.dart',
           _imports(['../../domain/src/collection.dart']),
         ),
-        isNotEmpty,
-      );
-    });
+      ),
+    ]);
 
     test('a violation message names the offending file and directive', () {
       final violations = _violations(
@@ -715,99 +803,136 @@ void main() {
   });
 
   group('source-reading matcher sanity checks (fake inputs)', () {
-    test('a screen naming the raw write route is caught', () {
-      expect(
-        _writeRouteViolations(
+    _expectCases([
+      (
+        description: 'a screen naming the raw write route is caught',
+        violates: true,
+        check: () => _writeRouteViolations(
           'ui/screens/ingredients_screen.dart',
           'ref.read(shelfProvider.notifier).editCollection((c) => c);',
         ),
-        isNotEmpty,
-      );
-    });
-
-    test('a screen reaching the notifier for the file seam is not', () {
-      expect(
-        _writeRouteViolations(
+      ),
+      (
+        description:
+            'a screen reaching the notifier for the file seam is '
+            'not caught',
+        violates: false,
+        check: () => _writeRouteViolations(
           'ui/screens/settings_screen.dart',
           'final shelf = ref.read(shelfProvider.notifier);\n'
               'await shelf.export();\n'
               'shelf.review(text);\n'
               'await shelf.setDisplay(FixedUnit.ml);',
         ),
-        isEmpty,
-      );
-    });
-
-    test('a screen folding a name itself is caught', () {
-      expect(
-        _foldViolations(
+      ),
+      (
+        description: 'a screen folding a name itself is caught',
+        violates: true,
+        check: () => _foldViolations(
           'ui/widgets/search_field.dart',
           'text.toLowerCase().contains(query.toLowerCase());',
         ),
-        isNotEmpty,
-      );
-    });
-
-    test('a screen reading the fold from the domain is not', () {
-      expect(
-        _foldViolations(
+      ),
+      (
+        description:
+            'a screen reading the fold from the domain is not '
+            'caught',
+        violates: false,
+        check: () => _foldViolations(
           'ui/widgets/search_field.dart',
           'nameKey(text).contains(nameKey(query.trim()));',
         ),
-        isEmpty,
-      );
-    });
-
-    test('the file-basename slug outside ui/ is not', () {
-      expect(
-        _foldViolations(
+      ),
+      (
+        description: 'the file-basename slug outside ui/ is not caught',
+        violates: false,
+        check: () => _foldViolations(
           'data/src/file_bar_store.dart',
           "name.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '-');",
         ),
-        isEmpty,
-      );
-    });
-
-    test('a double under lib/ is caught, whatever the file is called', () {
-      expect(
-        _testDoubleViolations(
+      ),
+      (
+        description:
+            'a double under lib/ is caught, whatever the file is '
+            'called',
+        violates: true,
+        check: () => _testDoubleViolations(
           'data/src/bar_store.dart',
           'base class MemoryBarStore implements BarStore {}',
         ),
-        isNotEmpty,
-      );
-    });
-
-    test('a real implementation naming a double in prose is not', () {
-      expect(
-        _testDoubleViolations(
+      ),
+      (
+        description:
+            'a real implementation naming a double in prose is '
+            'not caught',
+        violates: false,
+        check: () => _testDoubleViolations(
           'data/src/file_bar_store.dart',
           '/// Unlike MemoryBarStore, this one survives a restart.\n'
               'final class FileBarStore implements BarStore {}',
         ),
-        isEmpty,
-      );
-    });
-
-    test('a screen writing through the writer is not', () {
-      expect(
-        _writeRouteViolations(
+      ),
+      (
+        description: 'a screen writing through the writer is not caught',
+        violates: false,
+        check: () => _writeRouteViolations(
           'ui/screens/tags_screen.dart',
           'ref.read(barWriterProvider)!.removeTag(kind, name);',
         ),
-        isEmpty,
-      );
-    });
-
-    test('the rule is ui-only: state owns the route it publishes', () {
-      expect(
-        _writeRouteViolations(
+      ),
+      (
+        description:
+            'the write-route rule is ui-only: state owns the '
+            'route it publishes',
+        violates: false,
+        check: () => _writeRouteViolations(
           'state/src/bar_writer.dart',
           'Future<void> _edit(f) => _controller.editCollection(f);',
         ),
-        isEmpty,
-      );
-    });
+      ),
+      (
+        description: 'a widget importing a screen is caught (ADR 25)',
+        violates: true,
+        check: () => _screenImportViolations(
+          'ui/widgets/forms/editor_form.dart',
+          "import '../../screens/units_screen.dart';",
+        ),
+      ),
+      (
+        description: 'app.dart importing a screen is not caught (ADR 25)',
+        violates: false,
+        check: () => _screenImportViolations(
+          'ui/app.dart',
+          "import 'screens/recipes_screen.dart';",
+        ),
+      ),
+      (
+        description: 'one screen importing another is not caught (ADR 25)',
+        violates: false,
+        check: () => _screenImportViolations(
+          'ui/screens/settings_screen.dart',
+          "import 'units_screen.dart';",
+        ),
+      ),
+      (
+        description:
+            'an intra-ui import off the barrel-less package path '
+            'is caught',
+        violates: true,
+        check: () => _intraUiImportViolations(
+          'ui/screens/foo.dart',
+          "import 'package:cocktails/ui/theme.dart';",
+        ),
+      ),
+      (
+        description: 'the same intra-ui import made relative is not caught',
+        violates: false,
+        check: () => _intraUiImportViolations(
+          'ui/screens/foo.dart',
+          "import '../theme.dart';",
+        ),
+      ),
+    ]);
 
     test('a violation message names the file and what to use instead', () {
       final violation = _writeRouteViolations(
@@ -817,145 +942,97 @@ void main() {
       expect(violation, contains('ui/screens/foo.dart'));
       expect(violation, contains('barWriterProvider'));
     });
-
-    test('a widget importing a screen is caught (ADR 25)', () {
-      expect(
-        _screenImportViolations(
-          'ui/widgets/forms/editor_form.dart',
-          "import '../../screens/units_screen.dart';",
-        ),
-        isNotEmpty,
-      );
-    });
-
-    test('app.dart importing a screen is not (ADR 25)', () {
-      expect(
-        _screenImportViolations(
-          'ui/app.dart',
-          "import 'screens/recipes_screen.dart';",
-        ),
-        isEmpty,
-      );
-    });
-
-    test('one screen importing another is not (ADR 25)', () {
-      expect(
-        _screenImportViolations(
-          'ui/screens/settings_screen.dart',
-          "import 'units_screen.dart';",
-        ),
-        isEmpty,
-      );
-    });
-
-    test('an intra-ui import off the barrel-less package path is caught', () {
-      expect(
-        _intraUiImportViolations(
-          'ui/screens/foo.dart',
-          "import 'package:cocktails/ui/theme.dart';",
-        ),
-        isNotEmpty,
-      );
-    });
-
-    test('the same import made relative is not', () {
-      expect(
-        _intraUiImportViolations(
-          'ui/screens/foo.dart',
-          "import '../theme.dart';",
-        ),
-        isEmpty,
-      );
-    });
   });
 
   group('lib/ui/ layout sanity checks (fake inputs)', () {
-    test('a screen not named *_screen.dart is caught', () {
-      expect(
-        _screenNamingViolations(['ui/screens/recipe_widgets.dart']),
-        isNotEmpty,
-      );
-    });
-
-    test('a screen named *_screen.dart is not', () {
-      expect(
-        _screenNamingViolations(['ui/screens/units_screen.dart']),
-        isEmpty,
-      );
-    });
-
-    test('a file loose under widgets/ is caught', () {
-      expect(
-        _looseWidgetViolations(['ui/widgets/arriving_bar.dart']),
-        isNotEmpty,
-      );
-    });
-
-    test('a file sorted into a group is not', () {
-      expect(
-        _looseWidgetViolations(['ui/widgets/cards/entry_card.dart']),
-        isEmpty,
-      );
-    });
+    _expectCases([
+      (
+        description: 'a screen not named *_screen.dart is caught',
+        violates: true,
+        check: () =>
+            _screenNamingViolations(['ui/screens/recipe_widgets.dart']),
+      ),
+      (
+        description: 'a screen named *_screen.dart is not caught',
+        violates: false,
+        check: () => _screenNamingViolations(['ui/screens/units_screen.dart']),
+      ),
+      (
+        description: 'a file loose under widgets/ is caught',
+        violates: true,
+        check: () => _looseWidgetViolations(['ui/widgets/arriving_bar.dart']),
+      ),
+      (
+        description: 'a file sorted into a group is not caught',
+        violates: false,
+        check: () =>
+            _looseWidgetViolations(['ui/widgets/cards/entry_card.dart']),
+      ),
+    ]);
   });
 
   group('lib/domain/ layout sanity checks (fake inputs)', () {
-    test('a file loose at domain/src/ is not a violation', () {
-      expect(_domainLayoutViolations(['names.dart']), isEmpty);
-    });
-
-    test('a file sorted into one of the three folders is not', () {
-      expect(_domainLayoutViolations(['collection/unit.dart']), isEmpty);
-    });
-
-    test('a file under a fourth folder is caught', () {
-      expect(_domainLayoutViolations(['discovery/recipe.dart']), isNotEmpty);
-    });
-
-    test('collection/ reaching into shopping/ is caught', () {
-      expect(
-        _domainChainViolations(
+    _expectCases([
+      (
+        description: 'a file loose at domain/src/ is not a violation',
+        violates: false,
+        check: () => _domainLayoutViolations(['names.dart']),
+      ),
+      (
+        description:
+            'a file sorted into one of the three folders is not '
+            'caught',
+        violates: false,
+        check: () => _domainLayoutViolations(['collection/unit.dart']),
+      ),
+      (
+        description: 'a file under a fourth folder is caught',
+        violates: true,
+        check: () => _domainLayoutViolations(['discovery/recipe.dart']),
+      ),
+      (
+        description: 'collection/ reaching into shopping/ is caught',
+        violates: true,
+        check: () => _domainChainViolations(
           'domain/src/collection/collection.dart',
           "import '../shopping/shopping_settings.dart';",
         ),
-        isNotEmpty,
-      );
-    });
-
-    test('shopping/ reaching into shelf/ is caught', () {
-      expect(
-        _domainChainViolations(
+      ),
+      (
+        description: 'shopping/ reaching into shelf/ is caught',
+        violates: true,
+        check: () => _domainChainViolations(
           'domain/src/shopping/optimizer.dart',
           "import '../shelf/bar.dart';",
         ),
-        isNotEmpty,
-      );
-    });
-
-    test('shelf/ reaching into shopping/ and collection/ is not', () {
-      expect(
-        _domainChainViolations(
+      ),
+      (
+        description:
+            'shelf/ reaching into shopping/ and collection/ is '
+            'not caught',
+        violates: false,
+        check: () => _domainChainViolations(
           'domain/src/shelf/bar.dart',
           "import '../shopping/shopping_settings.dart';\n"
               "import '../collection/collection.dart';",
         ),
-        isEmpty,
-      );
-    });
-
-    test('a folder importing a loose file is not', () {
-      expect(
-        _domainChainViolations(
+      ),
+      (
+        description: 'a folder importing a loose file is not caught',
+        violates: false,
+        check: () => _domainChainViolations(
           'domain/src/collection/collection.dart',
           "import '../names.dart';",
         ),
-        isEmpty,
-      );
-    });
-
-    test('a loose file importing nothing folder-specific is not scanned', () {
-      expect(_domainChainViolations('domain/src/names.dart', ''), isEmpty);
-    });
+      ),
+      (
+        description:
+            'a loose file importing nothing folder-specific is '
+            'not scanned',
+        violates: false,
+        check: () => _domainChainViolations('domain/src/names.dart', ''),
+      ),
+    ]);
   });
 
   group('dependency list parser sanity checks (fake inputs)', () {

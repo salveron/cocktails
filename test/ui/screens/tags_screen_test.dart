@@ -4,8 +4,10 @@ import 'package:cocktails/ui/screens/tags_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import '../../support/test_support.dart';
-import '../../support/ui_test_support.dart';
+import '../../support/memory_bar_store.dart';
+import '../../support/ui_finders.dart';
+import '../../support/ui_fixtures.dart';
+import '../../support/ui_harness.dart';
 
 /// Both vocabularies stocked, each holding one tag something references and one
 /// nothing does — so blocked and free deletes are both a tap away.
@@ -259,7 +261,13 @@ void main() {
   });
 
   group('tags on a guest bar', () {
-    testWidgets('reads and offers no way to write', (tester) async {
+    guestListOffersNoWrite(
+      () => const TagsScreen(),
+      smallCollection,
+      'classic',
+    );
+
+    testWidgets('reads, and a tap opens no edit', (tester) async {
       await pumpOver(
         tester,
         const TagsScreen(),
@@ -267,8 +275,6 @@ void main() {
         bar: testGuestBar(),
       );
       expect(find.text('classic'), findsOneWidget);
-      expect(find.byTooltip('Add recipe tag'), findsNothing);
-      expect(rowMenu('classic'), findsNothing);
       await tap(tester, find.text('classic'));
       expect(
         find.byType(TextField),

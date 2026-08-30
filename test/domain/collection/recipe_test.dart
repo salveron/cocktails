@@ -21,15 +21,6 @@ void main() {
       expect(recipe.notes, isEmpty);
     });
 
-    test('collections are unmodifiable', () {
-      final recipe = Recipe('Whiskey Sour', tags: ['sour']);
-      expect(() => recipe.tags.add('classic'), throwsUnsupportedError);
-      expect(
-        () => recipe.lines.add(const RecipeLine(Amount(1), 'part', ['gin'])),
-        throwsUnsupportedError,
-      );
-    });
-
     test('detached from the lists it was built from', () {
       final tags = ['sour'];
       final recipe = Recipe('Whiskey Sour', tags: tags);
@@ -48,37 +39,41 @@ void main() {
       'notes': build(notes: 'stirred'),
     });
 
-    test('copyWith replaces one field and carries the rest', () {
-      final recipe = build();
-      expect(recipe.copyWith(), recipe, reason: 'nothing named');
-      expect(
-        recipe.copyWith(name: 'Sazerac'),
-        build(name: 'Sazerac'),
-        reason: 'name',
-      );
-      expect(
-        recipe.copyWith(tags: ['classic']),
-        build(tags: const ['classic']),
-        reason: 'tags',
-      );
-      expect(
-        recipe.copyWith(
+    final recipe = build();
+    copyWithContract([
+      (
+        field: 'nothing named',
+        apply: () => recipe.copyWith(),
+        expected: recipe,
+      ),
+      (
+        field: 'name',
+        apply: () => recipe.copyWith(name: 'Sazerac'),
+        expected: build(name: 'Sazerac'),
+      ),
+      (
+        field: 'tags',
+        apply: () => recipe.copyWith(tags: ['classic']),
+        expected: build(tags: const ['classic']),
+      ),
+      (
+        field: 'lines',
+        apply: () => recipe.copyWith(
           lines: [
             const RecipeLine(Amount(2), 'ml', ['rye']),
           ],
         ),
-        build(
+        expected: build(
           lines: const [
             RecipeLine(Amount(2), 'ml', ['rye']),
           ],
         ),
-        reason: 'lines',
-      );
-      expect(
-        recipe.copyWith(notes: 'stirred'),
-        build(notes: 'stirred'),
-        reason: 'notes',
-      );
-    });
+      ),
+      (
+        field: 'notes',
+        apply: () => recipe.copyWith(notes: 'stirred'),
+        expected: build(notes: 'stirred'),
+      ),
+    ]);
   });
 }

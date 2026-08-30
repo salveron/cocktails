@@ -7,31 +7,13 @@ import 'package:cocktails/data/data.dart';
 import 'package:cocktails/domain/domain.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-void main() {
-  final collection = Collection(
-    ingredients: [Ingredient('gin', stock: StockLevel.in_)],
-    recipes: [
-      Recipe(
-        'Martini',
-        lines: const [
-          RecipeLine(Amount(2), 'part', ['gin']),
-        ],
-      ),
-    ],
-  );
-  final payload = (
-    name: "Ada's bar",
-    display: FixedUnit.ml,
-    collection: collection,
-  );
-  final document = const YamlCodec().encode(payload);
+import '../support/data_test_support.dart';
 
-  /// A channel over a picker answering [text], or throwing [error].
-  FileBarChannel picking(String? text, {Object? error}) =>
-      FileBarChannel(() async {
-        if (error != null) throw error;
-        return text;
-      });
+void main() {
+  group('channel contract', () => barChannelContract(FileBarChannel.new));
+
+  /// A channel over a picker answering [text].
+  FileBarChannel picking(String? text) => FileBarChannel(() async => text);
 
   test('the transport it answers for is the file', () {
     expect(picking(null).transport, Transport.file);
@@ -46,16 +28,10 @@ void main() {
     );
   });
 
-  test('a picked bar arrives whole — name, display and collection', () async {
-    final outcome = await picking(document).fetch(FileBarChannel.source);
-    expect(outcome, isA<Ok<BarContent>>());
-    expect((outcome! as Ok<BarContent>).value, payload);
-  });
-
   /// The source is unread: which document answers is the reader's judgement,
   /// so a bar sourced from anywhere else would still be met by the picker.
   test('the source it is handed goes unread', () async {
-    final channel = picking(document);
+    final channel = picking(encoded(Collection()));
     const elsewhere = BarSource(
       via: Transport.lan,
       at: '10.0.0.4',
@@ -66,30 +42,5 @@ void main() {
 
   test('a reader who picks nothing has not fetched at all', () async {
     expect(await picking(null).fetch(FileBarChannel.source), isNull);
-  });
-
-  test('a file the app cannot read is refused, placed by line', () async {
-    final outcome = await picking(
-      'format: 2\nname: Ada\nrecipes:\n  - name: Martini\n    lines:\n'
-      '      - 2 part rye\n',
-    ).fetch(FileBarChannel.source);
-    expect(outcome, isA<Rejected<BarContent>>());
-    final issues = (outcome! as Rejected<BarContent>).issues;
-    expect(issues, isNotEmpty);
-    expect(issues.first.issue.kind, ValidationIssueKind.unknownIngredient);
-    expect(issues.first.line, isNotNull);
-  });
-
-  /// A fetch answers rather than throws, whatever the platform did (ADR 22).
-  test('a picker that fails is refused rather than thrown', () async {
-    final outcome = await picking(
-      null,
-      error: StateError('no activity'),
-    ).fetch(FileBarChannel.source);
-    expect(outcome, isA<Rejected<BarContent>>());
-    expect(
-      (outcome! as Rejected<BarContent>).issues.single.description,
-      contains('no activity'),
-    );
   });
 }

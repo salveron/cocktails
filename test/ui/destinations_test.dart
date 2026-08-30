@@ -4,7 +4,9 @@ import 'package:cocktails/ui/screens/ingredients_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import '../support/ui_test_support.dart';
+import '../support/ui_finders.dart';
+import '../support/ui_fixtures.dart';
+import '../support/ui_harness.dart';
 
 RecipeLine _line(List<String> ingredients, {LineMark? mark}) =>
     RecipeLine(const Amount(1), 'part', ingredients, mark: mark);

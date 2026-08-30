@@ -9,7 +9,7 @@ import 'package:file_selector/file_selector.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../support/state_test_support.dart';
-import '../support/test_support.dart';
+import '../support/memory_bar_store.dart';
 
 void main() {
   setUpShelf();
@@ -35,7 +35,7 @@ void main() {
     test('a corrupt store starts on the recovered backup', () async {
       store.barOutcomes[bar.id] = Rejected([
         issueAt(4),
-      ], recovered: payloadOf(stored));
+      ], recovered: contentOf(stored));
       final container = await started();
       expect(collectionOf(container), stored);
       expect(container.read(loadIssuesProvider), [
@@ -128,7 +128,7 @@ void main() {
       final container = await started(seeded);
       await controllerOf(container).replaceOpen(
         'Mine now',
-        payloadOf(Collection(ingredients: [Ingredient('rye')])),
+        contentOf(Collection(ingredients: [Ingredient('rye')])),
       );
       expect(collectionOf(container), stored);
       expect(seeded.savedBars, isEmpty);
@@ -211,7 +211,7 @@ void main() {
       final damaged = MemoryBarStore((bars: [bar], openId: bar.id))
         ..barOutcomes[bar.id] = Rejected([
           issueAt(4),
-        ], recovered: payloadOf(stored));
+        ], recovered: contentOf(stored));
       final container = await started(damaged);
       await controllerOf(container).export();
       expect(damaged.snapshots[ExportPurpose.share]?.$2, stored);
@@ -244,7 +244,7 @@ void main() {
         ),
       ],
     );
-    final incomingFile = const YamlCodec().encode(payloadOf(incoming));
+    final incomingFile = const YamlCodec().encode(contentOf(incoming));
 
     test('a file that decodes reviews as the collection it holds', () async {
       final container = await started();
@@ -285,7 +285,7 @@ recipes:
     test('replacing keeps a copy of what it replaced first '
         '(FR-DAT-3)', () async {
       final container = await started();
-      await controllerOf(container).replaceOpen(bar.name, payloadOf(incoming));
+      await controllerOf(container).replaceOpen(bar.name, contentOf(incoming));
       // The copy is the collection that stood before, never the one arriving.
       expect(store.snapshots[ExportPurpose.beforeImport]?.$2, stored);
       expect(collectionOf(container), incoming);
@@ -295,7 +295,7 @@ recipes:
     test('the copy it keeps is not the one an export shares', () async {
       final container = await started();
       await controllerOf(container).export();
-      await controllerOf(container).replaceOpen(bar.name, payloadOf(incoming));
+      await controllerOf(container).replaceOpen(bar.name, contentOf(incoming));
       // Two copies, two purposes: the export slot still holds what went out to
       // a reader, so an import cannot write over it.
       expect(store.snapshots[ExportPurpose.share]?.$2, stored);
@@ -304,7 +304,7 @@ recipes:
 
     test('a replace asked for before the load waits for it', () async {
       final container = containerFor(store);
-      await controllerOf(container).replaceOpen(bar.name, payloadOf(incoming));
+      await controllerOf(container).replaceOpen(bar.name, contentOf(incoming));
       // Not the empty collection the copy would hold had it run before the
       // load.
       expect(store.snapshots[ExportPurpose.beforeImport]?.$2, stored);
@@ -319,7 +319,7 @@ recipes:
         await controller.export();
         final (record, exported) = store.snapshots[ExportPurpose.share]!;
         final review = controller.review(
-          const YamlCodec().encode(payloadOf(exported)),
+          const YamlCodec().encode(contentOf(exported)),
         );
         expect(review.issues, isEmpty);
         expect(review.bar?.collection, stored);
@@ -421,7 +421,7 @@ recipes:
       final store = twoBars();
       store.barOutcomes[bar.id] = Rejected([
         issueAt(4),
-      ], recovered: payloadOf(stored));
+      ], recovered: contentOf(stored));
       final container = await started(store);
       expect(container.read(loadIssuesProvider), hasLength(1));
       await controllerOf(container).openBar(other.id);
@@ -707,7 +707,7 @@ recipes:
 
     test('an export picked back keeps the spelling it went out with', () async {
       final exported = Collection(ingredients: [Ingredient('Orange Curaçao')]);
-      final onDisk = const YamlCodec().encode(payloadOf(exported));
+      final onDisk = const YamlCodec().encode(contentOf(exported));
       final container = await started();
 
       final text = await pickedText(XFile.fromData(utf8.encode(onDisk)));

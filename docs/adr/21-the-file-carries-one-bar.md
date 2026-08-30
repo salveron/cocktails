@@ -22,41 +22,31 @@ refresh throws the block away.
 **Format 2. The file carries the collection and the bar's name; mode, source, refresh time and id
 stay on the device. The reading unit leaves the collection and lives on the bar.**
 
-- **`name:` at the top of the file.** A guest needs something to call the bar, Android hands over no
-  filename worth showing (ADR 18), and the owner is the one who named it — a refresh takes the new
-  name with everything else. **Amended:** it does not. The name turned out to be the reading unit's
-  twin rather than the collection's — a label this device puts on a bar, not a fact about what the
-  bar holds — so it is the reader's to change (FR-BAR-2/3), and no refresh moves it. The file's
-  `name:` is what whoever founds a bar from it *starts* with, exactly as `display` is, and is read
-  nowhere else. What made the difference: a guest bar the reader renamed had that name thrown away
-  by the next refresh, silently, with nothing they could do about it — the one place in the app
-  where a reader's own typing was overwritten by someone else's.
-- **Mode, source, refresh time and id are never in the file.** Mode is the relationship between this
-  device and the bar, not a property of the bar, and the same file makes either kind (FR-BAR-7).
-  Source and refresh time are this device's record of how and when it got the bar. An id in the file
-  would make an exported copy claim to be the original. **Amended:** the record gained two more of
-  the same kind — `updated:`, when the contents last changed on *this* device, and `holds:`, the
-  count per kind the bar list reads ([ADR 20](20-the-app-holds-many-bars.md)). Neither is in the
-  file either. The stamp is this device's history, and a count of what the file already carries
-  would be a second copy of a fact the file states in full — so a bar arriving anywhere is counted
-  where it lands rather than trusting a number that travelled with it.
+- **`name:` is a starting value, not a synced field.** A guest needs something to call the bar,
+  Android hands over no filename worth showing (ADR 18), and the owner named it — but it is what
+  whoever founds a bar from the file *starts* with (FR-BAR-2/3), read nowhere else: a refresh never
+  moves it, since a reader's own rename must not be silently overwritten by someone else's next one.
+- **Mode, source, refresh time, id, `updated:` and `holds:` are never in the file.** Mode is the
+  relationship between this device and the bar, not a property of the bar, and the same file makes
+  either kind (FR-BAR-7). Source and refresh time are this device's record of how and when it got the
+  bar; an id in the file would make an exported copy claim to be the original. `updated:` (when the
+  contents last changed here) and `holds:` (the bar list's per-kind count,
+  [ADR 20](20-the-app-holds-many-bars.md)) are the same kind of fact — this device's history, not the
+  bar's own — so a bar arriving anywhere is counted where it lands rather than trusting a number that
+  travelled with it.
 - **Both are optional keys on the index's records, and format 2 did not move for them.** An index
   written before they existed decodes as a bar not yet summarised, which is a state the reader
   repairs rather than refuses; a `holds:` missing a kind is dropped whole rather than patched with
   zeroes, a partial count being indistinguishable from a bar that holds nothing.
-- **`Bar.display` holds the reading unit; `UnitSizes` holds only the two ml sizes.** The pick
-  physically cannot ride in the payload, so no refresh can lose it and no code has to remember not
-  to take it. It still travels in the file, inside `settings:` where a reader expects it, as a
-  starting value for whoever establishes a bar from it. **Amended:** `Settings` is
-  `UnitSizes` from here on — the rename this bullet already argued for by never storing a reading
-  unit on it.
-- **Amended:** `shopping:` joins the guest-refused half of the record beside `source`,
-  `refreshed` and `updated`. `ShoppingSettings` stood non-nullable with a default on every bar,
-  guest included, though [ADR 24](24-the-tags-may-aim-the-optimizer.md) already put the destination
-  that reads it out of a guest's reach — dead data a hand-edited file could set without either
-  constructor or `validateShelf` objecting. `Bar.shopping` is now `ShoppingSettings?`, null on a
-  guest and refused wherever one is found anyway, the same "refused on the wrong mode" rule this
-  ADR already applies to the other three.
+- **`Bar.display` holds the reading unit; `UnitSizes` holds only the two ml sizes** (renamed from
+  `Settings`, since it never stores a reading unit). The pick physically cannot ride in the payload,
+  so no refresh can lose it and no code has to remember not to take it. It still travels in the file,
+  inside `settings:` where a reader expects it, as a starting value for whoever establishes a bar
+  from it.
+- **`shopping:` joins the guest-refused half of the record beside `source`, `refreshed` and
+  `updated`.** `Bar.shopping` is `ShoppingSettings?`, null on a guest and refused wherever one is
+  found anyway ([ADR 24](24-the-tags-may-aim-the-optimizer.md)) — the same "refused on the wrong
+  mode" rule this ADR already applies to the other three.
 - **Establishing takes the file's `name:` and `display`; refreshing keeps the bar's.** One
   difference, at two call sites, spelled by the type: a decode answers a `BarContent` and the caller
   says what becomes of each of its three parts. `Bar.refreshedAt` cannot reach either — it takes the

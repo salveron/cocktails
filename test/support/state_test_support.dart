@@ -2,9 +2,11 @@
 /// starts from — a store wired in, the clock named where a test dates
 /// something, and the startup load met before the first assertion — the one
 /// owned bar the controller suites edit, and the store that logs what reached
-/// it. A widget test reaches the same seam through `ui_test_support.dart`'s
+/// it. A widget test reaches the same seam through `ui_harness.dart`'s
 /// `scoped` instead (docs/components.md#testing).
 library;
+
+import 'dart:async';
 
 import 'package:cocktails/data/data.dart';
 import 'package:cocktails/domain/domain.dart';
@@ -12,7 +14,8 @@ import 'package:cocktails/state/state.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'test_support.dart';
+import 'domain_test_support.dart';
+import 'memory_bar_store.dart';
 
 /// A container over [store], the clock named only where [clock] is given —
 /// most of what reads a bar does not date it — and whatever else a test file
@@ -61,14 +64,7 @@ late MemoryBarStore store;
 /// hold a fresh copy of them before every test — call once at the top of a
 /// file's own `main()`.
 void setUpShelf() {
-  negroni = Recipe(
-    'Negroni',
-    tags: ['classic'],
-    lines: const [
-      RecipeLine(Amount(1), 'part', ['gin']),
-      RecipeLine(Amount(1), 'part', ['campari']),
-    ],
-  );
+  negroni = negroniRecipe;
   stored = Collection(
     ingredients: [
       Ingredient('gin', stock: StockLevel.in_),
@@ -90,7 +86,7 @@ void setUpShelf() {
   setUp(() => store = MemoryBarStore.of(bar, stored));
 }
 
-BarContent payloadOf(Collection collection, {FixedUnit? display}) =>
+BarContent contentOf(Collection collection, {FixedUnit? display}) =>
     (name: bar.name, display: display ?? bar.display, collection: collection);
 
 /// [containerOver] with the clock already named — the arrangement every test
@@ -153,5 +149,26 @@ base class WriteLog extends MemoryBarStore {
   Future<void> removeBar(String id) {
     calls.add('remove:$id');
     return super.removeBar(id);
+  }
+}
+
+/// A channel that answers nothing until a test says so, so the order two
+/// refreshes land in is the test's to choose rather than the scheduler's.
+final class FakeChannel implements BarChannel {
+  @override
+  Transport get transport => Transport.file;
+
+  /// Every source it was handed, in order.
+  final asked = <BarSource>[];
+
+  /// One per fetch still out, oldest first.
+  final out = <Completer<Outcome<BarContent>?>>[];
+
+  @override
+  Future<Outcome<BarContent>?> fetch(BarSource source) {
+    asked.add(source);
+    final answering = Completer<Outcome<BarContent>?>();
+    out.add(answering);
+    return answering.future;
   }
 }

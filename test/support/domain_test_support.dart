@@ -36,6 +36,23 @@ void tokenVocabulary<T extends Enum>(
   });
 }
 
+/// What one [ValidationIssue] promises: its [kind] always, [path] and a
+/// [messagePart] of its message where a test is about either — the domain's
+/// counterpart to `data_test_support.dart`'s `expectIssue`, which adds the
+/// line a decode places an issue at.
+void expectIssue(
+  ValidationIssue actual,
+  ValidationIssueKind kind, {
+  List<Object>? path,
+  String? messagePart,
+}) {
+  expect(actual.kind, kind, reason: '$actual');
+  if (path != null) expect(actual.path, path, reason: '$actual');
+  if (messagePart != null) {
+    expect(actual.message, contains(messagePart), reason: '$actual');
+  }
+}
+
 /// Value semantics, read the same way for every type carrying them: two builds
 /// of the same values are equal and hash alike, while each of [differing] — the
 /// same build with one field moved off its default — is not. Each field is
@@ -47,6 +64,21 @@ void valueEquality<T>(T Function() build, Map<String, T> differing) {
     differing.forEach((field, moved) {
       expect(build(), isNot(moved), reason: field);
     });
+  });
+}
+
+/// What every `copyWith` promises: naming nothing answers an equal value, and
+/// naming one field replaces it while every other field rides along. Each
+/// case names the field, the call that names only it, and what it should
+/// answer with — the call is a closure because `copyWith` takes a different
+/// named argument per type, which a generic helper cannot spell for it.
+void copyWithContract<T>(
+  List<({String field, T Function() apply, T expected})> cases,
+) {
+  group('copyWith replaces one field and carries the rest', () {
+    for (final c in cases) {
+      test(c.field, () => expect(c.apply(), c.expected, reason: c.field));
+    }
   });
 }
 
@@ -93,4 +125,17 @@ Bar guestBar({
   source: source,
   refreshed: refreshed,
   summary: summary,
+);
+
+/// The one recipe simple fixtures build around: gin and campari in equal
+/// parts, tagged classic — so a widget test's small collection and a
+/// controller test's stored one are not two hand-built Negronis that could
+/// quietly drift apart.
+final negroniRecipe = Recipe(
+  'Negroni',
+  tags: const ['classic'],
+  lines: const [
+    RecipeLine(Amount(1), 'part', ['gin']),
+    RecipeLine(Amount(1), 'part', ['campari']),
+  ],
 );

@@ -3,6 +3,7 @@
 library;
 
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:cocktails/data/data.dart';
 import 'package:file_selector/file_selector.dart';
@@ -15,6 +16,9 @@ final barStoreProvider = Provider<BarStore>(
 
 /// The clock a bar's stamps are read off — a seam so a test names the time.
 final clockProvider = Provider<DateTime Function()>((ref) => DateTime.now);
+
+/// A recipe draw's randomness — a seam so a test names the sequence (FR-DIS-5).
+final randomProvider = Provider<Random>((ref) => Random());
 
 /// Takes an export's opaque location; `text/plain`, Android knowing no YAML.
 final sharerProvider = Provider<Future<void> Function(String)>(
@@ -32,8 +36,7 @@ final filePickerProvider = Provider<Future<String?> Function()>(
   },
 );
 
-/// Named, not inlined: overriding the provider with a plain string never
-/// reaches this, and `readAsString` drops its own encoding here. Malformed
-/// input throws over substituting U+FFFD, the same loss made quieter.
+/// Named, not inlined, so overriding the provider with a plain string never
+/// reaches it; throws over `readAsString`'s silent U+FFFD substitution.
 Future<String> pickedText(XFile picked) async =>
     utf8.decode(await picked.readAsBytes());

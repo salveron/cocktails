@@ -1,6 +1,8 @@
 import 'package:cocktails/domain/domain.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../support/domain_test_support.dart';
+
 /// The required line every recipe now needs (FR-REC-2), so a fixture about some
 /// other rule does not trip that one. Its ingredient is declared alongside.
 const _gin = RecipeLine(Amount(1), 'part', ['gin']);
@@ -27,9 +29,12 @@ void main() {
           ),
         ],
       );
-      expect(issues.single.kind, ValidationIssueKind.unknownUnit);
-      expect(issues.single.path, ['recipes', 0, 'lines', 0]);
-      expect(issues.single.message, contains('"dash"'));
+      expectIssue(
+        issues.single,
+        ValidationIssueKind.unknownUnit,
+        path: ['recipes', 0, 'lines', 0],
+        messagePart: '"dash"',
+      );
     });
 
     test('the three units the app leans on must be there', () {
@@ -39,8 +44,11 @@ void main() {
         'units must include "ml"',
         'units must include "oz"',
       ]);
-      expect(issues.first.kind, ValidationIssueKind.missingUnit);
-      expect(issues.first.path, ['units']);
+      expectIssue(
+        issues.first,
+        ValidationIssueKind.missingUnit,
+        path: ['units'],
+      );
     });
 
     test('a spelling another unit answers to is a duplicate', () {
@@ -52,9 +60,12 @@ void main() {
           Unit('dash', plural: 'parts'),
         ],
       );
-      expect(issues.single.kind, ValidationIssueKind.duplicateName);
-      expect(issues.single.path, ['units', 3, 'plural']);
-      expect(issues.single.message, contains('"parts"'));
+      expectIssue(
+        issues.single,
+        ValidationIssueKind.duplicateName,
+        path: ['units', 3, 'plural'],
+        messagePart: '"parts"',
+      );
     });
 
     test('a plural written out as its own name is no duplicate', () {
@@ -137,9 +148,12 @@ void main() {
       ]) {
         final issues = validateCollection(unitSizes: unitSizes);
         expect(issues, hasLength(1), reason: '$path');
-        expect(issues.single.path, path);
-        expect(issues.single.kind, ValidationIssueKind.unitSizeNotPositive);
-        expect(issues.single.message, contains('positive'));
+        expectIssue(
+          issues.single,
+          ValidationIssueKind.unitSizeNotPositive,
+          path: path,
+          messagePart: 'positive',
+        );
       }
     });
 
@@ -176,9 +190,12 @@ void main() {
       for (final name in ['silly (optional)', 'silly (base)']) {
         final issues = validateCollection(ingredients: [Ingredient(name)]);
         expect(issues, hasLength(1), reason: name);
-        expect(issues.single.path, ['ingredients', 0]);
-        expect(issues.single.kind, ValidationIssueKind.reservedSuffix);
-        expect(issues.single.message, contains('reserved'));
+        expectIssue(
+          issues.single,
+          ValidationIssueKind.reservedSuffix,
+          path: ['ingredients', 0],
+          messagePart: 'reserved',
+        );
       }
     });
 
@@ -187,8 +204,11 @@ void main() {
         ingredients: [Ingredient('sweet / dry vermouth')],
       );
       expect(issues, hasLength(1));
-      expect(issues.single.path, ['ingredients', 0]);
-      expect(issues.single.kind, ValidationIssueKind.separatorInName);
+      expectIssue(
+        issues.single,
+        ValidationIssueKind.separatorInName,
+        path: ['ingredients', 0],
+      );
       expect(
         issues.single.message,
         'Ingredient name holds the reserved "/" separator: '
@@ -204,8 +224,11 @@ void main() {
           ],
         );
         expect(issues, hasLength(1), reason: alias);
-        expect(issues.single.path, ['ingredients', 0, 'aliases', 0]);
-        expect(issues.single.kind, ValidationIssueKind.separatorInName);
+        expectIssue(
+          issues.single,
+          ValidationIssueKind.separatorInName,
+          path: ['ingredients', 0, 'aliases', 0],
+        );
       }
     });
 
@@ -265,8 +288,11 @@ void main() {
       final issues = validateCollection(
         ingredients: [Ingredient('Gin'), Ingredient('gin')],
       );
-      expect(issues.single.path, ['ingredients', 1]);
-      expect(issues.single.kind, ValidationIssueKind.duplicateName);
+      expectIssue(
+        issues.single,
+        ValidationIssueKind.duplicateName,
+        path: ['ingredients', 1],
+      );
     });
 
     test('a name in both vocabularies at once is no duplicate', () {
@@ -304,8 +330,11 @@ void main() {
           Ingredient('rye'),
         ],
       );
-      expect(issues.single.path, ['ingredients', 1]);
-      expect(issues.single.kind, ValidationIssueKind.duplicateName);
+      expectIssue(
+        issues.single,
+        ValidationIssueKind.duplicateName,
+        path: ['ingredients', 1],
+      );
     });
 
     test('a line may name an ingredient by an alias', () {
@@ -375,9 +404,12 @@ void main() {
         ],
       );
       expect(issues, hasLength(1));
-      expect(issues.single.path, ['recipes', 0, 'tags', 1]);
-      expect(issues.single.kind, ValidationIssueKind.duplicateTag);
-      expect(issues.single.message, contains('"sour"'));
+      expectIssue(
+        issues.single,
+        ValidationIssueKind.duplicateTag,
+        path: ['recipes', 0, 'tags', 1],
+        messagePart: '"sour"',
+      );
     });
 
     test('flags a recipe with nothing required, at its lines', () {
@@ -391,8 +423,11 @@ void main() {
           ingredients: [Ingredient('gin')],
           recipes: [Recipe('Negroni', lines: lines)],
         );
-        expect(issues.single.path, ['recipes', 0, 'lines'], reason: '$lines');
-        expect(issues.single.kind, ValidationIssueKind.noRequiredLine);
+        expectIssue(
+          issues.single,
+          ValidationIssueKind.noRequiredLine,
+          path: ['recipes', 0, 'lines'],
+        );
       }
     });
 
@@ -683,8 +718,11 @@ void main() {
         knownUnits: shippedUnits,
       );
       expect(issues, hasLength(1));
-      expect(issues.single.kind, ValidationIssueKind.duplicateAlternative);
-      expect(issues.single.path, ['lines', 0]);
+      expectIssue(
+        issues.single,
+        ValidationIssueKind.duplicateAlternative,
+        path: ['lines', 0],
+      );
       expect(
         issues.single.message,
         'Duplicate alternative on the line: '
@@ -715,8 +753,7 @@ void main() {
         knownTags: const {},
         knownUnits: shippedUnits,
       );
-      expect(issues.single.path, isEmpty);
-      expect(issues.single.kind, ValidationIssueKind.emptyName);
+      expectIssue(issues.single, ValidationIssueKind.emptyName, path: const []);
     });
 
     test('a name collides with another recipe, never with itself', () {
@@ -821,9 +858,11 @@ void main() {
     test('tag references resolve against the vocabulary it is given', () {
       final tagged = Ingredient('gin', tags: const ['juniper']);
       expect(check(tagged, known: {'juniper'}), isEmpty);
-      final issue = check(tagged).single;
-      expect(issue.kind, ValidationIssueKind.unknownTag);
-      expect(issue.path, ['tags', 0]);
+      expectIssue(
+        check(tagged).single,
+        ValidationIssueKind.unknownTag,
+        path: ['tags', 0],
+      );
     });
 
     test('reports what validateCollection reports for the same entry', () {

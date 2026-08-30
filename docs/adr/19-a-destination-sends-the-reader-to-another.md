@@ -1,7 +1,6 @@
 # ADR: A destination sends the reader to a named row on another
 
-**Status:** Accepted. Amended on implementation: the gesture is a plain tap, and both pairs were
-built at once.
+**Status:** Accepted.
 
 ## Context
 
@@ -14,13 +13,16 @@ Nothing crosses destinations. `_Destination`, `_current` private to `app.dart`; 
 **One provider: request to reveal named row on named destination, consumed by serving screen.**
 
 - Request: **destination + name** (never index, offset, widget, entity). Name is ADR 13 currency; name is all list needs.
-- **Amended: name nullable — a landing, not a jump.** Crossing into the bar already loaded has a destination and no row (ui-design#bars). Missing name is the whole telling, no second flag: shell clears the trail instead of pushing to it (reader chose the bar; nothing to return from), serving screen keeps its narrowings (nothing was named). `takeReveal` still answers `String?` and still clears, so no screen changed.
+- **Name is nullable — a landing, not a jump.** Crossing into the bar already loaded has a destination and no row (ui-design#bars). Missing name is the whole telling, no second flag: shell clears the trail instead of pushing to it (reader chose the bar; nothing to return from), serving screen keeps its narrowings (nothing was named). `takeReveal` still answers `String?` and still clears, so no screen changed.
 - **Destinations module**: `lib/ui/destinations.dart` moves enum from `app.dart`, holds request provider. Same subject, same place; avoids circular import.
 - Request **nullable, one-shot**: serving screen clears it; return to destination later does not re-reveal.
 - **Shell watches only to switch destination**, learns nothing of row. `AppShell` becomes `Consumer` (whole change).
 - **Serving screen resets narrowing to default before reveal**: tag picks, base pick, search text, order. Reader asked to see row, not why cannot. `EntryCardList` gains name-to-reveal input alongside `draw`; both feed `_reveal` field; reset is part of serving.
 - **Row opened alone**, rest shut (like random pick). Jump is one answer not pile.
-- **Plain tap sends, no marking**. Amended on implementation: long press drafted first (jump as secondary). It's not — reaching name is commonest thing reader wants; name-carrying rows lead nowhere else; tap free. Ripple is feedback. Arrow weighed/refused (slot carries tag dots, stock dots); label refused with long press.
+- **Plain tap sends, no marking.** Long press was drafted first, jump as secondary; refused —
+  reaching name is commonest thing reader wants, name-carrying rows lead nowhere else, tap free.
+  Ripple is feedback. Arrow weighed/refused (slot carries tag dots, stock dots); label refused with
+  long press.
 - **Name crossing is entry's own**: line names ingredient by any spelling (ADR 10), sender resolves with `collection.spellingOf`. List finds rows by names; channel carrying spelling fails silently on unbuilt pairs.
 - **Shell trail of destinations, back undoes jumps**: chain unwinds one-by-one; three rules: (a) only jump records; bottom-bar tap clears (reader who chose has nothing to return from); (b) destination **at most once, never on-show** (bounds at 2 for 3 destinations, loop cannot accumulate); (c) Settings (above shell) popped by back as always.
 

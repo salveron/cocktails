@@ -3,7 +3,7 @@ import 'package:cocktails/state/state.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import '../support/test_support.dart';
+import '../support/memory_bar_store.dart';
 import '../support/state_test_support.dart';
 
 void main() {

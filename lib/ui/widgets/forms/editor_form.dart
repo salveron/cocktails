@@ -1,6 +1,6 @@
-/// The pushed editor both forms wear: the Save/discard frame, the self-growing
-/// row list, and the one ask that guards them both (docs/ui-design.md#recipe-
-/// form, #units).
+/// The pushed editor both forms wear: the Save/discard frame, the
+/// self-growing row list, and the one ask that guards them both
+/// (docs/ui-design.md#recipe-form, #units).
 library;
 
 import 'dart:async';

@@ -7,8 +7,10 @@ import 'package:cocktails/domain/domain.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import '../../support/ui_test_support.dart';
-import '../../support/test_support.dart';
+import '../../support/ui_finders.dart';
+import '../../support/ui_fixtures.dart';
+import '../../support/ui_harness.dart';
+import '../../support/memory_bar_store.dart';
 
 void main() {
   /// Three recipes and nine ingredients against the one recipe and two

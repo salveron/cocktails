@@ -1,15 +1,70 @@
-/// The searchable list every vocabulary screen is drawn as, and the pull a
+/// The searchable list every vocabulary screen is drawn as: sorting, one
+/// screen standing for every caller since the mechanism is `EntryList`'s own
+/// rather than a screen's (components.md#what-earns-a-test); and the pull a
 /// reader makes down it to ask a guest bar's source again (FR-BAR-5) — the
 /// gesture being the list's own, offered only where there is a source to ask.
 library;
 
 import 'package:cocktails/domain/domain.dart';
+import 'package:cocktails/ui/screens/ingredients_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import '../../../support/ui_test_support.dart';
+import '../../../support/memory_bar_store.dart';
+import '../../../support/ui_finders.dart';
+import '../../../support/ui_fixtures.dart';
+import '../../../support/ui_harness.dart';
+
+/// Two ingredients with settled stock and one, `absinthe`, with none — so
+/// `Stock`'s A→Z tie-break and `Name`'s own both have something to say.
+final _ordered = smallCollection.withIngredient(Ingredient('absinthe'));
+
+Future<MemoryBarStore> _pumpOrdered(WidgetTester tester) =>
+    pumpOver(tester, const IngredientsScreen(), _ordered);
+
+/// The names alone, the stock words `rowTexts` also carries dropped.
+Iterable<String?> _namesOn(WidgetTester tester) => rowTexts(
+  tester,
+).where((text) => !const {'In stock', 'Low', 'Out'}.contains(text));
 
 void main() {
+  group('sorting', () {
+    testWidgets('closed again, the order settled on still stands', (
+      tester,
+    ) async {
+      await _pumpOrdered(tester);
+      await openSort(tester);
+      await sortBy(tester, 'Name');
+      await openSort(tester);
+      expect(find.byType(FilterChip), findsNothing);
+      expect(_namesOn(tester), ['absinthe', 'campari', 'gin']);
+    });
+
+    testWidgets('picking the order already in force turns it round', (
+      tester,
+    ) async {
+      await _pumpOrdered(tester);
+      await sortBy(tester, 'Stock');
+      expect(sortedBy(tester), ('Stock', true));
+    });
+
+    testWidgets('picking a different order starts it ascending', (
+      tester,
+    ) async {
+      await _pumpOrdered(tester);
+      await sortBy(tester, 'Stock');
+      await sortBy(tester, 'Name');
+      expect(sortedBy(tester), ('Name', false));
+    });
+
+    testWidgets('reading a list another way writes nothing', (tester) async {
+      final store = await _pumpOrdered(tester);
+      await sortBy(tester, 'Name');
+      await sortBy(tester, 'Name');
+      expect(store.saveCount, 0);
+    });
+  });
+
   group('asking the source again (FR-BAR-5)', () {
     /// The pull a reader makes down the list, let run to its answer.
     Future<void> pull(WidgetTester tester) async {

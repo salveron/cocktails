@@ -65,19 +65,19 @@ void main() {
       'color': build(color: TagColor.rose),
     });
 
-    test('copyWith replaces one field and carries the rest', () {
-      const tag = Tag('sour', color: TagColor.rose);
-      expect(tag.copyWith(), tag, reason: 'nothing named');
-      expect(
-        tag.copyWith(name: 'sours'),
-        const Tag('sours', color: TagColor.rose),
-        reason: 'name',
-      );
-      expect(
-        tag.copyWith(color: TagColor.plum),
-        const Tag('sour', color: TagColor.plum),
-        reason: 'color',
-      );
-    });
+    const tag = Tag('sour', color: TagColor.rose);
+    copyWithContract([
+      (field: 'nothing named', apply: () => tag.copyWith(), expected: tag),
+      (
+        field: 'name',
+        apply: () => tag.copyWith(name: 'sours'),
+        expected: const Tag('sours', color: TagColor.rose),
+      ),
+      (
+        field: 'color',
+        apply: () => tag.copyWith(color: TagColor.plum),
+        expected: const Tag('sour', color: TagColor.plum),
+      ),
+    ]);
   });
 }

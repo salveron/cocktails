@@ -1,9 +1,8 @@
 # ADR: Persistence and export format
 
-**Status:** Accepted. Amended once the app held many bars ([ADR 20](20-the-app-holds-many-bars.md), 
-[ADR 21](21-the-file-carries-one-bar.md)): one file per bar rather than one for everything, and 
-"guest" below meant a second reader of the file, not FR-BAR-3's guest bar — that one is read-only 
-for its own reasons ([ADR 23](23-nothing-writes-a-guest-bar.md)).
+**Status:** Superseded for the on-disk layout by [ADR 20](20-the-app-holds-many-bars.md) and
+[ADR 21](21-the-file-carries-one-bar.md) — one file per bar plus an index, not the single file
+below. The format choice and the write discipline still stand as decided here.
 
 ## Context
 
@@ -12,7 +11,7 @@ lossless. AI bulk-edit access point. Single-user, offline.
 
 ## Decision
 
-**Entire collection in memory; persists as single YAML file; export byte-identical to store.**
+**YAML over the alternatives below; export byte-identical to store; atomic, backed-up writes.**
 
 - Export = file copy; import = validate, atomically replace.
 - One schema: no internal-vs-external translation.
@@ -29,6 +28,7 @@ lossless. AI bulk-edit access point. Single-user, offline.
 ## Consequences
 
 - YAML schema is public contract; versioned from day one.
-- Every mutation rewrites whole file (trivial at scale).
-- Strictly single-writer. Guest access read-only.
+- Every mutation rewrites the changed file (trivial at scale) — one bar's, or the index's
+  ([ADR 21](21-the-file-carries-one-bar.md)).
+- Strictly single-writer. Guest bar access read-only ([ADR 23](23-nothing-writes-a-guest-bar.md)).
 - Scales to tens of thousands (≈5 MB, tens of ms).

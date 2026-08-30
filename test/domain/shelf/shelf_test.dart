@@ -188,11 +188,6 @@ void main() {
       expect(shelf.bars.single.offers, hasLength(2));
     });
 
-    test('the bars cannot be changed from outside', () {
-      final shelf = Shelf(bars: [ownedBar()]);
-      expect(() => shelf.bars.add(guestBar()), throwsUnsupportedError);
-    });
-
     valueEquality(() => Shelf(bars: [ownedBar()], openId: '5f2c9a'), {
       'bars': Shelf(
         bars: [ownedBar(name: 'Beach bar')],

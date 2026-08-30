@@ -77,53 +77,26 @@ Milestones in dependency order. Scope: [requirements.md](requirements.md); desig
 - [x] **M32** — Shelf in state. Delivers: ShelfController, collectionProvider derived, openBarProvider, barWriterProvider (null for guest), export/import on open bar only, amend [ADR 23](adr/23-nothing-writes-a-guest-bar.md). Depends: M31.
 - [x] **M33** — Bars screen. Delivers: [ui-design.md](ui-design.md#bars), Switch bar in gear, openBar/addOwnedBar/renameBar/removeBar, card expands, summaryOf/Holding enum, loadIssues (FR-BAR-1/2). Depends: M32.
 - [x] **M33a** — Load answers once. Delivers: collectionProvider as plain Provider, spinner moved to _Home, no AsyncData wrapper, loadIssuesProvider as Notifier, Bar.copyWith narrowed, widget test harness updated. Depends: M33.
-- [x] **M33b** — The bar list says more, and says it at once. Delivers: `Bar.updated` and `Bar.summary`
-  on the record with `Bar.summarised` their one writer, both optional keys on the index and neither
-  in a bar's file; the startup pass that counts a shelf written before summaries existed; the card
-  subtitle (Loaded · Updated/Synced, coarse, silent where undated); the owner/guest chip off scheme
-  roles (`barModeColors`); Rename and Delete behind the row's ⋮ with Rename absent on a guest bar;
-  Open bar offered on every bar, a landing rather than a jump on the one already loaded
-  (`Reveals.land`, nullable `Reveal.name`); `clockProvider`; `holdingsOfBar` and the card's
-  `FutureBuilder` gone. Amends [ADR 19](adr/19-a-destination-sends-the-reader-to-another.md),
-  [ADR 20](adr/20-the-app-holds-many-bars.md) — which had refused the index summary — and
-  [ADR 21](adr/21-the-file-carries-one-bar.md). Depends: M33a.
-- [x] **M34** — Guest bar is read-only. Delivers: `destinationsOf(BarMode)` with the shell indexing
-  by offered position rather than by the enum; the optimizer absent on a guest rather than empty;
-  every write control built from `barWriterProvider` being null, so no add button, no ⋮ on an
-  ingredients row, no Edit/Delete on a recipe, and no stock rotation — Scale & convert, the dice, the
-  narrowings and the jumps all surviving; `RowMenu` drawing nothing when empty; Settings' Tags,
-  Units and Import dimmed and leading nowhere while Amounts, Export and Change bar stay live;
-  Amounts offering a guest the pick alone; export working on a guest (FR-DAT-1); no `!` on the
-  writer left in `ui/`. Also: Change bar moved last and de-ellipsised, every Settings caption cut to
-  one line, "Yours" → "Owned", Open bar filled tonal and right-aligned, and the second person gone
-  from the UI's copy. Depends: M33a.
+- [x] **M33b** — The bar list says more, and says it at once. Delivers: `Bar.updated`/`Bar.summary` on
+  the record and the card's dated subtitle, Rename/Delete behind the row's ⋮; amends
+  [ADR 19](adr/19-a-destination-sends-the-reader-to-another.md),
+  [ADR 20](adr/20-the-app-holds-many-bars.md), [ADR 21](adr/21-the-file-carries-one-bar.md). Depends: M33a.
+- [x] **M34** — Guest bar is read-only. Delivers: every write control gated on `barWriterProvider`
+  being null, the optimizer destination absent on a guest, export still working (FR-DAT-1). Depends: M33a.
 
 ## Phase 8 — A bar travels by file
 
 - [x] **M35** — Sharing seam. Delivers: [ADR 22](adr/22-a-bar-travels-behind-one-seam.md), BarChannel, FetchOutcome, channelsProvider, refreshesProvider, file channel first (FR-BAR-7). Depends: M34.
-- [x] **M36** — One file, two destinations. Delivers: `BarFormScreen` — the new-bar dialog becomes a
-  pushed form with the import review's two roads named against the bars they land on;
-  `addOwnedBar(name, {from})` (FR-BAR-2), `fileSource` so `ui/` never builds an address, an arriving
-  file read in one place (`arriving_bar.dart`), swipe-to-refresh on a guest bar's lists (FR-BAR-5).
-  Depends: M35.
-- [x] **M36a** — A guest bar is the reader's to name, and one form reads every arriving file.
-  Delivers: `renameBar` on a guest bar, the file's `name:` a starting value like `display`, amending
-  [ADR 21](adr/21-the-file-carries-one-bar.md) and [ADR 23](adr/23-nothing-writes-a-guest-bar.md);
-  the import review folded into `BarFormScreen.founding()`/`.importing(review)`; Settings' Import row
-  becoming **Refresh** on a guest bar (FR-BAR-5); `banners.dart` → `failures.dart`, the one home for
-  what the app could not do. Depends: M36.
-- [x] **M36b** — One word per thing. Delivers: **Ingredients** where Inventory stood — screen,
-  requirements (FR-INV-1/2/3 → FR-ING-1/2/3), every doc — and "ingredient" where "bottle" stood in
-  prose, UI copy and code; the arriving-file form asking its mode under **Mode** at both entries; a
-  bar card dating itself **Updated**/**Refreshed** rather than "Loaded", which marked nothing once
-  counts came off the index (ADR 20). Depends: M36a.
-- [x] **M36c** — The optimizer is asked, and a guest may look. Delivers:
-  [ADR 24](adr/24-the-tags-may-aim-the-optimizer.md) and FR-SET-2 — a **Shopping** settings screen
-  kept as `Bar.shopping` (ADR 21), whose chips **aim** the search or **sift** its answer (FR-DIS-10),
-  aiming weighing a basket by the recipes it unlocks wearing any pick (`purchasesWithin`'s `scoring`);
-  beside it baskets per size (FR-DIS-6), shoppable optional lines (FR-REC-3), and the opening budget.
-  A guest bar reads the owner's tags, units and amounts (FR-BAR-4) through
-  `EditorScaffold.readOnly`. Depends: M36b.
+- [x] **M36** — One file, two destinations. Delivers: `BarFormScreen`, one form for founding and
+  importing; `addOwnedBar` (FR-BAR-2), swipe-to-refresh on a guest bar (FR-BAR-5). Depends: M35.
+- [x] **M36a** — A guest bar is the reader's to name. Delivers: `renameBar` on a guest bar, the import
+  review folded into `BarFormScreen`, Import becoming Refresh on a guest (FR-BAR-5); amends
+  [ADR 21](adr/21-the-file-carries-one-bar.md), [ADR 23](adr/23-nothing-writes-a-guest-bar.md). Depends: M36.
+- [x] **M36b** — One word per thing. Delivers: Inventory renamed Ingredients throughout, requirements
+  included (FR-ING-1/2/3); a bar card dated Updated/Refreshed rather than Loaded (ADR 20). Depends: M36a.
+- [x] **M36c** — The optimizer is asked, and a guest may look. Delivers: a Shopping settings screen
+  over `Bar.shopping` (ADR 21), aim/sift chips ([ADR 24](adr/24-the-tags-may-aim-the-optimizer.md),
+  FR-SET-2, FR-DIS-10); a guest bar reads tags, units and amounts read-only (FR-BAR-4). Depends: M36b.
 
 ## Phase 9 — The code says what it means
 
@@ -132,99 +105,30 @@ left: one idea implemented four times, names that stopped meaning one thing, and
 size a reader holds. It stands before the LAN because the second `BarChannel` would otherwise copy
 what M36f settles.
 
-- [x] **M36d** — The name rule reaches the surface. Delivers: the tag chips folding both sides, so a
-  recipe naming its tag in the vocabulary's other case stops vanishing off its own chip — reachable
-  by export, a hand edit and re-import, the file clean at every step. Behind it, `nameKey` and its
-  kin exported so [ADR 08](adr/08-names-ignore-case.md)'s one fold reaches `ui/`, retiring the three
-  private folds grown while it could not (amending [ADR 04](adr/04-module-boundaries.md));
-  `openBarProvider` watched in `build`; the delete dialog split into `askToDelete` and
-  `sayWhatBlocks`. Depends: M36c.
+- [x] **M36d** — The name rule reaches the surface. Delivers: `nameKey` and its kin exported so a tag
+  chip folds a name the same way everywhere ([ADR 08](adr/08-names-ignore-case.md)), retiring three
+  private folds (amends [ADR 04](adr/04-module-boundaries.md)). Depends: M36c.
 - [x] **M36e** — Dead weight goes. Delivers: `MemoryBarStore` out of the shipped binary into
-  `test/support/`, taking with it the data-layer import twelve UI and state tests carried only to
-  reach it, and an `architecture_test` rule that no double ships; the unread writer parameters off
-  `_add`/`_edit`; the module map naming the files that exist. `recipeNamed`,
-  `ValidationIssue.location`, `YamlCodec.formatVersion` and the two `toString`s read as dead were
-  not, and stay. Depends: M36d.
-- [x] **M36f** — One home per algorithm: domain and data. Delivers: the bar coherence rules stated
-  once, read by a throw and a report both; `Shelf.copyWith`; `otherNames` and `ingredientSpellings`
-  sharing one exclusion rule; `Outcome<T>` replacing three separate load/decode/fetch hierarchies,
-  so a decode needs no conversion at all; the six token-carrying enums declaring `Tokened`; one
-  primitive reader in `yaml_reader.dart`; `upserted`/`without` shared by collection and shelf
-  edits; `isShortLine`, the one reading `availabilityOf` and the optimizer's gap search both judge
-  a line by. Domain's own `listEquals`, hand-rolled because the layer cannot import Flutter's,
-  stays beside it in `derived.dart` — the boundary's cost, not a bug. Depends: M36e.
-- [x] **M36g** — One home per algorithm: UI. Delivers: `ExpandingRow`, the one shape four screens'
-  Set-backed toggling cards share (bars_screen's hand-rolled toggle fixed along the way);
-  `Segments<T>` for all six segmented controls; `DialogFrame`, the `AlertDialog` shell three
-  dialogs each built by hand; `wentThrough`/`say` as the one way a snackbar speaks;
-  `RevealServing`, the reveal field and read-and-forget two screens each carried;
-  `recipeTagsProvider`/`ingredientTagsProvider` sorting each vocabulary once rather than per
-  build. Depends: M36f.
-- [x] **M36h** — One owner per value. Delivers: `shopping_screen`'s budget and restocking switch
-  read a nullable override over a live watch rather than a `late` mirror resynced by `ref.listen`,
-  so a default moved in Settings takes hold at once and moving one control no longer carries the
-  other off its own; `units_screen`/`amounts_screen` collapsed to the one `ConsumerStatefulWidget`
-  every other screen already is, an outer `ConsumerWidget` no longer freezing a snapshot a second
-  path through `ref` could also reach. `recipes_screen`'s roll and `bar_form_screen`'s suggestion
-  now take the value `build` already watches instead of reading the provider a second time;
-  `refreshOf` takes the watched bar rather than watching `openBarProvider` again itself; `BarsScreen`
-  ticks its own "ago" reading on a timer, `clockProvider` being a seam for the clock rather than a
-  stream of ticks. `EntryCardList`'s narrowing-detection and row placement, and `RevealServing`'s
-  one-shot reveal, no longer mutate state as a side effect of `build` — reactive on the actual input
-  that moves them, a post-frame callback standing in for `build` reading and clearing the reveal.
-  Depends: M36g.
+  `test/support/`, and an `architecture_test` rule that no double ships. Depends: M36d.
+- [x] **M36f** — One home per algorithm: domain and data. Delivers: the bar coherence rules, the
+  `Outcome<T>` hierarchy and the token-carrying enums' `Tokened` each stated once instead of
+  several times. Depends: M36e.
+- [x] **M36g** — One home per algorithm: UI. Delivers: `ExpandingRow`, `Segments<T>`, `DialogFrame`
+  and `RevealServing` each replacing several hand-rolled copies across screens. Depends: M36f.
+- [x] **M36h** — One owner per value. Delivers: settings and screens reading a single live watch
+  instead of a mirrored copy resynced by `ref.listen`, so a moved default and a ticking clock each
+  take hold from one place. Depends: M36g.
 - [x] **M36i** — One word per thing. Delivers: `VocabularyList`/`VocabularyRow` → `EntryCardList`/
-  `EntryCard`, `vocabulary:` → `tags:` wherever it means `List<Tag>`; the write gate converges on
-  holding the writer itself rather than a bool re-read with `!` (`tags_screen`, `units_screen`);
-  `BarPayload` → `BarContent`, `Records` → `ShelfIndex`; the optimizer's `shelves`/`_shelve` off
-  `Shelf`'s own name, `Shopping` → `ShoppingSettings`, `ShoppingAsk` → `ShoppingQuery`, `most` →
-  `keptPerSize` (the wire token stays `most`); a run of local collisions settled — `_Dot` →
-  `_Swatch`, `_Holding` → `_HoldingGroup`, `EditorScaffold.readOnly` → `writable`, `ListDraw` →
-  `RandomDraw`, `formatMeasure` → `measureText`, the three `_land`s told apart as `Reveals.land`,
-  `_AppShellState._cross` and `ShelfController._applyRefresh`, five duplicated `_row`/`_card`/`_edit`
-  methods disambiguated per screen; `Holding`/`holds`/`holdingsOf`/`summarised` converge on
-  `summary`/`summaryOf`; `Collection`'s tag field order now matches `validateCollection` and the
-  file format; `vocabulary_list.dart` → `entry_list.dart`, `channels.dart` → `refreshes.dart`,
-  `telling.dart` → `failures.dart`, with `refreshOf` moved into the last of those. Depends: M36h.
-- [x] **M36j** — Files find their size, one home per role. Delivers: `lib/ui` regrouped by
-  subject, two siblings only — `screens/` (11 files, all `*_screen.dart`) and
-  `widgets/{cards,chips,dialogs,forms,lists,notices}` — replacing the flat `screens/`/`widgets/`
-  split that let a widget import a screen and let `recipe_widgets.dart` hold four unrelated things
-  ([ADR 25](adr/25-the-ui-groups-by-subject.md)); four checks in `test/architecture_test.dart`
-  enforce it. The files over 600 lines split by subject within that layout (`entry_list` into
-  itself/`list_controls`/`list_terms`; `recipes_screen` split six ways, its leftovers consolidated
-  into `cards/recipe_card`; `color_chip` merged with `color_dot` into `chips/color_marks`;
-  `editor_form` into itself/`form_fields`, the latter split again into itself/`field_issues` along
-  the ADR 05 path-reading it carried; `validation` into itself/`shelf_validation`; `yaml_reader`
-  into `yaml_bar_reader`/`yaml_shelf_reader`/`yaml_primitives`, the last gaining `readDisplay` as the
-  one home for a settings block's and a bar record's `display:` alike). `arriving_bar`,
-  `vocabulary_dialogs` and `short_asks` dissolved into the groups their members belonged to —
-  `promptForName` beside `promptEntry` in `entry_dialog`, `pickBar` beside its two callers in
-  `bar_form_screen`, the delete/discard presets beside `confirmDialog` in a new `confirm_dialog`;
-  `ScaleDialog` went private behind `promptForScale`, the shape every dialog now publishes.
-  `wording.dart` holds `counted` alone, its own dependency rather than a passenger in a file about
-  something else. 17 widget-returning methods became widget classes or top-level functions, 11
-  more the same build()-breakup commits had introduced among them; the long functions and
-  `build()`s over the line-count bar broken up. Depends: M36i.
+  `EntryCard`, `BarPayload` → `BarContent`, `Shopping` → `ShoppingSettings`, and a run of smaller
+  renames converging one concept on one name apiece. Depends: M36h.
+- [x] **M36j** — Files find their size, one home per role. Delivers: `lib/ui` regrouped into
+  `screens/` and `widgets/{cards,chips,dialogs,forms,lists,notices}`
+  ([ADR 25](adr/25-the-ui-groups-by-subject.md)), every file over 600 lines split by subject within
+  it. Depends: M36i.
 - [x] **M36k** — The tests mirror the code. Delivers: `test/` holding one file per `lib/` file, named
-  for it, testing nothing else — the [rule and its two exemptions](components.md#where-a-test-lives)
-  written down. Test files that had been split by size rejoined the file they belong to
-  (`collection_value_types_test.dart`, `validation_entries_test.dart`, `shelf_bars_test.dart`,
-  `recipes_screen_cards_test.dart`), and the yaml suite went the other way: one 1,609-line
-  `yaml_codec_test.dart` divided among the four files that actually own the behaviour —
-  `yaml_writer_test.dart` (the emitter), `yaml_bar_reader_test.dart` (a bar's file and every refusal
-  of it), `yaml_shelf_reader_test.dart` (the index), and `yaml_codec_test.dart` itself (the format
-  gate, the parse, the round trip). Two files with no counterpart found their subject:
-  `reaching_test.dart` became `destinations_test.dart`, which is what it had always tested, and
-  `guest_bar_test.dart` was distributed to the screen each of its groups drove, mirroring how `lib`
-  itself carries the rule — decided once in `bar_writer.dart`, now `bar_writer_test.dart`, and read
-  independently by six screens and `destinations.dart`. Coverage `lib` had none of came with it:
-  `entry_card_test.dart`, `entry_list_test.dart`, `bar_writer_test.dart`. Support was consolidated
-  under one word and one home: no more harnesses, kits or toolkits, just `test/support/` holding
-  `test_support.dart` for what several layers read and `{domain,data,state,ui}_test_support.dart`
-  for what one does — ten scattered files folded into five, and the last two test files importing
-  another test file (`shelf_edits_test.dart`, `shelf_validation_test.dart`, both reaching into
-  `shelf_test.dart`) cut. Depends: M36j.
+  for it ([rule and its two exemptions](components.md#where-a-test-lives)); yaml's one 1,609-line
+  file split among the four files that own its behaviour; test support folded into five files.
+  Depends: M36j.
 
 ## Phase 10 — Every file names what it is responsible for
 
@@ -235,51 +139,32 @@ mixes recipe availability with ingredient stock, and the shelf imports the optim
 already keeps. It stands before the LAN so the second `BarChannel` lands in a domain that has been
 asked the question.
 
-- [x] **M37** — Dead weight and misfiled declarations. Delivers: `newBarId`'s `Random`
-  parameter gone, no call site having ever supplied one, and `longPress` with it; `data.dart`
-  hiding `isStorableBarId`, which only the file adapter asks, `file_bar_store_test` reaching it
-  through `src/` as `names_test` already did (the six domain names under the same rule wait for
-  M40, where the barrel is restated against the new tree rather than twice); `ImportReview`
-  moved off `seams.dart` to the controller whose method returns it, leaving the seams knowing
-  no domain type at all and importing none; `refreshes.dart` split into `channels.dart` — the
-  registry Phase 11 grows — and the refreshes in flight its own doc had always claimed alone,
-  with `channels_test.dart` taking the group that already tested it. `loadIssuesProvider` read
-  as a second subject was not one: every assertion on it observes a load through the controller
-  that is its only writer, so it stays. Depends: M36k.
-- [x] **M38** — One home per algorithm: domain and data. Delivers: `shelfProblems` and
-  `duplicateNameMessage` behind the shelf's and the collection's own duplicate rules, one
-  `Outcome`-reading helper behind `ShelfController`'s two collection reads, `readMapping` behind
-  every "must be a mapping" guard in `yaml_bar_reader.dart` and `yaml_shelf_reader.dart`, and
-  `ShoppingSettings`'s wire tokens declared beside the fields they name rather than left as bare
-  literals in `data/`. Depends: M37.
-- [x] **M39** — One home per algorithm: UI. Delivers: one write-gate idiom across `recipes_screen`,
-  `ingredients_screen` and `tags_screen` — a caller-built `RowMenu` actions map rather than nullable
-  callbacks or a force-unwrapped writer; `bars_screen`'s two missing `mounted` guards after an
-  awaited dialog, and `ingredients_screen` settled on bare `mounted` over `context.mounted`;
-  `ToggleMembership` moved to a new loose `ui/toggling.dart` (three of its importers were not
-  lists), `AmountView`/`restingView` moved into `scale_dialog.dart` (no longer forcing a dialog to
-  import a card for a typedef), and `say`/`wentThrough` split into a new `notices/snackbar.dart`
-  (used for successes as often as failures); `ListFilter.tagPicks` added beside `picks` so a tag
-  filter's names and a base filter's prose can no longer collide in one field; `RecipeRow` →
-  `RecipeCard`, `_IngredientRow` → `_IngredientCard`, `ExpandingRow` → `ExpandingCard`. Depends: M38.
+- [x] **M37** — Dead weight and misfiled declarations. Delivers: `newBarId`'s unused `Random`
+  parameter gone; `data.dart` newly hiding `isStorableBarId`; `refreshes.dart` split into
+  `channels.dart` and itself. Depends: M36k.
+- [x] **M38** — One home per algorithm: domain and data. Delivers: the shelf's and the collection's
+  duplicate-name rules, `ShelfController`'s `Outcome` reads, and the yaml readers' "must be a
+  mapping" guard each stated once; `ShoppingSettings`'s wire tokens declared beside their fields.
+  Depends: M37.
+- [x] **M39** — One home per algorithm: UI. Delivers: one write-gate idiom across three screens, two
+  missing `mounted` guards fixed, `ToggleMembership`/`AmountView`/`say` each moved to the file that
+  owns the concern. Depends: M38.
 - [x] **M40** — The domain finds its shape. Delivers: 13 `domain/src/` files become 25 across
-  `collection/`, `shopping/` and `shelf/` plus four loose files read by more than one
-  (`names.dart`, `tokens.dart`, `issues.dart`, `list_edits.dart`), in the one-way chain new
-  [ADR 26](adr/26-the-domain-groups-by-responsibility.md) names and `architecture_test.dart`
-  enforces; `Holding`/`summaryOf` moved from `collection.dart` to `shelf/bar.dart`, the record they
-  summarise rather than the collection they count; `ShoppingSettings` moved out of
-  `optimizer.dart`, which never read it, into its own `shopping_settings.dart`, dropping the
-  `shelf.dart → optimizer.dart` back edge. `Bar.shopping` is now `ShoppingSettings?` — null on a
-  guest and refused wherever a hand-edited index or a stray write leaves one anyway
-  ([ADR 21](adr/21-the-file-carries-one-bar.md) and
-  [ADR 24](adr/24-the-tags-may-aim-the-optimizer.md) amended), the one behaviour change the
-  milestone carries. The renames the move settles: `Settings` → `UnitSizes` and
-  `Collection.settings` → `Collection.unitSizes`; `measureText` → `amountText` and
-  `displayMeasure` → `scaledAmountText`; `line_format.dart` → `recipe_line.dart`, `discovery.dart`
-  → `recipe_discovery.dart`, `scaling.dart` → `amount_scaling.dart`. `test/domain/` mirrors the
-  tree file for file, matching M36k's rule. Depends: M39.
-- [ ] **M41** — The tests find their level. Delivers: `barChannelContract` and an override escape hatch before Phase 11 needs them, `ui_test_support` split three ways, `architecture_test`'s sanity block as a table. Depends: M40.
-- [ ] **M42** — The docs say less, and mean it. Delivers: the signature fences out of [components.md](components.md), the roadmap's history to git, the ADRs' amendment narration trimmed, and an anchor-resolution check over all 115 links. Depends: M41.
+  `collection/`, `shopping/` and `shelf/` in a one-way chain
+  ([ADR 26](adr/26-the-domain-groups-by-responsibility.md)); `Bar.shopping` becomes nullable and
+  owner-only, the one behaviour change (amends [ADR 21](adr/21-the-file-carries-one-bar.md),
+  [ADR 24](adr/24-the-tags-may-aim-the-optimizer.md)). Depends: M39.
+- [x] **M41** — The tests find their level. Delivers: `barChannelContract`, a 3-way split of
+  `ui_test_support.dart`, and `architecture_test.dart`'s sanity checks collapsed onto one table;
+  `expectIssue`/`copyWithContract` reached into the domain suites; eleven `List.unmodifiable`
+  contract checks removed and `list_controls.dart` gained its first test file. Depends: M40.
+- [x] **M42** — The docs say less, and mean it. Delivers: an anchor-resolution check in
+  `architecture_test.dart` landed first over all 126 links; [components.md](components.md) 1022 →
+  688 lines, its signature fences gone; this roadmap's own history compacted from M33b on (319 →
+  170); [ADR 20](adr/20-the-app-holds-many-bars.md), [ADR 21](adr/21-the-file-carries-one-bar.md)
+  freed of reversed alternatives and amendment narration, [ADR 02](adr/02-persistence-and-export-format.md)
+  marked superseded by them; [ui-design.md](ui-design.md) trimmed of its screen-content walks and
+  its Vocabulary editing section pointed at the widgets' own dartdoc. Depends: M41.
 
 ## Phase 11 — A bar travels over the LAN
 

@@ -1,8 +1,7 @@
 # ADR: App structure and state management
 
-**Status:** Accepted. Amended once the lists were built: search and filtering turned out to be
-presentation, and grouping left the domain's vocabulary
-([ADR 12](12-base-spirit-narrows.md)).
+**Status:** Accepted. Search and filtering are presentation, not domain state; grouping left the
+domain's vocabulary entirely ([ADR 12](12-base-spirit-narrows.md)).
 
 ## Context
 

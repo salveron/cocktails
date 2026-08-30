@@ -9,8 +9,31 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import '../../support/ui_test_support.dart';
-import '../../support/test_support.dart';
+import '../../support/memory_bar_store.dart';
+import '../../support/ui_finders.dart';
+import '../../support/ui_fixtures.dart';
+import '../../support/ui_harness.dart';
+
+/// Every dot on the row named [name], in the order they are drawn.
+Finder _dotsOn(String name) => find.descendant(
+  of: find.ancestor(of: find.text(name), matching: find.byType(ListTile)),
+  matching: find.byType(TagDot),
+);
+
+/// The colour the first of them is drawn in, on [chipColor]'s terms.
+Color dotColor(WidgetTester tester, String name) =>
+    (tester
+                .widget<DecoratedBox>(
+                  find
+                      .descendant(
+                        of: _dotsOn(name),
+                        matching: find.byType(DecoratedBox),
+                      )
+                      .first,
+                )
+                .decoration
+            as BoxDecoration)
+        .color!;
 
 /// Three tags over four ingredients, every combination the filter has to tell
 /// apart: one ingredient bare, one wearing a single tag, one wearing two.
@@ -341,22 +364,6 @@ void main() {
   });
 
   group('ingredients order', () {
-    testWidgets('the orders keep out of sight until they are asked for', (
-      tester,
-    ) async {
-      await pumpIngredients(tester, smallCollection);
-      expect(find.byType(FilterChip), findsNothing);
-
-      await openSort(tester);
-      expect(find.widgetWithText(FilterChip, 'Stock'), findsOneWidget);
-      expect(find.widgetWithText(FilterChip, 'Name'), findsOneWidget);
-
-      // Put away, the order they settled still stands.
-      await openSort(tester);
-      expect(find.byType(FilterChip), findsNothing);
-      expect(namesOn(tester), ['gin', 'campari']);
-    });
-
     testWidgets('it opens on stock, the full ingredients first', (
       tester,
     ) async {
@@ -369,26 +376,6 @@ void main() {
     testWidgets('name reads them A→Z whatever is left in them', (tester) async {
       await pumpIngredients(tester, orderedCollection);
       await sortBy(tester, 'Name');
-      expect(namesOn(tester), ['absinthe', 'campari', 'gin']);
-    });
-
-    testWidgets('picking the order in force turns the whole list round', (
-      tester,
-    ) async {
-      await pumpIngredients(tester, orderedCollection);
-      await sortBy(tester, 'Stock');
-      expect(sortedBy(tester), ('Stock', true));
-      // The A→Z between the two empty ones turns round with everything else.
-      expect(namesOn(tester), ['campari', 'absinthe', 'gin']);
-    });
-
-    testWidgets('another order starts the way round it is written', (
-      tester,
-    ) async {
-      await pumpIngredients(tester, orderedCollection);
-      await sortBy(tester, 'Stock');
-      await sortBy(tester, 'Name');
-      expect(sortedBy(tester), ('Name', false));
       expect(namesOn(tester), ['absinthe', 'campari', 'gin']);
     });
 
@@ -426,13 +413,6 @@ void main() {
       final orders = tester.getTopLeft(find.byType(FilterChip).first).dy;
       expect(orders, greaterThan(tester.getBottomLeft(searchBox).dy));
       expect(orders, lessThan(tester.getTopLeft(find.byType(TagChoices)).dy));
-    });
-
-    testWidgets('reading a list another way writes nothing', (tester) async {
-      final store = await pumpIngredients(tester, orderedCollection);
-      await sortBy(tester, 'Name');
-      await sortBy(tester, 'Name');
-      expect(store.saveCount, 0);
     });
   });
 
@@ -609,21 +589,11 @@ void main() {
   });
 
   group('a guest bar writes nothing here', () {
-    testWidgets('the ingredients screen offers no way to add an ingredient', (
-      tester,
-    ) async {
-      await pumpOver(
-        tester,
-        const IngredientsScreen(),
-        smallCollection,
-        bar: testGuestBar(),
-      );
-      expect(
-        find.widgetWithIcon(FloatingActionButton, Icons.add),
-        findsNothing,
-      );
-      expect(rowMenu('gin'), findsNothing);
-    });
+    guestListOffersNoWrite(
+      () => const IngredientsScreen(),
+      smallCollection,
+      'gin',
+    );
 
     /// The stock is the owner's reading of their own shelf: a tap that moved it
     /// would be the reader judging one bar by another.

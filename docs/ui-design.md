@@ -226,36 +226,21 @@ learns nothing about where a row stands.
 
 ## Vocabulary editing
 
-`EntryCardList`: search, sort orders, three faces, add button. Screen provides row display, 
-tap handler, sort key. Ingredients: stock chip + stock order. Tags: tag + palette order. 
-Optional filter row narrows by custom predicate.
-
-Same two dialogs for ingredients and tags:
-
-- **Entry dialog**: one field (new/edit). Takes `validate…` function; shows first issue under 
-  owning field (empty path = name; `aliases` = aliases). Save blocked until clear. 
-  New tag opens on first unused colour.
-- **Aliases** (FR-VOC-6): second plain field, always shown. Comma-separated; trimmed, blanks 
-  dropped. Displayed only here ([ADR 10](adr/10-ingredient-aliases.md)).
-- **Selection**: tick in swatch or ring on chip (transparent unpicked).
-- **Delete dialog**: a question where nothing references it (`askToDelete`), a notice listing what 
-  does where something has (`sayWhatBlocks`, FR-VOC-1) — the notice has no confirm, so there is 
-  nothing in it to answer. A screen holding the users without having read them asks `confirmDelete` 
-  for whichever fits; one that already knows calls the half it means. Same frame for the 
-  missing-ingredient offer and the discard prompt.
+Ingredients and both tag tabs share one list and one pair of dialogs — search, sort orders, three
+faces, add button, an entry dialog and a delete dialog. The component contract (fields, validation
+wiring, the blocked-vs-free delete split) is the widgets' own dartdoc: `entry_list.dart`,
+`entry_dialog.dart`, `confirm_dialog.dart`.
 
 Add via `FloatingActionButton`. Empty state prefills query (search miss → one tap). 
 Successful add clears search. Recipes add pushes [recipe form](#recipe-form).
 
 ## Recipes screen
 
-- **Card in-place expansion** (single tap, NFR-1). Independent, collapse same tap. 
-  Two open side-by-side, scroll stable.
-- **Compact**: name + tags (dots, the ingredients idiom) + ingredient names (`·`-joined, ellipsized), 
-  a group reading as prose within one slot. Amounts on expand.
-- **Expanded**: tags as chips, lines as `formatRecipeLine` writes, notes. Empty sections absent.
-- **Edit/delete** behind ⋮ (menu pairs with availability chip). Delete confirms. 
-  Rename keeps card open.
+- **Card in-place expansion** (single tap, NFR-1): compact shows name, tags as dots and
+  ingredients ellipsized (`·`-joined) in one slot; expanded shows tags as chips, lines as
+  `formatRecipeLine` writes, and notes, empty sections absent. Two open side-by-side, scroll
+  stable. Edit/delete sit behind ⋮, pairing with the availability chip; delete confirms, rename
+  keeps the card open.
 - **Filter row** under search: the base chip, then recipe tags as chips — the ingredients' row 
   exactly (FR-DIS-3, `tagFilter`, which takes the base chip as its leading filter so one scroller 
   carries both and one message joins their reasons). Narrows to recipes wearing *all* picked tags; 
@@ -276,22 +261,17 @@ Successful add clears search. Recipes add pushes [recipe form](#recipe-form).
   and the base pick already hold; shuts every open card, opens that one and scrolls to it. A second 
   roll moves off the one standing while another can be made, so rolling again always answers. 
   Absent where nothing is on show; rows on show but none makeable answers with a snackbar rather 
-  than silence.
-- **The wash** on the drawn card: its fill starts at `secondaryContainer` and settles back to where 
-  every other card rests, over 700ms, easing out — the pick saying which one it is once the scroll 
-  has stopped, since a list that merely stopped moving does not say what it stopped *for*. Colour 
-  alone, and only the fill: a row changing height would fire the very measurement the reveal waits 
-  on (ADR 13). It runs once and is let go, so a row scrolled away and back does not say it again.
+  than silence. The drawn card's fill washes from `secondaryContainer` back to rest over 700ms —
+  colour alone, since a height change would fire the very measurement the reveal waits on (ADR 13) —
+  and runs once, so a row scrolled away and back does not say it again.
 - **Scale & convert** behind ⋮ (expanded cards only, FR-REC-7): factor ×1–×4, and one of the three 
-  fixed units for this card alone (FR-SET-1). Every card rests at ×1 in the unit the settings name 
+  fixed units for this card alone (FR-SET-1), display-only and dying with the card ("(×2, ml)" on
+  the name row, measures italic). Every card rests at ×1 in the unit the settings name 
   ([ADR 17](adr/17-the-fixed-units-interconvert.md)), and picking that again cancels — so under an 
-  ml reader it is "(part)" that marks a card as read otherwise.
-- **Display-only transforms**: name row shows "(×2, ml)", measures italic. No persistence; 
-  dies with card.
-- **Availability chip** (FR-DIS-1): "Ready"/"Low"/"Missing" (traffic light, no count). 
-  Trailing slot outside expanding body. List opens in this order (FR-DIS-8).
-- **Line marks**: stock dot after line if the line is low/out (tooltip shows level); no dot = in 
-  stock. Optional lines dotted too (dot + "(optional)" together).
+  ml reader it is "(part)" that marks a card as read otherwise. The availability chip
+  ("Ready"/"Low"/"Missing", FR-DIS-1) is the traffic light with no count, in the order the list
+  opens in (FR-DIS-8); a low or out line carries a stock dot (tooltip names the level), optional
+  lines dotted too.
 - **Each ingredient a line names reaches the Ingredients screen** (FR-DIS-9): the name alone is the target, so a 
   substitution group offers one per alternative where a whole-line tap could only have named the 
   first. The measure, the "or" and the "(optional)" answer nothing — the one place in the app where 
@@ -322,13 +302,12 @@ Create/edit: pushed page, Save in app bar. Mirrors file order (name, lines, tags
 
 ## Ingredients screen
 
-- **Opens on stock (fullest first)** (FR-DIS-8). One row per ingredient on filled card. 
-  Rows stable during edit.
-- **Stock chip** (green/amber/red with words; no hue decode). Fixed hues.
-- **Row tap** cycles stock `in → low → out → in` (FR-ING-2).
+- **Opens on stock (fullest first)** (FR-DIS-8), one row per ingredient, rows stable during edit.
+  The stock chip (green/amber/red, words rather than a hue to decode) cycles `in → low → out → in`
+  on a row tap (FR-ING-2).
 - **Edit/delete** behind ⋮. Edit dialog: name, aliases, tags. Whole entry → one save. 
-  New ingredient starts out.
-- **Tags as dots** after name (vocab order; must match legend colour).
+  New ingredient starts out. Tags show as dots after the name, vocabulary order, matching the
+  legend's colour.
 - **Filter row** (legend): ingredient tags as chips (horizontal scroll). Picking narrows to 
   ingredients with *all* picked tags (combines with name search, FR-ING-3). Add clears picks.
 - **Three faces**: empty, no match, list (third names narrowing source).

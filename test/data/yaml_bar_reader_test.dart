@@ -267,265 +267,274 @@ void main() {
   });
 
   group('decode reports shape errors with lines', () {
-    test('a section that is not a list', () {
-      final issues = rejected('format: 1\ningredients: 5\n');
-      expect(issues, hasLength(1));
-      expectIssue(
-        issues.single,
-        ValidationIssueKind.malformedValue,
-        'ingredients',
-        2,
+    // One shape throughout: a yaml fragment decodes to a known count of
+    // issues, and the one at [index] carries the given kind, location, line
+    // and a part of its message (components.md#what-earns-a-test).
+    for (final c in [
+      (
+        description: 'a section that is not a list',
+        yaml: 'format: 1\ningredients: 5\n',
+        count: 1,
+        index: 0,
+        kind: ValidationIssueKind.malformedValue,
+        location: 'ingredients',
+        line: 2,
         messagePart: 'ingredients must be a list: 5',
-      );
-    });
-
-    test('an ingredient entry that is not a mapping', () {
-      final issues = rejected('format: 1\ningredients:\n  - gin\n');
-      expectIssue(
-        issues.single,
-        ValidationIssueKind.malformedValue,
-        'ingredients[0]',
-        3,
+      ),
+      (
+        description: 'an ingredient entry that is not a mapping',
+        yaml: 'format: 1\ningredients:\n  - gin\n',
+        count: 1,
+        index: 0,
+        kind: ValidationIssueKind.malformedValue,
+        location: 'ingredients[0]',
+        line: 3,
         messagePart: 'must be a mapping: "gin"',
-      );
-    });
-
-    test('a missing name', () {
-      final issues = rejected('format: 1\ningredients:\n  - {stock: in}\n');
-      expectIssue(
-        issues.single,
-        ValidationIssueKind.malformedValue,
-        'ingredients[0]',
-        3,
+      ),
+      (
+        description: 'a missing name',
+        yaml: 'format: 1\ningredients:\n  - {stock: in}\n',
+        count: 1,
+        index: 0,
+        kind: ValidationIssueKind.malformedValue,
+        location: 'ingredients[0]',
+        line: 3,
         messagePart: 'Missing name',
-      );
-    });
-
-    test('a name that is not a string', () {
-      final issues = rejected('format: 1\ningredients:\n  - {name: 1976}\n');
-      expectIssue(
-        issues.single,
-        ValidationIssueKind.malformedValue,
-        'ingredients[0].name',
-        3,
+      ),
+      (
+        description: 'a name that is not a string',
+        yaml: 'format: 1\ningredients:\n  - {name: 1976}\n',
+        count: 1,
+        index: 0,
+        kind: ValidationIssueKind.malformedValue,
+        location: 'ingredients[0].name',
+        line: 3,
         messagePart: 'name must be a string: 1976',
-      );
-    });
-
-    test('bad ingredient field values, each at its own line', () {
-      final issues = rejected(
-        'format: 1\n'
-        'ingredients:\n'
-        '  - {name: gin, stock: high}\n'
-        '  - {name: rum, stock: 7}\n',
-      );
-      expect(issues, hasLength(2));
-      expectIssue(
-        issues[0],
-        ValidationIssueKind.malformedValue,
-        'ingredients[0].stock',
-        3,
+      ),
+      (
+        description: 'an ingredient stock outside the allowed words',
+        yaml:
+            'format: 1\n'
+            'ingredients:\n'
+            '  - {name: gin, stock: high}\n'
+            '  - {name: rum, stock: 7}\n',
+        count: 2,
+        index: 0,
+        kind: ValidationIssueKind.malformedValue,
+        location: 'ingredients[0].stock',
+        line: 3,
         messagePart: 'stock must be one of in, low, out: "high"',
-      );
-      expectIssue(
-        issues[1],
-        ValidationIssueKind.malformedValue,
-        'ingredients[1].stock',
-        4,
+      ),
+      (
+        description: 'a numeric ingredient stock, still at its own line',
+        yaml:
+            'format: 1\n'
+            'ingredients:\n'
+            '  - {name: gin, stock: high}\n'
+            '  - {name: rum, stock: 7}\n',
+        count: 2,
+        index: 1,
+        kind: ValidationIssueKind.malformedValue,
+        location: 'ingredients[1].stock',
+        line: 4,
         messagePart: 'stock must be one of in, low, out: 7',
-      );
-    });
-
-    test('an aliases section that is not a list of strings', () {
-      final issues = rejected(
-        'format: 1\n'
-        'ingredients:\n'
-        '  - {name: gin, aliases: genever}\n'
-        '  - {name: rum, aliases: [7]}\n',
-      );
-      expect(issues, hasLength(2));
-      expectIssue(
-        issues[0],
-        ValidationIssueKind.malformedValue,
-        'ingredients[0].aliases',
-        3,
+      ),
+      (
+        description: 'an aliases section that is not a list',
+        yaml:
+            'format: 1\n'
+            'ingredients:\n'
+            '  - {name: gin, aliases: genever}\n'
+            '  - {name: rum, aliases: [7]}\n',
+        count: 2,
+        index: 0,
+        kind: ValidationIssueKind.malformedValue,
+        location: 'ingredients[0].aliases',
+        line: 3,
         messagePart: 'aliases must be a list: "genever"',
-      );
-      expectIssue(
-        issues[1],
-        ValidationIssueKind.malformedValue,
-        'ingredients[1].aliases[0]',
-        4,
+      ),
+      (
+        description: 'an alias that is not a string',
+        yaml:
+            'format: 1\n'
+            'ingredients:\n'
+            '  - {name: gin, aliases: genever}\n'
+            '  - {name: rum, aliases: [7]}\n',
+        count: 2,
+        index: 1,
+        kind: ValidationIssueKind.malformedValue,
+        location: 'ingredients[1].aliases[0]',
+        line: 4,
         messagePart: 'Alias must be a string: 7',
-      );
-    });
-
-    test('an unknown top-level key — a typo would drop content', () {
-      final issues = rejected('format: 1\nrecipies:\n  - name: X\n');
-      expectIssue(
-        issues.single,
-        ValidationIssueKind.malformedValue,
-        'recipies',
-        2,
+      ),
+      (
+        description: 'an unknown top-level key — a typo would drop content',
+        yaml: 'format: 1\nrecipies:\n  - name: X\n',
+        count: 1,
+        index: 0,
+        kind: ValidationIssueKind.malformedValue,
+        location: 'recipies',
+        line: 2,
         messagePart: 'Unknown key: "recipies"',
-      );
-    });
-
-    test('the retired ingredient base key — a base is a line mark now', () {
-      final issues = rejected(
-        'format: 1\ningredients:\n  - {name: gin, base: true}\n',
-      );
-      expectIssue(
-        issues.single,
-        ValidationIssueKind.malformedValue,
-        'ingredients[0].base',
-        3,
+      ),
+      (
+        description:
+            'the retired ingredient base key — a base is a line mark now',
+        yaml: 'format: 1\ningredients:\n  - {name: gin, base: true}\n',
+        count: 1,
+        index: 0,
+        kind: ValidationIssueKind.malformedValue,
+        location: 'ingredients[0].base',
+        line: 3,
         messagePart: 'Unknown key: "base"',
-      );
-    });
-
-    test('an unknown entry key', () {
-      final issues = rejected(
-        'format: 1\ningredients:\n  - {name: gin, based: true}\n',
-      );
-      expectIssue(
-        issues.single,
-        ValidationIssueKind.malformedValue,
-        'ingredients[0].based',
-        3,
+      ),
+      (
+        description: 'an unknown entry key',
+        yaml: 'format: 1\ningredients:\n  - {name: gin, based: true}\n',
+        count: 1,
+        index: 0,
+        kind: ValidationIssueKind.malformedValue,
+        location: 'ingredients[0].based',
+        line: 3,
         messagePart: 'Unknown key: "based"',
-      );
-    });
-
-    test('a tag written the pre-colour way, as a bare name', () {
-      final issues = rejected('format: 1\nrecipe_tags: [sour, classic]\n');
-      expect(issues, hasLength(2));
-      expectIssue(
-        issues[0],
-        ValidationIssueKind.malformedValue,
-        'recipe_tags[0]',
-        2,
+      ),
+      (
+        description: 'a tag written the pre-colour way, as a bare name',
+        yaml: 'format: 1\nrecipe_tags: [sour, classic]\n',
+        count: 2,
+        index: 0,
+        kind: ValidationIssueKind.malformedValue,
+        location: 'recipe_tags[0]',
+        line: 2,
         messagePart: 'Tag entry must be a mapping: "sour"',
-      );
-    });
-
-    test('the one tags section from before the split', () {
-      final issues = rejected('format: 1\ntags: []\n');
-      expectIssue(
-        issues.single,
-        ValidationIssueKind.malformedValue,
-        'tags',
-        2,
+      ),
+      (
+        description: 'the one tags section from before the split',
+        yaml: 'format: 1\ntags: []\n',
+        count: 1,
+        index: 0,
+        kind: ValidationIssueKind.malformedValue,
+        location: 'tags',
+        line: 2,
         messagePart: 'Unknown key: "tags"',
-      );
-    });
-
-    test('a tag entry with no colour at all', () {
-      final issues = rejected('format: 1\nrecipe_tags:\n  - {name: sour}\n');
-      expectIssue(
-        issues.single,
-        ValidationIssueKind.malformedValue,
-        'recipe_tags[0]',
-        3,
+      ),
+      (
+        description: 'a tag entry with no colour at all',
+        yaml: 'format: 1\nrecipe_tags:\n  - {name: sour}\n',
+        count: 1,
+        index: 0,
+        kind: ValidationIssueKind.malformedValue,
+        location: 'recipe_tags[0]',
+        line: 3,
         messagePart: 'Missing color',
-      );
-    });
-
-    test('a colour outside the palette names the whole palette', () {
-      final issues = rejected(
-        'format: 1\ningredient_tags:\n  - {name: citrus, color: puce}\n',
-      );
-      expectIssue(
-        issues.single,
-        ValidationIssueKind.malformedValue,
-        'ingredient_tags[0].color',
-        3,
+      ),
+      (
+        description: 'a colour outside the palette names the whole palette',
+        yaml: 'format: 1\ningredient_tags:\n  - {name: citrus, color: puce}\n',
+        count: 1,
+        index: 0,
+        kind: ValidationIssueKind.malformedValue,
+        location: 'ingredient_tags[0].color',
+        line: 3,
         messagePart:
             'color must be one of teal, indigo, plum, rose, sand, slate: '
             '"puce"',
-      );
-    });
-
-    test('an unknown tag key costs the key and the colour with it', () {
-      final issues = rejected(
-        'format: 1\nrecipe_tags:\n  - {name: sour, colour: rose}\n',
-      );
-      expect(issues, hasLength(2));
-      expectIssue(
-        issues[0],
-        ValidationIssueKind.malformedValue,
-        'recipe_tags[0].colour',
-        3,
+      ),
+      (
+        description: 'an unknown tag key',
+        yaml: 'format: 1\nrecipe_tags:\n  - {name: sour, colour: rose}\n',
+        count: 2,
+        index: 0,
+        kind: ValidationIssueKind.malformedValue,
+        location: 'recipe_tags[0].colour',
+        line: 3,
         messagePart: 'Unknown key: "colour"',
-      );
-      expectIssue(
-        issues[1],
-        ValidationIssueKind.malformedValue,
-        'recipe_tags[0]',
-        3,
+      ),
+      (
+        description: 'the unknown tag key costs the colour with it',
+        yaml: 'format: 1\nrecipe_tags:\n  - {name: sour, colour: rose}\n',
+        count: 2,
+        index: 1,
+        kind: ValidationIssueKind.malformedValue,
+        location: 'recipe_tags[0]',
+        line: 3,
         messagePart: 'Missing color',
-      );
-    });
-
-    test('recipe lines: bad grammar and a non-string, each at its line', () {
-      final issues = rejected(
-        'format: 1\n'
-        'recipes:\n'
-        '  - name: Martini\n'
-        '    lines:\n'
-        '      - gin\n'
-        '      - 5\n',
-      );
-      expect(issues, hasLength(2));
-      expectIssue(
-        issues[0],
-        ValidationIssueKind.malformedLine,
-        'recipes[0].lines[0]',
-        5,
+      ),
+      (
+        description: 'a recipe line with bad grammar',
+        yaml:
+            'format: 1\n'
+            'recipes:\n'
+            '  - name: Martini\n'
+            '    lines:\n'
+            '      - gin\n'
+            '      - 5\n',
+        count: 2,
+        index: 0,
+        kind: ValidationIssueKind.malformedLine,
+        location: 'recipes[0].lines[0]',
+        line: 5,
         messagePart: 'Expected "<amount> [unit] <ingredient>": "gin"',
-      );
-      expectIssue(
-        issues[1],
-        ValidationIssueKind.malformedValue,
-        'recipes[0].lines[1]',
-        6,
+      ),
+      (
+        description: 'a recipe line that is not a string',
+        yaml:
+            'format: 1\n'
+            'recipes:\n'
+            '  - name: Martini\n'
+            '    lines:\n'
+            '      - gin\n'
+            '      - 5\n',
+        count: 2,
+        index: 1,
+        kind: ValidationIssueKind.malformedValue,
+        location: 'recipes[0].lines[1]',
+        line: 6,
         messagePart: 'Recipe line must be a string: 5',
-      );
-    });
-
-    test('notes that are not a string', () {
-      final issues = rejected(
-        'format: 1\nrecipes:\n  - name: A\n    notes: [x]\n',
-      );
-      expectIssue(
-        issues.single,
-        ValidationIssueKind.malformedValue,
-        'recipes[0].notes',
-        4,
+      ),
+      (
+        description: 'notes that are not a string',
+        yaml: 'format: 1\nrecipes:\n  - name: A\n    notes: [x]\n',
+        count: 1,
+        index: 0,
+        kind: ValidationIssueKind.malformedValue,
+        location: 'recipes[0].notes',
+        line: 4,
         messagePart: 'notes must be a string: a list',
-      );
-    });
-
-    test('bad settings values', () {
-      final issues = rejected(
-        'format: 1\nsettings:\n  part_ml: thirty\n  display: liters\n',
-      );
-      expect(issues, hasLength(2));
-      expectIssue(
-        issues[0],
-        ValidationIssueKind.malformedValue,
-        'settings.part_ml',
-        3,
+      ),
+      (
+        description: 'a settings value of the wrong type',
+        yaml: 'format: 1\nsettings:\n  part_ml: thirty\n  display: liters\n',
+        count: 2,
+        index: 0,
+        kind: ValidationIssueKind.malformedValue,
+        location: 'settings.part_ml',
+        line: 3,
         messagePart: 'part_ml must be a number: "thirty"',
-      );
-      expectIssue(
-        issues[1],
-        ValidationIssueKind.malformedValue,
-        'settings.display',
-        4,
+      ),
+      (
+        description: 'a settings enum outside its allowed words',
+        yaml: 'format: 1\nsettings:\n  part_ml: thirty\n  display: liters\n',
+        count: 2,
+        index: 1,
+        kind: ValidationIssueKind.malformedValue,
+        location: 'settings.display',
+        line: 4,
         messagePart: 'display must be part, ml or oz: "liters"',
-      );
-    });
+      ),
+    ]) {
+      test(c.description, () {
+        final issues = rejected(c.yaml);
+        expect(issues, hasLength(c.count), reason: c.description);
+        expectIssue(
+          issues[c.index],
+          c.kind,
+          c.location,
+          c.line,
+          messagePart: c.messagePart,
+        );
+      });
+    }
 
     test('shape issues across sections read top-to-bottom', () {
       final issues = rejected(

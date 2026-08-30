@@ -1,7 +1,7 @@
 import 'package:cocktails/ui/widgets/dialogs/confirm_dialog.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import '../../../support/ui_test_support.dart';
+import '../../../support/ui_finders.dart';
 
 void main() {
   group('delete dialog', () {

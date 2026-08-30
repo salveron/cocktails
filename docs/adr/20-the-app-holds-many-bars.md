@@ -18,8 +18,8 @@ names are labels: two bars may carry one, so a name cannot be a key.
 **`Shelf` above `Collection`: the record of every bar, which one is open, and that one's collection —
 the only one resident.**
 
-- The collection type keeps its shape. It is one bar's contents; the app gains a level rather than
-  rewriting one. **Amended:** it did not keep its name — see the alternative below.
+- `Collection` keeps its shape. It is one bar's contents; the app gains a level rather than
+  rewriting one.
 - A **record** is what a bar costs when it is not on show: id, name, mode, reading unit, offers,
   source, last refresh, when it last changed, and how much it holds kind by kind. The bar list reads
   the index and no collection at all.
@@ -40,16 +40,6 @@ the only one resident.**
   free. Rejected on NFR-2 — startup would decode every file, and the memoised lookups every `Collection`
   builds would multiply by the number of bars. It also makes "nothing crosses" a discipline rather
   than a fact: a second collection would be one map lookup away from any query.
-- **Rename `Model` to `Collection`**: honest, and `Bar.collection` of type `Collection` reads better
-  than of type `Model`. Refused here as churn: the rename touches every layer, every test and half
-  the documents to say what one sentence in [components.md](../components.md#the-shelf-and-the-bar)
-  says. **Reversed before any of this was built.** The cost was the whole of the argument, and it
-  only ever grew — Phases 7 to 10 each add code that would name the type. Against it stood the tiers
-  the app now reads in: `Shelf`, `Bar`, `Model`, `Recipe`, three of them a thing in a bar and the
-  fourth a thing in an architecture. The signatures above settled it: `BarContent`, `withCollection`
-  and `opening` were all written `Model collection` before a line of them existed, so the concept
-  had taken the name already and only the type had not. Done as its own change, no behaviour
-  touched, ahead of the milestone that would have doubled it.
 - **Name as the key, no id**: fewer parts, and the export could carry it. Refused by FR-BAR-1 —
   names are labels, and a rename would move a bar's file.
 - **An id inside the exported file**: would let a refresh notice it was handed the wrong bar, and
@@ -65,33 +55,24 @@ the only one resident.**
   of the open bar's collection, which is what keeps every screen unchanged.
 - A shelf may hold no open bar — first run before the migration, the last bar deleted, or the open
   one deleted with others still standing. The shell offers no destination then, and the bar list is
-  what it shows. **Built:** that is the whole rule, and the empty shelf needs no path of its own.
-  A first run is told from a cleared shelf by the index — absent versus present and listing none —
-  so a device holding nothing is given a bar while a reader who deleted theirs is met by the list.
+  what it shows: a first run is told from a cleared shelf by the index — absent versus present and
+  listing none — so a device holding nothing is given a bar while a reader who deleted theirs is met
+  by the list.
 - Reaching another bar costs one file read and one decode, the work startup has always done.
 - **A record is all the bar list may know**, which is what the list is built on: a card carries the
   name and answers with *counts* rather than contents ([ui-design.md](../ui-design.md#bars)). Reading
   every bar's file to fill the closed cards was weighed and refused on the same NFR-2 grounds as
   keeping them resident — tens of bars is the stated scale.
-- **The summary lives on the record. Amended:** it was first refused as "a format bump buying a
-  number that every write would then have to keep true", with the card spending one decode to count
-  what it opened onto. Both halves of that turned out wrong. The decode is not free and not
-  invisible: it is synchronous, it lands in the middle of the expansion animation, and at NFR-2's
-  stated scale it measures 14 ms at 50 recipes and 65 ms at 500 — of which the YAML parse alone is
-  two thirds, so counting without building the domain would have bought back a third of the wrong
-  number. And the format bump was no longer the summary's to pay: the card had to date a bar in any
-  case, so `updated` was buying the bump already and the counts ride along on it. What the refusal
-  got right was the cost, and it is paid where it was named — a collection edit now writes the index
-  as well as the bar. That is one small file beside the large one that was being written anyway.
-- **Nothing has to remember to keep the summary true**, which is the other half of the reversal.
-  `holds` and `updated` are written by `Bar.summarised` and `Bar.refreshedAt` alone, and every route
-  a collection takes ends in one of them — so the summary cannot be a step behind the contents it
-  counts. A record carrying none is the one degraded state: an index written before summaries
-  existed, which the startup load repairs by counting each such bar once, under the spinner it
-  already draws, and never again. A bar whose file will not read keeps its absent summary rather
-  than gaining one that says it holds nothing.
-- The crossing is what taught `_publish` to tell an edit from a load: a collection that changed
-  because it came up from disk must not be written back, or every switch rotates the backups of a bar
-  nobody touched ([components.md](../components.md#state-contracts)).
+- **The summary lives on the record**: `holds` and `updated` are written by `Bar.summarised` and
+  `Bar.refreshedAt` alone, and every route a collection takes ends in one of them, so the summary
+  cannot be a step behind the contents it counts. A record carrying none is the one degraded state: an
+  index written before summaries existed, which the startup load repairs by counting each such bar
+  once, under the spinner it already draws, and never again. A bar whose file will not read keeps its
+  absent summary rather than gaining one that says it holds nothing. The cost is paid where it is
+  named — a collection edit now writes the index as well as the bar, one small file beside the large
+  one already being written.
+- The crossing is what taught the controller's write path to tell an edit from a load: a collection
+  that changed because it came up from disk must not be written back, or every switch rotates the
+  backups of a bar nobody touched ([components.md](../components.md#state-contracts)).
 - The bar list is the first thing in the app above the destinations, and the first state that is not
   about one collection.

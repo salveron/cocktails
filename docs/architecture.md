@@ -34,14 +34,11 @@ Offline app, many bars ([ADR 20](adr/20-the-app-holds-many-bars.md)), one reside
 
 ## Bars
 
-`Shelf` is the root ([components.md](components.md#the-shelf-and-the-bar)): every bar on device, which is open, and that bar's resident collection. Nothing crosses bars (FR-BAR-1): one collection is resident; switching bars discards UI state.
+The shelf's shape and its "nothing crosses" guarantee (FR-BAR-1) are
+[components.md](components.md#the-shelf-and-the-bar)'s; the reader's reading unit against the
+collection's owner-kept sizes is [ADR 21](adr/21-the-file-carries-one-bar.md)'s (FR-SET-1).
 
 **Guest bar is read-only** (FR-BAR-3/4), enforced at domain, data, and UI layers ([ADR 23](adr/23-nothing-writes-a-guest-bar.md)). Shopping destination absent rather than empty.
-
-**The reading unit is the reader's, the sizes are the owner's** (FR-SET-1): `Bar.display` holds the 
-pick, `Collection.settings` what a part and an ounce are worth in ml. They part company on a guest bar, 
-where a refresh replaces the collection whole — a pick living in that payload would be thrown away 
-with it ([ADR 21](adr/21-the-file-carries-one-bar.md)).
 
 ## Storage isolation
 
@@ -303,11 +300,5 @@ written before it existed reads as the answer the app gave then and no migration
 
 ## Testing
 
-- **Unit tests** (pure Dart, no device): availability, discovery, optimizer, validation, 
-  YAML round-trip (FR-DAT-5), shelf invariants and the guest-bar refusal (ADR 23).
-- **Integration tests**: atomic write, backup rotation, corrupt-file recovery, a save of one bar 
-  leaving every other bar's bytes untouched, the format-1 migration, and the LAN adapter against its 
-  own loopback server.
-- **Widget tests**: recipe form, stock toggle, import confirmation, list search and filtering, a 
-  guest bar offering no way to write and no shopping destination.
-- CI: format check, `flutter analyze`, test suite, local APK build on every push.
+Strategy and organization: [components.md](components.md#testing). CI: format check,
+`flutter analyze`, test suite, local APK build on every push.

@@ -4,6 +4,8 @@
 /// stores into (docs/components.md#testing).
 library;
 
+import 'dart:io';
+
 import 'package:cocktails/data/data.dart';
 import 'package:cocktails/domain/domain.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -53,48 +55,16 @@ recipes:
     notes: dry shake, then shake with ice
 ''';
 
-/// The same example verbatim from the doc, comments included.
-const commentedText = '''
-format: 2
-name: Home bar         # the bar's, a label rather than an identity (FR-BAR-1)
+/// The docs/architecture.md#data-format example, read out of the doc rather
+/// than copied — a copy is what let it drift a comment out of step once.
+final commentedText = _fencedExample('docs/architecture.md', '```yaml');
 
-settings:
-  part_ml: 30          # how many ml one part is (FR-SET-1)
-  oz_ml: 29.5735       # and one ounce; ml is the anchor, so it needs none (ADR 17)
-  display: part        # part | ml | oz — what the three read in
-
-units:                                 # yours to manage (ADR 09)
-  - {name: part, plural: parts}
-  - {name: ml}                         # plural omitted = reads like the name
-  - {name: oz}                         # fixed, like the two above (ADR 17)
-  - {name: dash, plural: dashes}
-
-ingredients:
-  - {name: bourbon, stock: in, aliases: [bourbon whiskey]}  # also answers to (ADR 10)
-  - {name: lemon juice, stock: low, tags: [citrus]}
-  - {name: lime juice, tags: [citrus]}
-  - {name: rich demerara syrup, tags: [syrup, homemade]}   # stock omitted = out
-  - {name: egg white, stock: in}                           # untagged
-
-ingredient_tags:                       # what an ingredient can be labelled
-  - {name: citrus, color: sand}
-  - {name: homemade, color: slate}
-  - {name: syrup, color: indigo}
-
-recipe_tags:                           # a separate vocabulary (ADR 07)
-  - {name: sour, color: rose}
-  - {name: classic, color: teal}
-
-recipes:
-  - name: Whiskey Sour
-    tags: [sour, classic]
-    lines:
-      - 1.5-2 parts bourbon (base)
-      - 0.75 parts lemon juice / lime juice   # either one makes it (ADR 11)
-      - 0.5 parts rich demerara syrup
-      - 0.5 parts egg white (optional)
-    notes: dry shake, then shake with ice
-''';
+String _fencedExample(String docPath, String fence) {
+  final lines = File(docPath).readAsStringSync().split('\n');
+  final start = lines.indexOf(fence) + 1;
+  final end = lines.indexOf('```', start);
+  return '${lines.sublist(start, end).join('\n')}\n';
+}
 
 Collection docCollection() => Collection(
   units: const [
@@ -274,5 +244,66 @@ void barStoreContract(BarStore Function() storeOf) {
         reason: purpose.name,
       );
     }
+  });
+}
+
+/// What every [BarChannel] promises, whatever text its transport hands back —
+/// run by the file channel today and by a second transport once one lands
+/// (ADR 22, docs/components.md#testing). A channel-specific test file keeps
+/// what only its own transport does: how it mints a source, whether that
+/// source is read, and what an empty answer means there.
+void barChannelContract(
+  BarChannel Function(Future<String?> Function() answering) channelOf,
+) {
+  final collection = Collection(
+    ingredients: [Ingredient('gin', stock: StockLevel.in_)],
+    recipes: [
+      Recipe(
+        'Martini',
+        lines: const [
+          RecipeLine(Amount(2), 'part', ['gin']),
+        ],
+      ),
+    ],
+  );
+  final payload = (
+    name: "Ada's bar",
+    display: FixedUnit.ml,
+    collection: collection,
+  );
+  final document = codec.encode(payload);
+  const source = BarSource(via: Transport.file, at: '', from: '');
+
+  test(
+    'a fetch that lands arrives whole — name, display and collection',
+    () async {
+      final outcome = await channelOf(() async => document).fetch(source);
+      expect(outcome, isA<Ok<BarContent>>());
+      expect((outcome! as Ok<BarContent>).value, payload);
+    },
+  );
+
+  test('a fetch that cannot be read is refused, placed by line', () async {
+    final outcome = await channelOf(
+      () async =>
+          'format: 2\nname: Ada\nrecipes:\n  - name: Martini\n    lines:\n'
+          '      - 2 part rye\n',
+    ).fetch(source);
+    expect(outcome, isA<Rejected<BarContent>>());
+    final issues = (outcome! as Rejected<BarContent>).issues;
+    expect(issues, isNotEmpty);
+    expect(issues.first.issue.kind, ValidationIssueKind.unknownIngredient);
+    expect(issues.first.line, isNotNull);
+  });
+
+  test('a fetch whose source fails is refused rather than thrown', () async {
+    final outcome = await channelOf(
+      () async => throw StateError('no activity'),
+    ).fetch(source);
+    expect(outcome, isA<Rejected<BarContent>>());
+    expect(
+      (outcome! as Rejected<BarContent>).issues.single.description,
+      contains('no activity'),
+    );
   });
 }

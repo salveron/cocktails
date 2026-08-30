@@ -6,8 +6,10 @@ import 'package:cocktails/ui/screens/shopping_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import '../support/ui_test_support.dart';
-import '../support/test_support.dart';
+import '../support/ui_finders.dart';
+import '../support/ui_fixtures.dart';
+import '../support/ui_harness.dart';
+import '../support/memory_bar_store.dart';
 
 /// A store whose load blows up — the only way to reach the failure face.
 final class _FailingStore extends MemoryBarStore {

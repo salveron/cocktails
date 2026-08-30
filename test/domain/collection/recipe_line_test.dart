@@ -62,31 +62,33 @@ void main() {
       expect(build(mark: LineMark.base), isNot(build(mark: LineMark.optional)));
     });
 
-    test('copyWith replaces one field and carries the rest', () {
-      const line = RecipeLine(Amount(0.5), 'part', [
-        'egg white',
-      ], mark: LineMark.optional);
-      expect(line.copyWith(), line, reason: 'nothing named');
-      expect(
-        line.copyWith(amount: const Amount(1)),
-        const RecipeLine(Amount(1), 'part', [
+    const line = RecipeLine(Amount(0.5), 'part', [
+      'egg white',
+    ], mark: LineMark.optional);
+    copyWithContract([
+      (field: 'nothing named', apply: () => line.copyWith(), expected: line),
+      (
+        field: 'amount',
+        apply: () => line.copyWith(amount: const Amount(1)),
+        expected: const RecipeLine(Amount(1), 'part', [
           'egg white',
         ], mark: LineMark.optional),
-        reason: 'amount',
-      );
-      expect(
-        line.copyWith(unit: 'ml'),
-        const RecipeLine(Amount(0.5), 'ml', [
+      ),
+      (
+        field: 'unit',
+        apply: () => line.copyWith(unit: 'ml'),
+        expected: const RecipeLine(Amount(0.5), 'ml', [
           'egg white',
         ], mark: LineMark.optional),
-        reason: 'unit',
-      );
-      expect(
-        line.copyWith(ingredients: const ['gin']),
-        const RecipeLine(Amount(0.5), 'part', ['gin'], mark: LineMark.optional),
-        reason: 'ingredients',
-      );
-    });
+      ),
+      (
+        field: 'ingredients',
+        apply: () => line.copyWith(ingredients: const ['gin']),
+        expected: const RecipeLine(Amount(0.5), 'part', [
+          'gin',
+        ], mark: LineMark.optional),
+      ),
+    ]);
 
     test('marked sets, replaces and clears the mark', () {
       const line = RecipeLine(Amount(1.5), 'part', ['bourbon']);

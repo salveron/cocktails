@@ -9,77 +9,49 @@ everything else under `src/`.
 
 ```
 lib/
-  main.dart                    # ProviderScope, store and channel overrides, CocktailsApp
+  main.dart                    # composition root — ProviderScope, store and channel overrides
   domain/
     domain.dart                # barrel — the only domain import other layers use
-    src/                       # loose, collection/, shopping/, shelf/, in a one-way chain
-                               #   (ADR 26): shelf/ -> shopping/ -> collection/ -> loose
-      names.dart               # exported: nameKey, nameKeys, sameName, compareNames.
-                               #   Layer-private: repeatsName, duplicateNameIndexes,
-                               #   listEquals
-      tokens.dart              # Tokened + enumFromToken, layer-private, back every
-                               #   token-carrying enum's fromToken
-      issues.dart              # ValidationIssue, ValidationIssueKind; checkName/
-                               #   addProblems/Problem layer-private, shared by
-                               #   collection_validation.dart and shelf_validation.dart
-      list_edits.dart          # upserted/without — generic list edits collection_edits.dart
-                               #   and shelf_edits.dart share, layer-private
+    src/                       # loose, collection/, shopping/, shelf/, one-way chain (ADR 26)
+      names.dart               # the name fold every comparison goes through (ADR 08)
+      tokens.dart              # the enum-to-wire-token contract every token-carrying enum backs
+      issues.dart              # ValidationIssue and the rule-checking primitives it shares
+      list_edits.dart          # generic list edits collection and shelf derivations share
       collection/              # what one bar contains, and every question asked of it
-        collection.dart        # the root — Collection, name lookups, memoised
-        amount.dart            # Amount
-        unit.dart               # FixedUnit, Unit, defaultUnits, part/ml/oz, isReservedUnit,
-                               #   UnitLookup
-        unit_sizes.dart        # UnitSizes — the two ml sizes (ADR 17, ADR 21)
-        ingredient.dart        # StockLevel, Ingredient
-        ingredient_stock.dart  # stockOf, stockOfLine, isShortLine — the optimizer's own
-                               #   reading of ADR 16
-        tag.dart               # TagColor, TagKind, Tag, wornInOrder
-        recipe.dart            # Recipe
-        recipe_line.dart       # LineMark, RecipeLine, alternativeSeparator, amountText —
-                               #   the compact-line grammar
-        recipe_availability.dart # Availability, availabilityOf, canMake
-        recipe_discovery.dart  # recipesWearing, basesOf, baseSpirits, marksBase,
-                               #   randomCanMake
-        amount_scaling.dart    # scaleFactors, scaledAmountText — ×N scaling, part↔ml display
-        collection_edits.dart  # extension CollectionEdits on Collection — pure derivations
-        collection_validation.dart # validateCollection, otherNames — the collection's own
-                               #   rule set
+        collection.dart        # the root: vocabularies, recipes, memoised lookups
+        amount.dart            # a measured quantity
+        unit.dart               # the units vocabulary and the three fixed readings
+        unit_sizes.dart        # a part and an ounce in ml (ADR 17, ADR 21)
+        ingredient.dart        # an ingredient: stock, aliases, tags
+        ingredient_stock.dart  # what a line's stock reads as, for the optimizer (ADR 16)
+        tag.dart               # a labelled colour, and the order it wears in
+        recipe.dart            # a recipe: tags, lines, notes
+        recipe_line.dart       # the compact-line grammar
+        recipe_availability.dart # whether a recipe can be made
+        recipe_discovery.dart  # base spirit and the random pick
+        amount_scaling.dart    # ×N scaling and part↔ml display
+        collection_edits.dart  # pure derivations over Collection
+        collection_validation.dart # the collection's own rule set
       shopping/                # what the optimizer is asked, and what it answers
-        shopping_settings.dart # ShoppingSettings, budgets, basketCounts
-        optimizer.dart         # Purchase, purchasesWithin — what to buy next
+        shopping_settings.dart # how the optimizer is asked (FR-SET-2)
+        optimizer.dart         # what to buy next
       shelf/                   # how the device holds many bars, and shares them
-        bar.dart               # Bar, BarMode, BarContent — the bar it holds, `shopping` null
-                               #   on a guest (ADR 21, ADR 24). Holding, summaryOf — what a
-                               #   bar's summary counts. coherenceProblems — the one rule list
-                               #   shelf_validation.dart reports on
-        shelf.dart             # Shelf, the root above Collection (ADR 20), and its two rules
-        sharing.dart           # Transport, BarSource, Offer, UnreachableReason
-        shelf_edits.dart       # extension ShelfEdits on Shelf — pure derivations,
-                               #   the guest-bar refusal among them (ADR 23)
-        shelf_validation.dart  # validateShelf — the shelf's own rule set, on issues.dart's
-                               #   checkName and addProblems
+        bar.dart               # one bar's record and its summary
+        shelf.dart             # the root above Collection (ADR 20), and its two rules
+        sharing.dart           # the ways a bar can travel, and where a guest reads from
+        shelf_edits.dart       # pure derivations over Shelf, the guest-bar refusal among them (ADR 23)
+        shelf_validation.dart  # the shelf's own rule set
   data/
     data.dart                  # barrel — the store, the channels, the codec, their results
     src/
-      sourced_issue.dart       # SourcedIssue, and Outcome<T> — one shape a load, a decode
-                               #   and a fetch each answer with
-      bar_store.dart           # the storage interface, ShelfIndex and newBarId.
-                               #   Layer-private: isStorableBarId, which only the file
-                               #   adapter asks before naming a file
-      bar_channel.dart         # the sharing seam: transport and fetch, the two every
-                               #   transport has; offering and finding land with the
-                               #   transports that carry them (ADR 22)
-      file_bar_channel.dart    # FR-BAR-7 — the picker's text, decoded
+      sourced_issue.dart       # a load/decode/fetch's shared result shape
+      bar_store.dart           # the storage interface and the shelf index
+      bar_channel.dart         # the sharing seam every transport answers (ADR 22)
+      file_bar_channel.dart    # the file transport: the picker's text, decoded (FR-BAR-7)
       yaml_codec.dart          # decode/encode of a bar and of the index, version gate
-      yaml_bar_reader.dart     # YAML tree → a bar's own file parts (BarParts)
-      yaml_shelf_reader.dart   # YAML tree → the shelf index's parts (ShelfParts)
-      yaml_primitives.dart     # the generic reads and checks both share: checkKeys,
-                               #   readText/readBool/readInt/readDouble/readToken/
-                               #   readValue/readNames, forEachEntry, readEntries,
-                               #   readDisplay — one home for "display:" into a
-                               #   FixedUnit, the settings block's and a bar
-                               #   record's alike — briefValue, lineOfPath, report,
-                               #   stringValue, asString, EntryReader
+      yaml_bar_reader.dart     # YAML tree → a bar's own file parts
+      yaml_shelf_reader.dart   # YAML tree → the shelf index's parts
+      yaml_primitives.dart     # the generic reads and checks both readers share
       yaml_writer.dart         # canonical emitter
       file_bar_store.dart      # one file per bar, the index, atomic write, rotation
   state/
@@ -87,51 +59,34 @@ lib/
     src/
       shelf_controller.dart    # the one writable provider (ADR 23)
       bar_writer.dart          # the write surface, handed out for an owned bar only
-      seams.dart               # store, clock, share sheet, picker — one provider each
-                               #   (ADR 18); the clock so the domain needs none. Knows no
-                               #   domain type, so it imports none
-      channels.dart            # which transport has an adapter in this build, and what a
-                               #   file-picked bar is kept under (ADR 22)
-      refreshes.dart           # the refreshes in flight and what they failed with — work
-                               #   the reader may walk away from (FR-BAR-5)
-      derived.dart             # read-only over the shelf: the open bar's collection and
-                               #   record, every record on it, availability, the optimizer,
-                               #   each tag vocabulary sorted once for every screen reading it
+      seams.dart               # store, clock, share sheet, picker, random — one provider each
+      channels.dart            # which transport has an adapter in this build (ADR 22)
+      refreshes.dart           # the refreshes in flight and what they failed with (FR-BAR-5)
+      derived.dart             # everything read-only: collection, availability, the optimizer
   ui/                          # no barrel — leaves, imported directly; design in ui-design.md
     app.dart, destinations.dart, theme.dart, palette.dart, wording.dart, toggling.dart   # the
-                               #   shell, the nav model, the theme, the fixed hues, `counted`,
-                               #   and `ToggleMembership` — each its own subject, read by more
-                               #   than one of screens/ and widgets/ (ADR 25)
-    screens/                   # route destinations, one per file, all *_screen.dart (ADR 25)
-                               #   — amounts, bar_form, bars, ingredients, recipe_form,
-                               #   recipes, settings, shopping, shopping_settings, tags, units
-    widgets/                   # everything else, grouped by subject, never by feature (ADR 25)
-      cards/                   # a list's rows and a recipe's own card — entry_card,
-                               #   bullet_runs, recipe_card, bar_holdings
-      chips/                   # colour read as a pill, a dot, or a picked-tag row —
-                               #   color_marks, tag_choices, base_spirit
-      dialogs/                 # the one AlertDialog shape and every dialog built on it —
-                               #   dialog_frame, confirm_dialog, entry_dialog, scale_dialog
-      forms/                   # the editor frame, its fields, and the ValidationIssue path
-                               #   reading — editor_form, form_fields, field_issues
-      lists/                   # the searchable list and its chrome — entry_list,
-                               #   list_controls, list_terms
-      notices/                 # empty states, failure banners, and the snackbar every message
-                               #   reaches a reader through — empty_state, failures, snackbar
+                               #   shell, the nav model and each subject read by more than one
+                               #   of screens/ and widgets/ (ADR 25)
+    screens/                  # route destinations, one per file, all *_screen.dart (ADR 25)
+    widgets/                  # everything else, grouped by subject, never by feature (ADR 25)
+      cards/                  # a list's rows and a recipe's own card
+      chips/                  # colour read as a pill, a dot, or a picked-tag row
+      dialogs/                # the one AlertDialog shape and every dialog built on it
+      forms/                  # the editor frame, its fields, and the ValidationIssue path reading
+      lists/                  # the searchable list and its chrome
+      notices/                # empty states, failure banners, the snackbar every message reaches through
 test/                          # one file per lib/ file, named for it (see Testing)
-  architecture_test.dart       # the whole tree: imports, dependency list, ui/ layout
+  architecture_test.dart       # the whole tree: imports, dependency list, ui/ and domain/ layout, doc anchors
   support_test.dart            # holds the support below to account
   support/                     # everything under test/ that is not itself a test —
-                               #   test_support.dart for what several layers read,
-                               #   MemoryBarStore among it, then one file per layer:
-                               #   {domain,data,state,ui}_test_support.dart
+                               #   memory_bar_store.dart for what several layers read,
+                               #   then one file per layer: {domain,data,state}_test_support.dart,
+                               #   ui/ split three ways: ui_fixtures, ui_harness, ui_finders
 ```
 
 `domain/src/names.dart` holds the one fold behind every name comparison 
-([ADR 08](adr/08-names-ignore-case.md)). The fold — `nameKey`, `nameKeys`, `sameName`, 
-`compareNames` — is exported, so a list that sorts or a chip that narrows reads the rule rather than 
-restating it; the duplicate bookkeeping over it is layer-private 
-([ADR 04](adr/04-module-boundaries.md)).
+([ADR 08](adr/08-names-ignore-case.md)) — `nameKey`, `nameKeys`, `sameName`, `compareNames` — 
+exported, so a list that sorts or a chip that narrows reads the rule rather than restating it.
 
 ## Boundary rules
 
@@ -149,8 +104,8 @@ Dependencies point inward (`ui → state → data → domain`):
 - `data/**`: imports `domain/domain.dart` only.
 - `state/**`: imports `domain/domain.dart`, `data/data.dart`.
 - `ui/**`: imports `domain/domain.dart`, `state/state.dart`; never `data/`.
-- Layer's surface is exactly its barrel: no `src/` dependencies across layers. `ui/` exception 
-  (no barrel; `main.dart` imports leaves).
+- **A layer another layer imports has a barrel**, which is exactly its surface: no `src/`
+  dependencies across layers. `ui/` needs none, since only `main.dart` imports it, and directly.
 - Within layer: `src/` files import by relative path.
 - Barrel re-exports own layer only (no sibling re-export).
 - Within `ui/` ([ADR 25](adr/25-the-ui-groups-by-subject.md)): only `app.dart` and files under 
@@ -185,67 +140,29 @@ chance-dependent is passed in, which is what keeps the layer unit-testable, a re
 one is open, and that one's collection. `Collection` keeps its whole shape — it is one bar's 
 contents, and the level above it is added rather than folded in.
 
-```dart
-enum BarMode { owner('owner'), guest('guest'); … }
-enum Transport { file('file'), lan('lan'), cloud('cloud'); … }              // FR-BAR-7/8/9
-typedef Offer = ({Transport via, List<String> guests});   // empty where a way cannot name them
-typedef BarContent = ({String name, FixedUnit display, Collection collection});  // what a file holds
-
-final class BarSource {          // where a guest bar refreshes from (FR-BAR-5)
-  final Transport via;
-  final String at;               // the transport's own address; opaque above data/
-  final String from;             // what to call it where a source is read
-}
-
-final class Bar {
-  final String id;               // minted on this device, never written to a bar's file;
-                                 //   opaque, so compared exactly — ADR 08's fold is a rule
-                                 //   for names, and two ids differing in case are two bars
-  final String name;             // a label: two bars may carry one (FR-BAR-1)
-  final BarMode mode;
-  final FixedUnit display;       // the reader's pick, outliving every refresh (FR-SET-1)
-  final ShoppingSettings? shopping; // the owner's, null on a guest (FR-SET-2, ADR 21, ADR 24)
-  final List<Offer> offers;      // an owner's, one per way it is shared (FR-BAR-6)
-  final BarSource? source;       // a guest's, with…
-  final DateTime? refreshed;     // …when that source last answered
-  bool get isOwned;
-}
-
-final class Shelf {
-  final List<Bar> bars;
-  final String? openId;          // null where no bar is open — first run, or the last deleted
-  final Collection collection;        // the open bar's, and the only one resident
-  Bar? get open;
-  Bar? barWithId(String id);
-}
-
-extension ShelfEdits on Shelf {         // shelf_edits.dart, as CollectionEdits is collection_edits.dart
-  Shelf withCollection(Collection collection);      // throws on a guest bar (ADR 23)
-  Shelf withBar(Bar bar);                      // add or replace by id — rename, offers, source
-  Shelf withoutBar(String id);                 // FR-BAR-2; a deleted open bar leaves openId null
-  Shelf opening(String id, Collection collection);  // the switch: record and bytes at once
-  Shelf refreshedWith(String id, BarContent payload, DateTime at);   // FR-BAR-5, guest only
-}
-```
+`Bar` carries the fields a mode splits in two: `shopping` and `offers` are an owner's, `source` and 
+`refreshed` a guest's (FR-SET-2, ADR 21, ADR 24), the two shared fields being `name` (a label, not 
+an identity — FR-BAR-1) and the reader's own `display` (FR-SET-1). `id` is opaque and minted 
+on-device, compared exactly rather than folded, so two ids differing in case are two bars. 
+`ShelfEdits` (`shelf_edits.dart`, as `CollectionEdits` is `collection_edits.dart`) is `Shelf`'s own 
+set of pure derivations — adding, replacing or removing a bar by id, opening one, and 
+`refreshedWith` for a guest's incoming payload.
 
 `Shelf`'s constructor throws `ArgumentError` on a broken shelf, the programmer contract `Collection`'s own 
 constructor already keeps: ids unique, `openId` naming a bar that exists, and the mode deciding which 
-half of a record a bar may carry — a guest carries the source it refreshes from, offers nothing 
-(being no device's to give away twice), and asks no optimizer of its own, while an owner carries 
-neither source nor refresh time and offers a bar once per transport. That coherence sits on `Shelf` rather than on `Bar` for the reason 
+half of a record a bar may carry. That coherence sits on `Shelf` rather than on `Bar` for the reason 
 `Ingredient` has no invariants and `Collection` has them all: `validateShelf` takes bars already 
 built, so a rule `Bar`'s constructor kept would be one an untrusted index could never be *reported* 
 on — it would crash on the way in instead. `collection` is an empty `Collection` while no bar 
 is open, and no screen can read it then — the shell offers no destination without a bar 
-([architecture.md](architecture.md#bars)).
-
-`Offer` is a record, and a record compares its fields with `==` — so `Bar` compares the guest lists 
-inside its offers itself, two offers built apart being equal in every part but list identity.
+([architecture.md](architecture.md#bars)). `Offer` is a record, comparing its fields with `==`, so 
+`Bar` compares the guest lists inside its offers itself, two offers built apart being equal in every 
+part but list identity.
 
 **One collection is resident**, which is what makes FR-BAR-1's "nothing crosses" a fact rather than a 
-rule: there is no second `Collection` for a search, a draw or a jump to reach into. It also leaves 
-`Collection`'s memoised lookups exactly as they were — built for the bar on show and thrown away with it, 
-so tens of bars cost one bar's worth of index.
+rule: there is no second `Collection` for a search, a draw or a jump to reach into, and 
+`Collection`'s memoised lookups stay built for the bar on show and thrown away with it, so tens of 
+bars cost one bar's worth of index.
 
 `refreshedWith` takes the name and the time as well as the collection, a refresh replacing all three 
 ([architecture.md](architecture.md#domain-computations)); it moves `collection` only where the 
@@ -284,37 +201,12 @@ Two identity conventions:
   redefining the part leaves the ounce where it stood. The pick itself is not there: the sizes are 
   the owner's and travel with the collection, the pick is the reader's and stays with the bar 
   ([ADR 21](adr/21-the-file-carries-one-bar.md)). Both a converted measure and the 
-  [amounts screen](ui-design.md#amounts) read the relation there rather than dividing themselves:
+  [amounts screen](ui-design.md#amounts) read the relation there rather than dividing themselves.
 
-```dart
-final class Unit {
-  final String name;
-  final String plural;        // empty where the plural reads like the name
-  String get pluralName;      // the plural as it reads
-  String spelling(Amount amount);   // singular for exactly one, plural otherwise
-  bool answersTo(String token);     // either spelling, folded (ADR 08)
-}
-const defaultUnits = [Unit(partUnit, plural: 'parts'), Unit(mlUnit), …];
-const partUnit = 'part', mlUnit = 'ml', ozUnit = 'oz';   // what FixedUnit is anchored to
-bool isReservedUnit(String name);                // FixedUnit.named, so the three have one home
-
-extension UnitLookup on List<Unit> {
-  Unit? unitNamed(String token);   // either spelling, or an unwritten plural ("2 cups")
-  List<String> get spellings;      // what uniqueness and reference rules ask for
-}
-```
-
-- **Wire tokens are declared, not inferred.** Enum on-disk spelling is a field, never Dart identifier:
-
-```dart
-enum StockLevel { in_('in'), low('low'), out('out'); … }   // token differs from the identifier
-enum FixedUnit { part('part'), ml('ml'), oz('oz'); … }   // ADR 17: also the reserved units
-enum LineMark { base('base'), optional('optional'); … }    // ADR 06
-enum TagColor { teal('teal'), … slate('slate'); … }        // ADR 07, open to new members
-```
-
-`BarMode` and `Transport` are declared the same way, the index being a file like any other 
-([architecture.md](architecture.md#data-format)).
+Enum on-disk spelling is declared as a field, never inferred from the Dart identifier — 
+`StockLevel`, `FixedUnit` (also the reserved units, ADR 17), `LineMark` (ADR 06), `TagColor` 
+(ADR 07, open to new members), `BarMode` and `Transport` all name their own wire token this way, the 
+index being a file like any other ([architecture.md](architecture.md#data-format)).
 
 `RecipeLine.mark` holds that one `LineMark?`, so a base line can never also be optional
 (FR-REC-8); `isBase` and `isOptional` are getters over it, and `marked(LineMark?)` is what
@@ -325,27 +217,14 @@ sets and clears it — `copyWith` cannot, since null is its "keep what you have"
 decides for itself what a group means rather than quietly taking the first. It is the one entity
 list left unwrapped: `List.unmodifiable` would cost the `const` constructor the grammar leans on.
 
-`Collection` answers reference questions directly, so no consumer builds its own name index:
-
-```dart
-Ingredient? ingredientNamed(String name);
-String spellingOf(String name);      // that entry's own spelling; unknown names stand
-Recipe? recipeNamed(String name);
-List<Tag> tagsOf(TagKind kind);
-bool hasTag(TagKind kind, String name);
-
-Set<String> get recipeNames;          // the sets every validate… call asks for
-Set<String> get unitSpellings;
-Set<String> tagNames(TagKind kind);
-Set<String> ingredientSpellings({String? except});   // names and aliases, ADR 10
-```
-
-These are backed by a `late final` map built on first use. `Collection` stays immutable and the
-memoisation is invisible; a lookup is O(1) after the first call, which is what the recipe list,
-availability, and the optimizer all need at NFR-2 scale. The name sets are memoised on the same
-terms, so a form judging a name on every keystroke builds one once instead of one per frame.
-`ingredientSpellings` is the exception, built per call: every caller leaves an entry out of it —
-the one being edited, which must collide with neither its own name nor its own aliases.
+`Collection` answers reference questions directly — lookup by name, tag membership, and the name 
+sets every `validate…` call asks for — so no consumer builds its own index. These are backed by a 
+`late final` map built on first use. `Collection` stays immutable and the memoisation is invisible; 
+a lookup is O(1) after the first call, which is what the recipe list, availability, and the 
+optimizer all need at NFR-2 scale. The name sets are memoised on the same terms, so a form judging a 
+name on every keystroke builds one once instead of one per frame. `ingredientSpellings` is the 
+exception, built per call: every caller leaves an entry out of it — the one being edited, which must 
+collide with neither its own name nor its own aliases.
 
 ### Two contracts, one rule set
 
@@ -363,26 +242,9 @@ Both use single `duplicateNameIndexes` in `names.dart`.
 ### Editing the collection
 
 Every edit is a pure derivation returning a new `Collection`, in `extension CollectionEdits on Collection` 
-so `collection.dart` holds shape and invariants:
-
-```dart
-Collection withUnitSizes(UnitSizes unitSizes);
-typedef UnitEdit = ({Unit unit, String? was});        // the row and the name it came from
-Collection withUnits(List<UnitEdit> edits);                // the whole vocabulary, renames propagated
-Collection withCanonicalIngredientNames();                 // every line under its ingredient's own name
-Collection withIngredient(Ingredient ingredient, {String? replacing});   // add, replace, rename
-Collection withoutIngredient(String name);
-Collection withStock(String ingredient, StockLevel stock);
-Collection withTag(TagKind kind, Tag tag);                 // add or replace in that vocabulary
-Collection withTagRenamed(TagKind kind, String from, String to);   // rewrites every entry wearing it
-Collection withoutTag(TagKind kind, String name);
-Collection withRecipe(Recipe recipe);                      // add or replace by name
-Collection withoutRecipe(String name);
-
-List<String> recipesUsingIngredient(String name);     // FR-VOC-1 delete blocking
-List<String> recipesUsingUnit(String name);
-List<String> usersOfTag(TagKind kind, String name);
-```
+so `collection.dart` holds shape and invariants — one method per vocabulary entry (add/replace/rename/
+remove for ingredients, tags and recipes), `withUnits` for the vocabulary whole, and 
+`recipesUsingIngredient`/`recipesUsingUnit`/`usersOfTag` for delete blocking (FR-VOC-1).
 
 `withUnits` takes the vocabulary whole because the units screen edits it whole: a row carries the
 name it came from, so a rename rewrites every line measured in it and two units can trade names in
@@ -412,56 +274,21 @@ costs less — a list of records tens long, and the same `Collection` pointer ca
 
 ### Line grammar
 
-One implementation, two entry points (form gets non-throwing feedback; codec uses exceptions):
+One implementation, two entry points (form gets non-throwing feedback via `tryParseRecipeLine`; 
+codec uses the throwing `parseRecipeLine` built on it), plus `formatRecipeLine` for the canonical 
+form and `lineMarkSuffix` for the mark a card writes in prose.
 
-```dart
-typedef ParsedLine = ({RecipeLine? line, String? problem});
-
-ParsedLine tryParseRecipeLine(String text, List<Unit> units);   // never throws — form, codec
-RecipeLine parseRecipeLine(String text, List<Unit> units);      // throws — built on tryParse
-String formatRecipeLine(RecipeLine line, List<Unit> units);     // canonical form
-String lineMarkSuffix(LineMark? mark);        // ' (base)' / ' (optional)' / '' — cards too
-String formatAmount(Amount amount);
-String formatNumber(double value);            // canonical number text — amounts, part_ml
-```
-
-Grammar in [architecture.md](architecture.md#data-format). This file enforces syntax; value rules in collection_validation.dart. Both halves take the vocabulary (ADR 09): it decides what counts as a unit and how an amount is spelled, and the line stores the unit's own name whichever spelling was typed. The unit is optional and may be plural on the way in; `formatRecipeLine` writes the canonical form for the file and the form alike. Alternatives split on `/` ([ADR 11](adr/11-substitutions-on-the-line.md)), lexically and after the mark, so the group is never resolved here. `amountText` stays public in `src/` and out of the barrel — the display transform builds its measure from that same piece rather than a second spelling of it; the body is private, since a card writes its own from `ingredients` and `lineMarkSuffix`, in prose rather than in the file's separator.
+Grammar in [architecture.md](architecture.md#data-format). This file enforces syntax; value rules in collection_validation.dart. Both halves take the vocabulary (ADR 09): it decides what counts as a unit and how an amount is spelled, and the line stores the unit's own name whichever spelling was typed. The unit is optional and may be plural on the way in; `formatRecipeLine` writes the canonical form for the file and the form alike. Alternatives split on `/` ([ADR 11](adr/11-substitutions-on-the-line.md)), lexically and after the mark, so the group is never resolved here. `amountText` stays public in `src/` and out of the barrel — the display transform builds its measure from that same piece rather than a second spelling of it.
 
 ### Validation
 
-Contract and rationale: [ADR 05](adr/05-validation-contract.md).
+Contract and rationale: [ADR 05](adr/05-validation-contract.md). `ValidationIssueKind` names each 
+rule that can fail (grammar's own — ADR 06/11, unit sizes — ADR 17, and the codec's own shape 
+errors among them); `ValidationIssue` carries the `kind`, a data-format `path` and a ready-to-display 
+`message`. `validateCollection`, `validateRecipe`, `validateIngredient`, `validateTag` and 
+`validateShelf` all answer a `List<ValidationIssue>`, empty meaning valid.
 
-```dart
-enum ValidationIssueKind {
-  emptyName, whitespaceInName, lineBreakInName, commaInAlias, duplicateName,
-  reservedSuffix, separatorInName,                     // grammar's own text, ADR 06/11
-  unitSizeNotPositive,                                 // part_ml, oz_ml — ADR 17
-  missingUnit, unknownUnit, unknownIngredient, unknownTag,
-  duplicateTag, duplicateAlternative,                  // ADR 11
-  amountNotPositive, rangeOutOfOrder, noRequiredLine,
-  unsupportedFormat, malformedLine, malformedValue,    // raised by the codec
-}
-
-final class ValidationIssue {
-  final List<Object> path;         // data-format keys and indexes, e.g. ['recipes', 0, 'lines', 2]
-  final ValidationIssueKind kind;  // the rule that failed
-  final String message;            // ready to display, names the offending value
-  String get location;             // 'recipes[0].lines[2]'
-}
-
-List<ValidationIssue> validateCollection({settings, units, ingredients, ingredientTags,
-    recipeTags, recipes});
-List<ValidationIssue> validateRecipe(Recipe recipe,
-    {required Set<String> knownIngredients, required Set<String> knownTags,
-     required Set<String> knownUnits, Set<String> otherRecipeNames});
-List<ValidationIssue> validateIngredient(Ingredient ingredient,
-    {required Set<String> knownIngredientTags, Set<String> otherIngredientNames});
-List<ValidationIssue> validateTag(Tag tag, {Set<String> otherTagNames});
-List<ValidationIssue> validateShelf({required List<Bar> bars, String? openId});
-Set<String> otherNames(Set<String> names, String? except);   // the other…Names argument, folded
-```
-
-Empty result = valid. Issues collected in one pass (no fail-fast), top-to-bottom like file 
+Issues collected in one pass (no fail-fast), top-to-bottom like file 
 (settings, units, ingredients, tags, recipes, within each by index). Lets codec render as-is. 
 `ValidationIssue` has value equality.
 
@@ -479,105 +306,52 @@ four run same rules, same code.
 ### Computations
 
 All pure functions of `Collection`. Algorithms in [architecture.md](architecture.md#domain-computations). 
-`randomCanMake` takes `Random` for testability.
+`randomCanMake` takes `Random` for testability; `basesOf`/`baseSpirits` read the base-spirit 
+predicate (ADR 12); `purchasesWithin` is the optimizer, `keptPerSize` and `budgets` shaping how much 
+of each size it keeps (FR-DIS-6, ADR 15); `scaledAmountText` is the card's own ×N and unit 
+conversion.
 
-```dart
-const scaleFactors = [1, 2, 3, 4];                    // what a recipe view offers (FR-REC-7)
-String scaledAmountText(RecipeLine line, UnitSizes unitSizes, List<Unit> units,
-    {required FixedUnit display, int scale = 1});
-
-Set<String> basesOf(Recipe recipe);                   // recipe_discovery.dart — FR-DIS-4, ADR 12
-List<String> baseSpirits(Collection collection);
-bool marksBase(Recipe recipe, String? spirit);        // null asks for the unmarked
-
-bool canMake(Availability? availability);             // recipe_availability.dart — low counts
-Recipe? randomCanMake(Iterable<Recipe> candidates, Map<String, Availability> availability,
-    Random random, {String? besides});                // recipe_discovery.dart — FR-DIS-5
-
-Set<String> recipesWearing(Collection collection, Iterable<String> tags);  // ADR 24 — a union
-
-const budgets = [1, 2, 3];                            // what the optimizer offers (FR-DIS-6)
-const basketCounts = [10, 25, 50];                    // how many of a size (FR-SET-2, ADR 15)
-final class ShoppingSettings { bool aiming; int budget; bool restocking;   // how it is asked (FR-SET-2)
-                       int keptPerSize; bool buyingOptional; }
-final class Purchase { List<String> ingredients; List<String> unlocks; }   // both A→Z
-List<Purchase> purchasesWithin(Collection collection, int budget,               // FR-DIS-6
-    {int keptPerSize = 25, bool restocking = false,                   // FR-DIS-7, ADR 16
-     bool buyingOptional = false, Set<String>? scoring});             // FR-REC-3, ADR 24
-```
-
-`canMake` is the one reading of what the bar can manage now — low still being something on hand, and a
-recipe the pass has yet to judge reading as missing, the rank the list's order already gives it.
-The optimizer (FR-DIS-6) asks the same question, so it asks it here. `randomCanMake` draws over
-*candidates handed to it* rather than over the collection: the caller is the list, and what it hands
-over has already been narrowed, which is how "respecting active filters" costs nothing. `besides`
-is the recipe already standing — skipped while another can be made, so a second roll always moves,
-and compared by name fold like every name (ADR 08).
+`canMake` is the one reading of what the bar can manage now — low still counts, unjudged reads as
+missing. The optimizer (FR-DIS-6) asks the same question, so it asks it here. `randomCanMake` draws
+over *candidates handed to it* rather than over the collection, so "respecting active filters" costs
+the caller nothing; `besides` is the recipe already standing, skipped while another can be made, so
+a second roll always moves and is compared by name fold like every name (ADR 08).
 
 Base spirit is a predicate, not a placement ([ADR 12](adr/12-base-spirit-narrows.md)): `basesOf` 
-takes every alternative of every base line, so a marked group answers under each ingredient it names, 
-and `baseSpirits` folds those into what the filter offers — resolved through `Collection.spellingOf` 
-*before* being weighed for repetition, so two spellings of one ingredient are one spirit; A→Z. 
-`spellingOf` is also how a screen holding a pick reads it against a changed vocabulary, so an 
-ingredient merely recased goes on narrowing; it is the one home for "this name, under the entry's own", 
-which the optimizer, `withCanonicalIngredientNames` and delete blocking all ask for too. Comparison 
-runs through `names.dart`, which every layer reads — no screen folds a name itself.
+takes every alternative of every base line, so a marked group answers under each ingredient it names; 
+`baseSpirits` folds those into the filter's offer through `Collection.spellingOf` *before* weighing 
+repetition, so two spellings of one ingredient are one spirit, A→Z. `spellingOf` is the one home for 
+"this name, under the entry's own", which the optimizer, `withCanonicalIngredientNames` and delete 
+blocking all ask for too — comparison running through `names.dart`, which every layer reads, so no 
+screen folds a name itself.
 
 `purchasesWithin` answers FR-DIS-6 ([ADR 15](adr/15-the-optimizer-answers-with-the-best-few.md)); 
-the algorithm is in [architecture.md](architecture.md#domain-computations). It returns the best 
-`keptPerSize` baskets *of each size*, not the best `keptPerSize` overall, so a one-ingredient win is 
-never crowded out by the three-ingredient baskets that almost always unlock more — which is what 
-will let the screen ask for one size at a time off a single search.
+the algorithm is in [architecture.md](architecture.md#domain-computations). It keeps the best 
+`keptPerSize` baskets *of each size*, not overall, so a one-ingredient win is never crowded out by 
+the three-ingredient baskets that almost always unlock more. `restocking` is what "short" means 
+([ADR 16](adr/16-the-optimizer-buys-what-is-running-low.md), FR-DIS-7) — out only, or anything short 
+of full stock — decided once in `isShortLine` (ingredient_stock.dart), the same reading 
+`availabilityOf` judges "missing" by; `canMake` itself never moves, only the optimizer's own goal.
+One search at `budgets.last` answers every smaller budget too: a wider budget only adds ingredients 
+no recipe is short of alone, so they close nothing and are dropped as passengers, which is what lets 
+the screen search once and read a size off the result ([ui-design.md](ui-design.md#shopping-screen)).
 
-`restocking` is what "short" means ([ADR 16](adr/16-the-optimizer-buys-what-is-running-low.md), 
-FR-DIS-7): off, a line standing at out; on, a line short of full stock, so the ingredients running low 
-join the pool and the goal becomes ready rather than merely makeable. Decided in one place, 
-`isShortLine` (ingredient_stock.dart) — the same reading `availabilityOf` judges "missing" by — so the 
-whole search below reads "short", never "out", and it costs the algorithm nothing. 
-`canMake` does not move: the traffic light, the recipe order and the random pick all go on reading 
-low as makeable, and it is the optimizer's own goal that shifts.
-
-One search at `budgets.last` answers every smaller budget as well: what it holds at a size or under 
-*is* that budget's own answer. A wider budget widens the pool, but only with ingredients no recipe is 
-short of on their own — they close nothing alone, so a basket carrying one is dropped as a passenger 
-whatever the budget was. That is what lets the screen search once and read a size off the result 
-([ui-design.md](ui-design.md#shopping-screen)); it is pinned by test rather than asserted here.
-
-`scaledAmountText` is how a card reads a line's amounts (FR-REC-7, FR-SET-1). The measure is the only 
-half that transforms, so it is the only half returned — and marking it as the card's own rather than 
-the recipe's is what the split was for. The card writes the body itself, one alternative at a time 
-(ADR 11). `display` is a parameter beside the sizes rather than a field inside them, since the two 
-belong to different owners on a guest bar (ADR 21) — which is also what a card reading in another 
-unit passes (FR-REC-7), the bar's pick standing where it is. A line converts only where 
-`FixedUnit.named` answers for its unit, and only into the one `display` names: the two sizes give 
-the factor, and everything else prints as entered (ADR 17).
+`scaledAmountText` is how a card reads a line's amounts (FR-REC-7, FR-SET-1) — the measure is the 
+only half that transforms, so it is the only half returned, one alternative at a time (ADR 11). 
+`display` sits beside the sizes rather than inside them, since the two belong to different owners on 
+a guest bar (ADR 21); a line converts only where `FixedUnit.named` answers for its unit and only 
+into the one `display` names, the two sizes giving the factor and everything else printing as 
+entered (ADR 17).
 
 ## Data contracts
 
 Data layer owns: YAML, files, atomicity, backups, and what crosses to another device.
 
-```dart
-typedef ShelfIndex = ({List<Bar> bars, String? openId});   // the index, with no collection in it
-String newBarId();                                     // six hex characters, minted per device
-bool isStorableBarId(String id);                       // may it name a file — an index is untrusted
-
-sealed class Outcome<T> {}                              // one shape, three readings (below)
-final class Ok<T> extends Outcome<T> { final T value; }
-final class Empty<T> extends Outcome<T> {}              // a load only — nothing stored yet
-final class Rejected<T> extends Outcome<T> {            // FR-DAT-4; recovered is a load's alone
-  final List<SourcedIssue> issues; final T? recovered;
-}
-final class Unreachable<T> extends Outcome<T> { final UnreachableReason why; }   // a fetch only
-
-abstract interface class BarStore {
-  Future<Outcome<ShelfIndex>> loadShelf();
-  Future<Outcome<BarContent>> loadBar(String id);       // one bar, or why it could not be read
-  Future<void> saveShelf(ShelfIndex records);
-  Future<void> saveBar(Bar bar, Collection collection);      // one file — the name and pick ride along
-  Future<void> removeBar(String id);                    // its file and its backups (FR-BAR-2)
-  Future<String> exportSnapshot(Bar bar, Collection collection, {ExportPurpose purpose});
-}
-```
+`ShelfIndex` is the index's own shape (`bars`, `openId`), with no collection in it. `BarStore` is 
+the storage interface: `loadShelf`/`loadBar` separate reads, `saveShelf`/`saveBar`/`removeBar` 
+writes, and `exportSnapshot` for a copy. Every one of them answers `Outcome<T>` — `Ok`, `Empty` (a 
+load's own "nothing stored yet"), `Rejected` (FR-DAT-4, carrying issues and what could be recovered) 
+or `Unreachable` (a fetch's own).
 
 `Outcome<T>` is one shape, three readings: a load reaches every case, `YamlCodec.decode` answers 
 only `Ok`/`Rejected` (never having a backup or a "nothing stored" of its own), and `BarChannel.fetch` 
@@ -603,21 +377,18 @@ and `beforeDelete` the nets FR-DAT-3 and FR-BAR-2 ask for. The store maps each t
 ([platform facts](architecture.md#platform-facts)), so no one act can cost a reader the copy another 
 just staged — and no caller learns a name.
 
-Ids are minted in the data layer rather than the domain, which stays pure of ambient chance, and are 
-reached by the state layer through the barrel. `isStorableBarId` stands beside `newBarId` because an 
-id is also a file name: minted ones are always safe, but the index is a file like any other and one 
-carrying `../secrets` has to be refused rather than resolved. The store gates on it before it 
-resolves a path, and answers `Rejected` rather than reaching outside `bars/`.
+`newBarId` mints six hex characters per device, in the data layer rather than the domain, which 
+stays pure of ambient chance; `isStorableBarId` stands beside it because an id is also a file name — 
+minted ones are always safe, but the index is a file like any other and one carrying `../secrets` is 
+refused (`Rejected`) rather than resolved outside `bars/`.
 
-Import is `YamlCodec.decode` + `saveBar`, not a store method. Separate so confirmation and 
-pre-import export can slot between (FR-DAT-3), and so a refresh reaches the same decode by another 
-road (FR-BAR-5).
+Import is `YamlCodec.decode` + `saveBar`, not a store method, so confirmation and a pre-import export 
+can slot between (FR-DAT-3) and a refresh can reach the same decode by another road (FR-BAR-5). 
+`SourcedIssue` and `Outcome` share a module for the same reason: every `Rejected` carries the one, 
+and both the store and the codec answer the other, so keeping them apart would be the cross-layer 
+coupling [ADR 02](adr/02-persistence-and-export-format.md) avoids.
 
-`SourcedIssue` and `Outcome` share a module: every `Rejected` carries the one, and both the store and 
-the codec answer the other. Putting elsewhere creates cross-layer coupling 
-[ADR 02](adr/02-persistence-and-export-format.md) avoids.
-
-`decode` pipeline (each stage feeds issue list):
+`decode` pipeline (each stage feeds one issue list):
 1. Parse YAML, retain node spans.
 2. Gate on `format`; 1 and 2 pass, anything else is rejected 
    ([architecture.md](architecture.md#data-format)).
@@ -649,14 +420,8 @@ path resolved at composition root `main.dart`), keeps adapter testable. File nam
 ### The sharing seam
 
 One interface per side, so a way that cannot do something does not carry a method for it 
-([ADR 22](adr/22-a-bar-travels-behind-one-seam.md)):
-
-```dart
-abstract interface class BarChannel {         // every transport answers this much
-  Transport get transport;
-  Future<Outcome<BarContent>?> fetch(BarSource source);   // the add, and every refresh after
-}
-```
+([ADR 22](adr/22-a-bar-travels-behind-one-seam.md)). `BarChannel` is what every transport answers: 
+its own `transport`, and `fetch(BarSource)` for the add and every refresh after.
 
 `fetch` answers in the same `Outcome<T>` a load and a decode do — `Ok`, `Rejected` (FR-DAT-4) or 
 `Unreachable` (FR-BAR-5), never `Empty`, which only a load has a "nothing stored" of its own to mean.
@@ -679,188 +444,88 @@ how FR-BAR-9 waits without blocking anything.
 
 ## State contracts
 
-`barStoreProvider` overridden in `main.dart` with the file store, tests with the memory one 
-(device-free seam). `channelsProvider` is the same seam for the transports — `Map<Transport, 
-BarChannel>`, composed from the seams beside it rather than overridden at the composition root, the 
-file channel needing only `filePickerProvider` and no platform fact `main.dart` holds. A test 
-replaces the map wholesale with fakes, or overrides the picker to exercise the real channel; either 
-way nothing above it learns what a network is (ADR 22). A transport absent from the map has no 
-adapter in this build, which is what a `refresh` meets as `Unreachable`. `clockProvider` is the 
-state layer's one clock, stamping when a 
-refresh landed (FR-BAR-5) and existing so that the domain needs none of its own. 
-`sharerProvider` is the one file naming `share_plus`: it takes the opaque location `export()` 
-answered with and hands it to the system's sheet, so a widget test overrides it with a recorder and 
-no screen learns what a share is made of 
-([ADR 18](adr/18-data-crosses-the-edge-in-a-system-sheet.md)).
+`barStoreProvider` and `channelsProvider` are the device-free seams (ADR 22): `main.dart` overrides 
+the store with the file adapter, tests with `MemoryBarStore` or a map of fakes. A transport absent 
+from the map has no adapter in this build, which is what a `refresh` meets as `Unreachable`. 
+`clockProvider` stamps when a refresh landed (FR-BAR-5) so the domain needs no clock of its own.
 
-`filePickerProvider` is its mirror and the one file naming `file_selector`: `Future<String?>` — the 
-picked document's *text*, null where the reader picked nothing. Text rather than the `XFile` ADR 18 
-made the currency, for the same reason the sharer takes a location: the platform type crosses the 
-edge inside the provider body, so a widget test hands the flow a string and no file is needed to 
-exercise it. No type filter, YAML having no MIME type Android's table knows — a filter would grey out 
-the file the reader came for, and FR-DAT-4's decode is the judge either way.
+`sharerProvider` and `filePickerProvider` are the two seams crossing the platform edge 
+([ADR 18](adr/18-data-crosses-the-edge-in-a-system-sheet.md)): a share takes the opaque location 
+`export()` answered with, and a pick answers `Future<String?>` — text, not the platform's `XFile`, 
+so a widget test hands the flow a string and no file is needed to exercise it. No type filter: 
+YAML has no MIME type Android's table knows, and FR-DAT-4's decode is the judge either way. The 
+bytes-to-text step decodes UTF-8 itself rather than trusting `XFile.readAsString`, which drops the 
+encoding it is asked for on the bytes-backed file Android answers with and cost the diacritics of 
+every name on the way in ([architecture.md](architecture.md#platform-facts)).
 
-The bytes→text step is `pickedText`, named rather than inlined because it is the one rule the seam 
-carries and overriding the provider with a plain string never reaches it: `XFile.readAsString` 
-ignores its own `encoding` for the bytes-backed file Android answers with, which cost the diacritics 
-of every name on the way in ([architecture.md](architecture.md#platform-facts)). Its test builds the 
-`XFile` the way the plugin does, so the shape the bug lived in is the shape under test.
+`export`, `setDisplay` and `renameBar` all work on a guest bar (FR-DAT-1, FR-BAR-3, ADR 21) — what a 
+bar is called or read in is the reader's, on someone else's bar as on their own — while 
+`replaceOpen` refuses one, FR-DAT-3's import running only into an owned bar. `addOwnedBar`'s 
+optional `from` is a file with no source kept, so nothing about such a bar refreshes; `addGuestBar` 
+keeps the source, which is what a refresh asks again (`fileSource` republishing 
+`FileBarChannel.source` so `ui/` never builds an address itself, ADR 22). All of the controller's 
+mutating methods take one call site each, which is why they sit here rather than on the writer 
+(ADR 23).
 
-```dart
-typedef ImportReview = ({BarContent? bar, List<String> issues});   // never both
-
-ImportReview review(String text);        // pure: decode, described, nothing touched
-Future<String> export();                           // the open bar's copy (FR-DAT-1)
-Future<void> replaceOpen(String name, BarContent bar);      // the copy, then the replace (FR-DAT-3)
-Future<void> setDisplay(FixedUnit display);        // the reader's, guest bar included
-Future<void> openBar(String id);                   // FR-BAR-1, the switch
-Future<void> addOwnedBar(String name, {BarContent? from});  // FR-BAR-2, empty or from a file
-Future<void> renameBar(String id, String name);    // FR-BAR-2/3, any bar: the name is the reader's
-Future<void> removeBar(String id);                 // FR-BAR-2, after its own export
-Future<void> addGuestBar(String name, BarSource source, BarContent bar);   // FR-BAR-3/7/8/9
-Future<void> refresh(String barId);                // FR-BAR-5; never awaited by a screen
-```
-
-All of them take **one call site each**, which is why they sit here rather than on the writer — see
-[ADR 23](adr/23-nothing-writes-a-guest-bar.md), where the count is the whole argument. `export`
-and `setDisplay` work on a guest bar (FR-DAT-1, FR-BAR-3), and so does `renameBar`: what a bar is
-called on this device is the reader's, on someone else's bar as on their own, and a refresh cannot
-reach it ([ADR 21](adr/21-the-file-carries-one-bar.md)). `replaceOpen` refuses a guest bar, FR-DAT-3
-importing "into an owned bar" and FR-BAR-7 giving the same file its other road.
-
-**One picked file can become three things**, and the two that found a bar share `_found` — the bar's
-file before the index naming it, then the shelf opened onto it. All three take the name from the
-caller and never off the payload: the file's `name:` is a starting value the screen puts in a field,
-and what the reader leaves there is what the bar is called (ADR 21). `addOwnedBar`'s `from` is
-FR-BAR-2's "created from a file": the contents and the reading unit arrive and no source is kept, so
-nothing about such a bar refreshes. `addGuestBar` keeps the source, which is what a refresh asks
-again. `fileSource` is `channels.dart`'s republication of `FileBarChannel.source`, so a screen
-founding a guest bar from a pick names a transport and never builds an address (ADR 22) — `ui/` may
-not import `data/` at all.
-
-**What a bar holds rides on its record**, so listing bars reads the index and nothing else (ADR 20)
-and no second `Collection` ever reaches `ui/`. `Bar.summary` is `summaryOf(Collection)` in the domain,
-keyed by the `Holding` enum that is also the one home for the four kinds, their order and their nouns
-(an arriving file's cards name the same four); `Bar.updated` dates the change beside it. Both are written
-by `Bar.summarised` and — for a guest's refresh — `Bar.refreshedAt`, and by nothing else, which is
-what keeps the count from falling a step behind the contents: every route a collection takes ends in
-one of them, `ShelfEdits.withCollection` included.
-
-`Bar.summary` is null only on a record no summary has reached — an index written before they existed.
-`ShelfController.build()` repairs those, reading each such bar once under the startup spinner and
-writing the index back; the open bar is counted from the collection the load already brought up, so
-it costs no read of its own. A bar whose file cannot be read at all stays null and the card says so,
-where a file that never landed counts as the empty collection opening it would give. Counting is not
-editing: the repair writes no `updated`, a stamp invented there dating an edit nobody made.
-
-`review` is deliberately pure so the confirmation and the pre-import copy slot after it, and it is 
-the controller's rather than the screen's because `ui/` never imports `data/`. `_described` is the 
-one rendering of a `SourcedIssue`, shared with the startup banner and with a channel's refusal, so a 
-file that fails at load, one that fails at import and a fetch that fails on arrival are worded 
-alike. It answers a whole `BarContent`, which is what lets one picked file take any road FR-BAR-7 and 
-FR-DAT-3 offer — replacing an owned bar, founding one, or founding a guest bar — each caller saying 
-what becomes of its three parts.
-
-`ShelfController.build()` performs the startup load and is the only writable provider: it reads the 
-index, opens the bar it names, and reports what failed — a `Rejected` bar starts on its recovered 
-backup, and issues reach the UI through `loadIssuesProvider` as `"line N: message"` strings 
-(FR-DAT-4; `SourcedIssue` is data-layer). Those issues are the *last* load's, startup or crossing 
-alike, so a bar opened onto a torn file says so where the banner already speaks. That provider is 
-**ordinary state the load writes**, a `Notifier` beside the controller rather than a field read off 
-it: a field would only ever be right while every write set it before the shelf moved, and no write 
-site can be made to keep an invariant the type does not. An index naming no open bar, or naming one 
-it does not hold, still opens on whatever it does hold. **No index at all is 
-a first run and founds a bar; an index listing none is a reader who deleted their last, and the bar 
-list meets them** — the store tells the two apart, and `Empty` versus `Ok` with no bars is where.
-
-One private path serves every write, `_publish`: publish, then persist only what moved. A collection 
-is written **only where the bar under it stayed put**, which is what tells an edit from a crossing — 
-a crossing brings its collection up from disk, and writing that back would rotate the backups of a 
-bar nobody touched. The index is written only where a record moved or the open bar changed, so a 
-stock tap rotates no backup of `shelf.yaml` and a unit pick none of a bar's file. One rule covers all 
-seven writes. The platform seams sit in `seams.dart` beside it, one provider each 
-([ADR 18](adr/18-data-crosses-the-edge-in-a-system-sheet.md)).
+`ShelfController.build()` is the only writable provider: it performs the startup load, opens the 
+bar the index names, and reports what failed — a `Rejected` bar starts on its recovered backup, and 
+issues reach the UI through `loadIssuesProvider` as `"line N: message"` strings (FR-DAT-4). An index 
+naming no open bar, or naming one it does not hold, still opens on whatever it does hold; no index 
+at all is a first run and founds a bar, while an index listing none is a reader who deleted their 
+last — the store's `Empty` versus an `Ok` with no bars is where that distinction lives. Every 
+mutation runs the same path: await the startup load, derive through a `CollectionEdits` method, 
+publish, and save only what moved — a collection only where the bar under it stayed put (an edit, 
+not a crossing), the index only where a record moved or the open bar changed. An edit that leaves 
+the collection unchanged is not saved. `review(text)` is a pure decode used by both import and the 
+picked-file flow, so the confirmation and the pre-import copy can slot after it without `ui/` 
+touching `data/` itself.
 
 **The write surface is separate from the controller** ([ADR 23](adr/23-nothing-writes-a-guest-bar.md)): 
-`barWriterProvider` answers a `BarWriter?` — every collection mutation, and null on a guest bar, so 
-the null a screen may get back is the same fact that hides the control (FR-BAR-4) and nothing has to 
-remember a rule. **Built:** a screen reads it once in `build` and passes the non-null writer down to 
-whatever it hands a control, so the control and the write are the same decision rather than two that 
-could disagree — and there is no `!` left in `ui/` to be wrong about it. `setUnits` is the one mutation on it taking a whole vocabulary rather than an entry: 
-the units screen edits every row at once, and a rename among them must reach the recipe lines in the 
-same edit ([ui-design.md](ui-design.md#units)).
-
-Each mutation is one line over a `CollectionEdits` derivation. All run through a single private path: 
-await the startup load, derive, publish, save the open bar. The three `upsert…`s with `replacing` 
-compose several derivations (whole form/dialog reaches disk as one collection, the rename it leaves 
-behind included). `upsertRecipe` ends on `withCanonicalIngredientNames`, so a line typed in any 
-spelling — another case, an alias — lands under the ingredient it names, the ingredients that same edit adds 
-included (ADR 08, ADR 10); the recipe form therefore stores what it was given rather than resolving 
-names itself. Awaiting the load makes edits during startup land on the loaded bar rather than 
-replace it. An edit that leaves the collection unchanged is not saved (no backup waste). UI never 
-constructs a `Collection`, never holds a `BarStore`, and never reaches the notifier 
+`barWriterProvider` answers a `BarWriter?`, null on a guest bar, so the null a screen may get back 
+is the same fact that hides the control (FR-BAR-4). A screen reads it once in `build` and passes the 
+non-null writer down to whatever it hands a control, so the control and the write are the same 
+decision — there is no `!` left in `ui/` to be wrong about it. UI never constructs a `Collection`, 
+never holds a `BarStore`, and never reaches the notifier directly 
 ([ADR 03](adr/03-app-structure-and-state.md), ADR 23).
 
-Everything else is derived, read-only:
+**What a bar holds rides on its record** (ADR 20): `Bar.summary`/`Bar.updated` are written only by 
+crossing a collection through `ShelfEdits.withCollection`, so listing bars reads the index and no 
+second `Collection` ever reaches `ui/`. A record from before summaries existed reads `summary` as 
+null; the controller repairs it once under the startup spinner rather than backdating an `updated` 
+nobody wrote.
 
-`collectionProvider` — the open bar's collection, and the shape every screen already reads. It is derived 
-from `shelfProvider` rather than owned, which is what kept the whole presentation layer still while 
-the root moved above it. It answers a `Collection`, never an `AsyncValue` of one: **the startup load 
-is met in exactly one place**, the shell ([ui-design.md](ui-design.md#app-shell)), which draws no 
-screen until it has answered — so a screen reading this provider cannot exist early enough to see a 
-wait, and reading it before the shelf has landed throws rather than standing in with an empty 
-collection nobody wrote. `availabilityProvider` and `purchasesProvider` read it plainly for the same 
-reason. `openBarProvider` answers the record beside it — name, mode, reading unit, source, last 
-refresh — and `barsProvider` every record on the shelf, which is all the bar list reads. 
-`openBarProvider` answering null once the shelf has loaded is what puts the bar list on screen as 
-home ([ui-design.md](ui-design.md#bars)).
+Everything else is derived and read-only. `collectionProvider` answers a `Collection`, never an 
+`AsyncValue` of one — the startup load is met in exactly one place, the shell 
+([ui-design.md](ui-design.md#app-shell)), which draws no screen until it has answered, so reading 
+this provider before the shelf has landed throws rather than standing in with an empty collection 
+nobody wrote; `availabilityProvider` and `purchasesProvider` lean on the same guarantee. 
+`openBarProvider` answers the open bar's record and `barsProvider` every record on the shelf, the 
+former answering null once the shelf has loaded being what puts the bar list on screen as home 
+([ui-design.md](ui-design.md#bars)). `availabilityProvider` is one `availabilityOf` pass per 
+collection change, read directly by line (`stockOfLine`) as well as by recipe, so a card dims the 
+alternatives it lacks against the same rule the verdict was reached by (ADR 11). 
+`recipeTagsProvider`/`ingredientTagsProvider` sort each vocabulary once per change rather than per 
+build (ADR 08). Filter, search and order stay in screen-local widget state rather than a provider: 
+nothing collection-derived reads them, and the random pick (FR-DIS-5) turned out not to need one 
+either — the draw is made *by* the list, over the rows it is already showing.
 
-`availabilityProvider` — `Map<String, Availability>` by recipe name, `availabilityOf` over every 
-recipe on each collection change; empty until the load lands. One pass serves the list's chips and, later, 
-the availability filter, the random pick and the optimizer. Per-line marks read `stockOfLine` 
-directly (the map answers per recipe, the card asks per line), and `stockOf` per ingredient beneath it — 
-so a card dims the alternatives it lacks against the same rule the verdict was reached by (ADR 11).
+`purchasesProvider` keys on a `ShoppingQuery` (what counts as short — ADR 16 — and the tags the 
+search is aimed at, empty while the chips sift — ADR 24); the rest of what the optimizer is asked 
+comes off the bar's own `ShoppingSettings` (FR-SET-2), so a setting change re-keys nothing and 
+simply recomputes. Searched once at `budgets.last` so the screen reads one size off the one answer. 
+`autoDispose`, and watched only while the shopping screen is the destination on show, since 
+`IndexedStack` keeps every screen alive and a stock tap elsewhere would otherwise fire a search 
+nobody is reading; the answer is remade on return rather than kept, the search costing about 100ms 
+at NFR-2 scale.
 
-`recipeTagsProvider`/`ingredientTagsProvider` — each vocabulary sorted once per collection change 
-(ADR 08), read by every screen that draws it rather than sorted again per build.
-
-Filter, search and order are presentation: widget state where the list is drawn, never persisted and 
-never a provider — nothing collection-derived reads them, so there is nothing to invalidate. A consumer 
-outside the screen is what would hoist them, and the random pick (FR-DIS-5) turned out not to be 
-one: the draw is made *by* the list, over the rows it is already showing, so the search never had to 
-leave `EntryCardList` and no narrowing had to be named twice. What a screen supplies is the draw 
-itself; what it gets back is a name.
-
-`destinationsOf(BarMode)` sits beside it in `ui/destinations.dart` and answers what the bottom bar 
-offers: three on an owned bar, the two that read on a guest (FR-BAR-4). It lives there rather than in 
-the state layer because `Destination` is the shell's own enum and `state/` never imports `ui/`. **The 
-shell indexes the stack and the bar by position in that list**, never by `Destination.index` — the two 
-agree only while every bar offers every destination, and a guest offers two.
-
-`revealProvider` is the one provider outside this layer, and the fourth kind of state in the app: not 
-collection, not derived, not screen-local, but one screen's request of another 
-([ADR 19](adr/19-a-destination-sends-the-reader-to-another.md)). It lives in `ui/destinations.dart` 
-beside the enum it names, since what destinations exist and how one is asked for are the same 
-subject, and `state/` has no business knowing either. A `Reveal?` — a destination and a name — 
-nullable and one-shot: the shell listens only to switch, the serving screen clears it. Clearing it 
-inside that listener is safe because Riverpod copies its listener list before dispatch, so the shell 
-still hears the request it is being cleared out of; the shell ignoring a null one is what makes the 
-order between them not matter. What the bar on show changes here is only how many destinations there 
-are (FR-BAR-4): the shell indexes its stack by position in the list that bar offers, never by the 
-enum's own index, which is the one place a variable destination list is felt.
-
-`purchasesProvider` — `List<Purchase>` keyed on a `ShoppingQuery`: what counts as short (ADR 16), and 
-the tags the search is aimed at, empty while the chips sift ([ADR 24](adr/24-the-tags-may-aim-the-optimizer.md)). 
-A value class rather than a record, a record holding a list comparing by identity — two equal asks 
-would be two searches. The rest of what the optimizer is asked comes off `shoppingProvider`, the open 
-bar's `ShoppingSettings` (FR-SET-2), so a setting changed re-keys nothing and simply recomputes. Searched 
-once at `budgets.last` so the screen reads one size off the one answer. `autoDispose`, and watched only 
-while the shopping screen is the destination on show: the shell tells each destination whether it 
-is (`ShoppingScreen.showing`), since `IndexedStack` keeps them alive and a stock tap on the 
-ingredients screen would otherwise fire a search nobody is reading. The answer is let go with the screen and 
-made afresh on return — the search costs ~100ms at NFR-2 scale, which is a moment on arriving at a 
-screen and a stutter on every tap of another. On a guest bar the destination is absent, so nothing 
-watches it at all (FR-BAR-4).
+`revealProvider` is the fourth kind of state, one screen's request of another 
+([ADR 19](adr/19-a-destination-sends-the-reader-to-another.md)): a nullable, one-shot `Reveal?` — a 
+destination and a name — that the shell watches only to switch, the serving screen clearing it on 
+arrival. Clearing it inside that listener is safe because Riverpod copies its listener list before 
+dispatch, so the shell still hears the request it is being cleared out of. `destinationsOf(BarMode)` 
+(`ui/destinations.dart`) answers what the bottom bar offers — three on an owned bar, two on a guest 
+(FR-BAR-4) — and the shell indexes its stack by position in that list, never by `Destination`'s own 
+index, which is the one place a variable destination list is felt.
 
 ### Work in flight
 
@@ -878,11 +543,6 @@ bar on show* comes to in practice: the reader goes on reading and editing while 
 screens are told only through this map. A late answer is dropped where its bar is gone or a newer 
 ask has been made (each carries a token, only the newest lands); a guest bar's collection has no 
 other writer, so there is nothing else for one to lose.
-
-`sharingProvider` keeps the offers standing in step with the shelf — starting an adapter's 
-advertisement when a bar gains an offer, stopping it when the bar loses one or goes, running nothing 
-when the shelf offers nothing (NFR-5). Its value is an effect rather than a reading, so the app 
-watches it rather than a screen.
 
 Performance facts (no over-engineering):
 - Every mutation replaces the whole `Collection` → all collection-derived recompute. Hundreds of recipes: 
@@ -936,8 +596,8 @@ Performance facts (no over-engineering):
    reader sees the counts before choosing a road, and only the chosen road reaches the controller.
 9. **Refreshing** (FR-BAR-5): `refresh(id)` marks the bar reaching and is never awaited by a screen 
    → the fetch runs off the gesture → `refreshedWith` replaces collection and time, never the name 
-   or the reading unit the reader picked (ADR 21); the bar on show is written by `_publish` as any 
-   edit is, and any other bar's file by `refresh` itself, only one collection ever being resident 
+   or the reading unit the reader picked (ADR 21); the bar on show is written the same way any edit 
+   is, and any other bar's file by `refresh` itself, only one collection ever being resident 
    (ADR 20) → a failure leaves the bar as it stood, held in `refreshesProvider` to be met. Each ask 
    carries a token: an answer arriving behind a newer ask, or for a bar deleted meanwhile, is 
    dropped whole rather than landing on top of it. The gesture is `EntryCardList.onRefresh`, 
@@ -946,10 +606,7 @@ Performance facts (no over-engineering):
    screen holding up the bar on show. Settings' **Refresh** row asks the same way from behind that 
    banner, so it reads the answer itself (`Refreshes.standing`), says it in a snackbar and marks it 
    `told` — one answer, one telling, whichever of the two the reader met.
-10. **Sharing** (FR-BAR-6): an offer on a bar's record starts the adapter and removing it stops the 
-    adapter; `sharingProvider` is the one place the two are kept in step, so nothing is announced 
-    that the shelf does not say is shared (NFR-5).
-11. **Deleting a bar** (FR-BAR-2): confirmed, exported under `beforeDelete` — owned bars only, a 
+10. **Deleting a bar** (FR-BAR-2): confirmed, exported under `beforeDelete` — owned bars only, a 
     guest's contents being its owner's (FR-BAR-3) — then the record, then the file and its backups, 
     in that order, since a record outliving its file is a bar that opens onto nothing. A deleted open 
     bar leaves the shelf with none open, and the bar list becomes home under the reader.
@@ -971,18 +628,23 @@ Every file under a `test/` subfolder ends `_test.dart`.
 
 Two kinds of file are not a mirror of anything, and only those sit at the root of `test/`: 
 `architecture_test.dart`, which reads the whole tree, and `support_test.dart`, which holds the 
-support below to account. A layer-private file exercised only through its callers earns no test 
-file of its own — `list_edits.dart` and `yaml_primitives.dart` are read through the edits and 
-readers that call them.
+support below to account. A file exercised only through its callers earns no test file of its own —
+true of a handful of domain/data helpers (`list_edits.dart`, `yaml_primitives.dart`) and, more often,
+of a small `ui/` widget or dialog whose whole behaviour is driven by the screen test that composes
+it (`dialog_frame.dart`, `field_issues.dart`, `empty_state.dart`, most of `cards/`, `chips/` and
+`forms/` alike).
 
 ### Support
 
 Code under `test/` that is not itself a test is **support**, and that is the only word for it: no 
 harnesses, kits, fixtures or toolkits as separate categories. It lives in `test/support/`, one file 
-per layer — `domain_test_support.dart`, `data_test_support.dart`, `state_test_support.dart`, 
-`ui_test_support.dart` — with `test_support.dart` for what more than one layer reads, `MemoryBarStore` 
-among it. Names that say what a helper *asserts* rather than what kind of helper it is stay as they 
-are: `barStoreContract`, `tokenVocabulary`, `valueEquality`.
+per layer — `domain_test_support.dart`, `data_test_support.dart`, `state_test_support.dart` — with 
+`memory_bar_store.dart` for what more than one layer reads, the double named in its own file rather 
+than a generic one. `ui/` is the one exception: fixtures, harness and finders change for three 
+different reasons, so `ui_fixtures.dart`, `ui_harness.dart` and `ui_finders.dart` stand apart — what 
+one test file alone reads still goes home to it rather than joining any of the three. Names that say 
+what a helper *asserts* rather than what kind of helper it is stay as they are: `barStoreContract`, 
+`tokenVocabulary`, `valueEquality`.
 
 What one test file alone reads stays in that file; what a second file reaches for moves to support. 
 That is the whole of the rule, and it is why no test file imports another.
@@ -994,16 +656,17 @@ That is the whole of the rule, and it is why no test file imports another.
 - **Data**: codec unit-tested (round-trip FR-DAT-5, broken-file decode with line numbers, a 
   format-1 file read and written back as 2). `FileBarStore` integration-tested (atomic write, 
   backups, recovery, and one bar's save leaving every other bar's bytes byte-for-byte as they were). 
-  Channels are tested against a fake for the seam and, for the LAN one, its own loopback server.
+  Channels are tested against a fake for the seam.
 - **State**: controller tests vs `MemoryBarStore` and fake channels; a mutation updates state and 
   reaches the store, a refresh lands or is dropped as stale, a guest bar hands out no writer.
 - **UI**: widget tests for critical flows. The file transport is composed from `filePickerProvider`, 
   so a widget test drives the *real* channel by overriding the picker alone — a pull answered with a 
   file, a damaged one, or nothing — and reaches `Unreachable` by seeding a bar sourced `cloud`, 
-  which this build has no adapter for. `ui_test_support.dart` over the store and channel 
-  overrides. A rule crossing several screens is tested on each screen it reaches, in that screen's 
-  own file: what a guest bar refuses is `bar_writer_test.dart`'s one fact, and each screen's reading 
-  of it is that screen's.
+  which this build has no adapter for. `ui_harness.dart` stands the store and channel overrides up. 
+  **What a guest bar refuses is tested on each screen it reaches, in that screen's own file**:
+  `bar_writer_test.dart`'s one fact and `guestListOffersNoWrite`'s (the add button and a row's menu,
+  shared by every list screen a guest can only read), each screen's reading of it still that
+  screen's.
 - **Boundaries**: `test/architecture_test.dart` enforces imports, the dependency list, the one 
   route to a write, the one fold behind a name, and that no double ships.
 

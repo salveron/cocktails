@@ -4,8 +4,6 @@
 /// device-free (ADR 22, docs/components.md#work-in-flight).
 library;
 
-import 'dart:async';
-
 import 'package:cocktails/data/data.dart';
 import 'package:cocktails/domain/domain.dart';
 import 'package:cocktails/domain/src/shelf/bar.dart' show summaryOf;
@@ -13,29 +11,8 @@ import 'package:cocktails/state/state.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import '../support/test_support.dart';
+import '../support/memory_bar_store.dart';
 import '../support/state_test_support.dart';
-
-/// Answers nothing until a test says so, so the order two refreshes land in is
-/// the test's to choose rather than the scheduler's.
-final class _FakeChannel implements BarChannel {
-  @override
-  Transport get transport => Transport.file;
-
-  /// Every source it was handed, in order.
-  final asked = <BarSource>[];
-
-  /// One per fetch still out, oldest first.
-  final out = <Completer<Outcome<BarContent>?>>[];
-
-  @override
-  Future<Outcome<BarContent>?> fetch(BarSource source) {
-    asked.add(source);
-    final answering = Completer<Outcome<BarContent>?>();
-    out.add(answering);
-    return answering.future;
-  }
-}
 
 void main() {
   final now = DateTime.utc(2026, 8, 15, 9);
@@ -65,7 +42,7 @@ void main() {
     ],
   );
 
-  BarContent payloadOf(
+  BarContent incomingPayload(
     Collection collection, {
     String name = "Ada's bar",
     FixedUnit display = FixedUnit.ml,
@@ -86,11 +63,11 @@ void main() {
     refreshed: DateTime.utc(2026, 8, 1),
   ).summarised(stored);
 
-  late _FakeChannel channel;
+  late FakeChannel channel;
   late MemoryBarStore store;
 
   setUp(() {
-    channel = _FakeChannel();
+    channel = FakeChannel();
     store = MemoryBarStore.of(owned, Collection());
   });
 
@@ -102,7 +79,7 @@ void main() {
       display: owned.display,
       collection: Collection(),
     ));
-    seeded.barOutcomes[guest.id] = Ok(payloadOf(stored));
+    seeded.barOutcomes[guest.id] = Ok(incomingPayload(stored));
     return seeded;
   }
 
@@ -140,9 +117,11 @@ void main() {
   group('adding a guest bar', () {
     test('it lands read-only, opened, and keeping its source', () async {
       final container = await started();
-      await controllerOf(
-        container,
-      ).addGuestBar("Bo's bar", source, payloadOf(arrived, name: "Ada's bar"));
+      await controllerOf(container).addGuestBar(
+        "Bo's bar",
+        source,
+        incomingPayload(arrived, name: "Ada's bar"),
+      );
       final shelf = container.read(shelfProvider).requireValue;
       expect(shelf.bars, hasLength(2));
       final added = shelf.open!;
@@ -160,9 +139,11 @@ void main() {
     /// is what they start from; every refresh after keeps theirs (ADR 21).
     test('the file it came in names the unit it is first read in', () async {
       final container = await started();
-      await controllerOf(
-        container,
-      ).addGuestBar('Ada', source, payloadOf(arrived, display: FixedUnit.ml));
+      await controllerOf(container).addGuestBar(
+        'Ada',
+        source,
+        incomingPayload(arrived, display: FixedUnit.ml),
+      );
       expect(
         container.read(shelfProvider).requireValue.open!.display,
         FixedUnit.ml,
@@ -182,7 +163,7 @@ void main() {
       logged.calls.clear();
       await controllerOf(
         container,
-      ).addGuestBar('Ada', source, payloadOf(arrived));
+      ).addGuestBar('Ada', source, incomingPayload(arrived));
       final added = container.read(shelfProvider).requireValue.open!;
       expect(logged.calls, ['bar:${added.id}', 'shelf']);
       expect(logged.savedBars[added.id]?.$2, arrived);
@@ -195,7 +176,7 @@ void main() {
       final container = await started();
       await controllerOf(
         container,
-      ).addGuestBar('Ada', source, payloadOf(arrived));
+      ).addGuestBar('Ada', source, incomingPayload(arrived));
       final added = container.read(shelfProvider).requireValue.open!;
       expect(added.summary, summaryOf(arrived));
       // A guest's contents change only when its source answers.
@@ -210,7 +191,9 @@ void main() {
       final refreshing = controllerOf(container).refresh(guest.id);
       await pumpEventQueue();
       expect(refreshOf(container, guest.id), isA<Reaching>());
-      channel.out.single.complete(Ok(payloadOf(arrived, name: 'The Ada Room')));
+      channel.out.single.complete(
+        Ok(incomingPayload(arrived, name: 'The Ada Room')),
+      );
       await refreshing;
       expect(container.read(collectionProvider), arrived);
       expect(barOf(container, guest.id).refreshed, now);
@@ -234,14 +217,14 @@ void main() {
       await refreshed(
         container,
         guest.id,
-        Ok(payloadOf(arrived, display: FixedUnit.ml)),
+        Ok(incomingPayload(arrived, display: FixedUnit.ml)),
       );
       expect(barOf(container, guest.id).display, FixedUnit.oz);
     });
 
     test('it asks the source the bar was added from', () async {
       final container = await started(holding(guest.id));
-      await refreshed(container, guest.id, Ok(payloadOf(arrived)));
+      await refreshed(container, guest.id, Ok(incomingPayload(arrived)));
       expect(channel.asked, [source]);
     });
 
@@ -250,7 +233,7 @@ void main() {
     test('one landing on a bar not on show writes that bar\'s file', () async {
       final seeded = holding(owned.id);
       final container = await started(seeded);
-      await refreshed(container, guest.id, Ok(payloadOf(arrived)));
+      await refreshed(container, guest.id, Ok(incomingPayload(arrived)));
       expect(seeded.savedBars[guest.id]?.$2, arrived);
       expect(barOf(container, guest.id).summary, summaryOf(arrived));
       // The bar on show is untouched by another bar's refresh.
@@ -343,7 +326,7 @@ void main() {
         ],
         openId: 'cld1',
       ));
-      seeded.barOutcomes['cld1'] = Ok(payloadOf(stored));
+      seeded.barOutcomes['cld1'] = Ok(incomingPayload(stored));
       final container = await started(seeded);
       await controllerOf(container).refresh('cld1');
       expect(channel.out, isEmpty);
@@ -359,7 +342,7 @@ void main() {
         final refreshing = controllerOf(container).refresh(guest.id);
         await pumpEventQueue();
         await controllerOf(container).removeBar(guest.id);
-        channel.out.single.complete(Ok(payloadOf(arrived)));
+        channel.out.single.complete(Ok(incomingPayload(arrived)));
         await refreshing;
         expect(
           container.read(shelfProvider).requireValue.barWithId(guest.id),
@@ -379,9 +362,9 @@ void main() {
       final second = controller.refresh(guest.id);
       await pumpEventQueue();
       expect(channel.out, hasLength(2));
-      channel.out[1].complete(Ok(payloadOf(arrived)));
+      channel.out[1].complete(Ok(incomingPayload(arrived)));
       await second;
-      channel.out[0].complete(Ok(payloadOf(stored)));
+      channel.out[0].complete(Ok(incomingPayload(stored)));
       await first;
       // The contents of the newer answer, and the counts that go with them.
       expect(container.read(collectionProvider), arrived);
@@ -394,7 +377,7 @@ void main() {
       final first = controller.refresh(guest.id);
       final second = controller.refresh(guest.id);
       await pumpEventQueue();
-      channel.out[1].complete(Ok(payloadOf(arrived)));
+      channel.out[1].complete(Ok(incomingPayload(arrived)));
       await second;
       channel.out[0].complete(Unreachable(UnreachableReason.offline));
       await first;

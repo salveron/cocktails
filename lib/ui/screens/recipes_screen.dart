@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math';
 
 import 'package:cocktails/domain/domain.dart';
 import 'package:cocktails/state/state.dart';
@@ -49,8 +48,6 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
 
   /// What the last roll landed on, so the next one moves off it (FR-DIS-5).
   String? _rolled;
-
-  final _random = Random();
 
   void _toggle(String name) => setState(() {
     _expanded.toggle(name);
@@ -185,7 +182,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
     final drawn = randomCanMake(
       onShow,
       availability,
-      _random,
+      ref.read(randomProvider),
       besides: _rolled,
     );
     if (drawn == null) {

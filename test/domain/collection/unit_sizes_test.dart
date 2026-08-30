@@ -70,20 +70,24 @@ void main() {
       'ozMl': UnitSizes(ozMl: 30),
     });
 
-    test('copyWith replaces one field and carries the rest', () {
-      const unitSizes = UnitSizes(partMl: 25, ozMl: 30);
-      expect(unitSizes.copyWith(), unitSizes, reason: 'nothing named');
-      expect(
-        unitSizes.copyWith(partMl: 30),
-        const UnitSizes(partMl: 30, ozMl: 30),
-        reason: 'partMl',
-      );
-      expect(
-        unitSizes.copyWith(ozMl: 29.5735),
-        const UnitSizes(partMl: 25),
-        reason: 'ozMl',
-      );
-    });
+    const unitSizes = UnitSizes(partMl: 25, ozMl: 30);
+    copyWithContract([
+      (
+        field: 'nothing named',
+        apply: () => unitSizes.copyWith(),
+        expected: unitSizes,
+      ),
+      (
+        field: 'partMl',
+        apply: () => unitSizes.copyWith(partMl: 30),
+        expected: const UnitSizes(partMl: 30, ozMl: 30),
+      ),
+      (
+        field: 'ozMl',
+        apply: () => unitSizes.copyWith(ozMl: 29.5735),
+        expected: const UnitSizes(partMl: 25),
+      ),
+    ]);
 
     // ADR 21: of the sizes the pick alone is the reader's, so it is the one
     // part of it a guest bar's refresh must not be able to replace.
