@@ -46,7 +46,7 @@ void main() {
     final announcer = _Announcer();
     final channel = LanBarChannel(
       bytesOf: (id) async => bars[id],
-      deviceName: 'ZEN',
+      deviceName: () => 'ZEN',
       announcer: announcer.call,
     );
     addTearDown(() async {
@@ -119,6 +119,39 @@ void main() {
     await over.channel.withdraw('a1');
     expect(over.announcer.asked, isEmpty);
     expect(over.announcer.silenced, 0);
+  });
+
+  /// ADR 28: the reader may rename the device between announcements, so the
+  /// name is asked for at each rather than held from the first.
+  test('the name is read at each announcement, never kept', () async {
+    var name = 'ZEN';
+    final announcer = _Announcer();
+    final channel = LanBarChannel(
+      bytesOf: (id) async => 'first bar',
+      deviceName: () => name,
+      announcer: announcer.call,
+    );
+    addTearDown(() => channel.stop());
+    await channel.offer('a1', 'Home bar');
+    await channel.withdraw('a1');
+    name = "Nikita's phone";
+    await channel.offer('a1', 'Home bar');
+    expect(announcer.asked.map((asked) => asked.name), [
+      'ZEN',
+      "Nikita's phone",
+    ]);
+  });
+
+  /// What the composition root does on disposal: both halves down at once,
+  /// whatever is still offered.
+  test('stopping takes the announcement and the server with it', () async {
+    final over = channelOver({'a1': 'first bar', 'b2': 'second bar'});
+    await over.channel.offer('a1', 'Home bar');
+    await over.channel.offer('b2', 'Beach bar');
+    final port = over.announcer.asked.single.port;
+    await over.channel.stop();
+    expect(over.announcer.silenced, 1);
+    await expectLater(askServer(port, '/bars'), throwsA(isA<Exception>()));
   });
 
   /// The offer outlives the run and the announcement does not (ADR 22), so a

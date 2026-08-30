@@ -7,6 +7,7 @@ import 'dart:math';
 
 import 'package:cocktails/data/data.dart';
 import 'package:file_selector/file_selector.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -27,6 +28,28 @@ final sharerProvider = Provider<Future<void> Function(String)>(
         ShareParams(files: [XFile(location, mimeType: 'text/plain')]),
       ),
 );
+
+/// What the phone calls itself, overridden at the composition root with what
+/// [platformDeviceName] answered — so everything downstream reads a plain
+/// string, and a test that overrides nothing reads the fallback (ADR 28).
+final platformNameProvider = Provider<String>((ref) => fallbackDeviceName);
+
+const fallbackDeviceName = 'Cocktails';
+
+const _deviceChannel = MethodChannel('dev.salveron.cocktails/device');
+
+/// The name the reader gave this phone, or [fallbackDeviceName] where there is
+/// none to give and where there is no Android host to ask.
+Future<String> platformDeviceName() async {
+  try {
+    final name = await _deviceChannel.invokeMethod<String>('name');
+    return name == null || name.trim().isEmpty ? fallbackDeviceName : name;
+  } on PlatformException {
+    return fallbackDeviceName;
+  } on MissingPluginException {
+    return fallbackDeviceName;
+  }
+}
 
 /// The picked text, null where nothing was picked; no filter would match.
 final filePickerProvider = Provider<Future<String?> Function()>(

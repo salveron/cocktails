@@ -176,7 +176,11 @@ void barStoreContract(BarStore Function() storeOf) {
 
   test('loadShelf returns what saveShelf was given', () async {
     final store = storeOf();
-    await store.saveShelf((bars: [home, beach], openId: beach.id));
+    await store.saveShelf((
+      bars: [home, beach],
+      openId: beach.id,
+      deviceName: null,
+    ));
     final outcome = await store.loadShelf();
     expect(outcome, isA<Ok<ShelfIndex>>());
     expect((outcome as Ok<ShelfIndex>).value.bars, [home, beach]);
@@ -185,7 +189,7 @@ void barStoreContract(BarStore Function() storeOf) {
 
   test('a shelf with no bar open round-trips as one', () async {
     final store = storeOf();
-    await store.saveShelf((bars: [home], openId: null));
+    await store.saveShelf((bars: [home], openId: null, deviceName: null));
     expect(((await store.loadShelf()) as Ok<ShelfIndex>).value.openId, isNull);
   });
 

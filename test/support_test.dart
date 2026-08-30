@@ -20,7 +20,11 @@ void main() {
   group('BarStore contract', () => barStoreContract(MemoryBarStore.new));
 
   test('a seeded index loads without a save', () async {
-    final store = MemoryBarStore((bars: [home], openId: home.id));
+    final store = MemoryBarStore((
+      bars: [home],
+      openId: home.id,
+      deviceName: null,
+    ));
     expect(((await store.loadShelf()) as Ok<ShelfIndex>).value.bars, [home]);
     expect(store.savedShelf, isNull);
   });

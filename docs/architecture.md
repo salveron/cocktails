@@ -194,6 +194,7 @@ meant to open, written by the same canonical emitter and judged by the same rule
 
 ```yaml
 format: 2
+device: Nikita's phone # what this device announces itself as; left off until named
 open: 5f2c9a           # the bar on show; the key stays, valueless, where none is
 
 bars:
@@ -204,7 +205,11 @@ bars:
 One record, one line: the halves a mode rules out are left off as every default is, and a timestamp
 is quoted because its colons would otherwise end the scalar in flow context.
 
-`id` is opaque, minted here, unique within the index and never written to a bar's own file. `mode` 
+`device` is what the LAN announces this device under
+([ADR 28](adr/28-the-device-is-named-by-its-reader.md)) — the reader's, judged by the same name
+rules as any other and left off entirely until they give one, where what the phone calls itself
+stands in. `id` is opaque, minted here, unique within the index and never written to a bar's own
+file. `mode` 
 is `owner`|`guest`; `via` is `file`|`lan`|`cloud`, `at` the transport's own business, `from` what to 
 call the source where one is read. `offers` is an owner's, one entry per way a bar is shared, 
 carrying the guests it names where the way can (FR-BAR-6); `source` and `refreshed` are a guest's,
@@ -303,6 +308,12 @@ rotated freely; it is the whole of a shared bar's protection, a bar shared being
   one, the port arriving only with the resolve, so nothing may be reached off a found service alone. 
   The phone answered the rest: a register and a browse ask for **nothing beyond those two** — 
   `NEARBY_WIFI_DEVICES` gates the Wi-Fi APIs rather than the NSD path, and discovery runs without it.
+- **The name the LAN announces is read from the phone's own settings**, through the app's first
+  `MethodChannel` and the only Kotlin it writes: `Settings.Global.DEVICE_NAME`, world-readable, no
+  permission and no manifest entry. It is the value the reader starts from and overwrites, never
+  what is announced on its own ([ADR 28](adr/28-the-device-is-named-by-its-reader.md)); a phone
+  that was never named, and any host that is not Android, answer nothing and the app falls back to
+  a constant of its own.
 - **A runtime local-network prompt is coming, and is dated rather than sudden.** `targetSdk` is 
   Flutter's default taken as it moves, 36 today, and the NSD path asks for no permission of its own at 
   that target (above). Android 16 makes local-network access 

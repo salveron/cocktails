@@ -41,13 +41,16 @@ void main() {
     }
 
     test('writes an owner as one line, its absent halves left off', () {
-      expect(codec.encodeIndex((bars: [home], openId: home.id)), '''
+      expect(
+        codec.encodeIndex((bars: [home], openId: home.id, deviceName: null)),
+        '''
 format: 2
 open: 5f2c9a
 
 bars:
   - {id: 5f2c9a, name: Home bar, mode: owner, display: part}
-''');
+''',
+      );
     });
 
     test('an offer and its guests ride on the record (FR-BAR-6)', () {
@@ -58,14 +61,14 @@ bars:
         ],
       );
       expect(
-        codec.encodeIndex((bars: [shared], openId: null)),
+        codec.encodeIndex((bars: [shared], openId: null, deviceName: null)),
         contains('offers: [{via: lan, guests: [ada]}, {via: file}]'),
       );
     });
 
     test('a guest carries where it came from and when it answered', () {
       expect(
-        codec.encodeIndex((bars: [guest], openId: null)),
+        codec.encodeIndex((bars: [guest], openId: null, deviceName: null)),
         contains(
           'refreshed: "2026-08-09T18:22:04.000Z", '
           'source: {via: lan, at: _cocktails._tcp/x, from: Home bar (b3e)}',
@@ -79,7 +82,7 @@ bars:
         at: DateTime.utc(2026, 8, 9, 18, 22, 4),
       );
       expect(
-        codec.encodeIndex((bars: [summarised], openId: null)),
+        codec.encodeIndex((bars: [summarised], openId: null, deviceName: null)),
         contains(
           'updated: "2026-08-09T18:22:04.000Z", '
           'holds: {recipe: 0, ingredient: 1, tag: 0, '
@@ -97,7 +100,9 @@ bars:
         guest.summarised(Collection()),
       ];
       expect(
-        indexOf(codec.encodeIndex((bars: counted, openId: null))).bars,
+        indexOf(
+          codec.encodeIndex((bars: counted, openId: null, deviceName: null)),
+        ).bars,
         counted,
       );
     });
@@ -163,7 +168,11 @@ bars:
 
     test('two bars of one name are two records (FR-BAR-1)', () {
       final records = indexOf(
-        codec.encodeIndex((bars: [home, guest], openId: guest.id)),
+        codec.encodeIndex((
+          bars: [home, guest],
+          openId: guest.id,
+          deviceName: null,
+        )),
       );
       expect(records.bars, [home, guest]);
       expect(records.openId, 'b3e1d7');
@@ -184,7 +193,11 @@ bars:
           buyingOptional: true,
         );
         final records = indexOf(
-          codec.encodeIndex((bars: [asking(asked)], openId: null)),
+          codec.encodeIndex((
+            bars: [asking(asked)],
+            openId: null,
+            deviceName: null,
+          )),
         );
         expect(records.bars.single.shopping, asked);
       });
@@ -193,6 +206,7 @@ bars:
         final written = codec.encodeIndex((
           bars: [asking(const ShoppingSettings())],
           openId: null,
+          deviceName: null,
         ));
         expect(written, isNot(contains('shopping')));
         expect(indexOf(written).bars.single.shopping, const ShoppingSettings());
@@ -233,15 +247,79 @@ bars:
 
     test('an empty shelf round-trips, open naming nothing', () {
       final records = indexOf(
-        codec.encodeIndex((bars: const [], openId: null)),
+        codec.encodeIndex((bars: const [], openId: null, deviceName: null)),
       );
       expect(records.bars, isEmpty);
       expect(records.openId, isNull);
     });
 
+    group('what the device calls itself', () {
+      test('round-trips above the open bar (ADR 28)', () {
+        final written = codec.encodeIndex((
+          bars: [home],
+          openId: home.id,
+          deviceName: "Nikita's phone",
+        ));
+        expect(
+          written,
+          startsWith('format: 2\ndevice: Nikita\'s phone\nopen: 5f2c9a\n'),
+        );
+        expect(indexOf(written).deviceName, "Nikita's phone");
+      });
+
+      test('is left off entirely until the reader names one', () {
+        final written = codec.encodeIndex((
+          bars: [home],
+          openId: home.id,
+          deviceName: null,
+        ));
+        expect(written, isNot(contains('device:')));
+        expect(indexOf(written).deviceName, isNull);
+      });
+
+      test('an index written before it existed reads as unnamed', () {
+        expect(
+          indexOf('''
+format: 2
+open: 5f2c9a
+
+bars:
+  - {id: 5f2c9a, name: Home bar, mode: owner, display: part}
+''').deviceName,
+          isNull,
+        );
+      });
+
+      test('one under the rules a name keeps is reported, not thrown', () {
+        expect(
+          indexRejected('''
+format: 2
+device: " padded "
+open:
+
+bars: []
+''').single.toString(),
+          contains('Surrounding whitespace in device name'),
+        );
+      });
+
+      test('a value that is not text is reported at its key', () {
+        expect(
+          indexRejected('''
+format: 2
+device: [a, b]
+open:
+
+bars: []
+''').single.toString(),
+          contains('device must be a string'),
+        );
+      });
+    });
+
     test('an index carries the same format number as a bar\'s file', () {
       expect(
-        codec.encodeIndex((bars: const [], openId: null)),
+        codec.encodeIndex((bars: const [], openId: null, deviceName: null)),
         startsWith('format: ${YamlCodec.formatVersion}\n'),
       );
     });

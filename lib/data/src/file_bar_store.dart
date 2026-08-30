@@ -133,7 +133,7 @@ final class FileBarStore implements BarStore {
       // settings and is the bar's from here on (ADR 21).
       display: payload.display,
     );
-    final records = (bars: [bar], openId: bar.id);
+    final records = (bars: [bar], openId: bar.id, deviceName: null);
     await _writeBar(bar, payload.collection);
     await _writeRotating(File(_indexPath), _codec.encodeIndex(records));
     return Ok(records);

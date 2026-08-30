@@ -8,11 +8,16 @@ import 'shelf.dart';
 
 /// Checks the parts of a would-be [Shelf] against the rules its constructor
 /// keeps, reported rather than thrown. Names go unchecked for uniqueness: two
-/// bars may carry one (FR-BAR-1). Paths follow the index's keys, `open`
-/// before `bars` as the file writes them.
-List<ValidationIssue> validateShelf({required List<Bar> bars, String? openId}) {
+/// bars may carry one (FR-BAR-1). Paths follow the index's keys, `device` and
+/// `open` before `bars` as the file writes them.
+List<ValidationIssue> validateShelf({
+  required List<Bar> bars,
+  String? openId,
+  String? deviceName,
+}) {
   final structural = shelfProblems(bars: bars, openId: openId);
   final issues = <ValidationIssue>[
+    ...deviceNameProblems(deviceName),
     for (final problem in structural)
       if (problem.path.first == 'open')
         ValidationIssue(

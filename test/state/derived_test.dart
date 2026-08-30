@@ -115,6 +115,29 @@ void main() {
 
   // What it answers with once the load has landed is proven by every mutation
   // in shelf_controller_test, which reads the open bar's collection through it.
+  group('deviceNameProvider (ADR 28)', () {
+    /// A started container over a phone that calls itself "Pixel 8".
+    Future<ProviderContainer> onAPixel() => startedOver(
+      MemoryBarStore.of(
+        Bar(id: 'a1b2c3', name: 'Home bar', mode: BarMode.owner),
+        stored,
+      ),
+      overrides: [platformNameProvider.overrideWithValue('Pixel 8')],
+    );
+
+    test('is what the phone calls itself until the reader names one', () async {
+      expect((await onAPixel()).read(deviceNameProvider), 'Pixel 8');
+    });
+
+    test('is the reader\'s own the moment they give one', () async {
+      final container = await onAPixel();
+      await container
+          .read(shelfProvider.notifier)
+          .renameDevice("Nikita's phone");
+      expect(container.read(deviceNameProvider), "Nikita's phone");
+    });
+  });
+
   group('collectionProvider', () {
     // The shell meets the load and draws no screen until it has answered
     // (docs/ui-design.md#app-shell), so this is the reading of a provider no

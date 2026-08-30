@@ -20,6 +20,31 @@ void main() {
       expect(shelf.barWithId('nothing'), isNull);
     });
 
+    group('what the device calls itself (ADR 28)', () {
+      test('is unnamed until the reader says otherwise', () {
+        expect(Shelf().deviceName, isNull);
+      });
+
+      test('is kept by a copy that does not move it', () {
+        final named = Shelf(deviceName: "Nikita's phone");
+        expect(named.copyWith(openId: null).deviceName, "Nikita's phone");
+      });
+
+      test('parts two otherwise equal shelves', () {
+        expect(
+          Shelf(deviceName: 'ZEN'),
+          isNot(Shelf(deviceName: 'Nikita\'s phone')),
+        );
+        expect(Shelf(deviceName: 'ZEN'), Shelf(deviceName: 'ZEN'));
+      });
+
+      test('keeps the rules every other name keeps (ADR-08)', () {
+        expect(() => Shelf(deviceName: ''), throwsArgumentError);
+        expect(() => Shelf(deviceName: ' padded '), throwsArgumentError);
+        expect(() => Shelf(deviceName: 'two\nlines'), throwsArgumentError);
+      });
+    });
+
     test('two bars may carry one name (FR-BAR-1)', () {
       final shelf = Shelf(
         bars: [

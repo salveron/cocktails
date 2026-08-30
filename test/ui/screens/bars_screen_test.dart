@@ -39,7 +39,11 @@ void main() {
   /// A shelf of [bars] with the first open, each holding what [collections]
   /// gives it — the arrangement the screen only becomes interesting over.
   MemoryBarStore shelfOf(List<Bar> bars, Map<String, Collection> collections) {
-    final store = MemoryBarStore((bars: bars, openId: bars.first.id));
+    final store = MemoryBarStore((
+      bars: bars,
+      openId: bars.first.id,
+      deviceName: null,
+    ));
     for (final bar in bars) {
       store.barOutcomes[bar.id] = Ok((
         name: bar.name,
@@ -353,7 +357,7 @@ void main() {
     ) async {
       await pumpApp(
         tester,
-        store: MemoryBarStore((bars: const [], openId: null)),
+        store: MemoryBarStore((bars: const [], openId: null, deviceName: null)),
       );
       expect(find.byType(BarsScreen), findsOneWidget);
       expect(find.byType(NavigationBar), findsNothing);
@@ -365,7 +369,7 @@ void main() {
     ) async {
       await pumpApp(
         tester,
-        store: MemoryBarStore((bars: const [], openId: null)),
+        store: MemoryBarStore((bars: const [], openId: null, deviceName: null)),
       );
       await tap(tester, find.byTooltip('New bar'));
       await typeInto(tester, barNameField, 'Cellar');

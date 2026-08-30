@@ -1,6 +1,8 @@
 /// The one writable provider (docs/components.md#state-contracts).
 library;
 
+import 'dart:async';
+
 import 'package:cocktails/data/data.dart';
 import 'package:flutter/foundation.dart' show listEquals;
 import 'package:cocktails/domain/domain.dart';
@@ -64,10 +66,17 @@ final class ShelfController extends AsyncNotifier<Shelf> {
         ? null
         : await _collectionOf(store, open.id, issues);
     _report(issues);
-    return _summarising(
+    final shelf = await _summarising(
       store,
-      Shelf(bars: bars, openId: open?.id, collection: collection),
+      Shelf(
+        bars: bars,
+        openId: open?.id,
+        deviceName: records.deviceName,
+        collection: collection,
+      ),
     );
+    _announceStanding(shelf);
+    return shelf;
   }
 
   /// An index written before a bar was ever summarised carries no counts for
@@ -91,11 +100,17 @@ final class ShelfController extends AsyncNotifier<Shelf> {
     final summarised = Shelf(
       bars: counted,
       openId: shelf.openId,
+      deviceName: shelf.deviceName,
       collection: shelf.collection,
     );
-    await store.saveShelf((bars: summarised.bars, openId: summarised.openId));
+    await store.saveShelf(_indexOf(summarised));
     return summarised;
   }
+
+  /// What the store keeps of a shelf: the records and the two device-wide
+  /// facts beside them.
+  static ShelfIndex _indexOf(Shelf shelf) =>
+      (bars: shelf.bars, openId: shelf.openId, deviceName: shelf.deviceName);
 
   /// A bar's contents where they could be read at all, null where the file is
   /// unreadable and no backup decoded. A file that never landed is the empty
@@ -117,7 +132,7 @@ final class ShelfController extends AsyncNotifier<Shelf> {
     final bar = _newBar('Home bar', Collection());
     _report(issues);
     await store.saveBar(bar, Collection());
-    await store.saveShelf((bars: [bar], openId: bar.id));
+    await store.saveShelf((bars: [bar], openId: bar.id, deviceName: null));
     return Shelf(bars: [bar], openId: bar.id);
   }
 
@@ -292,6 +307,16 @@ final class ShelfController extends AsyncNotifier<Shelf> {
     await _publish(refreshed);
   }
 
+  /// FR-BAR-8: what this device announces itself as, the reader's to choose
+  /// (ADR 28). A blank name is no name at all and is left alone; a rename while
+  /// something is announced is the screen's to refuse, the announcement having
+  /// gone up under the old one.
+  Future<void> renameDevice(String name) async {
+    final shelf = await future;
+    if (name.isEmpty || name == shelf.deviceName) return;
+    await _publish(shelf.namingDevice(name));
+  }
+
   /// FR-BAR-6: an owned bar offered by [via]. The intent is recorded before the
   /// network hears anything, so an announcement that fails is reported rather
   /// than quietly un-offering the bar (ADR 22). A guest bar is its owner's to
@@ -316,6 +341,29 @@ final class ShelfController extends AsyncNotifier<Shelf> {
     await _publish(shelf.withdrawing(id, via));
     ref.read(sharingProvider.notifier).silencing(id);
     await _telling(id, via, (offerings) => offerings.withdraw(id));
+  }
+
+  /// FR-BAR-6: what the index says is offered, announced again — an offer
+  /// outlives the run and an announcement does not (ADR 22). The record already
+  /// says so, so this reaches the seam and nothing else, and nothing about the
+  /// first frame waits on a socket. Past the build that calls it, the seam
+  /// resolving the announced name off this very provider, and not at all where
+  /// the container went first.
+  void _announceStanding(Shelf shelf) {
+    var live = true;
+    ref.onDispose(() => live = false);
+    scheduleMicrotask(() {
+      if (!live) return;
+      final sharing = ref.read(sharingProvider.notifier);
+      for (final bar in shelf.bars) {
+        for (final offer in bar.offers) {
+          sharing.announcing(bar.id);
+          unawaited(
+            _telling(bar.id, offer.via, (o) => o.offer(bar.id, bar.name)),
+          );
+        }
+      }
+    });
   }
 
   /// The half that reaches the network, whichever way it is going. A transport
@@ -408,8 +456,10 @@ final class ShelfController extends AsyncNotifier<Shelf> {
     if (!crossed && edited.collection != standing.collection) {
       await store.saveBar(edited.open!, edited.collection);
     }
-    if (crossed || !listEquals(edited.bars, standing.bars)) {
-      await store.saveShelf((bars: edited.bars, openId: edited.openId));
+    if (crossed ||
+        edited.deviceName != standing.deviceName ||
+        !listEquals(edited.bars, standing.bars)) {
+      await store.saveShelf(_indexOf(edited));
     }
   }
 

@@ -5,6 +5,7 @@ import 'package:cocktails/domain/domain.dart';
 import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'seams.dart';
 import 'shelf_controller.dart';
 
 /// The open bar's collection: derived, not owned, and plainly a collection.
@@ -24,6 +25,15 @@ final ingredientTagsProvider = Provider<List<Tag>>(
 
 List<Tag> _sortedByName(List<Tag> tags) =>
     [...tags]..sort((a, b) => compareNames(a.name, b.name));
+
+/// What this device announces itself as (FR-BAR-8, ADR 28): the reader's own
+/// where they have named it, and what the phone calls itself where they have
+/// not. The one place the two are read against each other.
+final deviceNameProvider = Provider<String>(
+  (ref) =>
+      ref.watch(shelfProvider).valueOrNull?.deviceName ??
+      ref.watch(platformNameProvider),
+);
 
 /// The record beside it: name, mode, reading unit, source, last refresh.
 final openBarProvider = Provider<Bar?>(

@@ -181,7 +181,7 @@ recipes:
 /// A store whose bar file did not decode, recovered onto [smallCollection].
 MemoryBarStore corruptStore() {
   final bar = testBar();
-  return MemoryBarStore((bars: [bar], openId: bar.id))
+  return MemoryBarStore((bars: [bar], openId: bar.id, deviceName: null))
     ..barOutcomes[bar.id] = Rejected(
       [
         SourcedIssue(

@@ -35,7 +35,7 @@ final class YamlCodec {
   /// The index, judged by `validateShelf` as a bar's file is by
   /// `validateCollection` — one canonical form, two documents.
   Outcome<ShelfIndex> decodeIndex(String yaml) =>
-      _decode(yaml, 'format, open, bars', _readShelfIndex);
+      _decode(yaml, 'format, device, open, bars', _readShelfIndex);
 
   Outcome<T> _decode<T>(
     String yaml,
@@ -123,8 +123,16 @@ final class YamlCodec {
     final parts = readShelfParts(root);
     issues.addAll(parts.issues);
     if (issues.isNotEmpty) return null;
-    issues.addAll(validateShelf(bars: parts.bars, openId: parts.openId));
-    return issues.isEmpty ? (bars: parts.bars, openId: parts.openId) : null;
+    issues.addAll(
+      validateShelf(
+        bars: parts.bars,
+        openId: parts.openId,
+        deviceName: parts.deviceName,
+      ),
+    );
+    return issues.isEmpty
+        ? (bars: parts.bars, openId: parts.openId, deviceName: parts.deviceName)
+        : null;
   }
 
   static SourcedIssue _sourced(YamlNode root, ValidationIssue issue) =>

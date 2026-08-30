@@ -5,6 +5,7 @@ import 'package:cocktails/data/data.dart';
 import 'package:cocktails/domain/domain.dart';
 import 'package:cocktails/domain/src/shelf/bar.dart' show summaryOf;
 import 'package:cocktails/state/state.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -208,10 +209,11 @@ void main() {
 
     test('a session recovered from a damaged file exports what it '
         'recovered, not that file (ADR 18)', () async {
-      final damaged = MemoryBarStore((bars: [bar], openId: bar.id))
-        ..barOutcomes[bar.id] = Rejected([
-          issueAt(4),
-        ], recovered: contentOf(stored));
+      final damaged =
+          MemoryBarStore((bars: [bar], openId: bar.id, deviceName: null))
+            ..barOutcomes[bar.id] = Rejected([
+              issueAt(4),
+            ], recovered: contentOf(stored));
       final container = await started(damaged);
       await controllerOf(container).export();
       expect(damaged.snapshots[ExportPurpose.share]?.$2, stored);
@@ -358,6 +360,7 @@ recipes:
           bar.summarised(held(bar), at: bar.isOwned ? now : null),
       ],
       openId: bars.first.id,
+      deviceName: null,
     ));
     for (final bar in bars) {
       store.barOutcomes[bar.id] = Ok(payloadFor(bar, held(bar)));
@@ -526,6 +529,86 @@ recipes:
     });
   });
 
+  group('naming the device (ADR 28)', () {
+    test('the reader\'s name reaches the index', () async {
+      final container = await started();
+      await controllerOf(container).renameDevice("Nikita's phone");
+      expect(store.savedShelf?.deviceName, "Nikita's phone");
+      expect(container.read(deviceNameProvider), "Nikita's phone");
+    });
+
+    test('a blank name is no name and is left alone', () async {
+      final container = await started();
+      await controllerOf(container).renameDevice('');
+      expect(store.savedShelf, isNull);
+    });
+
+    test('naming it what it is already writes nothing', () async {
+      final log = WriteLog((bars: [bar], openId: bar.id, deviceName: null));
+      final container = await startedOver(log, clock: () => now);
+      await controllerOf(container).renameDevice('ZEN');
+      await controllerOf(container).renameDevice('ZEN');
+      expect(log.calls, ['shelf']);
+    });
+
+    test('a rename touches no bar\'s own file', () async {
+      final container = await started();
+      await controllerOf(container).renameDevice('ZEN');
+      expect(store.savedBars, isEmpty);
+    });
+  });
+
+  /// FR-BAR-6, ADR 22: an offer outlives the run and an announcement does not,
+  /// so what the index says is offered goes up again on the next start.
+  group('what is offered is announced again at startup', () {
+    late MemoryOfferings offerings;
+
+    Future<ProviderContainer> startedSharing(List<Offer> offers) async {
+      offerings = MemoryOfferings();
+      final shared = bar.copyWith(offers: offers);
+      final container = await startedOver(
+        MemoryBarStore.of(shared, stored),
+        clock: () => now,
+        overrides: [
+          offeringsProvider.overrideWithValue({Transport.lan: offerings}),
+        ],
+      );
+      // The re-announce runs past the build that starts it.
+      await Future<void>.delayed(Duration.zero);
+      return container;
+    }
+
+    test('an offered bar is announced without being asked for', () async {
+      await startedSharing(const [(via: Transport.lan, guests: [])]);
+      expect(offerings.offered, [(id: 'a1b2c3', name: 'Home bar')]);
+    });
+
+    test('a bar offering nothing announces nothing (NFR-5)', () async {
+      await startedSharing(const []);
+      expect(offerings.offered, isEmpty);
+    });
+
+    test('the record is left exactly as it was', () async {
+      final container = await startedSharing(const [
+        (via: Transport.lan, guests: []),
+      ]);
+      expect(container.read(shelfProvider).requireValue.bars.single.offers, [
+        const (via: Transport.lan, guests: <String>[]),
+      ]);
+      expect(store.savedShelf, isNull);
+    });
+
+    test('it is out until the network answers', () async {
+      final container = await startedSharing(const [
+        (via: Transport.lan, guests: []),
+      ]);
+      expect(container.read(sharingProvider)['a1b2c3'], isA<Announcing>());
+      offerings.out.single.complete();
+      await Future<void>.delayed(Duration.zero);
+      expect(container.read(sharingProvider), isEmpty);
+    });
+  });
+
   group('deleting a bar', () {
     test('the copy is kept before the bar goes (FR-BAR-2)', () async {
       final store = twoBars();
@@ -602,6 +685,7 @@ recipes:
       final store = WriteLog((
         bars: [uncountedRecord(bar), uncountedRecord(other)],
         openId: bar.id,
+        deviceName: null,
       ));
       store.barOutcomes[bar.id] = Ok(payloadFor(bar, stored));
       store.barOutcomes[other.id] = Ok(payloadFor(other, otherCollection));
@@ -679,7 +763,7 @@ recipes:
 
   group('a shelf with nothing on it', () {
     test('an index listing no bars founds none (ADR 20)', () async {
-      final store = WriteLog((bars: const [], openId: null));
+      final store = WriteLog((bars: const [], openId: null, deviceName: null));
       final container = await started(store);
       // A reader who deleted their last bar meets the bar list, where a device
       // holding no index at all is given one to write into.

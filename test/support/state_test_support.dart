@@ -172,3 +172,35 @@ final class FakeChannel implements BarChannel {
     return answering.future;
   }
 }
+
+/// An owner's half that answers when a test says so, so what is in flight is
+/// the test's to look at rather than the scheduler's.
+final class MemoryOfferings implements BarOfferings {
+  @override
+  Transport get transport => Transport.lan;
+
+  final offered = <({String id, String name})>[];
+  final withdrawn = <String>[];
+  final out = <Completer<void>>[];
+  Exception? refusing;
+
+  @override
+  Future<void> offer(String id, String name) {
+    offered.add((id: id, name: name));
+    return _answering();
+  }
+
+  @override
+  Future<void> withdraw(String id) {
+    withdrawn.add(id);
+    return _answering();
+  }
+
+  Future<void> _answering() {
+    final refused = refusing;
+    if (refused != null) return Future.error(refused);
+    final answering = Completer<void>();
+    out.add(answering);
+    return answering.future;
+  }
+}

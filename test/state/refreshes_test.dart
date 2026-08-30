@@ -73,7 +73,11 @@ void main() {
 
   /// A store holding both bars, [openId] naming the one on show.
   MemoryBarStore holding(String openId) {
-    final seeded = MemoryBarStore((bars: [owned, guest], openId: openId));
+    final seeded = MemoryBarStore((
+      bars: [owned, guest],
+      openId: openId,
+      deviceName: null,
+    ));
     seeded.barOutcomes[owned.id] = Ok((
       name: owned.name,
       display: owned.display,
@@ -153,7 +157,11 @@ void main() {
     /// A crash between the two would otherwise leave the index naming a bar
     /// that opens onto nothing.
     test('its file lands before the index names it', () async {
-      final logged = WriteLog((bars: [owned], openId: owned.id));
+      final logged = WriteLog((
+        bars: [owned],
+        openId: owned.id,
+        deviceName: null,
+      ));
       logged.barOutcomes[owned.id] = Ok((
         name: owned.name,
         display: owned.display,
@@ -325,6 +333,7 @@ void main() {
           ).summarised(stored),
         ],
         openId: 'cld1',
+        deviceName: null,
       ));
       seeded.barOutcomes['cld1'] = Ok(incomingPayload(stored));
       final container = await started(seeded);

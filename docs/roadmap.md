@@ -192,9 +192,15 @@ offer or withdraw while a file was the only way a bar travelled.
   `ShelfEdits`, the owner-only write of `Bar.offers`, and what is announced now held beside the
   refreshes in flight ([work in flight](components.md#work-in-flight)); shape only, the screen being
   M47's (FR-BAR-6). Depends: M45.
+- [x] **M46a** — The device says who it is. Delivers: `device:` on the index and `Shelf.deviceName`
+  beside the open bar — the reader's, the phone's own name standing in until they give one, off the
+  app's first `MethodChannel` ([ADR 28](adr/28-the-device-is-named-by-its-reader.md)); and with a
+  name to announce under at last, `offeringsProvider` carrying the LAN adapter — `exportOf` for the
+  bytes — so what the index says is offered is announced again at startup (FR-BAR-6/8, NFR-5).
+  Depends: M46.
 - [ ] **M47** — Settings opens on Sharing. Delivers: the room a bar is shared from
   ([ui-design.md](ui-design.md#sharing)), read from either side — an owner's ways out, a guest's way
-  in (FR-BAR-6/7). Depends: M46.
+  in (FR-BAR-6/7). Depends: M46a.
 - [ ] **M48** — Any bar is shared from the list. Delivers: the bars card's ⋮ reaching that same room
   for a bar not in hand, and the card marking one that is shared
   ([ui-design.md](ui-design.md#bars), FR-BAR-6). Depends: M47.

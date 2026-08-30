@@ -109,8 +109,10 @@ List<String> _recipeEntry(Recipe recipe, List<Unit> units) => [
 /// (docs/architecture.md#data-format).
 String encodeShelf(ShelfIndex records) {
   final open = records.openId;
+  final device = records.deviceName;
   final sections = [
     'format: $storeFormatVersion\n'
+        '${device == null ? '' : 'device: ${_scalar(device)}\n'}'
         'open:${open == null ? '' : ' ${_scalar(open)}'}',
     _section('bars', records.bars.map(_barEntry)),
   ];

@@ -10,9 +10,15 @@ import 'yaml_primitives.dart';
 final class ShelfParts {
   final List<Bar> bars;
   final String? openId;
+  final String? deviceName;
   final List<ValidationIssue> issues;
 
-  ShelfParts({required this.bars, this.openId, required this.issues});
+  ShelfParts({
+    required this.bars,
+    this.openId,
+    this.deviceName,
+    required this.issues,
+  });
 }
 
 /// The index's records, built whatever they say: coherence between a record's
@@ -20,7 +26,7 @@ final class ShelfParts {
 /// could only be crashed on rather than told about (ADR 20).
 ShelfParts readShelfParts(YamlMap root) {
   final issues = <ValidationIssue>[];
-  checkKeys(root, const {'format', 'open', 'bars'}, const [], issues);
+  checkKeys(root, const {'format', 'device', 'open', 'bars'}, const [], issues);
   // The key is written whether or not a bar is open, so a bare `open:` — a
   // YAML null — is a shelf with none on show rather than a malformed value.
   final open = root.nodes['open'];
@@ -28,6 +34,9 @@ ShelfParts readShelfParts(YamlMap root) {
     openId: open == null || open.value == null
         ? null
         : readText(root, 'open', const [], issues),
+    // Left off entirely until the reader names the device, unlike `open`: there
+    // is no valueless form of it to read.
+    deviceName: readText(root, 'device', const [], issues),
     bars: readEntries(root, 'bars', issues, _readBar),
     issues: issues,
   );

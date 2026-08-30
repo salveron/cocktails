@@ -9,7 +9,7 @@ import 'package:cocktails/domain/domain.dart';
 import 'sourced_issue.dart';
 
 /// The index: every bar and which is open, no collection in it (NFR-2).
-typedef ShelfIndex = ({List<Bar> bars, String? openId});
+typedef ShelfIndex = ({List<Bar> bars, String? openId, String? deviceName});
 
 abstract interface class BarStore {
   Future<Outcome<ShelfIndex>> loadShelf();

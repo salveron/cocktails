@@ -13,7 +13,7 @@ import 'lan_discovery.dart';
 
 final class LanBarChannel implements BarOfferings {
   final Future<String?> Function(String barId) _bytesOf;
-  final String _deviceName;
+  final String Function() _deviceName;
   final LanAnnouncer _announcer;
 
   /// Kept as the futures rather than what they answer, so two offers at once
@@ -34,7 +34,7 @@ final class LanBarChannel implements BarOfferings {
   Future<void> offer(String barId, String name) async {
     final server = await (_serving ??= LanBarServer.start(_bytesOf));
     server.offer(barId, name);
-    await (_announcing ??= _announcer(name: _deviceName, port: server.port));
+    await (_announcing ??= _announcer(name: _deviceName(), port: server.port));
   }
 
   /// Withdrawing what was never offered is not an error: nothing is announced
@@ -45,11 +45,18 @@ final class LanBarChannel implements BarOfferings {
     if (serving == null) return;
     final server = await serving;
     server.withdraw(barId);
-    if (server.isOffering) return;
+    if (!server.isOffering) await stop();
+  }
+
+  /// Both halves down at once — the last withdrawal's ending, and the
+  /// composition root's on disposal. What is offered stands on the record
+  /// either way, and is announced again at the next start (ADR 22).
+  Future<void> stop() async {
+    final serving = _serving;
     final announcing = _announcing;
     _serving = null;
     _announcing = null;
     if (announcing != null) await (await announcing).stop();
-    await server.stop();
+    if (serving != null) await (await serving).stop();
   }
 }

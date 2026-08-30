@@ -20,6 +20,23 @@ Shelf shelfOf({String? openId, Collection? collection}) => Shelf(
 final _at = DateTime.utc(2026, 5, 4, 9);
 
 void main() {
+  group('namingDevice', () {
+    test('names a device that had none (FR-BAR-8)', () {
+      expect(shelfOf().namingDevice('ZEN').deviceName, 'ZEN');
+    });
+
+    test('naming it what it is already changes nothing', () {
+      final named = shelfOf().namingDevice('ZEN');
+      expect(identical(named.namingDevice('ZEN'), named), isTrue);
+    });
+
+    test('leaves every bar where it stands', () {
+      final named = shelfOf(openId: '5f2c9a').namingDevice('ZEN');
+      expect(named.bars, shelfOf().bars);
+      expect(named.openId, '5f2c9a');
+    });
+  });
+
   group('withCollection', () {
     test('replaces the open owned bar\'s collection', () {
       final shelf = shelfOf(openId: '5f2c9a').withCollection(_gin, _at);

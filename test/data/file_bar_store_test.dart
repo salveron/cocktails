@@ -76,7 +76,10 @@ void main() {
 
   group('loadShelf', () {
     test('a hand-written index decodes into its records', () async {
-      writeFile(indexName, codec.encodeIndex((bars: [home], openId: home.id)));
+      writeFile(
+        indexName,
+        codec.encodeIndex((bars: [home], openId: home.id, deviceName: null)),
+      );
       final outcome = await store.loadShelf() as Ok<ShelfIndex>;
       expect(outcome.value.bars, [home]);
       expect(outcome.value.openId, home.id);
@@ -93,11 +96,11 @@ void main() {
       writeFile(indexName, 'not: an index\n');
       writeFile(
         backupName(indexName, 1),
-        codec.encodeIndex((bars: [home], openId: home.id)),
+        codec.encodeIndex((bars: [home], openId: home.id, deviceName: null)),
       );
       writeFile(
         backupName(indexName, 2),
-        codec.encodeIndex((bars: [beach], openId: beach.id)),
+        codec.encodeIndex((bars: [beach], openId: beach.id, deviceName: null)),
       );
       final outcome = await store.loadShelf() as Rejected<ShelfIndex>;
       expect(outcome.issues, isNotEmpty);
@@ -402,7 +405,7 @@ void main() {
     test('an index already there wins over a legacy file beside it', () async {
       writeFile(
         indexName,
-        codec.encodeIndex((bars: [beach], openId: beach.id)),
+        codec.encodeIndex((bars: [beach], openId: beach.id, deviceName: null)),
       );
       writeFile(legacyName, legacyText());
       final records = ((await store.loadShelf()) as Ok<ShelfIndex>).value;

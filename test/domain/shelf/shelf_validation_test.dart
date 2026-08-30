@@ -4,6 +4,22 @@ import 'package:flutter_test/flutter_test.dart';
 import '../../support/domain_test_support.dart';
 
 void main() {
+  group('the device\'s own name', () {
+    test('passes where it keeps the rules a name keeps', () {
+      expect(validateShelf(bars: [ownedBar()], deviceName: 'ZEN'), isEmpty);
+    });
+
+    test('is reported at the key the index writes it under', () {
+      final issues = validateShelf(bars: const [], deviceName: '');
+      expect(issues.single.path, const ['device']);
+      expect(issues.single.message, 'Empty device name');
+    });
+
+    test('goes unchecked where the reader has named none', () {
+      expect(validateShelf(bars: const [], deviceName: null), isEmpty);
+    });
+  });
+
   // codec reads an untrusted file into records and must say what is wrong with
   // it rather than crash (ADR 05).
   group('validateShelf', () {

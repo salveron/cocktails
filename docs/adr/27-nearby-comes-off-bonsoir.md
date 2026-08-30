@@ -82,10 +82,11 @@ either package:
   dialog the first time they offer or look for a bar — and a refusal has to read as something. That
   is a UI question, and it is the largest consequence in this comparison.
 - **The instance name is the OS's to grant, not the reader's to choose.** Both packages document the
-  conflict rename — `Bar` → `Bar (2)` → `Bar (3)`. So what is stored is the name that came *back*,
-  never the one asked for; and a guest's source still goes stale when the owner renames their device
-  or loses a conflict on a later launch. Re-sourcing (FR-BAR-5) is the repair, which is the second
-  reason that clause was worth widening.
+  conflict rename — `Bar` → `Bar (2)` → `Bar (3)`. A guest's source goes stale when the owner
+  renames their device or loses a conflict on a later launch, and re-sourcing (FR-BAR-5) is the
+  repair — the second reason that clause was worth widening.
+  [ADR 28](28-the-device-is-named-by-its-reader.md) later settled what is *kept*: the name the
+  reader typed, the granted one belonging to an announcement that outlives nothing.
 
 ## Alternatives considered
 

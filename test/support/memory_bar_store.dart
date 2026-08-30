@@ -32,7 +32,7 @@ base class MemoryBarStore implements BarStore {
   /// and what a hand-built [barOutcomes] entry gets wrong by leaving the index
   /// empty. Generative, so a specialising double can chain to it.
   MemoryBarStore.of(Bar bar, [Collection? collection])
-    : shelfOutcome = Ok((bars: [bar], openId: bar.id)) {
+    : shelfOutcome = Ok((bars: [bar], openId: bar.id, deviceName: null)) {
     barOutcomes[bar.id] = Ok((
       name: bar.name,
       display: bar.display,

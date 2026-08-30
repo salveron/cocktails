@@ -449,8 +449,10 @@ two offers at once raise one of each between them. The announcement crosses the 
 only the announcing stood in for. `BarFinder` (`nearby`, FR-BAR-8) and the `Found` entry a browse 
 answers land with the guest's half. It is handed *the bytes of a bar 
 id* rather than a `BarStore`: an offered bar is usually not the one on show and only one collection 
-is resident (ADR 20), so the composition root supplies a function over a load and the canonical 
-emitter — the seam `filePickerProvider` already is, and what keeps a test free of a socket. 
+is resident (ADR 20), so the composition root supplies `exportOf` — a load and the canonical emitter,
+named rather than inlined so it is provable without a socket. The name it announces under is a 
+supplier rather than a value, read afresh at each announcement, which is what lets a rename take 
+without rebuilding a live adapter ([ADR 28](adr/28-the-device-is-named-by-its-reader.md)). 
 `BarFinder.nearby` answers `Found` entries — the source to keep and what to call it — and is asked 
 only while a reader is looking. The file channel implements `BarChannel` alone: its `fetch` is the picker's text decoded, 
 so a refresh is the reader handing over a newer file and there is nothing to offer or withdraw 
@@ -463,6 +465,11 @@ how FR-BAR-9 waits without blocking anything.
 the store with the file adapter, tests with `MemoryBarStore` or a map of fakes. A transport absent 
 from the map has no adapter in this build, which is what a `refresh` meets as `Unreachable`. 
 `clockProvider` stamps when a refresh landed (FR-BAR-5) so the domain needs no clock of its own.
+
+`platformNameProvider` is what the phone calls itself, overridden at the composition root with what
+`platformDeviceName()` answered and read through `deviceNameProvider`, which is the one place the
+reader's own name and the phone's are weighed against each other
+([ADR 28](adr/28-the-device-is-named-by-its-reader.md)).
 
 `sharerProvider` and `filePickerProvider` are the two seams crossing the platform edge 
 ([ADR 18](adr/18-data-crosses-the-edge-in-a-system-sheet.md)): a share takes the opaque location 
@@ -565,6 +572,10 @@ bar on show* comes to in practice: the reader goes on reading and editing while 
 screens are told only through this map. A late answer is dropped where its bar is gone or a newer 
 ask has been made (each carries a token, only the newest lands); a guest bar's collection has no 
 other writer, so there is nothing else for one to lose.
+
+What the index says is offered is announced again once the startup load has settled, which is the 
+whole of *an offer outlives the run and an announcement does not*: it reaches the seam and leaves 
+the record alone, is never awaited by the first frame, and is dropped where the container went first.
 
 `sharingProvider` — `Map<String, SharingState>` by bar id, the owner's side of the same shape: 
 `Announcing` while an offer goes up, `Silencing` while a withdrawal comes down, and `SharingFailed` 

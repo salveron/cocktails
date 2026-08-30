@@ -5,6 +5,7 @@
 library;
 
 import '../collection/collection.dart';
+import '../issues.dart';
 import '../names.dart';
 import 'bar.dart';
 
@@ -15,13 +16,27 @@ final class Shelf {
   /// The bar on show; null on a first run and once the last bar is deleted.
   final String? openId;
 
+  /// What this device announces itself as (FR-BAR-8,
+  /// [ADR 28](../../../../docs/adr/28-the-device-is-named-by-its-reader.md));
+  /// null until the reader has named it, where the platform's own answer
+  /// stands in.
+  final String? deviceName;
+
   /// The open bar's, and an empty collection while none is open — a state no
   /// screen can read, the shell offering no destination without a bar.
   final Collection collection;
 
-  Shelf({List<Bar> bars = const [], this.openId, Collection? collection})
-    : bars = List.unmodifiable(bars),
-      collection = collection ?? Collection() {
+  Shelf({
+    List<Bar> bars = const [],
+    this.openId,
+    this.deviceName,
+    Collection? collection,
+  }) : bars = List.unmodifiable(bars),
+       collection = collection ?? Collection() {
+    final named = deviceNameProblems(deviceName);
+    if (named.isNotEmpty) {
+      throw ArgumentError(named.first.message);
+    }
     final problems = shelfProblems(bars: this.bars, openId: openId);
     if (problems.isNotEmpty) {
       throw ArgumentError(problems.first.message);
@@ -44,12 +59,17 @@ final class Shelf {
   /// What a copy may change, and nothing else: null means "keep". Closing the
   /// shelf — [openId] cleared, [collection] reset — is [Shelf]'s own default
   /// state rather than a copy's to reach; `withoutBar` builds that directly.
-  Shelf copyWith({List<Bar>? bars, String? openId, Collection? collection}) =>
-      Shelf(
-        bars: bars ?? this.bars,
-        openId: openId ?? this.openId,
-        collection: collection ?? this.collection,
-      );
+  Shelf copyWith({
+    List<Bar>? bars,
+    String? openId,
+    String? deviceName,
+    Collection? collection,
+  }) => Shelf(
+    bars: bars ?? this.bars,
+    openId: openId ?? this.openId,
+    deviceName: deviceName ?? this.deviceName,
+    collection: collection ?? this.collection,
+  );
 
   late final Map<String, Bar> _barsById = {for (final bar in bars) bar.id: bar};
 
@@ -58,14 +78,29 @@ final class Shelf {
       other is Shelf &&
       listEquals(other.bars, bars) &&
       other.openId == openId &&
+      other.deviceName == deviceName &&
       other.collection == collection;
 
   @override
-  int get hashCode => Object.hash(Object.hashAll(bars), openId, collection);
+  int get hashCode =>
+      Object.hash(Object.hashAll(bars), openId, deviceName, collection);
 
   @override
   String toString() => 'Shelf(${bars.length} bars, open: $openId)';
 }
+
+/// The device's own name, under the rules every name keeps (ADR-08) and at the
+/// key the index writes it under. The [Shelf] constructor throws the first;
+/// `validateShelf` reports every one, so the rule lives once for both.
+List<ValidationIssue> deviceNameProblems(String? deviceName) =>
+    deviceName == null
+    ? const []
+    : checkName(
+        'device',
+        deviceName,
+        isDuplicate: false,
+        basePath: const ['device'],
+      );
 
 /// The shelf's own coherence, beyond any one bar's ([coherenceProblems]): no
 /// two bars share an id — compared exactly, ADR-08's fold being a rule for

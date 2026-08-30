@@ -41,6 +41,11 @@ extension ShelfEdits on Shelf {
   Shelf opening(String id, Collection collection) =>
       copyWith(openId: id, collection: collection);
 
+  /// FR-BAR-8: what this device announces itself as, the reader's to choose
+  /// (ADR 28) and judged by [Shelf] under the rules every name keeps.
+  Shelf namingDevice(String name) =>
+      name == deviceName ? this : copyWith(deviceName: name);
+
   /// FR-BAR-6: [id] offered by [via], every other way left standing. Offering
   /// one already offered changes nothing: one offer per transport is coherence.
   Shelf offering(String id, Transport via) {

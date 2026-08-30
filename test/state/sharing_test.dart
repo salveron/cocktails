@@ -3,8 +3,6 @@
 /// state layer device-free (ADR 22, docs/components.md#work-in-flight).
 library;
 
-import 'dart:async';
-
 import 'package:cocktails/data/data.dart';
 import 'package:cocktails/domain/domain.dart';
 import 'package:cocktails/domain/src/shelf/bar.dart' show summaryOf;
@@ -15,45 +13,13 @@ import 'package:flutter_test/flutter_test.dart';
 import '../support/memory_bar_store.dart';
 import '../support/state_test_support.dart';
 
-/// An owner's half that answers when a test says so, so what is in flight is
-/// the test's to look at rather than the scheduler's.
-final class _Offerings implements BarOfferings {
-  @override
-  Transport get transport => Transport.lan;
-
-  final offered = <({String id, String name})>[];
-  final withdrawn = <String>[];
-  final out = <Completer<void>>[];
-  Exception? refusing;
-
-  @override
-  Future<void> offer(String id, String name) {
-    offered.add((id: id, name: name));
-    return _answering();
-  }
-
-  @override
-  Future<void> withdraw(String id) {
-    withdrawn.add(id);
-    return _answering();
-  }
-
-  Future<void> _answering() {
-    final refused = refusing;
-    if (refused != null) return Future.error(refused);
-    final answering = Completer<void>();
-    out.add(answering);
-    return answering.future;
-  }
-}
-
 void main() {
   setUpShelf();
 
-  late _Offerings offerings;
+  late MemoryOfferings offerings;
 
   Future<ProviderContainer> sharing({MemoryBarStore? seeded}) {
-    offerings = _Offerings();
+    offerings = MemoryOfferings();
     return startedOver(
       seeded ?? store,
       clock: () => now,
@@ -197,9 +163,10 @@ void main() {
       refreshed: now,
       summary: summaryOf(stored),
     );
-    final seeded = MemoryBarStore((bars: [bar, guest], openId: bar.id))
-      ..barOutcomes[bar.id] = Ok(contentOf(stored))
-      ..barOutcomes[guest.id] = Ok(contentOf(stored));
+    final seeded =
+        MemoryBarStore((bars: [bar, guest], openId: bar.id, deviceName: null))
+          ..barOutcomes[bar.id] = Ok(contentOf(stored))
+          ..barOutcomes[guest.id] = Ok(contentOf(stored));
     final container = await sharing(seeded: seeded);
 
     await controllerOf(container).offerBar(guest.id, Transport.lan);
