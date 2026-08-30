@@ -45,7 +45,10 @@ composition root.** Shapes in [components.md](../components.md#the-sharing-seam)
   the unguessable path its bytes are at — and those bytes. Announcing the device is what lets a
   withdrawal be told from an owner gone quiet: the instance goes on answering while its list stops
   naming the bar. It puts no bar name on the wire for any mDNS browser to read, and needs no TXT
-  record at all — the list is a document like every other one the app writes, carrying its format.
+  record at all — the list is a document like every other one the app writes, and carries a format
+  of its own. That number moves with the LAN protocol rather than with the on-disk schema: the two
+  answer to different things, and a storage bump must not turn a guest away from a list whose shape
+  never changed — turning it away at discovery, before the bar's own version gate can speak.
 - **A guest keeps the instance name and the bar's id, never an address.** The port is ephemeral and
   the lease is not the app's, so every fetch resolves the instance afresh, reads the list, and gets
   the path it names. The path is therefore never stored, and the owner may rotate it freely. Two

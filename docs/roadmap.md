@@ -181,7 +181,7 @@ offer or withdraw while a file was the only way a bar travelled.
   its pinning ([ADR 22](adr/22-a-bar-travels-behind-one-seam.md)), a register-and-browse round trip
   proven on the device, and the permissions it actually asks for
   ([platform facts](architecture.md#platform-facts)). Depends: M42.
-- [ ] **M44** — The device answers on a socket. Delivers: one `dart:io` `HttpServer` on an ephemeral
+- [x] **M44** — The device answers on a socket. Delivers: one `dart:io` `HttpServer` on an ephemeral
   port, the offered list and one unguessable path per bar, 404 for everything else; the bytes read
   through the store, so a served copy is the bar's own export
   ([ADR 22](adr/22-a-bar-travels-behind-one-seam.md)). Depends: M43.

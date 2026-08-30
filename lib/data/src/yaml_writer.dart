@@ -16,6 +16,18 @@ const int storeFormatVersion = 2;
 /// nothing but the reader below ever meets it.
 const int oldestReadableFormat = 1;
 
+/// The offered list's own version, moving with the LAN protocol rather than
+/// with the on-disk schema: the two documents answer to different things, and
+/// a storage bump must not turn a guest away from a list that never changed
+/// ([ADR 22](../../../docs/adr/22-a-bar-travels-behind-one-seam.md)).
+const int lanFormatVersion = 1;
+
+/// One entry of what a device tells a stranger it offers: the bar's id, so two
+/// of one name are told apart (FR-BAR-1), what to call it, and the unguessable
+/// path its bytes are at. A projection of a bar, never a [Bar] — the shelf
+/// behind it is nobody else's, and the path is never stored (ADR 22).
+typedef Offering = ({String id, String name, String path});
+
 /// Characters that end a plain scalar inside a flow collection.
 final _flowUnsafe = RegExp(r'[,\[\]{}:]');
 
@@ -131,6 +143,24 @@ List<String> _barEntry(Bar bar) {
     ]),
   ];
 }
+
+/// What a device offers right now, in the same shape the index is written in:
+/// a format line and a section of one-line entries.
+String encodeOfferings(List<Offering> offerings) {
+  final sections = [
+    'lan_format: $lanFormatVersion',
+    _section('bars', offerings.map(_offeringEntry)),
+  ];
+  return '${sections.join('\n\n')}\n';
+}
+
+List<String> _offeringEntry(Offering offering) => [
+  _flowMap([
+    'id: ${_scalar(offering.id, inFlow: true)}',
+    'name: ${_scalar(offering.name, inFlow: true)}',
+    'path: ${_scalar(offering.path, inFlow: true)}',
+  ]),
+];
 
 String _stamp(DateTime at) =>
     _scalar(at.toUtc().toIso8601String(), inFlow: true);

@@ -49,6 +49,7 @@ lib/
       bar_channel.dart         # the sharing seam every transport answers (ADR 22)
       file_bar_channel.dart    # the file transport: the picker's text, decoded (FR-BAR-7)
       lan_discovery.dart       # the one file naming a DNS-SD package (ADR 27)
+      lan_bar_server.dart      # the offered list, and each offered bar's bytes (ADR 22)
       yaml_codec.dart          # decode/encode of a bar and of the index, version gate
       yaml_bar_reader.dart     # YAML tree → a bar's own file parts
       yaml_shelf_reader.dart   # YAML tree → the shelf index's parts

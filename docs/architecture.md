@@ -219,6 +219,23 @@ nothing in it has moved, and written whole once anything has: absent means the d
 written before it existed reads as the answer the app gave then and no migration runs. `budget` and 
 `most` must be values their screen offers, `validateShelf` refusing an index that says otherwise.
 
+The offered list is the one document written to the wire rather than to disk, and the only one a 
+stranger ever reads (FR-BAR-8, [ADR 22](adr/22-a-bar-travels-behind-one-seam.md)):
+
+```yaml
+lan_format: 1
+
+bars:
+  - {id: 5f2c9a, name: Home bar, path: 3f9c1e5a7b2d4e8f0a6c9b1d3e5f7a2c}
+```
+
+`lan_format` is a number of its own, moving with the LAN protocol rather than with the schema above: 
+a storage bump must not turn a guest away from a list whose shape never changed, and turn it away at 
+discovery, before the bar's own version gate can speak. Three fields and no more — a projection of a 
+bar, never a record. What a device keeps to itself is not on the wire, nor which bar is open, nor a 
+guest bar's own source. `path` is drawn per run from secure randomness, is never stored, and may be 
+rotated freely; it is the whole of a shared bar's protection, a bar shared being a bar given.
+
 ## Domain computations
 
 - **Availability** (required lines only): all `in` = makeable; none `out` but some `low` = makeable-low; 

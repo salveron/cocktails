@@ -3,6 +3,8 @@
 /// (docs/architecture.md#data-format).
 library;
 
+import 'package:cocktails/data/src/yaml_writer.dart'
+    show Offering, encodeOfferings;
 import 'package:cocktails/domain/domain.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -136,6 +138,39 @@ recipes: []
       expect(text, contains('- name: "gin: a study"'));
       expect(text, contains('- "1 oz rum # dark"'));
       expect(text, contains(r'notes: "stir.\nstrain — serve \"up\""'));
+    });
+  });
+
+  /// The one document written to the wire rather than to disk, so it carries a
+  /// version of its own (ADR 22).
+  group('the offered list', () {
+    test('a device offering nothing still says which format it speaks', () {
+      expect(encodeOfferings([]), 'lan_format: 1\n\nbars: []\n');
+    });
+
+    test('writes an entry per offered bar, in the shape the index is in', () {
+      expect(
+        encodeOfferings([
+          (id: 'a1b2c3', name: 'Home bar', path: 'deadbeef'),
+          (id: 'd4e5f6', name: 'Beach bar', path: 'cafef00d'),
+        ]),
+        'lan_format: 1\n'
+        '\n'
+        'bars:\n'
+        '  - {id: a1b2c3, name: Home bar, path: deadbeef}\n'
+        '  - {id: d4e5f6, name: Beach bar, path: cafef00d}\n',
+      );
+    });
+
+    /// A bar's name is the reader's and may hold anything; the entry is a flow
+    /// map, where a comma or a colon would otherwise end the scalar.
+    test('quotes a name that would not survive a flow entry', () {
+      const Offering awkward = (
+        id: 'a1',
+        name: 'Ada, and: friends',
+        path: 'deadbeef',
+      );
+      expect(encodeOfferings([awkward]), contains('name: "Ada, and: friends"'));
     });
   });
 }
