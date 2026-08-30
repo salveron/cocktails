@@ -68,7 +68,13 @@ already says a screen follows, and "…" on top of it says the same thing twice.
   what it holds all stand at once. The screen that lists bars is the screen that manages them, and no 
   second place holds half of it. **A card shows counts, never contents**: the list reads the index 
   alone, and since the counts are on the record every card costs nothing to draw regardless.
-- **Rename and Delete sit behind the row's ⋮**, the control the ingredients and both tag lists already 
+- **Sharing joins Rename and Delete behind the row's ⋮**, opening the room the gear opens
+  ([Sharing](#sharing)) on *that* bar rather than the one in hand — sharing a bar one is not standing
+  in is the whole reason the second door exists (FR-BAR-6), and a card already carrying two
+  bar-level actions is where a third belongs. **A shared bar says so on the card**, beside how
+  current it is: an offer is a standing arrangement, and one a reader has forgotten making is the
+  thing a bar list is for.
+- **Rename and Delete sit behind that same ⋮**, the control the ingredients and both tag lists already 
   use for exactly this — reachable without doing anything else to the card, which is what a reader 
   wants for the two operations that do not care what the bar holds. **Rename is offered on a guest 
   bar too**: what a bar is called on this device is the reader's, exactly as the unit it reads in is 
@@ -552,6 +558,35 @@ screen, not the row that starts it.
   carries a failed refresh stands behind this screen unread, so the answer arrives as a snackbar 
   and is marked told, and the banner does not repeat it on the way back. A refresh that landed says 
   so too — the reader is looking at a menu, not at the lists that would otherwise be the answer.
+
+## Sharing
+
+Behind Settings, below [Data](#data) and above **Change bar** — the ways a bar travels on its own,
+where the two rows above are a file carried by hand (FR-BAR-6). Below them because an export is an
+act and an offer is a standing arrangement; above the way out because it is still about a bar rather
+than about which bar.
+
+- **One room, two doors.** Settings opens it on the bar in hand; a bar card's ⋮ opens the same room
+  on any bar ([Bars](#bars)), which is what lets an owner share a bar without crossing into it first
+  — each owned bar is shared separately (FR-BAR-6). So the screen takes a bar rather than assuming
+  the open one, and no second place holds half of what sharing means.
+- **A row per way, and each says what it can do.** By file: shared by sending an export, so the row
+  is a sentence and a share rather than a switch — there is nothing to withdraw (FR-BAR-7). Over the
+  LAN: a switch, on being an offer and off a withdrawal. A way with an adapter this build does not
+  carry is absent rather than dimmed, on the bottom bar's reading rather than the Settings list's —
+  a way that does not exist is a shape, not a row a reader might think they have forgotten.
+- **The LAN row says an offer lives while this app is open**, in its one line under the switch. It
+  is the fact a reader is most likely to be caught by — a guest asking while the owner's phone is in
+  a pocket is told the source is not on the network — and the moment they turn the switch on is
+  where saying so costs nothing.
+- **Withdrawing says what it does not do.** A guest keeps what it already holds; what ends is
+  refreshing (FR-BAR-6). One line under the switch, because a reader turning sharing off is entitled
+  to know it is not a recall.
+- **A guest bar reads the room the other way round**: not the ways out but the one way in — where
+  this bar refreshes from, and the reader's to point elsewhere (FR-BAR-5). The
+  [Import/Refresh](#data) row's own idiom, one screen read from either side, and the reason the room
+  is not owner-only. Everything else a guest bar refuses is still absent rather than refused
+  (FR-BAR-4): there is nothing here to offer, someone else's bar not being this device's to give.
 
 ## Tag and stock colours
 

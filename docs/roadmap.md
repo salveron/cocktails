@@ -72,6 +72,9 @@ Milestones in dependency order. Scope: [requirements.md](requirements.md); desig
 
 ## Phase 7 — The app holds many bars
 
+**Pilot boundary.** Phases 0–6 are a complete product — one bar, kept and read and shared as a
+file. What follows is the next claim rather than the same one continued.
+
 - [x] **M30** — Shelf domain. Delivers: [ADR 20](adr/20-the-app-holds-many-bars.md), Bar, BarMode, Transport, BarSource, Offer, BarContent, Shelf, ShelfEdits, validateShelf, guest refusal [ADR 23](adr/23-nothing-writes-a-guest-bar.md). Depends: M29.
 - [x] **M31** — One file per bar. Delivers: [ADR 21](adr/21-the-file-carries-one-bar.md), BarStore, shelf.yaml, bars/<id>.yaml, atomic write, rotation, format 2 lands whole, cocktails.yaml migration. Depends: M30.
 - [x] **M32** — Shelf in state. Delivers: ShelfController, collectionProvider derived, openBarProvider, barWriterProvider (null for guest), export/import on open bar only, amend [ADR 23](adr/23-nothing-writes-a-guest-bar.md). Depends: M31.
@@ -168,9 +171,45 @@ asked the question.
 
 ## Phase 11 — A bar travels over the LAN
 
-- [ ] **M43** — Owner offers bar nearby. Delivers: FR-BAR-8, DNS-SD package, dart:io server, internet permission, sharingProvider, [ADR 22](adr/22-a-bar-travels-behind-one-seam.md). Depends: M42.
-- [ ] **M44** — Guest finds one. Delivers: FR-BAR-8, browse service type, GET refresh, two instances discriminated by bar id (FR-BAR-1/5). Depends: M43.
+The first thing in the app to open a socket and the first to announce anything about itself, so it
+lands bottom-up: the package proven on a device before a server rests on it, the server before
+anything announces it, and the owner's side before the guest's — FR-BAR-6 having had nothing to
+offer or withdraw while a file was the only way a bar travelled.
+
+- [ ] **M43** — Nearby is proven, and confined. Delivers: a DNS-SD package under the
+  [ADR 13](adr/13-lists-scroll-by-index.md) bar — one file, the way out written down — the pick and
+  its pinning ([ADR 22](adr/22-a-bar-travels-behind-one-seam.md)), a register-and-browse round trip
+  proven on the device, and the permissions it actually asks for
+  ([platform facts](architecture.md#platform-facts)). Depends: M42.
+- [ ] **M44** — The device answers on a socket. Delivers: one `dart:io` `HttpServer` on an ephemeral
+  port, the offered list and one unguessable path per bar, 404 for everything else; the bytes read
+  through the store, so a served copy is the bar's own export
+  ([ADR 22](adr/22-a-bar-travels-behind-one-seam.md)). Depends: M43.
+- [ ] **M45** — An offer announces, a withdrawal silences. Delivers: `BarOfferings` on the
+  [sharing seam](components.md#the-sharing-seam), one service instance per device, up with the first
+  offer and down with the last (FR-BAR-6, NFR-5). Depends: M44.
+- [ ] **M46** — The offer is the reader's to make. Delivers: `offering`/`withdrawing` on
+  `ShelfEdits`, the owner-only write of `Bar.offers`, and what is announced now held beside the
+  refreshes in flight ([work in flight](components.md#work-in-flight)); shape only, the screen being
+  M47's (FR-BAR-6). Depends: M45.
+- [ ] **M47** — Settings opens on Sharing. Delivers: the room a bar is shared from
+  ([ui-design.md](ui-design.md#sharing)), read from either side — an owner's ways out, a guest's way
+  in (FR-BAR-6/7). Depends: M46.
+- [ ] **M48** — Any bar is shared from the list. Delivers: the bars card's ⋮ reaching that same room
+  for a bar not in hand, and the card marking one that is shared
+  ([ui-design.md](ui-design.md#bars), FR-BAR-6). Depends: M47.
+- [ ] **M49** — A guest refreshes over the LAN. Delivers: the LAN channel's `fetch` — the instance
+  resolved afresh every ask — and the three unreachable readings mapped onto where the ask stopped
+  (FR-BAR-5/8, [ADR 22](adr/22-a-bar-travels-behind-one-seam.md)); `barChannelContract` run over it.
+  Depends: M48.
+- [ ] **M50** — A guest finds one nearby. Delivers: `BarFinder` and the `Found` entry
+  ([ADR 22](adr/22-a-bar-travels-behind-one-seam.md)), **Find nearby** beside **From import**
+  ([ui-design.md](ui-design.md#new-bar)), bars grouped under the device offering them and told apart
+  by id (FR-BAR-1/8). Depends: M49.
+- [ ] **M51** — A guest bar refreshes from wherever the reader points it. Delivers: `resourced` on
+  `ShelfEdits` and the Sharing room's guest row becoming changeable, so a bar added from a file
+  refreshes from a device found nearby and back again (FR-BAR-5). Depends: M50.
 
 ## Phase 12 — A bar travels over the cloud
 
-- [ ] **M45** — Cloud adapter. Delivers: FR-BAR-9, backend chosen via [ADR 22](adr/22-a-bar-travels-behind-one-seam.md), one identity (NFR-3), guests named, refresh from anywhere. Depends: M44.
+- [ ] **M52** — Cloud adapter. Delivers: FR-BAR-9, backend chosen via [ADR 22](adr/22-a-bar-travels-behind-one-seam.md), one identity (NFR-3), guests named, refresh from anywhere. Depends: M51.

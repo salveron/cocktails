@@ -22,8 +22,11 @@ FR-BAR-7 and FR-BAR-8 must not wait on it.
 **A source is a value; a channel is an interface; the transports are adapters resolved at the
 composition root.** Shapes in [components.md](../components.md#the-sharing-seam).
 
-- **`BarSource` = transport + address + what to call it**, kept with the guest bar so a refresh asks
-  the same thing again. Only the adapter reads the address; nothing above `data/` builds one.
+- **`BarSource` = transport + address + what to call it**, kept with the guest bar so a refresh has
+  something to ask again. Only the adapter reads the address; nothing above `data/` builds one. Which
+  way a bar refreshes is the reader's to change — one added from a file may be pointed at a device
+  nearby, and back — so a source is one value they may replace rather than a list the app chooses
+  among (FR-BAR-5).
 - **A fetch answers, never throws**: what arrived, what failed the import's own judgement
   (FR-DAT-4), or that the source could not be reached — offline, not found, or withdrawn, a closed
   set so the wording stays the UI's (FR-BAR-5). A fourth answer is *no answer*: the file
@@ -33,17 +36,34 @@ composition root.** Shapes in [components.md](../components.md#the-sharing-seam)
 - **Three interfaces, not one**: every transport fetches; only some offer and withdraw; only one
   finds. A way that cannot do a thing carries no method for it, so the file channel is honestly
   one method wide.
-- **LAN = DNS-SD for finding, our own HTTP for carrying.** The owner registers one service instance
-  per offered bar and serves that bar's export over a `dart:io` `HttpServer` on an unguessable path;
-  the guest browses the service type and refreshes by GET. Discovery needs a package — `bonsoir` and
-  `nsd` are the candidates, both registering and browsing on Android; `multicast_dns` (flutter.dev)
-  is ruled out because it only browses, and the owner's side is the half we cannot do without. The
-  pick, its version and its pinning are settled in the change that takes it, under the ADR 13 bar
-  (one file, way out written down) and the ADR 14 pinning rule.
+- **LAN = DNS-SD for finding, our own HTTP for carrying.** Discovery needs a package — `bonsoir`
+  and `nsd` are the candidates, both registering and browsing on Android; `multicast_dns`
+  (flutter.dev) is ruled out because it only browses, and the owner's side is the half we cannot do
+  without. The pick, its version and its pinning are settled in the change that takes it, under the
+  ADR 13 bar (one file, way out written down) and the ADR 14 pinning rule.
+- **One server and one service instance per device, not per bar.** The device announces itself once
+  and its `dart:io` `HttpServer` answers two things: what it offers — each bar's id, its name, and
+  the unguessable path its bytes are at — and those bytes. Announcing the device is what lets a
+  withdrawal be told from an owner gone quiet: the instance goes on answering while its list stops
+  naming the bar. It puts no bar name on the wire for any mDNS browser to read, and needs no TXT
+  record at all — the list is a document like every other one the app writes, carrying its format.
+- **A guest keeps the instance name and the bar's id, never an address.** The port is ephemeral and
+  the lease is not the app's, so every fetch resolves the instance afresh, reads the list, and gets
+  the path it names. The path is therefore never stored, and the owner may rotate it freely. Two
+  bars of one name are told apart by the id the list carries (FR-BAR-1).
+- **Where the ask stopped is which reason it answers** (FR-BAR-5): no network of our own is
+  `offline`; an instance that will not resolve is `notFound` — the owner's device off, their app
+  shut, or another network; and an instance whose list no longer names the bar is `withdrawn`.
+- **The server is handed a function, not the store.** An offered bar is usually not the one on show
+  and only one collection is resident (ADR 20), so the adapter takes "the bytes of this bar id" and
+  the state layer composes it over a load and the canonical emitter — the seam `filePickerProvider`
+  already is, so a test needs neither socket nor file.
 - **Nothing is announced unless something is shared** (NFR-5): server and service come up with the
-  first offer and down with the last withdrawal. The instance name is the bar's name plus a short
-  discriminator derived from its id — unique on the wire, and a guest's only way to tell two bars of
-  one name apart (FR-BAR-1).
+  first offer and down with the last withdrawal. The offer outlives the run and the announcement does
+  not — it is kept on the bar's record, and what is offered is announced again at startup.
+- **A browse is never left running**: the guest browses while the reader is looking, or while one
+  refresh resolves, and closes it either way. A multicast lock held around the clock is the one thing
+  on this path that would cost a battery.
 - **Withdrawal stops the offer and nothing else** (FR-BAR-6): a guest keeps what it holds, and its
   next refresh is told the source is gone.
 - **The cloud transport is declared and unimplemented.** `Transport.cloud` exists so the index's
@@ -80,6 +100,10 @@ accounts today, payloads of tens of KB, and an app that must stay offline-first.
   adapter a near-copy of the LAN one.
 - **Authentication on the LAN path**: refused as out of proportion to FR-BAR-6's own words — a bar
   shared is a bar given, and an unguessable path on a home network matches that exactly.
+- **One DNS-SD instance per offered bar**, the bar's name plus a discriminator off its id on the
+  wire. Refused: a withdrawn bar's instance simply vanishes, which is indistinguishable from an
+  owner whose phone is off, and FR-BAR-5 asks a guest to be told which. It also announces every
+  shared bar's name to anything browsing the network.
 - **A foreground service so an offer outlives the app**: would let a guest refresh while the owner's
   phone is in a pocket. Refused for a notification and a permission the feature does not earn.
 

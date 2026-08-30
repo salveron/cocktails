@@ -54,7 +54,9 @@ Two tag vocabularies separate; one name may exist in both (different meanings).
   an unfamiliar tag on a recipe, or a unit a line measures in, is owed the vocabulary behind it — 
   reading is what a guest bar is for, and a row opening onto the owner's answer says more than one 
   dimmed to nothing.
-- **FR-BAR-5** A guest bar refreshes from the source it was added from, wholesale: what arrives 
+- **FR-BAR-5** A guest bar refreshes from the source it was added from, or from another the reader 
+  has since pointed it at — a bar sent as a file and later found nearby is the same bar, and which 
+  way it asks is theirs to change. Wholesale either way: what arrives 
   replaces what stood and nothing is merged, save the two that are the reader's — which unit amounts 
   read in and what the bar is called here (FR-BAR-3, FR-SET-1). Neither moves; the sizes behind the 
   unit and the owner's own name for the bar arrive with everything else, and that name is read only 

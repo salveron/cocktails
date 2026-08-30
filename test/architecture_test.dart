@@ -537,8 +537,8 @@ void main() {
     });
   });
 
-  // A heading rename breaks every `file.md#anchor` link to it silently,
-  // which is what M42's own trims would otherwise do unnoticed.
+  // A heading rename breaks every `file.md#anchor` link to it silently.
+  // This check catches such regressions before doc compaction hides them.
   group('doc anchors', () {
     test('every file.md#anchor link under docs/, lib/ and test/ resolves', () {
       final docHeadings = <String, Set<String>>{

@@ -65,7 +65,8 @@ better than the whole-database one it replaces — a bar is a row, which is what
 Three ways a bar travels (FR-BAR-7/8/9) behind one seam 
 ([ADR 22](adr/22-a-bar-travels-behind-one-seam.md)). A **source** is a transport plus what that 
 transport needs to ask again, kept with the guest bar so it refreshes from the thing it was added 
-from. A fetch answers a value, never an exception: what arrived, what stopped it being read (the 
+from — or from another way the reader has since pointed it at, one value replaced rather than a list 
+chosen among (FR-BAR-5). A fetch answers a value, never an exception: what arrived, what stopped it being read (the 
 import's own judgement, FR-DAT-4), or that the source could not be reached — offline, not found, or 
 withdrawn — which leaves the bar readable as it stood and says which (FR-BAR-5). It may also answer 
 nothing at all, where the reader was asked and stood down.
@@ -79,13 +80,15 @@ nothing at all, where the reader was asked and stood down.
   (FR-BAR-2), or a guest bar founded beside it (FR-BAR-7). Only the last keeps the source; none of 
   the three takes the file's name for the bar's, that being the reader's to leave or change 
   ([ADR 21](adr/21-the-file-carries-one-bar.md)).
-- **LAN** (FR-BAR-8): an owner registers one DNS-SD service per offered bar and serves that bar over 
-  a `dart:io` HTTP server on an unguessable path; a guest browses the service type, adds what it 
-  finds and refreshes by GET. Discovery costs a package, the transfer none (ADR 22). Server and 
-  service come up with the first offer and down with the last withdrawal, so a device sharing 
-  nothing announces nothing (NFR-5). The instance name carries the bar's name and a short 
-  discriminator off its id, so two bars of one name are two services and a guest is given something 
-  besides the name to tell them by.
+- **LAN** (FR-BAR-8): an owner's device announces itself once on DNS-SD and answers over a 
+  `dart:io` HTTP server — what it offers, and each offered bar's bytes on an unguessable path. **One 
+  server and one service instance per device**, whatever it shares; both come up with the first offer 
+  and down with the last withdrawal, so a device sharing nothing announces nothing (NFR-5). 
+  Discovery costs a package, the transfer none. A guest keeps the instance name and the bar's id 
+  rather than an address — a port outlives no app start — and resolves afresh on every ask, reading 
+  which of the three unreachable answers it gets off where the ask stopped (ADR 22). Neither side 
+  leaves a browse running, and neither side runs at all once its app does not: an offer is kept on 
+  the record and announced again at startup, where the announcement itself is never persisted.
 - **Cloud** (FR-BAR-9): the one way asking an identity (NFR-3) and the one needing a server. The 
   transport is declared and no adapter registered, the ways on offer being the ways that answer — so 
   the choice waits without holding the other two up.

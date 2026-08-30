@@ -437,7 +437,14 @@ file-sourced bar keeps.
 
 The owner's side — `BarOfferings` (offer/withdraw, FR-BAR-6) and `BarFinder` (`nearby`, FR-BAR-8) — 
 lands with the LAN channel that first implements them, along with the `Found` entry a browse 
-answers. The file channel implements `BarChannel` alone: its `fetch` is the picker's text decoded, 
+answers. `BarOfferings` takes and drops one bar by id, and the adapter behind it owns everything that 
+comes up with an offer and goes down with the last — one server and one service instance per device, 
+never per bar ([ADR 22](adr/22-a-bar-travels-behind-one-seam.md)). It is handed *the bytes of a bar 
+id* rather than a `BarStore`: an offered bar is usually not the one on show and only one collection 
+is resident (ADR 20), so the composition root supplies a function over a load and the canonical 
+emitter — the seam `filePickerProvider` already is, and what keeps a test free of a socket. 
+`BarFinder.nearby` answers `Found` entries — the source to keep and what to call it — and is asked 
+only while a reader is looking. The file channel implements `BarChannel` alone: its `fetch` is the picker's text decoded, 
 so a refresh is the reader handing over a newer file and there is nothing to offer or withdraw 
 (FR-BAR-7). No cloud channel exists yet and the registry has no entry for that transport, which is 
 how FR-BAR-9 waits without blocking anything.
@@ -533,6 +540,12 @@ Refreshing and sharing are the app's first work outliving the gesture that start
 **fifth kind of state**: not collection, not derived, not screen-local, not one screen's request of 
 another, but a job the reader may walk away from. A refresh in flight lives in
 `refreshes.dart`; the transports one is resolved through, in `channels.dart`.
+
+An offer is the same kind of work from the owner's side, and splits where a refresh does not: the 
+**offer** is the reader's intent and rides on `Bar.offers` into the index, where the **announcement** 
+is a socket and a service registration living no longer than the app. So what is announced right now 
+— and what an announcement failed with — is state beside the refreshes in flight, and a bar carrying 
+an offer is announced again at startup rather than quietly un-offering itself.
 
 `refreshesProvider` — `Map<String, RefreshState>` by bar id: `Reaching`, or what it last failed with 
 and when, until it is `told`, which is what dismissing the banner and reporting it in a snackbar 
