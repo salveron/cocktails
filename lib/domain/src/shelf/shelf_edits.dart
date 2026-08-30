@@ -6,6 +6,7 @@ library;
 import '../collection/collection.dart';
 import '../list_edits.dart';
 import 'bar.dart';
+import 'sharing.dart';
 import 'shelf.dart';
 
 extension ShelfEdits on Shelf {
@@ -39,6 +40,36 @@ extension ShelfEdits on Shelf {
   /// The switch: the record and the bytes at once (ADR-20).
   Shelf opening(String id, Collection collection) =>
       copyWith(openId: id, collection: collection);
+
+  /// FR-BAR-6: [id] offered by [via], every other way left standing. Offering
+  /// one already offered changes nothing: one offer per transport is coherence.
+  Shelf offering(String id, Transport via) {
+    final bar = _sharable(id);
+    if (bar == null || bar.offers.any((offer) => offer.via == via)) return this;
+    return withBar(
+      bar.copyWith(offers: [...bar.offers, (via: via, guests: const [])]),
+    );
+  }
+
+  /// FR-BAR-6: the offer by [via] dropped and nothing else — every other way
+  /// stays open, and what a guest already holds stays theirs.
+  Shelf withdrawing(String id, Transport via) {
+    final bar = _sharable(id);
+    if (bar == null) return this;
+    final left = without(bar.offers, (offer) => offer.via == via);
+    if (left.length == bar.offers.length) return this;
+    return withBar(bar.copyWith(offers: left));
+  }
+
+  /// The bar [id] names, or null where none does. A guest bar is its owner's
+  /// to share, so asking here is the mistake a throw names (ADR 23).
+  Bar? _sharable(String id) {
+    final bar = barWithId(id);
+    if (bar != null && !bar.isOwned) {
+      throw ArgumentError('A guest bar is shared by its owner: "${bar.name}"');
+    }
+    return bar;
+  }
 
   /// FR-BAR-5: the owner's collection replaced, stamped [at]. Never [Bar.name]
   /// or [Bar.display], the reader's picks (ADR-21).

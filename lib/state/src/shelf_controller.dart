@@ -10,6 +10,7 @@ import 'bar_writer.dart';
 import 'channels.dart';
 import 'refreshes.dart';
 import 'seams.dart';
+import 'sharing.dart';
 
 /// The root: `ui/` reads through the derived providers and mutates through
 /// `barWriterProvider` (ADR 23).
@@ -289,6 +290,57 @@ final class ShelfController extends AsyncNotifier<Shelf> {
       await ref.read(barStoreProvider).saveBar(bar, payload.collection);
     }
     await _publish(refreshed);
+  }
+
+  /// FR-BAR-6: an owned bar offered by [via]. The intent is recorded before the
+  /// network hears anything, so an announcement that fails is reported rather
+  /// than quietly un-offering the bar (ADR 22). A guest bar is its owner's to
+  /// share, and one already offered this way is left alone.
+  Future<void> offerBar(String id, Transport via) async {
+    final shelf = await future;
+    final bar = shelf.barWithId(id);
+    if (bar == null || !bar.isOwned) return;
+    if (bar.offers.any((offer) => offer.via == via)) return;
+    await _publish(shelf.offering(id, via));
+    ref.read(sharingProvider.notifier).announcing(id);
+    await _telling(id, via, (offerings) => offerings.offer(id, bar.name));
+  }
+
+  /// FR-BAR-6: the offer by [via] withdrawn, which ends refreshes over it and
+  /// nothing else — what a guest already holds stays theirs.
+  Future<void> withdrawBar(String id, Transport via) async {
+    final shelf = await future;
+    final bar = shelf.barWithId(id);
+    if (bar == null || !bar.isOwned) return;
+    if (!bar.offers.any((offer) => offer.via == via)) return;
+    await _publish(shelf.withdrawing(id, via));
+    ref.read(sharingProvider.notifier).silencing(id);
+    await _telling(id, via, (offerings) => offerings.withdraw(id));
+  }
+
+  /// The half that reaches the network, whichever way it is going. A transport
+  /// with no adapter in this build announced nothing, which is the same thing
+  /// to report as an announcement that refused.
+  Future<void> _telling(
+    String id,
+    Transport via,
+    Future<void> Function(BarOfferings) tell,
+  ) async {
+    final sharing = ref.read(sharingProvider.notifier);
+    final offerings = ref.read(offeringsProvider)[via];
+    if (offerings == null) {
+      sharing.settled(
+        id,
+        SharingFailed('nothing shares over ${via.token}', _now()),
+      );
+      return;
+    }
+    try {
+      await tell(offerings);
+      sharing.settled(id);
+    } on Exception catch (error) {
+      sharing.settled(id, SharingFailed('$error', _now()));
+    }
   }
 
   /// An owned bar, counted and stamped from the moment it is founded, so none

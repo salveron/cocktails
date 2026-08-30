@@ -65,6 +65,7 @@ lib/
       seams.dart               # store, clock, share sheet, picker, random — one provider each
       channels.dart            # which transport has an adapter in this build (ADR 22)
       refreshes.dart           # the refreshes in flight and what they failed with (FR-BAR-5)
+      sharing.dart             # the offers in flight and what an announcement failed with (FR-BAR-6)
       derived.dart             # everything read-only: collection, availability, the optimizer
   ui/                          # no barrel — leaves, imported directly; design in ui-design.md
     app.dart, destinations.dart, theme.dart, palette.dart, wording.dart, toggling.dart   # the
@@ -474,7 +475,8 @@ every name on the way in ([architecture.md](architecture.md#platform-facts)).
 
 `export`, `setDisplay` and `renameBar` all work on a guest bar (FR-DAT-1, FR-BAR-3, ADR 21) — what a 
 bar is called or read in is the reader's, on someone else's bar as on their own — while 
-`replaceOpen` refuses one, FR-DAT-3's import running only into an owned bar. `addOwnedBar`'s 
+`replaceOpen`, `offerBar` and `withdrawBar` refuse one, a guest bar being its owner's to share 
+(FR-BAR-6), FR-DAT-3's import running only into an owned bar. `addOwnedBar`'s 
 optional `from` is a file with no source kept, so nothing about such a bar refreshes; `addGuestBar` 
 keeps the source, which is what a refresh asks again (`fileSource` republishing 
 `FileBarChannel.source` so `ui/` never builds an address itself, ADR 22). All of the controller's 
@@ -563,6 +565,15 @@ bar on show* comes to in practice: the reader goes on reading and editing while 
 screens are told only through this map. A late answer is dropped where its bar is gone or a newer 
 ask has been made (each carries a token, only the newest lands); a guest bar's collection has no 
 other writer, so there is nothing else for one to lose.
+
+`sharingProvider` — `Map<String, SharingState>` by bar id, the owner's side of the same shape: 
+`Announcing` while an offer goes up, `Silencing` while a withdrawal comes down, and `SharingFailed` 
+carrying what stopped one and when, until it is `told`. A bar with no entry has nothing out and 
+nothing to be met, what it is actually sharing being `Bar.offers`' to say. **The record moves first 
+and the network second**, so an offer that could not be announced still stands on the bar — and a 
+transport with no adapter in this build reads exactly as an announcement that refused, there being 
+nothing on the network either way. Offering a way already offered, or withdrawing one never offered, 
+tells the device nothing at all.
 
 Performance facts (no over-engineering):
 - Every mutation replaces the whole `Collection` → all collection-derived recompute. Hundreds of recipes: 

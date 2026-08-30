@@ -188,7 +188,7 @@ offer or withdraw while a file was the only way a bar travelled.
 - [x] **M45** — An offer announces, a withdrawal silences. Delivers: `BarOfferings` on the
   [sharing seam](components.md#the-sharing-seam), one service instance per device, up with the first
   offer and down with the last (FR-BAR-6, NFR-5). Depends: M44.
-- [ ] **M46** — The offer is the reader's to make. Delivers: `offering`/`withdrawing` on
+- [x] **M46** — The offer is the reader's to make. Delivers: `offering`/`withdrawing` on
   `ShelfEdits`, the owner-only write of `Bar.offers`, and what is announced now held beside the
   refreshes in flight ([work in flight](components.md#work-in-flight)); shape only, the screen being
   M47's (FR-BAR-6). Depends: M45.

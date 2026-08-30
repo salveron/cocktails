@@ -20,3 +20,12 @@ final channelsProvider = Provider<Map<Transport, BarChannel>>(
 
 /// What a file-picked bar is kept under: no screen builds an address (ADR 22).
 const fileSource = FileBarChannel.source;
+
+/// The owner's half of each way a bar travels, by transport — only some
+/// transports have one at all (ADR 22). Empty until the composition root has a
+/// name to hand the LAN adapter to announce under; a transport absent here has
+/// no adapter in this build, so an offer over it is kept on the record and
+/// announced by nothing.
+final offeringsProvider = Provider<Map<Transport, BarOfferings>>(
+  (ref) => const {},
+);

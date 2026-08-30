@@ -195,4 +195,76 @@ void main() {
       );
     });
   });
+
+  /// FR-BAR-6: an owned bar is shared one way at a time, and each way is
+  /// separate from the rest.
+  group('offering and withdrawing', () {
+    Shelf sharedOver(List<Transport> vias) => Shelf(
+      bars: [
+        ownedBar(
+          offers: [for (final via in vias) (via: via, guests: const [])],
+        ),
+        guestBar(refreshed: anHourAgo),
+      ],
+    );
+
+    test('offering a way adds it to an owned bar', () {
+      final shelf = sharedOver(const []).offering('5f2c9a', Transport.lan);
+      expect(shelf.barWithId('5f2c9a')!.offers, [
+        (via: Transport.lan, guests: const <String>[]),
+      ]);
+    });
+
+    /// A bar offered twice by one transport is what its coherence refuses, so
+    /// offering again is not how a second entry is made.
+    test('offering a way already offered changes nothing', () {
+      final shelf = sharedOver(const [Transport.lan]);
+      expect(shelf.offering('5f2c9a', Transport.lan), same(shelf));
+    });
+
+    test('offering one way leaves every other standing', () {
+      final shelf = sharedOver(const [
+        Transport.file,
+      ]).offering('5f2c9a', Transport.lan);
+      expect(shelf.barWithId('5f2c9a')!.offers.map((o) => o.via), [
+        Transport.file,
+        Transport.lan,
+      ]);
+    });
+
+    test('withdrawing drops that way and no other', () {
+      final shelf = sharedOver(const [
+        Transport.file,
+        Transport.lan,
+      ]).withdrawing('5f2c9a', Transport.lan);
+      expect(shelf.barWithId('5f2c9a')!.offers.map((o) => o.via), [
+        Transport.file,
+      ]);
+    });
+
+    test('withdrawing a way not offered changes nothing', () {
+      final shelf = sharedOver(const [Transport.file]);
+      expect(shelf.withdrawing('5f2c9a', Transport.lan), same(shelf));
+    });
+
+    test('an id naming no bar leaves the shelf as it stood', () {
+      final shelf = sharedOver(const []);
+      expect(shelf.offering('nobody', Transport.lan), same(shelf));
+      expect(shelf.withdrawing('nobody', Transport.lan), same(shelf));
+    });
+
+    /// A guest bar is shared by its owner and by nobody else (ADR 23), so this
+    /// is a mistake rather than a no-op.
+    test('sharing a guest bar throws, either way', () {
+      final shelf = sharedOver(const []);
+      expect(
+        () => shelf.offering('b3e1d7', Transport.lan),
+        throwsArgumentError,
+      );
+      expect(
+        () => shelf.withdrawing('b3e1d7', Transport.lan),
+        throwsArgumentError,
+      );
+    });
+  });
 }
