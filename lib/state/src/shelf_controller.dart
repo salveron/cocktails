@@ -325,7 +325,7 @@ final class ShelfController extends AsyncNotifier<Shelf> {
     final shelf = await future;
     final bar = shelf.barWithId(id);
     if (bar == null || !bar.isOwned) return;
-    if (bar.offers.any((offer) => offer.via == via)) return;
+    if (bar.offeredBy(via)) return;
     await _publish(shelf.offering(id, via));
     ref.read(sharingProvider.notifier).announcing(id);
     await _telling(id, via, (offerings) => offerings.offer(id, bar.name));
@@ -337,7 +337,7 @@ final class ShelfController extends AsyncNotifier<Shelf> {
     final shelf = await future;
     final bar = shelf.barWithId(id);
     if (bar == null || !bar.isOwned) return;
-    if (!bar.offers.any((offer) => offer.via == via)) return;
+    if (!bar.offeredBy(via)) return;
     await _publish(shelf.withdrawing(id, via));
     ref.read(sharingProvider.notifier).silencing(id);
     await _telling(id, via, (offerings) => offerings.withdraw(id));

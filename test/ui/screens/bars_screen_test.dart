@@ -36,25 +36,7 @@ void main() {
     refreshed: testNow.subtract(const Duration(days: 2)),
   ).summarised(annaCollection);
 
-  /// A shelf of [bars] with the first open, each holding what [collections]
-  /// gives it — the arrangement the screen only becomes interesting over.
-  MemoryBarStore shelfOf(List<Bar> bars, Map<String, Collection> collections) {
-    final store = MemoryBarStore((
-      bars: bars,
-      openId: bars.first.id,
-      deviceName: null,
-    ));
-    for (final bar in bars) {
-      store.barOutcomes[bar.id] = Ok((
-        name: bar.name,
-        display: bar.display,
-        collection: collections[bar.id] ?? Collection(),
-      ));
-    }
-    return store;
-  }
-
-  MemoryBarStore twoBars() => shelfOf(
+  MemoryBarStore twoBars() => MemoryBarStore.over(
     [home, anna],
     {home.id: smallCollection, anna.id: annaCollection},
   );
@@ -108,7 +90,7 @@ void main() {
     });
 
     testWidgets('a card says how current the bar is', (tester) async {
-      await openBars(tester, store: shelfOf([home, anna, ada], {}));
+      await openBars(tester, store: MemoryBarStore.over([home, anna, ada], {}));
       // The bar on show dates itself as every other does: opening one loads
       // nothing a card could report, so no card says which is loaded.
       expect(find.text('Updated: 3 hours ago'), findsNWidgets(2));
@@ -122,7 +104,7 @@ void main() {
       var now = testNow;
       await openBars(
         tester,
-        store: shelfOf([home, anna], {}),
+        store: MemoryBarStore.over([home, anna], {}),
         clock: () => now,
       );
       expect(find.text('Updated: 3 hours ago'), findsNWidgets(2));
@@ -135,7 +117,7 @@ void main() {
       tester,
     ) async {
       final undated = Bar(id: 'old001', name: 'Cellar', mode: BarMode.owner);
-      await openBars(tester, store: shelfOf([home, undated], {}));
+      await openBars(tester, store: MemoryBarStore.over([home, undated], {}));
       expect(find.text('Cellar'), findsOneWidget);
       expect(find.textContaining('Updated'), findsOneWidget);
     });
@@ -143,7 +125,7 @@ void main() {
     testWidgets('whose bar it is rides beside the menu (FR-BAR-3)', (
       tester,
     ) async {
-      await openBars(tester, store: shelfOf([home, ada], {}));
+      await openBars(tester, store: MemoryBarStore.over([home, ada], {}));
       expect(find.text('Owned'), findsOneWidget);
       expect(find.text('Guest'), findsOneWidget);
       // Each wears its own reading off the app's one traffic light, which
@@ -182,7 +164,7 @@ void main() {
 
     testWidgets('a guest bar is renamed like any other, what it is called '
         "here being the reader's (FR-BAR-3)", (tester) async {
-      await openBars(tester, store: shelfOf([home, ada], {}));
+      await openBars(tester, store: MemoryBarStore.over([home, ada], {}));
       await chooseOnRow(tester, "Ada's bar", 'Rename');
       await type(tester, 'The Ada Room');
       await tap(tester, find.text('Save'));
@@ -193,7 +175,7 @@ void main() {
     testWidgets('a bar whose file never landed counts as the empty one '
         'opening it would give', (tester) async {
       final never = Bar(id: 'new001', name: 'Cellar', mode: BarMode.owner);
-      final store = shelfOf([home, never], {})
+      final store = MemoryBarStore.over([home, never], {})
         ..barOutcomes[never.id] = const Empty();
       await openBars(tester, store: store);
       expect(bullet('0 recipes'), findsOneWidget);
@@ -203,7 +185,7 @@ void main() {
       tester,
     ) async {
       final torn = Bar(id: 'torn01', name: 'Torn', mode: BarMode.owner);
-      final store = shelfOf([home, torn], {});
+      final store = MemoryBarStore.over([home, torn], {});
       store.barOutcomes[torn.id] = Rejected([
         SourcedIssue(
           ValidationIssue(

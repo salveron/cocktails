@@ -561,20 +561,45 @@ screen, not the row that starts it.
 
 ## Sharing
 
-Behind Settings, below [Data](#data) and above **Change bar** — the ways a bar travels on its own,
-where the two rows above are a file carried by hand (FR-BAR-6). Below them because an export is an
-act and an offer is a standing arrangement; above the way out because it is still about a bar rather
-than about which bar.
+A pushed screen behind Settings, below [Data](#data) and above **Change bar** — the ways a bar
+travels on its own, where the two rows above are a file carried by hand (FR-BAR-6). Below them
+because an export is an act and an offer is a standing arrangement; above the way out because it is
+still about a bar rather than about which bar.
 
 - **One room, two doors.** Settings opens it on the bar in hand; a bar card's ⋮ opens the same room
   on any bar ([Bars](#bars)), which is what lets an owner share a bar without crossing into it first
   — each owned bar is shared separately (FR-BAR-6). So the screen takes a bar rather than assuming
-  the open one, and no second place holds half of what sharing means.
-- **A row per way, and each says what it can do.** By file: shared by sending an export, so the row
-  is a sentence and a share rather than a switch — there is nothing to withdraw (FR-BAR-7). Over the
-  LAN: a switch, on being an offer and off a withdrawal. A way with an adapter this build does not
-  carry is absent rather than dimmed, on the bottom bar's reading rather than the Settings list's —
-  a way that does not exist is a shape, not a row a reader might think they have forgotten.
+  the open one, and no second place holds half of what sharing means. It is a screen rather than a
+  dialog for one reason: a failure speaks in a snackbar, and a snackbar under a modal barrier is
+  dimmed and untappable — the same objection [Data](#data) raises against saying anything after a
+  system sheet.
+- **The LAN and nothing else, for now.** A way with an adapter this build does not carry is absent
+  rather than dimmed, on the bottom bar's reading rather than the Settings list's — and a file row
+  would be the Export row two above it, acting on the same bar. So the room holds one switch, and
+  the Settings row itself is absent where this build shares by no way at all.
+- **What this device is called leads the screen** — the name a guest reads in their own picker
+  ([ADR 28](adr/28-the-device-is-named-by-its-reader.md)), and the first thing here because it is
+  announced the moment the switch goes on. It arrives filled with the name the reader gave their
+  phone, so a reader on their way to sharing meets it rather than being asked for it: a prompt would
+  charge every reader for the few who care what the name is.
+- **Leaving the field is the commit**, the way every other Settings control acts where it stands
+  rather than waiting for a Save. A field only looked at renames nothing — the phone's own answer is
+  what the device announces anyway, and writing it down would freeze it against a later change — and
+  a field left blank gives back the name that stood, a device with no name being no improvement on
+  one named by its phone.
+- **It is read-only while this device is announcing anything.** The announcement went up under the
+  old name and a guest's source keeps it, so a rename mid-offer would strand every guest silently.
+  The lock is device-wide because the announcement is: on a bar whose own switch is off, the line
+  under the field says which bar is holding it, since a control dimmed for a reason the screen does
+  not show is a control that looks broken.
+- **What the network granted is not shown.** A clash is settled by suffix — `Nikita's phone (2)` —
+  and the room says nothing about it ([ADR 27](adr/27-nearby-comes-off-bonsoir.md)): the suffix
+  belongs to one announcement and outlives nothing, and a line explaining it would be read by every
+  reader to serve the few whose name collided.
+- **A row per way, and each says what it can do.** Over the LAN: a switch, on being an offer and off
+  a withdrawal. While the change is out there is no switch at all, a progress mark in its place —
+  the reader has moved it already, and one that slid back under them would be a lie about what is
+  happening.
 - **The LAN row says an offer lives while this app is open**, in its one line under the switch. It
   is the fact a reader is most likely to be caught by — a guest asking while the owner's phone is in
   a pocket is told the source is not on the network — and the moment they turn the switch on is
@@ -582,11 +607,16 @@ than about which bar.
 - **Withdrawing says what it does not do.** A guest keeps what it already holds; what ends is
   refreshing (FR-BAR-6). One line under the switch, because a reader turning sharing off is entitled
   to know it is not a recall.
-- **A guest bar reads the room the other way round**: not the ways out but the one way in — where
-  this bar refreshes from, and the reader's to point elsewhere (FR-BAR-5). The
-  [Import/Refresh](#data) row's own idiom, one screen read from either side, and the reason the room
-  is not owner-only. Everything else a guest bar refuses is still absent rather than refused
-  (FR-BAR-4): there is nothing here to offer, someone else's bar not being this device's to give.
+- **A failure speaks once and leaves nothing behind.** The record moves first and the network second
+  ([ADR 22](adr/22-a-bar-travels-behind-one-seam.md)), so the switch is telling the truth either way
+  and the snackbar says the part it cannot: shared but not announced, or withdrawn without the
+  network being told. Nothing stays in the room afterwards — a standing line would need the app to
+  know what is announced right now, which is exactly what an announcement that failed does not tell
+  it.
+- **A guest bar has no room and no row.** Someone else's bar is not this device's to give, so the
+  row is absent rather than refused, as everything else a guest bar cannot do is (FR-BAR-4). Where a
+  guest bar refreshes from is its own question, and it is answered where the reader may change it
+  (FR-BAR-5).
 
 ## Tag and stock colours
 

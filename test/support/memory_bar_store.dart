@@ -1,6 +1,9 @@
-/// The in-memory [BarStore] double every suite runs over to stay device-free
+/// The doubles every suite runs over to stay device-free: the store a bar is
+/// kept in, and the owner's half it is offered through
 /// (docs/components.md#testing).
 library;
+
+import 'dart:async';
 
 import 'package:cocktails/data/data.dart';
 import 'package:cocktails/domain/domain.dart';
@@ -38,6 +41,25 @@ base class MemoryBarStore implements BarStore {
       display: bar.display,
       collection: collection ?? Collection(),
     ));
+  }
+
+  /// The same for a shelf of more than one: [bars] with the first open, each
+  /// holding what [collections] gives it and an empty collection otherwise.
+  MemoryBarStore.over(
+    List<Bar> bars, [
+    Map<String, Collection> collections = const {},
+  ]) : shelfOutcome = Ok((
+         bars: bars,
+         openId: bars.first.id,
+         deviceName: null,
+       )) {
+    for (final bar in bars) {
+      barOutcomes[bar.id] = Ok((
+        name: bar.name,
+        display: bar.display,
+        collection: collections[bar.id] ?? Collection(),
+      ));
+    }
   }
 
   @override
@@ -83,5 +105,37 @@ base class MemoryBarStore implements BarStore {
   }) async {
     snapshots[purpose] = (bar, collection);
     return 'memory:${purpose.name}';
+  }
+}
+
+/// An owner's half that answers when a test says so, so what is in flight is
+/// the test's to look at rather than the scheduler's.
+final class MemoryOfferings implements BarOfferings {
+  @override
+  Transport get transport => Transport.lan;
+
+  final offered = <({String id, String name})>[];
+  final withdrawn = <String>[];
+  final out = <Completer<void>>[];
+  Exception? refusing;
+
+  @override
+  Future<void> offer(String id, String name) {
+    offered.add((id: id, name: name));
+    return _answering();
+  }
+
+  @override
+  Future<void> withdraw(String id) {
+    withdrawn.add(id);
+    return _answering();
+  }
+
+  Future<void> _answering() {
+    final refused = refusing;
+    if (refused != null) return Future.error(refused);
+    final answering = Completer<void>();
+    out.add(answering);
+    return answering.future;
   }
 }

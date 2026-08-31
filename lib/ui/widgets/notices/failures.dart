@@ -111,6 +111,20 @@ String? refreshSaid(RefreshState? standing, String bar) => switch (standing) {
     '"$bar" could not be refreshed: ${_because(why)} It stands as it was.',
 };
 
+/// What a change to a bar's sharing came to, and null where there is nothing
+/// to report — nothing out, one still out, or one that went through, which the
+/// switch answers better than a sentence. The record moves first and the
+/// network second (ADR 22), so what failed is the announcement and never the
+/// offer: the switch is telling the truth either way.
+String? sharingSaid(SharingState? standing, {required bool offering}) =>
+    switch (standing) {
+      null || Announcing() || Silencing() => null,
+      SharingFailed() =>
+        offering
+            ? 'Shared, but this device could not announce it.'
+            : 'Withdrawn, but the network could not be told.',
+    };
+
 /// The three ways a source goes unreached, worded nowhere else (ADR 22).
 String _because(UnreachableReason why) => switch (why) {
   UnreachableReason.offline => 'this device is offline.',

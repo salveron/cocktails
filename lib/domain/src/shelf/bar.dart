@@ -81,6 +81,10 @@ final class Bar {
 
   bool get isOwned => mode == BarMode.owner;
 
+  /// Whether this bar is shared by [via] right now (FR-BAR-6) — one offer per
+  /// transport, so this is the whole of the question.
+  bool offeredBy(Transport via) => offers.any((offer) => offer.via == via);
+
   /// The one rebuild behind [copyWith], [refreshedAt] and [summarised]: each
   /// restates only the field it means to change, id and mode never among
   /// them — a bar is the same bar, and whose it is arrives with it.

@@ -1,4 +1,5 @@
 import 'package:cocktails/data/data.dart';
+import 'package:cocktails/state/state.dart';
 import 'package:cocktails/domain/domain.dart';
 import 'package:cocktails/ui/screens/shopping_settings_screen.dart';
 import 'package:cocktails/ui/screens/tags_screen.dart';
@@ -43,6 +44,38 @@ void main() {
       // Import acts too: what it opens is the system's picker, and where it
       // goes afterwards depends on what came back.
       expect(chevronOn('Import'), findsNothing);
+    });
+  });
+
+  /// FR-BAR-6: the room is an owner's, and it is a row rather than a shape
+  /// only where this build has a way to share at all (ADR 22).
+  group('the sharing row', () {
+    testWidgets('opens the room on the bar in hand', (tester) async {
+      await pumpScreen(tester, const SettingsScreen());
+      await tap(tester, find.text('Share'));
+      expect(find.widgetWithText(AppBar, 'Share'), findsOneWidget);
+      expect(find.text('Over the LAN'), findsOneWidget);
+    });
+
+    /// Not this device's to share, so it is absent rather than dimmed — the
+    /// rule every other thing a guest bar cannot do already keeps (FR-BAR-4).
+    testWidgets('is absent on a guest bar', (tester) async {
+      await pumpScreen(
+        tester,
+        const SettingsScreen(),
+        store: MemoryBarStore.of(testGuestBar(), smallCollection),
+      );
+      expect(find.text('Share'), findsNothing);
+      expect(find.text('Change bar'), findsOneWidget);
+    });
+
+    testWidgets('is absent where nothing in this build shares', (tester) async {
+      await pumpScreen(
+        tester,
+        const SettingsScreen(),
+        overrides: [offeringsProvider.overrideWithValue(const {})],
+      );
+      expect(find.text('Share'), findsNothing);
     });
   });
 

@@ -50,7 +50,7 @@ extension ShelfEdits on Shelf {
   /// one already offered changes nothing: one offer per transport is coherence.
   Shelf offering(String id, Transport via) {
     final bar = _sharable(id);
-    if (bar == null || bar.offers.any((offer) => offer.via == via)) return this;
+    if (bar == null || bar.offeredBy(via)) return this;
     return withBar(
       bar.copyWith(offers: [...bar.offers, (via: via, guests: const [])]),
     );

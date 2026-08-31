@@ -198,9 +198,11 @@ offer or withdraw while a file was the only way a bar travelled.
   name to announce under at last, `offeringsProvider` carrying the LAN adapter — `exportOf` for the
   bytes — so what the index says is offered is announced again at startup (FR-BAR-6/8, NFR-5).
   Depends: M46.
-- [ ] **M47** — Settings opens on Sharing. Delivers: the room a bar is shared from
-  ([ui-design.md](ui-design.md#sharing)), read from either side — an owner's ways out, a guest's way
-  in (FR-BAR-6/7). Depends: M46a.
+- [x] **M47** — Settings opens on Sharing. Delivers: the room an owned bar is shared from
+  ([ui-design.md](ui-design.md#sharing)) — the LAN switch, and above it the name this device is
+  announced under, locked while anything is; a failure spoken once and left nowhere, the record
+  having moved first (FR-BAR-6). Absent on a guest bar, whose own way in lands with M51.
+  Depends: M46a.
 - [ ] **M48** — Any bar is shared from the list. Delivers: the bars card's ⋮ reaching that same room
   for a bar not in hand, and the card marking one that is shared
   ([ui-design.md](ui-design.md#bars), FR-BAR-6). Depends: M47.
@@ -213,8 +215,9 @@ offer or withdraw while a file was the only way a bar travelled.
   ([ui-design.md](ui-design.md#new-bar)), bars grouped under the device offering them and told apart
   by id (FR-BAR-1/8). Depends: M49.
 - [ ] **M51** — A guest bar refreshes from wherever the reader points it. Delivers: `resourced` on
-  `ShelfEdits` and the Sharing room's guest row becoming changeable, so a bar added from a file
-  refreshes from a device found nearby and back again (FR-BAR-5). Depends: M50.
+  `ShelfEdits` and the Sharing room opening on a guest bar for the first time — where it refreshes
+  from, and the reader's to point elsewhere — so a bar added from a file refreshes from a device
+  found nearby and back again (FR-BAR-5). Depends: M50.
 
 ## Phase 12 — A bar travels over the cloud
 
