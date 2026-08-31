@@ -212,10 +212,16 @@ offer or withdraw while a file was the only way a bar travelled.
   and the three unreachable readings mapped onto where the ask stopped (FR-BAR-5/8,
   [ADR 22](adr/22-a-bar-travels-behind-one-seam.md)); one adapter now answering both halves, and
   `barChannelContract` run over it across a real loopback round trip. Depends: M47.
-- [ ] **M50** — A guest finds one nearby. Delivers: `BarFinder` and the `Found` entry
-  ([ADR 22](adr/22-a-bar-travels-behind-one-seam.md)), **From LAN** beside **From import**
-  ([ui-design.md](ui-design.md#new-bar)), bars grouped under the device offering them and told apart
-  by id (FR-BAR-1/8). Depends: M49.
+- [x] **M50** — A guest finds one nearby. Delivers: `BarFinder` and the `Found` entry
+  ([ADR 22](adr/22-a-bar-travels-behind-one-seam.md)), **From LAN** beside **From import** and the
+  dialog behind it — one browse, its answers grouped under the device offering them, the pick agreed
+  to before anything is fetched ([ui-design.md](ui-design.md#new-bar)); `reach` on the controller for
+  the add's own fetch, and the source kept where the guest road takes it (FR-BAR-1/5/8).
+  Depends: M49.
+- [ ] **M50a** — One name, one owned bar. Delivers: a name unique among the bars a device owns —
+  guest bars unaffected, two readers' "Home bar" still standing side by side — refused on the new-bar
+  and rename forms where the accident is made, so two identical cards can never reach a guest's
+  picker; FR-BAR-1 gains the clause and `validateShelf` the rule. Depends: M50.
 - [ ] **M51** — A guest bar refreshes from wherever the reader points it. Delivers: `resourced` on
   `ShelfEdits` and the Sharing room opening on a guest bar for the first time — where it refreshes
   from, and the reader's to point elsewhere — so a bar added from a file refreshes from a device

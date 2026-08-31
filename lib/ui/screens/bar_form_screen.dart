@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../wording.dart';
 import '../widgets/cards/bar_holdings.dart';
+import '../widgets/dialogs/nearby_dialog.dart';
 import '../widgets/forms/editor_form.dart';
 import '../widgets/forms/form_fields.dart';
 import '../widgets/notices/failures.dart';
@@ -60,9 +61,14 @@ class BarFormScreen extends ConsumerStatefulWidget {
 class _BarFormScreenState extends ConsumerState<BarFormScreen> {
   final _name = TextEditingController();
 
-  /// The last file picked and what it turned out to be, or null while none has
+  /// The last bar picked and what it turned out to be, or null while none has
   /// been: an empty bar is what Save founds until one is.
   ImportReview? _picked;
+
+  /// Where what is in hand came from, which is what a guest bar keeps and asks
+  /// again (FR-BAR-5). A file names no sender, so it is the road's own default
+  /// until a bar arrives off the network.
+  BarSource _source = fileSource;
 
   _Road _road = _Road.own;
 
@@ -126,6 +132,7 @@ class _BarFormScreenState extends ConsumerState<BarFormScreen> {
   Future<void> _pick(String open) async {
     final picked = await pickBar(context, ref);
     if (picked == null || !mounted) return;
+    _source = fileSource;
     // A file that will not read leaves the roads where the screen opened them:
     // there is nothing to be a guest of, and nothing to put in place of a
     // collection.
@@ -137,8 +144,28 @@ class _BarFormScreenState extends ConsumerState<BarFormScreen> {
   void _dropFile(String open) {
     setState(() {
       _picked = null;
+      _source = fileSource;
       _road = _Road.own;
     });
+    _suggest(open);
+  }
+
+  /// FR-BAR-8: a bar found nearby, picked and then fetched — the pick is agreed
+  /// to in the dialog and what it holds is read here, which is the one road a
+  /// file already takes. A source that could not be reached leaves the form
+  /// exactly as it stood and says why: nothing arrived to show.
+  Future<void> _findNearby(String open) async {
+    final found = await promptForNearby(context);
+    if (found == null || !mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    final arrived = await ref.read(shelfProvider.notifier).reach(found.source);
+    if (!mounted) return;
+    final why = arrived.why;
+    if (why != null) return say(messenger, nearbySaid(why, found.name));
+    final review = arrived.review;
+    if (review == null) return;
+    _source = found.source;
+    setState(() => _picked = review);
     _suggest(open);
   }
 
@@ -154,7 +181,7 @@ class _BarFormScreenState extends ConsumerState<BarFormScreen> {
     final shelf = ref.read(shelfProvider.notifier);
     return switch (road) {
       _Road.own => shelf.addOwnedBar(name, from: arriving),
-      _Road.guest => shelf.addGuestBar(name, fileSource, arriving!),
+      _Road.guest => shelf.addGuestBar(name, _source, arriving!),
       _Road.replace => shelf.replaceOpen(name, arriving!),
     };
   }
@@ -212,14 +239,17 @@ class _BarFormScreenState extends ConsumerState<BarFormScreen> {
         const SizedBox(height: 16),
         _Source(
           picked: picked != null,
+          // Importing is a file already in hand, so the road that would replace
+          // it with something off the network is not one this entry offers.
+          onFind: _importing ? null : () => unawaited(_findNearby(open)),
           onPick: () => unawaited(_pick(open)),
           // An import has nothing to leave empty: the file is what it is for.
           onDrop: _importing ? null : () => _dropFile(open),
         ),
         if (picked == null)
           const FieldNote(
-            'Empty unless a file fills it — an export another owner sent, or '
-            'one this device made itself.',
+            'Empty unless something fills it — an export another owner sent, a '
+            'bar shared nearby, or one this device made itself.',
           ),
         if (picked != null && arriving == null)
           _RefusedFileNote(picked: picked, importing: _importing, open: open),
@@ -306,33 +336,51 @@ class _ArrivedContent extends StatelessWidget {
   );
 }
 
-/// Where the bar's contents come from — the one file transport today, and where
-/// finding one nearby will stand (FR-BAR-8). The clear beside it is the way back
-/// to an empty bar, and the way out of a file that would not read; it is absent
-/// where there is no such way back.
+/// The two roads a bar's contents arrive by — a file the reader hands over
+/// (FR-BAR-7) and one shared on the network (FR-BAR-8). Two buttons rather than
+/// a choice: neither is a state the form holds, and each leaves the screen and
+/// comes back with contents. Beside another road each keeps its own name,
+/// since either may replace what the other brought; standing alone, the file
+/// button still says it is the way to a better file once one is in hand. The
+/// clear is the way back to an empty bar, absent where there is no such way.
 class _Source extends StatelessWidget {
   const _Source({
     required this.picked,
+    required this.onFind,
     required this.onPick,
     required this.onDrop,
   });
 
   final bool picked;
+  final VoidCallback? onFind;
   final VoidCallback onPick;
   final VoidCallback? onDrop;
 
   @override
   Widget build(BuildContext context) {
     final onDrop = this.onDrop;
+    final onFind = this.onFind;
     return Row(
       children: [
         Expanded(
           child: FilledButton.tonalIcon(
             onPressed: onPick,
             icon: const Icon(Icons.file_open_outlined),
-            label: Text(picked ? 'Choose another file' : 'From import'),
+            label: Text(
+              picked && onFind == null ? 'Choose another file' : 'From import',
+            ),
           ),
         ),
+        if (onFind != null) ...[
+          const SizedBox(width: 8),
+          Expanded(
+            child: FilledButton.tonalIcon(
+              onPressed: onFind,
+              icon: const Icon(Icons.wifi_tethering),
+              label: const Text('From LAN'),
+            ),
+          ),
+        ],
         if (picked && onDrop != null) ...[
           const SizedBox(width: 8),
           IconButton(

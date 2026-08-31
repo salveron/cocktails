@@ -36,6 +36,21 @@ final channelsProvider = Provider<Map<Transport, BarChannel>>(
 /// What a file-picked bar is kept under: no screen builds an address (ADR 22).
 const fileSource = FileBarChannel.source;
 
+/// What is offered nearby, in one ask (FR-BAR-8) — a screen's way to the
+/// finders, which are data's own and only the LAN has (ADR 22, ADR 04). A
+/// build with none answers nothing found, which is what a reader meets either
+/// way.
+final nearbyProvider = Provider<Future<List<Found>> Function()>(
+  (ref) => () async {
+    final finder = ref.read(findersProvider)[Transport.lan];
+    return finder == null ? const <Found>[] : finder.nearby();
+  },
+);
+
+final findersProvider = Provider<Map<Transport, BarFinder>>(
+  (ref) => Map.unmodifiable({Transport.lan: ref.watch(_lanProvider)}),
+);
+
 /// The owner's half, which only some ways have: a file is handed over rather
 /// than offered. An offer over a way absent here stands on the record and is
 /// announced by nothing.

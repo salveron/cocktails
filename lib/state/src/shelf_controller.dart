@@ -37,6 +37,11 @@ final class LoadIssuesController extends Notifier<List<String>> {
 /// What a picked file turned out to be (FR-DAT-4). Never both.
 typedef ImportReview = ({BarContent? bar, List<String> issues});
 
+/// What reaching a source turned up (FR-BAR-5/8): a bar to be agreed to or
+/// refused, or the reason nothing arrived at all — never both. The reason is
+/// [UnreachableReason] rather than words, the wording staying `ui/`'s (ADR 22).
+typedef Arrival = ({ImportReview? review, UnreachableReason? why});
+
 final class ShelfController extends AsyncNotifier<Shelf> {
   /// Reads the index and opens the bar it names (FR-DAT-4).
   @override
@@ -184,6 +189,31 @@ final class ShelfController extends AsyncNotifier<Shelf> {
     Rejected(:final issues) => (bar: null, issues: _described(issues)),
     Empty() || Unreachable() => (bar: null, issues: const <String>[]),
   };
+
+  /// FR-BAR-8: [source] asked once, for a bar that does not exist here yet —
+  /// the add's own fetch, where [refresh] is the same ask for one that does.
+  /// Nothing is touched: what came back is agreed to on the form, as a picked
+  /// file is.
+  Future<Arrival> reach(BarSource source) async {
+    final channel = ref.read(channelsProvider)[source.via];
+    final outcome = channel == null
+        ? Unreachable<BarContent>(UnreachableReason.notFound)
+        : await channel.fetch(source);
+    return switch (outcome) {
+      Ok(:final value) => (
+        review: (bar: value, issues: const <String>[]),
+        why: null,
+      ),
+      Rejected(:final issues) => (
+        review: (bar: null, issues: _described(issues)),
+        why: null,
+      ),
+      Unreachable(:final why) => (review: null, why: why),
+      // A fetch answers neither, and a picker dismissed is not a road this
+      // reaches: nothing was asked, so nothing is reported.
+      null || Empty() => (review: null, why: null),
+    };
+  }
 
   /// Replaces the open bar's contents with a picked file's, copying what stood
   /// first (FR-DAT-3). Owned bars only — the same file is *added* as a guest bar

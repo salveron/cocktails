@@ -460,8 +460,8 @@ is resident (ADR 20), so the composition root supplies `exportOf` — a load and
 named rather than inlined so it is provable without a socket. The name it announces under is a 
 supplier rather than a value, read afresh at each announcement, which is what lets a rename take 
 without rebuilding a live adapter ([ADR 28](adr/28-the-device-is-named-by-its-reader.md)). 
-`BarFinder.nearby` answers `Found` entries — the source to keep and what to call it — and is asked 
-only while a reader is looking. The file channel implements `BarChannel` alone: its `fetch` is the picker's text decoded, 
+`nearbyProvider` is how a screen asks, the finders themselves 
+being data's own; a browse runs while a reader is looking and no longer. The file channel implements `BarChannel` alone: its `fetch` is the picker's text decoded, 
 so a refresh is the reader handing over a newer file and there is nothing to offer or withdraw 
 (FR-BAR-7). No cloud channel exists yet and the registry has no entry for that transport, which is 
 how FR-BAR-9 waits without blocking anything.
@@ -472,6 +472,9 @@ how FR-BAR-9 waits without blocking anything.
 the store with the file adapter, tests with `MemoryBarStore` or a map of fakes. A transport absent 
 from the map has no adapter in this build, which is what a `refresh` meets as `Unreachable`. 
 `clockProvider` stamps when a refresh landed (FR-BAR-5) so the domain needs no clock of its own.
+`ShelfController.reach` is the add's own fetch — the same ask as `refresh` for a bar that does not
+exist here yet — answering an `Arrival`: a review to agree to or refuse, or the reason nothing came
+at all, worded in `ui/`.
 
 `platformNameProvider` is what the phone calls itself, overridden at the composition root with what
 `platformDeviceName()` answered and read through `deviceNameProvider`, which is the one place the

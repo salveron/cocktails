@@ -1,7 +1,8 @@
-/// The LAN transport's owner half (FR-BAR-6, ADR 22): what comes up with the
-/// first offer, what stays up between offers, and what goes down with the last
-/// withdrawal. The server underneath is the real one; only the announcement is
-/// stood in for, being the half no test can reach without a device.
+/// The LAN transport, both halves (ADR 22): what comes up with the first offer
+/// and down with the last (FR-BAR-6), and what a guest finds and fetches over
+/// the same wire (FR-BAR-5/8). The server underneath is the real one on the
+/// loopback; only the crossings no test can make without a device — announcing,
+/// browsing, and being on a network at all — are stood in for.
 library;
 
 import 'package:cocktails/data/data.dart';
@@ -298,6 +299,41 @@ void main() {
           reason: 'at: "$at"',
         );
       }
+    });
+
+    test('every bar every device offers comes back from one browse', () async {
+      final over = await nearby(
+        {'a1': encoded(Collection()), 'b2': encoded(Collection())},
+        offering: const {'a1': 'Home bar', 'b2': 'Beach bar'},
+      );
+      final found = await over.guest.nearby();
+      expect(
+        found.map((bar) => bar.name),
+        unorderedEquals(['Home bar', 'Beach bar']),
+      );
+      // What a browse comes back with is what a fetch is asked with after it.
+      expect(found.every((bar) => bar.source.from == _instance), isTrue);
+      expect(await over.guest.fetch(found.first.source), isA<Ok<BarContent>>());
+    });
+
+    test('a browse turning up nobody finds nothing', () async {
+      final over = await nearby({'a1': encoded(Collection())});
+      over.network.services.clear();
+      expect(await over.guest.nearby(), isEmpty);
+    });
+
+    /// A device that will not say what it offers is left out rather than named
+    /// with nothing under it: there is nothing a reader could do with it.
+    test('a device that will not answer is left out', () async {
+      final over = await nearby({'a1': encoded(Collection())});
+      over.network.offers('gone', 1);
+      expect(await over.guest.nearby(), hasLength(1));
+    });
+
+    test('a browse that will not run finds nothing, never throws', () async {
+      final over = await nearby({'a1': encoded(Collection())});
+      over.network.refusing = Exception('no multicast');
+      expect(await over.guest.nearby(), isEmpty);
     });
 
     test(

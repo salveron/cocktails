@@ -17,8 +17,9 @@ import 'lan_discovery.dart';
 import 'sourced_issue.dart';
 import 'yaml_codec.dart';
 import 'yaml_offerings_reader.dart';
+import 'yaml_writer.dart' show Offering;
 
-final class LanBarChannel implements BarChannel, BarOfferings {
+final class LanBarChannel implements BarChannel, BarFinder, BarOfferings {
   final Future<String?> Function(String barId) _bytesOf;
   final String Function() _deviceName;
   final LanAnnouncer _announcer;
@@ -72,6 +73,32 @@ final class LanBarChannel implements BarChannel, BarOfferings {
     final document = await _read(service, '/${offered.path}');
     if (document == null) return _unreached(UnreachableReason.withdrawn);
     return const YamlCodec().decode(document);
+  }
+
+  /// FR-BAR-8: every bar every device nearby says it offers, asked once and
+  /// answered from one browse. A device that will not say is left out rather
+  /// than named with nothing under it — there is nothing a reader could do
+  /// with it, and a browse turning up no one is the same news either way.
+  @override
+  Future<List<Found>> nearby() async {
+    final List<LanService> services;
+    try {
+      services = await _browser();
+    } on Exception {
+      return const [];
+    }
+    return [for (final service in services) ...await _offeredBy(service)];
+  }
+
+  Future<List<Found>> _offeredBy(LanService service) async {
+    final listed = readOfferings(await _read(service, lanListPath) ?? '');
+    return [
+      for (final offered in listed?.values ?? const <Offering>[])
+        (
+          source: sourceFor(barId: offered.id, instance: service.name),
+          name: offered.name,
+        ),
+    ];
   }
 
   /// The two halves [BarSource.at] carries, or null where it carries neither —

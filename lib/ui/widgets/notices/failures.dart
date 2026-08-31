@@ -125,6 +125,11 @@ String? sharingSaid(SharingState? standing, {required bool offering}) =>
             : 'Withdrawn, but the network could not be told.',
     };
 
+/// Why a bar found nearby did not arrive (FR-BAR-8) — the add's reading of the
+/// same three, where [refreshSaid] carries the refresh's.
+String nearbySaid(UnreachableReason why, String bar) =>
+    '"$bar" could not be added: ${_because(why)}';
+
 /// The three ways a source goes unreached, worded nowhere else (ADR 22).
 String _because(UnreachableReason why) => switch (why) {
   UnreachableReason.offline => 'this device is offline.',

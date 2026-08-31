@@ -1,4 +1,6 @@
-/// How an owner shares a bar, and why a guest's source might not answer.
+/// How an owner shares a bar, why a guest's source might not answer, and what a
+/// browse turns up — all here rather than beside the channel, `ui/` reading the
+/// domain and no further down (ADR-22).
 library;
 
 import '../tokens.dart';
@@ -18,13 +20,16 @@ enum Transport implements Tokened {
 }
 
 /// Why a source did not answer (FR-BAR-5). Closed, so an adapter maps its own
-/// errors onto it; sits here, not beside the channel, since `ui/` reads the
-/// domain rather than data/ (ADR-22).
+/// errors onto it and the wording stays the UI's.
 enum UnreachableReason { offline, notFound, withdrawn }
 
 /// One way an owner shares a bar, naming its guests where the transport can
 /// name them and empty where it cannot (FR-BAR-6).
 typedef Offer = ({Transport via, List<String> guests});
+
+/// One bar a browse turned up (FR-BAR-8): where to keep it from, and what its
+/// owner calls it — the device offering it being [BarSource.from]'s to say.
+typedef Found = ({BarSource source, String name});
 
 /// Where a guest bar refreshes from (FR-BAR-5). [at] is the transport's own
 /// address, opaque above data/; [from] is what to call it where a source reads.

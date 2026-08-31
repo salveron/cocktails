@@ -12,6 +12,7 @@ class EntryCard extends StatelessWidget {
     this.trailing,
     this.body,
     this.onTap,
+    this.selected,
     this.margin = _listMargin,
     super.key,
   });
@@ -27,6 +28,11 @@ class EntryCard extends StatelessWidget {
 
   final Widget? trailing;
   final VoidCallback? onTap;
+
+  /// If true/false, wear the ring a picked tag chip wears; if null, no ring —
+  /// the card is not one of a choice (docs/ui-design.md#tag-and-stock-colours).
+  final bool? selected;
+
   final EdgeInsets margin;
 
   @override
@@ -38,10 +44,22 @@ class EntryCard extends StatelessWidget {
       trailing: trailing,
       onTap: onTap,
     );
+    final selected = this.selected;
+    final scheme = Theme.of(context).colorScheme;
     return Card.filled(
       margin: margin,
-      color: Theme.of(context).colorScheme.surfaceContainer,
+      color: scheme.surfaceContainer,
       clipBehavior: Clip.antiAlias,
+      // Transparent where it is a choice not made, so picking one moves
+      // nothing on the screen but the colour.
+      shape: selected == null
+          ? null
+          : RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: BorderSide(
+                color: selected ? scheme.primary : Colors.transparent,
+              ),
+            ),
       child: body == null
           ? tile
           : Column(

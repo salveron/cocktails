@@ -7,6 +7,10 @@ import 'package:cocktails/domain/domain.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:cocktails/data/data.dart';
+import 'package:cocktails/state/state.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../../support/ui_finders.dart';
 import '../../support/ui_fixtures.dart';
 import '../../support/ui_harness.dart';
@@ -23,9 +27,10 @@ void main() {
   Future<MemoryBarStore> openForm(
     WidgetTester tester, {
     Future<String?> Function()? picked,
+    List<Override> overrides = const [],
   }) async {
     final store = MemoryBarStore.of(testBar(), smallCollection);
-    await pumpApp(tester, store: store, picker: picked);
+    await pumpApp(tester, store: store, picker: picked, overrides: overrides);
     await tap(tester, find.byTooltip('Settings'));
     await tap(tester, find.text('Change bar'));
     await tap(tester, find.byTooltip('New bar'));
@@ -249,6 +254,118 @@ void main() {
       // taken: nothing was replaced.
       expect(store.savedBars[testBar().id], isNull);
       expect(store.snapshots, isEmpty);
+    });
+  });
+
+  group('a bar found nearby (FR-BAR-8)', () {
+    const ada = BarSource(via: Transport.lan, at: 'ada01/Ada', from: 'Ada');
+
+    /// The form over a network offering [found], the LAN channel answering
+    /// [fetched] when one is chosen — the two seams a road over the wire needs
+    /// and the whole of what a widget test stands in for (ADR 22).
+    Future<MemoryBarStore> withNearby(
+      WidgetTester tester, {
+      List<Found> found = const [(source: ada, name: "Ada's bar")],
+      Outcome<BarContent>? fetched,
+    }) async {
+      final store = await openForm(
+        tester,
+        overrides: [
+          findersProvider.overrideWithValue({
+            Transport.lan: MemoryFinder(found),
+          }),
+          channelsProvider.overrideWithValue({
+            Transport.lan: MemoryChannel(
+              fetched ??
+                  Ok((
+                    name: "Ada's bar",
+                    display: FixedUnit.part,
+                    collection: recipeCollection,
+                  )),
+            ),
+          }),
+        ],
+      );
+      await tap(tester, find.text('From LAN'));
+      return store;
+    }
+
+    /// The pick is agreed to in the dialog and what it holds is read here —
+    /// which is the one road a picked file already takes.
+    testWidgets('a bar chosen nearby is read before it is agreed to', (
+      tester,
+    ) async {
+      await withNearby(tester);
+      await tap(tester, find.text("Ada's bar"));
+      await tap(tester, find.text('Choose'));
+      expect(find.text('3 recipes'), findsOneWidget);
+      expect(find.text('Mode'), findsOneWidget);
+      // The owner's own name for it is where the field starts (ADR 21).
+      expect(
+        tester.widget<TextField>(barNameField).controller?.text,
+        "Ada's bar",
+      );
+    });
+
+    testWidgets('the guest road keeps the source it came from', (tester) async {
+      final store = await withNearby(tester);
+      await tap(tester, find.text("Ada's bar"));
+      await tap(tester, find.text('Choose'));
+      await tap(tester, find.text('Guest'));
+      await tap(tester, find.text('Save'));
+      final made = founded(store);
+      expect(made.bar.mode, BarMode.guest);
+      expect(made.bar.source, ada);
+      expect(made.collection, recipeCollection);
+    });
+
+    /// FR-BAR-2: the same arrival may simply be copied, with nothing linking
+    /// it back — the road a file already offers.
+    testWidgets('the owned road keeps no source at all', (tester) async {
+      final store = await withNearby(tester);
+      await tap(tester, find.text("Ada's bar"));
+      await tap(tester, find.text('Choose'));
+      await tap(tester, find.text('Save'));
+      expect(founded(store).bar.source, isNull);
+      expect(founded(store).bar.mode, BarMode.owner);
+    });
+
+    /// Nothing arrived, so there is nothing to show and nothing has changed:
+    /// the form stands as it was and says why (FR-BAR-5).
+    testWidgets('a source that could not be reached leaves the form alone', (
+      tester,
+    ) async {
+      await withNearby(
+        tester,
+        fetched: const Unreachable(UnreachableReason.notFound),
+      );
+      await tap(tester, find.text("Ada's bar"));
+      await tap(tester, find.text('Choose'));
+      expect(find.textContaining('could not be added'), findsOneWidget);
+      expect(find.text('Mode'), findsNothing);
+    });
+
+    /// A refused document is the same news whichever road carried it.
+    testWidgets('a bar the rules refuse shows what and where', (tester) async {
+      await withNearby(tester, fetched: const YamlCodec().decode(damagedFile));
+      await tap(tester, find.text("Ada's bar"));
+      await tap(tester, find.text('Choose'));
+      expect(find.text('This file cannot be read'), findsOneWidget);
+      expect(find.text('Mode'), findsNothing);
+    });
+
+    /// An import opens on a file already in hand, so the road that would put
+    /// something off the network in its place is not one that entry offers.
+    testWidgets('importing offers the file road alone', (tester) async {
+      await pumpApp(
+        tester,
+        store: MemoryBarStore.of(testBar(), smallCollection),
+        picker: () async => sharedFile,
+      );
+      await tap(tester, find.byTooltip('Settings'));
+      await tap(tester, find.text('Import'));
+      expect(find.text('Choose another file'), findsOneWidget);
+      expect(find.text('From LAN'), findsNothing);
     });
   });
 }

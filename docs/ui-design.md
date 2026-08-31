@@ -166,10 +166,38 @@ roads **Owned | Guest**, importing starts with the file already picked and the r
 name field autofocuses only where the reader has typing to do — on the import entry the screen is 
 there to be read, and a keyboard over it argues with that.
 
-- **From import is a button, not a row**: the form is not a menu, and the pick is the one thing on 
-  it that leaves the screen. It is where **Find nearby** will stand when the LAN transport lands 
-  (FR-BAR-8). It carries no heading of its own: the button says what it does, the note under it says 
-  what standing without one means, and a third voice over both would only repeat them.
+- **The roads in are buttons, not rows**: the form is not a menu, and a pick is the one thing on it 
+  that leaves the screen. Two of them — **From import** for a file the reader hands over (FR-BAR-7) 
+  and **From LAN** for one shared on the network (FR-BAR-8) — rather than a segmented choice, since 
+  neither is a state the form holds and each comes back with contents. They carry no heading of 
+  their own: the buttons say what they do, the note under them says what standing without one means, 
+  and a third voice over both would only repeat them.
+- **Beside each other the two keep their names; alone, the file one changes.** Either road may 
+  replace what the other brought, so neither reads as "another". On the import entry, where there is 
+  no LAN road at all — it opens on a file already picked — the file button still becomes **Choose 
+  another file** once one is in hand, which is the way out of a file that would not read and the way 
+  to a better one. The clear beside them is the single way back to an empty bar, absent where there 
+  is no such way back.
+- **A bar nearby is picked in a dialog and fetched afterwards.** The dialog browses once on opening, 
+  lists what it found under the device offering it, rings the one picked the way a picked tag chip 
+  is ringed, and closes on **Choose**. Nothing is fetched until it returns: the reader agrees to a 
+  *bar*, and what it holds is read on the form, which is where a file is agreed to as well. A dialog 
+  rather than a screen because the wire carries three fields per bar and no more 
+  ([ADR 22](adr/22-a-bar-travels-behind-one-seam.md)) — a name is not a screenful, and the form 
+  stays one push deep.
+- **The device is what tells two bars of one name apart.** The wire carries an id, but a reader has 
+  never been shown one and names are labels rather than identity (FR-BAR-1) — so the grouping does 
+  the telling, and two owned bars of one name on one device is an accident to be refused where it is 
+  made rather than explained here.
+- **Nothing nearby says why, and offers another look.** Both sides have to be on the network at 
+  once, with the other reader sharing and their app open — the one thing a reader can act on, and 
+  the same fact the [Sharing](#sharing) room warns the owner about from the other side.
+- **What arrives nearby reads exactly as a picked file does** — the same Contents cards, the same 
+  **Owned | Guest** choice, the same Save, the owner's own name in the field to start from. It is 
+  the same bar arriving by another road, and two screens asking the same three questions is how the 
+  two answers drift. **Guest keeps the source it came from** so the bar refreshes from that device 
+  (FR-BAR-5); Owned keeps none, being a copy with nothing linking it back. A source that could not 
+  be reached leaves the form exactly as it stood and says why: nothing arrived to show.
 - **A file picked in is shown before it is agreed to** — the cards, the counts and the refusals of 
   [Import](#data), which is not a resemblance but the same screen. A file that will not read shows 
   its issues and offers no road: founding an empty bar in its place would be a lie about what became 

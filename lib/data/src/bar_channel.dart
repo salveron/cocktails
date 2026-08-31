@@ -12,6 +12,15 @@ abstract interface class BarChannel {
   Future<Outcome<BarContent>?> fetch(BarSource source);
 }
 
+/// The guest's half of finding, which only the LAN has: a file arrives by hand
+/// and the cloud is asked by name. Asked while a reader looks, never left
+/// running (ADR 22).
+abstract interface class BarFinder {
+  Transport get transport;
+
+  Future<List<Found>> nearby();
+}
+
 /// The owner's half, which only some transports have (FR-BAR-6): a file is
 /// handed over rather than offered, so there is nothing to withdraw after it.
 abstract interface class BarOfferings {

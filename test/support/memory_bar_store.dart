@@ -1,6 +1,6 @@
 /// The doubles every suite runs over to stay device-free: the store a bar is
-/// kept in, and the owner's half it is offered through
-/// (docs/components.md#testing).
+/// kept in, the owner's half it is offered through, and the browse a guest
+/// finds one by (docs/components.md#testing).
 library;
 
 import 'dart:async';
@@ -138,4 +138,36 @@ final class MemoryOfferings implements BarOfferings {
     out.add(answering);
     return answering.future;
   }
+}
+
+/// A browse answering whatever a test put nearby, so a screen that looks for
+/// bars never needs a network.
+final class MemoryFinder implements BarFinder {
+  @override
+  Transport get transport => Transport.lan;
+
+  final List<Found> found;
+  var looks = 0;
+
+  MemoryFinder([this.found = const []]);
+
+  @override
+  Future<List<Found>> nearby() async {
+    looks++;
+    return found;
+  }
+}
+
+/// A channel answering one fixed outcome, for a screen that asks a source once
+/// and reads what came back.
+final class MemoryChannel implements BarChannel {
+  @override
+  final Transport transport;
+
+  final Outcome<BarContent>? answer;
+
+  const MemoryChannel(this.answer, {this.transport = Transport.lan});
+
+  @override
+  Future<Outcome<BarContent>?> fetch(BarSource source) async => answer;
 }
