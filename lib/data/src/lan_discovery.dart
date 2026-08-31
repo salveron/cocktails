@@ -4,6 +4,8 @@
 /// way out is `nsd` behind these same three operations.
 library;
 
+import 'dart:io';
+
 import 'package:bonsoir/bonsoir.dart';
 
 /// What every device sharing a bar answers to.
@@ -43,6 +45,26 @@ abstract interface class LanAnnouncement {
 /// the platform crosses here and nowhere above it (ADR 18).
 typedef LanAnnouncer =
     Future<LanAnnouncement> Function({required String name, required int port});
+
+/// The other two crossings, seams for the same reason: what devices are out
+/// there, and whether this one is on a network at all.
+typedef LanBrowser = Future<List<LanService>> Function();
+
+typedef LanReach = Future<bool> Function();
+
+/// Whether this device is on a network of its own — the reading that parts
+/// *offline* from an owner who is simply not there (FR-BAR-5, ADR 22). Loopback
+/// is not a network: nothing else can be reached over it.
+Future<bool> onANetwork() async {
+  try {
+    final interfaces = await NetworkInterface.list();
+    return interfaces.any(
+      (interface) => interface.addresses.any((at) => !at.isLoopback),
+    );
+  } on Exception {
+    return false;
+  }
+}
 
 final class _Broadcast implements LanAnnouncement {
   @override

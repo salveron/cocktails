@@ -38,6 +38,28 @@ final class _Announced implements LanAnnouncement {
   Future<void> stop() async => _silence();
 }
 
+/// A browse that answers with whatever the test put on the "network" — the
+/// resolve every fetch does afresh, without one (ADR 22).
+final class _Network {
+  final services = <LanService>[];
+  var reachable = true;
+  Exception? refusing;
+
+  Future<List<LanService>> browse() async {
+    final refused = refusing;
+    if (refused != null) throw refused;
+    return services;
+  }
+
+  Future<bool> reach() async => reachable;
+
+  /// [name] answering on the loopback at [port], which is what a device found
+  /// nearby comes back as once resolved.
+  void offers(String name, int port) => services.add(
+    LanService(name: name, port: port, addresses: ['127.0.0.1']),
+  );
+}
+
 void main() {
   /// A channel over [bars] and an announcer that records rather than announces.
   ({LanBarChannel channel, _Announcer announcer}) channelOver(
@@ -164,4 +186,158 @@ void main() {
     expect(over.announcer.asked, hasLength(2));
     expect(await offeredOn(over.announcer.asked.last.port), hasLength(1));
   });
+
+  /// One device offering and another asking, over the loopback: the owner's
+  /// server is real and only the two crossings a guest cannot make in a test —
+  /// the browse and the question of being on a network at all — are stood in
+  /// for (ADR 22, ADR 27).
+  Future<({LanBarChannel guest, _Network network})> nearby(
+    Map<String, String> bars, {
+    Map<String, String> offering = const {'a1': 'Home bar'},
+  }) async {
+    final owner = channelOver(bars);
+    for (final offered in offering.entries) {
+      await owner.channel.offer(offered.key, offered.value);
+    }
+    final network = _Network()
+      ..offers(_instance, owner.announcer.asked.single.port);
+    final guest = LanBarChannel(
+      bytesOf: (id) async => null,
+      deviceName: () => 'guest',
+      browser: network.browse,
+      reach: network.reach,
+    );
+    return (guest: guest, network: network);
+  }
+
+  UnreachableReason? whyNot(Outcome<BarContent>? outcome) =>
+      outcome is Unreachable<BarContent> ? outcome.why : null;
+
+  group("the guest's half", () {
+    group('channel contract', () {
+      barChannelContract(
+        (answering) => _ContractChannel((source) async {
+          final over = await nearby({'a1': await _catching(answering)});
+          return over.guest.fetch(_sourceFor('a1'));
+        }),
+      );
+    });
+
+    test('a bar offered nearby arrives whole', () async {
+      final document = encoded(Collection(ingredients: [Ingredient('gin')]));
+      final over = await nearby({'a1': document});
+      final outcome = await over.guest.fetch(_sourceFor('a1'));
+      expect(outcome, isA<Ok<BarContent>>());
+      expect(
+        (outcome! as Ok<BarContent>).value.collection.ingredients.single.name,
+        'gin',
+      );
+    });
+
+    /// FR-BAR-5's three readings, told apart by where the ask stopped (ADR 22).
+    test('no network of our own is offline', () async {
+      final over = await nearby({'a1': encoded(Collection())});
+      over.network.reachable = false;
+      expect(
+        whyNot(await over.guest.fetch(_sourceFor('a1'))),
+        UnreachableReason.offline,
+      );
+    });
+
+    test('an instance that will not resolve is not found', () async {
+      final over = await nearby({'a1': encoded(Collection())});
+      expect(
+        whyNot(
+          await over.guest.fetch(
+            LanBarChannel.sourceFor(barId: 'a1', instance: 'someone else'),
+          ),
+        ),
+        UnreachableReason.notFound,
+      );
+    });
+
+    test('a browse that will not run is not found', () async {
+      final over = await nearby({'a1': encoded(Collection())});
+      over.network.refusing = Exception('no multicast');
+      expect(
+        whyNot(await over.guest.fetch(_sourceFor('a1'))),
+        UnreachableReason.notFound,
+      );
+    });
+
+    /// The instance answers and its list no longer names the bar: an owner who
+    /// stopped sharing, which is exactly what a vanished instance is not.
+    test('a bar the list no longer names is withdrawn', () async {
+      final over = await nearby({'a1': encoded(Collection())});
+      expect(
+        whyNot(await over.guest.fetch(_sourceFor('b2'))),
+        UnreachableReason.withdrawn,
+      );
+    });
+
+    /// The list names it and the path answers nothing — a rotated path, or a
+    /// bar the owner's store can no longer read. Neither is *broken*.
+    test('a path that answers nothing is withdrawn too', () async {
+      final over = await nearby(const {}, offering: const {'a1': 'Home bar'});
+      expect(
+        whyNot(await over.guest.fetch(_sourceFor('a1'))),
+        UnreachableReason.withdrawn,
+      );
+    });
+
+    test('a source carrying no instance is not found', () async {
+      final over = await nearby({'a1': encoded(Collection())});
+      for (final at in ['', 'a1', 'a1/', '/ZEN']) {
+        expect(
+          whyNot(
+            await over.guest.fetch(
+              BarSource(via: Transport.lan, at: at, from: 'ZEN'),
+            ),
+          ),
+          UnreachableReason.notFound,
+          reason: 'at: "$at"',
+        );
+      }
+    });
+
+    test(
+      'the source it mints keeps the instance and the id, never an address',
+      () {
+        final source = LanBarChannel.sourceFor(barId: 'a1', instance: 'ZEN');
+        expect(source.via, Transport.lan);
+        expect(source.at, 'a1/ZEN');
+        expect(source.from, 'ZEN');
+      },
+    );
+  });
+}
+
+const _instance = 'ZEN';
+
+BarSource _sourceFor(String barId) =>
+    LanBarChannel.sourceFor(barId: barId, instance: _instance);
+
+/// The contract hands a channel a function answering the document; a served
+/// bar whose bytes throw is a 404 rather than an error a guest can read, so
+/// the throw is caught here and the wire reads it as nothing to serve.
+Future<String> _catching(Future<String?> Function() answering) async {
+  try {
+    return await answering() ?? '';
+  } on Object {
+    return '';
+  }
+}
+
+/// The contract asks for a [BarChannel]; the LAN's fetch needs a device
+/// standing behind it, so this stands one up per ask.
+final class _ContractChannel implements BarChannel {
+  final Future<Outcome<BarContent>?> Function(BarSource source) _fetch;
+
+  const _ContractChannel(this._fetch);
+
+  @override
+  Transport get transport => Transport.lan;
+
+  @override
+  Future<Outcome<BarContent>?> fetch(BarSource source) => _fetch(source);
 }

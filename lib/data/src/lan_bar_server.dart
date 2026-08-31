@@ -10,7 +10,9 @@ import 'dart:math';
 
 import 'yaml_writer.dart';
 
-const _listPath = '/bars';
+/// Where a device answers with what it offers — the wire's own name for it,
+/// read by the guest half as well as written by this one.
+const lanListPath = '/bars';
 
 /// The path is the whole of a shared bar's protection, a bar shared being a bar
 /// given (ADR 22), so it is drawn from secure randomness rather than the seeded
@@ -56,7 +58,7 @@ final class LanBarServer {
   Future<void> _answer(HttpRequest request) async {
     final response = request.response;
     if (request.method != 'GET') return _refuse(response);
-    if (request.uri.path == _listPath) {
+    if (request.uri.path == lanListPath) {
       return _send(response, encodeOfferings(_offered.values.toList()));
     }
     final bytes = await _bytesAt(request.uri.path);

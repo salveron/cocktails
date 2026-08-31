@@ -203,15 +203,17 @@ offer or withdraw while a file was the only way a bar travelled.
   announced under, locked while anything is; a failure spoken once and left nowhere, the record
   having moved first (FR-BAR-6). Absent on a guest bar, whose own way in lands with M51.
   Depends: M46a.
-- [ ] **M48** — Any bar is shared from the list. Delivers: the bars card's ⋮ reaching that same room
+- [ ] **M48** — Any bar is shared from the list. *Deferred past M49–M51 at the human's call: the
+  guest's side lands before the bar list moves.* Delivers: the bars card's ⋮ reaching that same room
   for a bar not in hand, and the card marking one that is shared
   ([ui-design.md](ui-design.md#bars), FR-BAR-6). Depends: M47.
-- [ ] **M49** — A guest refreshes over the LAN. Delivers: the LAN channel's `fetch` — the instance
-  resolved afresh every ask — and the three unreachable readings mapped onto where the ask stopped
-  (FR-BAR-5/8, [ADR 22](adr/22-a-bar-travels-behind-one-seam.md)); `barChannelContract` run over it.
-  Depends: M48.
+- [x] **M49** — A guest refreshes over the LAN. Delivers: the LAN channel's `fetch` — the instance
+  resolved afresh every ask, the offered list read by `readOfferings` behind its own version gate —
+  and the three unreachable readings mapped onto where the ask stopped (FR-BAR-5/8,
+  [ADR 22](adr/22-a-bar-travels-behind-one-seam.md)); one adapter now answering both halves, and
+  `barChannelContract` run over it across a real loopback round trip. Depends: M47.
 - [ ] **M50** — A guest finds one nearby. Delivers: `BarFinder` and the `Found` entry
-  ([ADR 22](adr/22-a-bar-travels-behind-one-seam.md)), **Find nearby** beside **From import**
+  ([ADR 22](adr/22-a-bar-travels-behind-one-seam.md)), **From LAN** beside **From import**
   ([ui-design.md](ui-design.md#new-bar)), bars grouped under the device offering them and told apart
   by id (FR-BAR-1/8). Depends: M49.
 - [ ] **M51** — A guest bar refreshes from wherever the reader points it. Delivers: `resourced` on

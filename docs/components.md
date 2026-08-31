@@ -439,6 +439,13 @@ minted by the side that knows the transport, so nothing above `data/` ever build
 file transport has none to build, and `FileBarChannel.source` is the one empty address every 
 file-sourced bar keeps.
 
+`LanBarChannel` answers both halves, one device being one server and one announcement: its `fetch` 
+owns nothing at all — it resolves the instance afresh, reads what that device offers through 
+`readOfferings` (the one document a stranger writes, gated on its own `lan_format` and answered for 
+whole or not at all), and takes the bytes from the path that list names. Where the ask stopped is 
+which unreachable reading it answers ([architecture.md](architecture.md#sharing)). `channelsProvider` 
+and `offeringsProvider` name that one adapter rather than one each.
+
 The owner's side is `BarOfferings` (offer/withdraw, FR-BAR-6), which `LanBarChannel` is the first and 
 so far only transport to answer — a file is handed over rather than offered, so nothing follows it to 
 withdraw. It takes and drops one bar by id, and owns everything that comes up with an offer and goes 

@@ -43,4 +43,17 @@ void main() {
   test('a reader who picks nothing has not fetched at all', () async {
     expect(await picking(null).fetch(FileBarChannel.source), isNull);
   });
+
+  /// The channel contract asks only that a failed source be answered for; a
+  /// picker that will not open is this transport's own reading of one, and the
+  /// reader is owed what it said.
+  test('a picker that will not open is refused, and says why', () async {
+    final channel = FileBarChannel(() async => throw StateError('no activity'));
+    final outcome = await channel.fetch(FileBarChannel.source);
+    expect(outcome, isA<Rejected<BarContent>>());
+    expect(
+      (outcome! as Rejected<BarContent>).issues.single.description,
+      contains('no activity'),
+    );
+  });
 }

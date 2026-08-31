@@ -8,3 +8,4 @@ export 'src/lan_bar_channel.dart';
 export 'src/file_bar_store.dart';
 export 'src/sourced_issue.dart';
 export 'src/yaml_codec.dart';
+export 'src/yaml_offerings_reader.dart';

@@ -89,7 +89,11 @@ nothing at all, where the reader was asked and stood down.
   and down with the last withdrawal, so a device sharing nothing announces nothing (NFR-5). 
   Discovery costs a package, the transfer none. A guest keeps the instance name and the bar's id 
   rather than an address — a port outlives no app start — and resolves afresh on every ask, reading 
-  which of the three unreachable answers it gets off where the ask stopped (ADR 22). Neither side 
+  which of the three unreachable answers it gets off where the ask stopped: **no non-loopback 
+  interface** is `offline`, an instance that does not come back from a browse is `notFound`, and a 
+  list that reads without naming the bar — or a path that answers nothing — is `withdrawn` (ADR 22). 
+  The source it keeps is the bar's id and the instance name in one opaque string, the id leading, 
+  since only it has an alphabet the split can trust. Neither side 
   leaves a browse running, and neither side runs at all once its app does not: an offer is kept on 
   the record and announced again at startup, where the announcement itself is never persisted.
 - **Cloud** (FR-BAR-9): the one way asking an identity (NFR-3) and the one needing a server. The 
