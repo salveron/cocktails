@@ -61,10 +61,13 @@ composition root.** Shapes in [components.md](../components.md#the-sharing-seam)
   the state layer composes it over a load and the canonical emitter — the seam `filePickerProvider`
   already is, so a test needs neither socket nor file.
 - **Nothing is announced unless something is shared** (NFR-5): server and service come up with the
-  first offer and down with the last withdrawal. The offer outlives the run and the announcement does
-  not — it is kept on the bar's record, and what is offered is announced again at startup.
-- **A browse is never left running**: the guest browses while the reader is looking, or while one
-  refresh resolves, and closes it either way. A multicast lock held around the clock is the one thing
+  first offer and down with the last withdrawal. **Neither outlives the run**: the server dies with
+  the process, so a record still claiming an offer would be a switch pointing at a silent network.
+  The record is put back to not-shared when the app next loads, and sharing again is one tap — which
+  the reader is better served by than by a bar quietly back on the network at every start.
+- **A browse is never left running**, and never waited out for longer than its answer takes: it
+  yields each device as that device resolves, so a fetch stops at the instance it wants and a list
+  draws what it has while the rest come in. It closes at its window or when the reader stops looking. A multicast lock held around the clock is the one thing
   on this path that would cost a battery.
 - **Withdrawal stops the offer and nothing else** (FR-BAR-6): a guest keeps what it holds, and its
   next refresh is told the source is gone.

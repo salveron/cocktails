@@ -57,6 +57,56 @@ class Segments<T> extends StatelessWidget {
   );
 }
 
+/// Two or more acts in one segmented shape — [Segments]' look, where a tap
+/// leaves the screen rather than settling a choice. [taken] is the act whose
+/// answer the form is holding, lit and ticked exactly as a picked segment is,
+/// and null before any has been taken. Tapping the lit one takes it again:
+/// nothing here is a choice to be un-made.
+class SegmentedActions<T> extends StatelessWidget {
+  const SegmentedActions({
+    required this.values,
+    required this.labelOf,
+    required this.iconOf,
+    required this.onAct,
+    this.taken,
+    super.key,
+  });
+
+  final List<T> values;
+  final String Function(T value) labelOf;
+  final IconData Function(T value) iconOf;
+  final T? taken;
+
+  /// Null closes every segment at once — a wait the whole control is under.
+  final ValueChanged<T>? onAct;
+
+  @override
+  Widget build(BuildContext context) {
+    final taken = this.taken;
+    return SizedBox(
+      width: double.infinity,
+      child: SegmentedButton<T>(
+        segments: [
+          for (final value in values)
+            ButtonSegment(
+              value: value,
+              label: Text(labelOf(value)),
+              icon: Icon(iconOf(value)),
+            ),
+        ],
+        selected: taken == null ? const {} : {taken},
+        emptySelectionAllowed: true,
+        // A tap on the lit one comes back as nothing selected, this being a
+        // control that lets go; it means take that act again, which is what
+        // its label offers.
+        onSelectionChanged: onAct == null
+            ? null
+            : (acted) => onAct!(acted.isEmpty ? taken as T : acted.single),
+      ),
+    );
+  }
+}
+
 /// A dimmed line under a control saying what it will do — what a hint cannot
 /// carry, at the size the fact is worth.
 class FieldNote extends StatelessWidget {

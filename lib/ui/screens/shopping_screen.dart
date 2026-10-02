@@ -15,7 +15,7 @@ import '../widgets/forms/form_fields.dart';
 import '../widgets/lists/list_terms.dart';
 import '../widgets/notices/empty_state.dart';
 
-String _ingredientsOf(Purchase purchase) => purchase.ingredients.join(' + ');
+String _ingredientsOf(Purchase purchase) => purchase.ingredients.join(beside);
 
 String _countOf(Purchase purchase) =>
     counted(purchase.unlocks.length, 'recipe');

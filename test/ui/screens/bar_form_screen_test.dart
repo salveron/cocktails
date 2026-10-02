@@ -7,9 +7,13 @@ import 'package:cocktails/domain/domain.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'dart:async';
+
 import 'package:cocktails/data/data.dart';
 import 'package:cocktails/state/state.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import 'package:cocktails/ui/widgets/notices/empty_state.dart';
 
 import '../../support/ui_finders.dart';
 import '../../support/ui_fixtures.dart';
@@ -160,7 +164,7 @@ void main() {
 
     testWidgets('clearing it leaves the bar empty again', (tester) async {
       final store = await withFile(tester, sharedFile);
-      await tap(tester, find.byTooltip('Leave it empty'));
+      await tap(tester, find.text('Reset'));
       expect(find.text('3 recipes'), findsNothing);
       expect(find.text('Guest'), findsNothing);
       // The name arrived with the file and leaves with it: a bar of nothing is
@@ -172,12 +176,35 @@ void main() {
     });
   });
 
+  /// What a bar someone else shared usually is, and the road that keeps the
+  /// source it came by (FR-BAR-5).
+  group('the road a bar arrives on', () {
+    testWidgets('a file lands on Guest', (tester) async {
+      await withFile(tester, sharedFile);
+      expect(
+        find.text(
+          "The owner's copy, read-only. Refreshed from its "
+          'source.',
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('a file that will not read offers no road at all', (
+      tester,
+    ) async {
+      await withFile(tester, damagedFile);
+      expect(find.text('Mode'), findsNothing);
+    });
+  });
+
   group('the owned road', () {
     testWidgets('takes the contents and leaves the bar the reader\'s', (
       tester,
     ) async {
       final store = await withFile(tester, sharedFile);
       await typeInto(tester, barNameField, 'Cellar');
+      await tap(tester, find.text('Owned'));
       await tap(tester, find.text('Save'));
       final made = founded(store);
       expect(made.bar.mode, BarMode.owner);
@@ -191,6 +218,7 @@ void main() {
 
     testWidgets('it is written to like any bar founded here', (tester) async {
       await withFile(tester, sharedFile);
+      await tap(tester, find.text('Owned'));
       await tap(tester, find.text('Save'));
       // The add button is built from the writer being non-null (ADR 23).
       expect(
@@ -267,6 +295,7 @@ void main() {
       WidgetTester tester, {
       List<Found> found = const [(source: ada, name: "Ada's bar")],
       Outcome<BarContent>? fetched,
+      Completer<void>? held,
     }) async {
       final store = await openForm(
         tester,
@@ -282,6 +311,7 @@ void main() {
                     display: FixedUnit.part,
                     collection: recipeCollection,
                   )),
+              held: held,
             ),
           }),
         ],
@@ -296,8 +326,8 @@ void main() {
       tester,
     ) async {
       await withNearby(tester);
-      await tap(tester, find.text("Ada's bar"));
-      await tap(tester, find.text('Choose'));
+      await tap(tester, find.text("Ada's bar · Ada", findRichText: true));
+      await tap(tester, find.text('Select'));
       expect(find.text('3 recipes'), findsOneWidget);
       expect(find.text('Mode'), findsOneWidget);
       // The owner's own name for it is where the field starts (ADR 21).
@@ -309,8 +339,8 @@ void main() {
 
     testWidgets('the guest road keeps the source it came from', (tester) async {
       final store = await withNearby(tester);
-      await tap(tester, find.text("Ada's bar"));
-      await tap(tester, find.text('Choose'));
+      await tap(tester, find.text("Ada's bar · Ada", findRichText: true));
+      await tap(tester, find.text('Select'));
       await tap(tester, find.text('Guest'));
       await tap(tester, find.text('Save'));
       final made = founded(store);
@@ -323,8 +353,9 @@ void main() {
     /// it back — the road a file already offers.
     testWidgets('the owned road keeps no source at all', (tester) async {
       final store = await withNearby(tester);
-      await tap(tester, find.text("Ada's bar"));
-      await tap(tester, find.text('Choose'));
+      await tap(tester, find.text("Ada's bar · Ada", findRichText: true));
+      await tap(tester, find.text('Select'));
+      await tap(tester, find.text('Owned'));
       await tap(tester, find.text('Save'));
       expect(founded(store).bar.source, isNull);
       expect(founded(store).bar.mode, BarMode.owner);
@@ -339,8 +370,8 @@ void main() {
         tester,
         fetched: const Unreachable(UnreachableReason.notFound),
       );
-      await tap(tester, find.text("Ada's bar"));
-      await tap(tester, find.text('Choose'));
+      await tap(tester, find.text("Ada's bar · Ada", findRichText: true));
+      await tap(tester, find.text('Select'));
       expect(find.textContaining('could not be added'), findsOneWidget);
       expect(find.text('Mode'), findsNothing);
     });
@@ -348,10 +379,56 @@ void main() {
     /// A refused document is the same news whichever road carried it.
     testWidgets('a bar the rules refuse shows what and where', (tester) async {
       await withNearby(tester, fetched: const YamlCodec().decode(damagedFile));
-      await tap(tester, find.text("Ada's bar"));
-      await tap(tester, find.text('Choose'));
+      await tap(tester, find.text("Ada's bar · Ada", findRichText: true));
+      await tap(tester, find.text('Select'));
       expect(find.text('This file cannot be read'), findsOneWidget);
       expect(find.text('Mode'), findsNothing);
+    });
+
+    /// A road already taken reads as one that may be taken again, whichever
+    /// road brought what is in hand.
+    testWidgets('both roads say so once something is in hand', (tester) async {
+      await withNearby(tester);
+      expect(find.text('From import'), findsOneWidget);
+      expect(find.text('From LAN'), findsOneWidget);
+      await tap(tester, find.text("Ada's bar · Ada", findRichText: true));
+      await tap(tester, find.text('Select'));
+      // The road not taken reads as it did: nothing was picked by it.
+      expect(find.text('Another bar'), findsOneWidget);
+      expect(find.text('From import'), findsOneWidget);
+    });
+
+    /// The lit segment is not a choice to be un-made: tapping it takes that
+    /// road again, which is what its label offers.
+    testWidgets('the road already taken may be taken again', (tester) async {
+      await withNearby(tester);
+      await tap(tester, find.text("Ada's bar · Ada", findRichText: true));
+      await tap(tester, find.text('Select'));
+      expect(find.text('Another bar'), findsOneWidget);
+      await tap(tester, find.text('Another bar'));
+      expect(find.text('Bars nearby'), findsOneWidget);
+    });
+
+    /// A browse and two asks over the wire are long enough for a reader to
+    /// wonder, so the spot the contents will fill says the work is out.
+    testWidgets('the roads close while a chosen bar is fetched', (
+      tester,
+    ) async {
+      final held = Completer<void>();
+      await withNearby(tester, held: held);
+      await tap(tester, find.text("Ada's bar · Ada", findRichText: true));
+      await tester.tap(find.text('Select'));
+      // Past the dialog's own leaving, but not settled: a spinner never does.
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(find.byType(Looking), findsOneWidget);
+      // Closed, so a second tap cannot start a second fetch.
+      await tester.tap(find.text('From LAN'));
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(find.text('Bars nearby'), findsNothing);
+      held.complete();
+      await tester.pumpAndSettle();
+      expect(find.byType(Looking), findsNothing);
+      expect(find.text('3 recipes'), findsOneWidget);
     });
 
     /// An import opens on a file already in hand, so the road that would put
@@ -364,7 +441,7 @@ void main() {
       );
       await tap(tester, find.byTooltip('Settings'));
       await tap(tester, find.text('Import'));
-      expect(find.text('Choose another file'), findsOneWidget);
+      expect(find.text('Select another file'), findsOneWidget);
       expect(find.text('From LAN'), findsNothing);
     });
   });

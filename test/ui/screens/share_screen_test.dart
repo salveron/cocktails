@@ -4,10 +4,13 @@
 /// move.
 library;
 
+import 'dart:async';
+
 import 'package:cocktails/domain/domain.dart';
 import 'package:cocktails/state/state.dart';
 import 'package:cocktails/ui/screens/share_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../support/memory_bar_store.dart';
@@ -23,6 +26,8 @@ void main() {
   /// The room over [bars], open on the first — the LAN answering through a
   /// double, since the state layer is what keeps a widget test off a socket
   /// (ADR 22). [phone] is what the device calls itself before the reader has.
+  late ProviderContainer container;
+
   Future<MemoryBarStore> pumpRoom(
     WidgetTester tester, {
     List<Bar>? bars,
@@ -33,7 +38,7 @@ void main() {
     final store = MemoryBarStore.over(shelf, {
       for (final bar in shelf) bar.id: smallCollection,
     });
-    await pumpScreen(
+    container = await pumpScreen(
       tester,
       ShareScreen(shelf.first.id),
       store: store,
@@ -70,10 +75,12 @@ void main() {
   final deviceField = field('Device name');
 
   group('the way a bar travels', () {
-    testWidgets('names the bar it is acting on', (tester) async {
+    testWidgets('names the bar it is acting on, in its own title', (
+      tester,
+    ) async {
       await pumpRoom(tester);
-      expect(find.text('Home bar'), findsOneWidget);
-      expect(find.text('Over the LAN'), findsOneWidget);
+      expect(find.widgetWithText(AppBar, 'Share "Home bar"'), findsOneWidget);
+      expect(find.text('Enable LAN'), findsOneWidget);
     });
 
     testWidgets('the switch offers the bar and announces it', (tester) async {
@@ -137,6 +144,7 @@ void main() {
     testWidgets('is locked while this bar is announced', (tester) async {
       await pumpRoom(tester);
       expect(tester.widget<TextField>(deviceField).enabled, isTrue);
+      expect(find.text('Turn sharing off to rename.'), findsNothing);
       await flip(tester);
       await answer(tester);
       expect(tester.widget<TextField>(deviceField).enabled, isFalse);
@@ -146,13 +154,21 @@ void main() {
     /// One announcement covers every bar the device offers, so the lock is
     /// device-wide even where the switch on show is off (ADR 28).
     testWidgets('is locked by another bar, and says which', (tester) async {
-      await pumpRoom(
-        tester,
-        bars: [
-          testBar(),
-          beach.copyWith(offers: const [(via: Transport.lan, guests: [])]),
-        ],
+      await pumpRoom(tester, bars: [testBar(), beach]);
+      // Shared from its own room, which is the only way a bar comes to be one:
+      // nothing arrives already offered (FR-BAR-6). Not awaited, since the
+      // offer stays out until the double is told to answer it — and time has
+      // to move for the record to reach the screen, a provider's refresh
+      // riding a timer that a frame alone does not deliver.
+      unawaited(
+        container
+            .read(shelfProvider.notifier)
+            .offerBar(beach.id, Transport.lan),
       );
+      await tester.pump(Duration.zero);
+      offerings.out.last.complete();
+      await tester.pump(Duration.zero);
+      await tester.pump(Duration.zero);
       expect(tester.widget<SwitchListTile>(theSwitch).value, isFalse);
       expect(tester.widget<TextField>(deviceField).enabled, isFalse);
       expect(

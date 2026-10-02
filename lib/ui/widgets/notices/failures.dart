@@ -107,8 +107,10 @@ String? refreshSaid(RefreshState? standing, String bar) => switch (standing) {
   RefreshRefused(:final issues) =>
     'What arrived could not be read, so "$bar" stands as it '
         'was:\n${issues.join('\n')}',
-  RefreshUnreachable(:final why) =>
-    '"$bar" could not be refreshed: ${_because(why)} It stands as it was.',
+  // One line: a source that did not answer is met by a reader who asked for
+  // one thing and got nothing, and the bar standing as it was is what they are
+  // already looking at.
+  RefreshUnreachable(:final why) => 'Could not refresh: ${_because(why)}',
 };
 
 /// What a change to a bar's sharing came to, and null where there is nothing

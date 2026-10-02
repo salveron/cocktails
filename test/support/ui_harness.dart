@@ -76,7 +76,9 @@ Future<void> pumpApp(
 /// in. The load is awaited before the first frame rather than met in one: the
 /// shell draws no screen until it has landed (docs/ui-design.md#app-shell), so
 /// a screen pumped over an unanswered shelf is a state the app cannot reach.
-Future<void> pumpScreen(
+/// Answers the container it pumped over, for a test that has to reach past the
+/// widgets — putting a second bar into a state only the state layer can.
+Future<ProviderContainer> pumpScreen(
   WidgetTester tester,
   Widget screen, {
   BarStore? store,
@@ -99,6 +101,7 @@ Future<void> pumpScreen(
     ),
   );
   await tester.pumpAndSettle();
+  return container;
 }
 
 /// [screen] over a store seeded with [collection], handing that store back so

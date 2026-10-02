@@ -158,13 +158,13 @@ void main() {
       await pickBudget(tester, 2);
       expect(rowTexts(tester), [
         'Shopping Cart #1',
-        'campari + sweet vermouth',
+        'campari · sweet vermouth',
         '2 recipes',
       ]);
       await pickBudget(tester, 3);
       expect(rowTexts(tester), [
         'Shopping Cart #1',
-        'campari + sweet vermouth + white rum',
+        'campari · sweet vermouth · white rum',
         '3 recipes',
       ]);
     });
@@ -203,7 +203,7 @@ void main() {
       expect(find.text('Ingredients'), findsOneWidget);
       expect(find.text('Unlocks'), findsOneWidget);
       expect(
-        find.text('campari + sweet vermouth + white rum'),
+        find.text('campari · sweet vermouth · white rum'),
         findsNothing,
         reason: 'the ingredients read in the body rather than twice over',
       );
@@ -237,7 +237,7 @@ void main() {
       await pickBudget(tester, 2);
       // By its ingredients rather than its rank: this is the one basket of the
       // several at this size that holds both readings of short.
-      await tap(tester, find.text('lime juice + white rum'));
+      await tap(tester, find.text('lime juice · white rum'));
       expect(
         tester.widgetList<StockDot>(find.byType(StockDot)).map((d) => d.stock),
         [StockLevel.low, StockLevel.out],
@@ -254,7 +254,7 @@ void main() {
       await tap(tester, find.text('Try 2 ingredients'));
       expect(rowTexts(tester), [
         'Shopping Cart #1',
-        'campari + sweet vermouth',
+        'campari · sweet vermouth',
         '2 recipes',
       ]);
     });
@@ -387,8 +387,8 @@ void main() {
         ['Shopping Cart #2', 'Shopping Cart #3'],
         reason: 'no recipe here wears both, so the pair is answered across two',
       );
-      expect(find.text('tequila + white rum'), findsOneWidget);
-      expect(find.text('vodka + white rum'), findsOneWidget);
+      expect(find.text('tequila · white rum'), findsOneWidget);
+      expect(find.text('vodka · white rum'), findsOneWidget);
     });
 
     testWidgets('picking a lit tag again lets the rest back in', (

@@ -5,7 +5,6 @@ import 'package:cocktails/state/state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../theme.dart';
 import '../widgets/forms/editor_form.dart';
 import '../widgets/forms/form_fields.dart';
 import '../widgets/notices/failures.dart';
@@ -102,7 +101,7 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
     final bar = bars.where((bar) => bar.id == widget.barId).firstOrNull;
     // Deleted from under the screen: nothing left to share, and the bar the
     // app bar is the way back from.
-    if (bar == null) return Scaffold(appBar: AppBar(title: const Text(_title)));
+    if (bar == null) return Scaffold(appBar: AppBar());
     // One announcement covers every bar this device offers, so what locks the
     // name is any of them being offered rather than this one (ADR 28).
     final offering = bar.offeredBy(Transport.lan);
@@ -110,13 +109,13 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
       (other) => other.id != bar.id && other.offeredBy(Transport.lan),
     );
     final standing = ref.watch(sharingProvider)[bar.id];
+    final locked = _lockedBy(offering: offering, elsewhere: elsewhere);
     return Scaffold(
-      appBar: AppBar(title: const Text(_title)),
+      appBar: AppBar(title: Text(_titleFor(bar.name))),
       body: ListView(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         children: [
-          MutedText(bar.name, style: Theme.of(context).textTheme.bodyMedium),
-          const SectionLabel('This device'),
+          const SectionLabel('Device name'),
           TextField(
             controller: _name,
             focusNode: _focus,
@@ -125,30 +124,26 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
             textInputAction: TextInputAction.done,
             onSubmitted: (_) => _focus.unfocus(),
           ),
-          FieldNote(_underTheName(offering: offering, elsewhere: elsewhere)),
+          // Only where it will not take a change: what a name field is for
+          // needs no saying, and a line under every field is one nobody reads.
+          if (locked != null) FieldNote(locked),
           _Way(
             offering: offering,
             standing: standing,
             onShare: (offering) => unawaited(_share(offering)),
           ),
-          const FieldNote('An offer lives only while this app is open.'),
-          const FieldNote(
-            'Withdrawing is not a recall: a guest keeps what it already holds.',
-          ),
+          const FieldNote('LAN sharing works only until the app is closed.'),
         ],
       ),
     );
   }
 }
 
-/// What the name field is for, or why it will not take a change — worth more
-/// than the first while it is true, and naming the bar that locked it where
-/// that is not the one on show.
-String _underTheName({required bool offering, required bool elsewhere}) {
-  if (!offering && !elsewhere) return 'Guests see this name.';
-  return elsewhere
-      ? 'Another bar is shared. Turn sharing off to rename.'
-      : 'Turn sharing off to rename.';
+/// Why the name will not take a change, or null while it will — naming the bar
+/// that locked it where that is not the one on show.
+String? _lockedBy({required bool offering, required bool elsewhere}) {
+  if (elsewhere) return 'Another bar is shared. Turn sharing off to rename.';
+  return offering ? 'Turn sharing off to rename.' : null;
 }
 
 /// The one way that answers, a file being handed over rather than offered
@@ -191,6 +186,8 @@ class _Way extends StatelessWidget {
         );
 }
 
-/// Named once each: the room, and the way a bar travels out of it.
-const _title = 'Share';
-const _wayLabel = 'Over the LAN';
+/// The room names the bar it acts on, so the ⋮ opening it on one not in hand
+/// needs no second way of saying which.
+String _titleFor(String bar) => 'Share "$bar"';
+
+const _wayLabel = 'Enable LAN';

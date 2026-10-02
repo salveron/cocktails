@@ -166,32 +166,54 @@ roads **Owned | Guest**, importing starts with the file already picked and the r
 name field autofocuses only where the reader has typing to do — on the import entry the screen is 
 there to be read, and a keyboard over it argues with that.
 
-- **The roads in are buttons, not rows**: the form is not a menu, and a pick is the one thing on it 
-  that leaves the screen. Two of them — **From import** for a file the reader hands over (FR-BAR-7) 
-  and **From LAN** for one shared on the network (FR-BAR-8) — rather than a segmented choice, since 
-  neither is a state the form holds and each comes back with contents. They carry no heading of 
-  their own: the buttons say what they do, the note under them says what standing without one means, 
-  and a third voice over both would only repeat them.
-- **Beside each other the two keep their names; alone, the file one changes.** Either road may 
-  replace what the other brought, so neither reads as "another". On the import entry, where there is 
-  no LAN road at all — it opens on a file already picked — the file button still becomes **Choose 
-  another file** once one is in hand, which is the way out of a file that would not read and the way 
-  to a better one. The clear beside them is the single way back to an empty bar, absent where there 
-  is no such way back.
+- **The roads in are one segmented control**: **From import** for a file the reader hands over 
+  (FR-BAR-7) beside **From LAN** for one shared on the network (FR-BAR-8), the width of the fields 
+  above and of the **Mode** choice below, so the form reads as one column rather than a row of 
+  odd-sized parts. A tap leaves the screen rather than settling a choice, but **the road that 
+  brought what is in hand stays lit and ticked**, exactly as a picked Mode segment does — the form 
+  is holding that road's answer, which is a state and worth showing as one. Tapping the lit one 
+  takes that road again rather than letting go of it: nothing here is a choice to be un-made, which 
+  is what its own label already offers. It carries no heading: 
+  the segments say what they do, the note under them says what standing without one means. Where 
+  the file road stands alone — the import entry, which opens on a file already picked — it is a 
+  plain button rather than a segment of one.
+- **Only the road that was taken changes its words**: it becomes **Another file** or **Another 
+  bar**, while the other reads as it always did. A reader is not told they may pick "another" of 
+  something they never picked, and the road already taken still reads as one that may be taken 
+  again — the way out of a file that would not read and the way to a better one. Terse because the 
+  two share a row: half a phone holds an icon and about twelve characters, and the standalone button 
+  on the import entry, having the whole width, says **Select another file** in full — *select* being 
+  the app's one verb for picking where a bar's contents come from, the nearby dialog's own.
+- **The way back to what the screen opened as is Reset, in the app bar beside Save.** A way back is 
+  not a third road, and a control among the roads left them uneven against the Mode choice below; in 
+  the bar it sits with the other thing the screen does as a whole, before Save because it is the 
+  lesser act. Offered only where something is in hand, and never on the import entry, which opens on 
+  a file and has nothing to put back.
+- **A fetched bar is waited for where its contents will land.** The roads close and the spinner 
+  draws in the spot the Contents cards are about to fill — work shown where its answer will be, and 
+  no second tap able to start a second fetch. It is the same spinner the dialog looks with, and the 
+  wait is as short as the network allows: a fetch stops browsing at the device it wants rather than 
+  hearing out the whole window.
 - **A bar nearby is picked in a dialog and fetched afterwards.** The dialog browses once on opening, 
-  lists what it found under the device offering it, rings the one picked the way a picked tag chip 
-  is ringed, and closes on **Choose**. Nothing is fetched until it returns: the reader agrees to a 
+  lists what it found — each bar carrying the device offering it after a centred dot, dimmed, the 
+  separator every one-line summary in the app uses — rings the one picked the way a picked tag chip 
+  is ringed, and closes on **Select**. **Bars appear as their devices answer**, the mark still 
+  turning under them until the browse closes, so a reader may take the first thing they recognise 
+  without waiting the window out. Nothing is fetched until it returns: the reader agrees to a 
   *bar*, and what it holds is read on the form, which is where a file is agreed to as well. A dialog 
   rather than a screen because the wire carries three fields per bar and no more 
   ([ADR 22](adr/22-a-bar-travels-behind-one-seam.md)) — a name is not a screenful, and the form 
   stays one push deep.
 - **The device is what tells two bars of one name apart.** The wire carries an id, but a reader has 
-  never been shown one and names are labels rather than identity (FR-BAR-1) — so the grouping does 
-  the telling, and two owned bars of one name on one device is an accident to be refused where it is 
-  made rather than explained here.
-- **Nothing nearby says why, and offers another look.** Both sides have to be on the network at 
-  once, with the other reader sharing and their app open — the one thing a reader can act on, and 
-  the same fact the [Sharing](#sharing) room warns the owner about from the other side.
+  never been shown one and names are labels rather than identity (FR-BAR-1) — so the device beside 
+  the name does the telling. The list runs by device and then by bar, so one device's bars still 
+  stand together without a heading over them; two owned bars of one name on one device is an 
+  accident to be refused where it is made rather than explained here.
+- **Nothing nearby says why, and offers another look in Select's place.** Both sides have to be on 
+  the network at once, with the other reader sharing and their app open — the one thing a reader can 
+  act on, and the same fact the [Sharing](#sharing) room warns the owner about from the other side. 
+  **Try again** stands where Select would: there is nothing to take, so nothing offers to take it, 
+  and a dead button beside the way out is clutter rather than a control.
 - **What arrives nearby reads exactly as a picked file does** — the same Contents cards, the same 
   **Owned | Guest** choice, the same Save, the owner's own name in the field to start from. It is 
   the same bar arriving by another road, and two screens asking the same three questions is how the 
@@ -208,7 +230,11 @@ there to be read, and a keyboard over it argues with that.
   holds, which is the one thing on the screen that is read rather than answered. **Owned** is a copy, 
   this device's own to edit, with nothing linking it back — FR-BAR-2's "created from a file". 
   **Replace** is that same road onto a bar that already exists (FR-DAT-3). **Guest** is the owner's, 
-  read-only, refreshed by a newer file they send (FR-BAR-3/5/7).
+  read-only, refreshed from the source it arrived by (FR-BAR-3/5/7) — a file they send again, or the 
+  device it was found on, which is why the line says *its source* rather than naming either. 
+  **Guest is what an arriving bar lands on**: a bar someone else shared usually stays theirs, and it 
+  is the only road that keeps the source, so the reader who wants a copy of their own says so rather 
+  than the reader who wants what they came for. A file that will not read lands on no road at all.
 - **"Mode" is the one word the question is asked in**, here and on the chip the bar list reads it 
   back under (FR-BAR-3) — it stood as "Whose bar" founding and "Where it goes" importing, which made 
   one choice look like two. The segments differ by entry (Owned or Replace) because the road does; 
@@ -227,7 +253,7 @@ there to be read, and a keyboard over it argues with that.
   the file's — an import is not a rename. So the suggestion follows the toggle, and the moment the 
   reader writes over it, it is theirs and the toggle stops touching it. Clearing the file takes back 
   the name that came in with it: a bar of nothing is the reader's own to name.
-- **Choose another file** sits where From import was, once one is in hand — the way out of a file 
+- **Select another file** sits where From import was, once one is in hand — the way out of a file 
   that would not read, and the way to a better one. The clear beside it is offered only where there 
   is something to be cleared *to*: founding falls back to an empty bar, where an import has no such 
   thing to fall back on and is left by the back arrow instead.
@@ -586,6 +612,14 @@ screen, not the row that starts it.
   carries a failed refresh stands behind this screen unread, so the answer arrives as a snackbar 
   and is marked told, and the banner does not repeat it on the way back. A refresh that landed says 
   so too — the reader is looking at a menu, not at the lists that would otherwise be the answer.
+- **The row turns while the source is being reached.** Asking outlasts the tap by as long as the 
+  network takes, so the spinner stands where the row's own icon does and the row answers no second 
+  tap until it lands — work shown on the thing that started it, which is the same rule the 
+  [New bar](#new-bar) form's wait follows.
+- **A source that did not answer says so in one line**: *Could not refresh: its source could not be 
+  found.* The reader asked for one thing and got nothing; that the bar stands as it was is what they 
+  are already looking at, and naming it again spent two lines saying nothing they could act on. The 
+  refusal a file gets keeps its length — those are issues to read, not a fact to take in.
 
 ## Sharing
 
@@ -628,13 +662,17 @@ still about a bar rather than about which bar.
   a withdrawal. While the change is out there is no switch at all, a progress mark in its place —
   the reader has moved it already, and one that slid back under them would be a lie about what is
   happening.
-- **The LAN row says an offer lives while this app is open**, in its one line under the switch. It
-  is the fact a reader is most likely to be caught by — a guest asking while the owner's phone is in
-  a pocket is told the source is not on the network — and the moment they turn the switch on is
-  where saying so costs nothing.
-- **Withdrawing says what it does not do.** A guest keeps what it already holds; what ends is
-  refreshing (FR-BAR-6). One line under the switch, because a reader turning sharing off is entitled
-  to know it is not a recall.
+- **The room names its bar in its own title** — `Share "Home bar"` — rather than heading the body
+  with it, so the ⋮ opening it on a bar not in hand needs no second way of saying which. The field is
+  labelled **Device name** and carries nothing beneath it: what a name field is for needs no saying,
+  and the only line it ever shows is the one explaining why it will not take a change.
+- **The one line under the switch says sharing works only until the app is closed.** It is the fact
+  a reader is most likely to be caught by — a guest asking while the owner's phone is in a pocket is
+  told the source is not on the network — and it is now literally true of the record as well: an
+  offer does not survive the app, so the switch is off again next time and re-sharing is a tap.
+  Nothing else is said there. That withdrawing is not a recall is true, and stood under the switch
+  for a while; it earned less than the room it took, telling a reader turning sharing off about a
+  guest's copy when they were thinking about their own bar.
 - **A failure speaks once and leaves nothing behind.** The record moves first and the network second
   ([ADR 22](adr/22-a-bar-travels-behind-one-seam.md)), so the switch is telling the truth either way
   and the snackbar says the part it cannot: shared but not announced, or withdrawn without the

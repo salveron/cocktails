@@ -80,6 +80,7 @@ class EditorScaffold extends StatelessWidget {
     required this.discardTitle,
     required this.onSave,
     required this.children,
+    this.onReset,
     this.writable = true,
     super.key,
   });
@@ -98,6 +99,12 @@ class EditorScaffold extends StatelessWidget {
   final String discardTitle;
 
   final VoidCallback? onSave;
+
+  /// A way back to what the screen opened as, before Save because it is the
+  /// lesser act and the commit should be the last thing under the thumb.
+  /// Absent where there is nothing to put back.
+  final VoidCallback? onReset;
+
   final List<Widget> children;
 
   @override
@@ -110,7 +117,11 @@ class EditorScaffold extends StatelessWidget {
       appBar: AppBar(
         title: Text(title),
         actions: writable
-            ? [TextButton(onPressed: onSave, child: const Text('Save'))]
+            ? [
+                if (onReset != null)
+                  TextButton(onPressed: onReset, child: const Text('Reset')),
+                TextButton(onPressed: onSave, child: const Text('Save')),
+              ]
             : const [],
       ),
       body: ListView(padding: const EdgeInsets.all(16), children: children),

@@ -4,6 +4,7 @@
 /// way out is `nsd` behind these same three operations.
 library;
 
+import 'dart:async';
 import 'dart:io';
 
 import 'package:bonsoir/bonsoir.dart';
@@ -48,7 +49,7 @@ typedef LanAnnouncer =
 
 /// The other two crossings, seams for the same reason: what devices are out
 /// there, and whether this one is on a network at all.
-typedef LanBrowser = Future<List<LanService>> Function();
+typedef LanBrowser = Stream<LanService> Function();
 
 typedef LanReach = Future<bool> Function();
 
@@ -96,32 +97,41 @@ Future<LanAnnouncement> announce({
   return _Broadcast((await started).service.name, broadcast);
 }
 
-/// Every device answering [lanServiceType] within [within], one entry each: a
-/// service is resolved only once found, and the browse is closed either way.
-Future<List<LanService>> browse({Duration within = lanBrowseWindow}) async {
+/// Every device answering [lanServiceType], each as it resolves rather than
+/// all at the end: a caller waiting for one may stop at it, and one listing
+/// them may draw what it has while the rest come in. Closes itself at [within],
+/// and on the listener leaving — a browse is never left running (ADR 22).
+Stream<LanService> browsing({Duration within = lanBrowseWindow}) async* {
   final discovery = BonsoirDiscovery(type: lanServiceType);
   await discovery.initialize();
-  final found = <String, LanService>{};
+  final found = StreamController<LanService>();
+  final seen = <String>{};
   final listening = discovery.eventStream!.listen((event) {
     switch (event) {
       case BonsoirDiscoveryServiceFoundEvent():
         event.service.resolve(discovery.serviceResolver);
       case BonsoirDiscoveryServiceResolvedEvent():
         final service = event.service;
-        if (service.hostAddresses.isNotEmpty) {
-          found[service.name] = LanService(
-            name: service.name,
-            port: service.port,
-            addresses: service.hostAddresses,
+        if (service.hostAddresses.isNotEmpty && seen.add(service.name)) {
+          found.add(
+            LanService(
+              name: service.name,
+              port: service.port,
+              addresses: service.hostAddresses,
+            ),
           );
         }
       default:
         break;
     }
   });
+  final closing = Timer(within, found.close);
   await discovery.start();
-  await Future<void>.delayed(within);
-  await listening.cancel();
-  await discovery.stop();
-  return found.values.toList(growable: false);
+  try {
+    yield* found.stream;
+  } finally {
+    closing.cancel();
+    await listening.cancel();
+    await discovery.stop();
+  }
 }

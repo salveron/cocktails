@@ -6,6 +6,7 @@ library;
 import 'package:cocktails/domain/domain.dart';
 import 'package:cocktails/state/state.dart';
 import 'package:cocktails/ui/widgets/cards/entry_card.dart';
+import 'package:cocktails/ui/wording.dart';
 import 'package:cocktails/ui/widgets/dialogs/nearby_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -47,36 +48,54 @@ void main() {
     await tap(tester, find.text('open'));
   }
 
-  bool chooseIsOffered(WidgetTester tester) =>
+  bool selectIsOffered(WidgetTester tester) =>
       tester
-          .widget<TextButton>(find.widgetWithText(TextButton, 'Choose'))
+          .widget<TextButton>(find.widgetWithText(TextButton, 'Select'))
           .onPressed !=
       null;
 
-  bool outlined(WidgetTester tester, String bar) {
+  /// A card by what it reads: the bar's name and, after it, the device.
+  Finder cardOf(Found bar) =>
+      find.text('${bar.name}$beside${bar.source.from}', findRichText: true);
+
+  bool outlined(WidgetTester tester, Found bar) {
     final card = tester.widget<EntryCard>(
-      find.ancestor(of: find.text(bar), matching: find.byType(EntryCard)),
+      find.ancestor(of: cardOf(bar), matching: find.byType(EntryCard)),
     );
     return card.selected ?? false;
   }
 
-  testWidgets('every bar found stands under the device offering it', (
-    tester,
-  ) async {
+  testWidgets('every bar found carries the device offering it', (tester) async {
     await pumpNearby(tester, [zen, beach, ada]);
-    expect(find.text("Nikita's phone"), findsOneWidget);
-    expect(find.text("Ada's laptop"), findsOneWidget);
-    // Two bars of one name are told apart by whose device they sit under,
-    // names being labels rather than identity (FR-BAR-1).
-    expect(find.text('Home bar'), findsNWidgets(2));
-    expect(find.text('Beach bar'), findsOneWidget);
+    // Two bars of one name are told apart by the device beside them, names
+    // being labels rather than identity (FR-BAR-1).
+    expect(cardOf(zen), findsOneWidget);
+    expect(cardOf(ada), findsOneWidget);
+    expect(cardOf(beach), findsOneWidget);
   });
 
-  testWidgets('nothing may be chosen until one is picked', (tester) async {
+  /// One device's bars still stand together, without a heading over them.
+  testWidgets('they run by device and then by bar', (tester) async {
+    await pumpNearby(tester, [zen, beach, ada]);
+    String reads(Found bar) => '${bar.name}$beside${bar.source.from}';
+    final titles = find.descendant(
+      of: find.byType(EntryCard),
+      matching: find.byType(Text),
+    );
+    expect(
+      tester
+          .widgetList<Text>(titles)
+          .map((title) => title.textSpan!.toPlainText())
+          .toList(),
+      [reads(ada), reads(beach), reads(zen)],
+    );
+  });
+
+  testWidgets('nothing may be selected until one is picked', (tester) async {
     await pumpNearby(tester, [zen, ada]);
-    expect(chooseIsOffered(tester), isFalse);
-    await tap(tester, find.text('Home bar').first);
-    expect(chooseIsOffered(tester), isTrue);
+    expect(selectIsOffered(tester), isFalse);
+    await tap(tester, cardOf(zen));
+    expect(selectIsOffered(tester), isTrue);
   });
 
   /// The ring a picked tag chip wears, so one idiom says "picked" everywhere.
@@ -84,37 +103,56 @@ void main() {
     tester,
   ) async {
     await pumpNearby(tester, [zen, beach]);
-    await tap(tester, find.text('Beach bar'));
-    expect(outlined(tester, 'Beach bar'), isTrue);
-    expect(outlined(tester, 'Home bar'), isFalse);
-    await tap(tester, find.text('Home bar'));
-    expect(outlined(tester, 'Beach bar'), isFalse);
+    await tap(tester, cardOf(beach));
+    expect(outlined(tester, beach), isTrue);
+    expect(outlined(tester, zen), isFalse);
+    await tap(tester, cardOf(zen));
+    expect(outlined(tester, beach), isFalse);
   });
 
-  testWidgets('choosing answers with the bar that was picked', (tester) async {
+  testWidgets('selecting answers with the bar that was picked', (tester) async {
     await pumpNearby(tester, [zen, beach]);
-    await tap(tester, find.text('Beach bar'));
-    await tap(tester, find.text('Choose'));
+    await tap(tester, cardOf(beach));
+    await tap(tester, find.text('Select'));
     expect(chosen, beach);
   });
 
   testWidgets('cancelling answers nothing at all', (tester) async {
     await pumpNearby(tester, [zen]);
-    await tap(tester, find.text('Home bar'));
+    await tap(tester, cardOf(zen));
     await tap(tester, find.text('Cancel'));
     expect(chosen, isNull);
   });
 
   /// Both sides have to be there at once, which is the one thing a reader can
   /// act on — so the empty state says that and offers another look.
-  testWidgets('nothing nearby says why, and looks again on asking', (
+  /// Nothing to take, so nothing offers to take it: the ask to look again
+  /// stands where Select would, rather than beside a dead button.
+  testWidgets('nothing nearby says why, and tries again in Select\'s place', (
     tester,
   ) async {
     await pumpNearby(tester, const []);
-    expect(find.textContaining('Nothing is being shared'), findsOneWidget);
+    expect(find.textContaining('Nothing is shared'), findsOneWidget);
+    expect(find.text('Select'), findsNothing);
     expect(finder.looks, 1);
-    await tap(tester, find.text('Look again'));
+    await tap(tester, find.text('Try again'));
     expect(finder.looks, 2);
+  });
+
+  /// The platform's own order, which every other dialog in the app keeps: the
+  /// way out first and the act last, nearest the thumb.
+  testWidgets('the way out comes first and the act last', (tester) async {
+    await pumpNearby(tester, [zen]);
+    final actions = tester
+        .widgetList<TextButton>(
+          find.descendant(
+            of: find.byType(OverflowBar),
+            matching: find.byType(TextButton),
+          ),
+        )
+        .map((button) => (button.child! as Text).data)
+        .toList();
+    expect(actions, ['Cancel', 'Select']);
   });
 
   /// A browse runs while the reader is looking and no longer (ADR 22).

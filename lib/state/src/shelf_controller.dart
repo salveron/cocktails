@@ -74,13 +74,12 @@ final class ShelfController extends AsyncNotifier<Shelf> {
     final shelf = await _summarising(
       store,
       Shelf(
-        bars: bars,
+        bars: [for (final bar in bars) _unshared(bar)],
         openId: open?.id,
         deviceName: records.deviceName,
         collection: collection,
       ),
     );
-    _announceStanding(shelf);
     return shelf;
   }
 
@@ -111,6 +110,13 @@ final class ShelfController extends AsyncNotifier<Shelf> {
     await store.saveShelf(_indexOf(summarised));
     return summarised;
   }
+
+  /// FR-BAR-6: sharing lasts as long as the app does. The server and the
+  /// announcement die with the process, so an offer carried over from a run
+  /// that ended would be a switch claiming a network nothing is on — the
+  /// record is put back to not-shared at load, and re-sharing is a tap.
+  static Bar _unshared(Bar bar) =>
+      bar.offers.isEmpty ? bar : bar.copyWith(offers: const []);
 
   /// What the store keeps of a shelf: the records and the two device-wide
   /// facts beside them.
@@ -371,29 +377,6 @@ final class ShelfController extends AsyncNotifier<Shelf> {
     await _publish(shelf.withdrawing(id, via));
     ref.read(sharingProvider.notifier).silencing(id);
     await _telling(id, via, (offerings) => offerings.withdraw(id));
-  }
-
-  /// FR-BAR-6: what the index says is offered, announced again — an offer
-  /// outlives the run and an announcement does not (ADR 22). The record already
-  /// says so, so this reaches the seam and nothing else, and nothing about the
-  /// first frame waits on a socket. Past the build that calls it, the seam
-  /// resolving the announced name off this very provider, and not at all where
-  /// the container went first.
-  void _announceStanding(Shelf shelf) {
-    var live = true;
-    ref.onDispose(() => live = false);
-    scheduleMicrotask(() {
-      if (!live) return;
-      final sharing = ref.read(sharingProvider.notifier);
-      for (final bar in shelf.bars) {
-        for (final offer in bar.offers) {
-          sharing.announcing(bar.id);
-          unawaited(
-            _telling(bar.id, offer.via, (o) => o.offer(bar.id, bar.name)),
-          );
-        }
-      }
-    });
   }
 
   /// The half that reaches the network, whichever way it is going. A transport

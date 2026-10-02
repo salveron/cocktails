@@ -94,8 +94,9 @@ nothing at all, where the reader was asked and stood down.
   list that reads without naming the bar — or a path that answers nothing — is `withdrawn` (ADR 22). 
   The source it keeps is the bar's id and the instance name in one opaque string, the id leading, 
   since only it has an alphabet the split can trust. Neither side 
-  leaves a browse running, and neither side runs at all once its app does not: an offer is kept on 
-  the record and announced again at startup, where the announcement itself is never persisted.
+  leaves a browse running, and neither side runs at all once its app does not — so an offer lasts 
+  the run and no longer: the record is put back to not-shared at the next load rather than quietly 
+  putting a bar back on the network.
 - **Cloud** (FR-BAR-9): the one way asking an identity (NFR-3) and the one needing a server. The 
   transport is declared and no adapter registered, the ways on offer being the ways that answer — so 
   the choice waits without holding the other two up.

@@ -49,3 +49,16 @@ class EmptyState extends StatelessWidget {
     );
   }
 }
+
+/// Work still out, drawn where its answer will land — a browse looking, a bar
+/// being fetched. The one shape a wait takes, so two screens cannot spin
+/// differently.
+class Looking extends StatelessWidget {
+  const Looking({super.key});
+
+  @override
+  Widget build(BuildContext context) => const Padding(
+    padding: EdgeInsets.symmetric(vertical: 24),
+    child: Center(child: CircularProgressIndicator()),
+  );
+}

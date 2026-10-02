@@ -46,10 +46,10 @@ final class _Network {
   var reachable = true;
   Exception? refusing;
 
-  Future<List<LanService>> browse() async {
+  Stream<LanService> browse() async* {
     final refused = refusing;
     if (refused != null) throw refused;
-    return services;
+    yield* Stream.fromIterable([...services]);
   }
 
   Future<bool> reach() async => reachable;
@@ -306,7 +306,7 @@ void main() {
         {'a1': encoded(Collection()), 'b2': encoded(Collection())},
         offering: const {'a1': 'Home bar', 'b2': 'Beach bar'},
       );
-      final found = await over.guest.nearby();
+      final found = await over.guest.nearby().last;
       expect(
         found.map((bar) => bar.name),
         unorderedEquals(['Home bar', 'Beach bar']),
@@ -319,7 +319,7 @@ void main() {
     test('a browse turning up nobody finds nothing', () async {
       final over = await nearby({'a1': encoded(Collection())});
       over.network.services.clear();
-      expect(await over.guest.nearby(), isEmpty);
+      expect(await over.guest.nearby().toList(), isEmpty);
     });
 
     /// A device that will not say what it offers is left out rather than named
@@ -327,13 +327,13 @@ void main() {
     test('a device that will not answer is left out', () async {
       final over = await nearby({'a1': encoded(Collection())});
       over.network.offers('gone', 1);
-      expect(await over.guest.nearby(), hasLength(1));
+      expect(await over.guest.nearby().last, hasLength(1));
     });
 
     test('a browse that will not run finds nothing, never throws', () async {
       final over = await nearby({'a1': encoded(Collection())});
       over.network.refusing = Exception('no multicast');
-      expect(await over.guest.nearby(), isEmpty);
+      expect(await over.guest.nearby().toList(), isEmpty);
     });
 
     test(

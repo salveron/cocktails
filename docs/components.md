@@ -583,9 +583,8 @@ screens are told only through this map. A late answer is dropped where its bar i
 ask has been made (each carries a token, only the newest lands); a guest bar's collection has no 
 other writer, so there is nothing else for one to lose.
 
-What the index says is offered is announced again once the startup load has settled, which is the 
-whole of *an offer outlives the run and an announcement does not*: it reaches the seam and leaves 
-the record alone, is never awaited by the first frame, and is dropped where the container went first.
+Sharing lasts as long as the app does: the startup load puts every bar's offers back to empty, so 
+nothing is announced on the way in and no switch claims a network the process is no longer on.
 
 `sharingProvider` — `Map<String, SharingState>` by bar id, the owner's side of the same shape: 
 `Announcing` while an offer goes up, `Silencing` while a withdrawal comes down, and `SharingFailed` 

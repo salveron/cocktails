@@ -35,7 +35,7 @@ final class LanBarChannel implements BarChannel, BarFinder, BarOfferings {
     required this._bytesOf,
     required this._deviceName,
     this._announcer = announce,
-    this._browser = browse,
+    this._browser = browsing,
     this._reach = onANetwork,
   });
 
@@ -75,19 +75,24 @@ final class LanBarChannel implements BarChannel, BarFinder, BarOfferings {
     return const YamlCodec().decode(document);
   }
 
-  /// FR-BAR-8: every bar every device nearby says it offers, asked once and
-  /// answered from one browse. A device that will not say is left out rather
-  /// than named with nothing under it — there is nothing a reader could do
-  /// with it, and a browse turning up no one is the same news either way.
+  /// FR-BAR-8: every bar every device nearby says it offers, answered again
+  /// each time another device does rather than once at the end, so a reader may
+  /// take the first thing they recognise. A device that will not say what it
+  /// offers is left out — there is nothing they could do with it — and the
+  /// stream closing on an empty answer is what "nothing nearby" means.
   @override
-  Future<List<Found>> nearby() async {
-    final List<LanService> services;
+  Stream<List<Found>> nearby() async* {
+    final found = <Found>[];
     try {
-      services = await _browser();
+      await for (final service in _browser()) {
+        final offered = await _offeredBy(service);
+        if (offered.isEmpty) continue;
+        found.addAll(offered);
+        yield [...found];
+      }
     } on Exception {
-      return const [];
+      return;
     }
-    return [for (final service in services) ...await _offeredBy(service)];
   }
 
   Future<List<Found>> _offeredBy(LanService service) async {
@@ -112,11 +117,15 @@ final class LanBarChannel implements BarChannel, BarFinder, BarOfferings {
     );
   }
 
-  /// The instance under that name, browsing only while this one ask needs it.
+  /// The instance under that name and nothing else: the browse is left the
+  /// moment it answers, so a fetch waits for the device it wants rather than
+  /// for every device there might be.
   Future<LanService?> _resolve(String instance) async {
     try {
-      final found = await _browser();
-      return found.where((service) => service.name == instance).firstOrNull;
+      await for (final service in _browser()) {
+        if (service.name == instance) return service;
+      }
+      return null;
     } on Exception {
       return null;
     }

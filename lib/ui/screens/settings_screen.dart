@@ -42,9 +42,11 @@ class _Entries extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final shared = ref.watch(offeringsProvider).isEmpty
-        ? null
-        : ref.watch(openBarProvider)?.id;
+    final open = ref.watch(openBarProvider);
+    final shared = ref.watch(offeringsProvider).isEmpty ? null : open?.id;
+    // Reaching a source outlasts the tap, so the row it was asked from says so
+    // where its icon stands (FR-BAR-5).
+    final reaching = ref.watch(refreshesProvider)[open?.id] is Reaching;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -99,6 +101,7 @@ class _Entries extends ConsumerWidget {
             icon: Icons.refresh,
             title: 'Refresh',
             subtitle: 'Ask its source for a newer copy',
+            working: reaching,
             act: () => unawaited(_refresh(context, ref)),
           ),
         // Below the file rows, an export being an act where an offer is a
@@ -187,7 +190,8 @@ class _Entry extends StatelessWidget {
     required this.subtitle,
     required this.page,
     this.enabled = true,
-  }) : act = null;
+  }) : act = null,
+       working = false;
 
   /// A row that acts is drawn only where the act is on offer, so none of them
   /// dims: what a guest bar cannot do it is not asked to refuse.
@@ -196,6 +200,7 @@ class _Entry extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.act,
+    this.working = false,
   }) : page = null,
        enabled = true;
 
@@ -206,10 +211,19 @@ class _Entry extends StatelessWidget {
   final VoidCallback? act;
   final bool enabled;
 
+  /// Whether what this row asked for is still out: the icon says so where the
+  /// icon is, and the row answers no second tap until it lands.
+  final bool working;
+
   @override
   Widget build(BuildContext context) => ListTile(
-    enabled: enabled,
-    leading: Icon(icon),
+    enabled: enabled && !working,
+    leading: working
+        ? const SizedBox.square(
+            dimension: 24,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          )
+        : Icon(icon),
     title: Text(title),
     subtitle: Text(subtitle),
     trailing: page == null ? null : const Icon(Icons.chevron_right),

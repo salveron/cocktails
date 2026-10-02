@@ -141,20 +141,23 @@ final class MemoryOfferings implements BarOfferings {
 }
 
 /// A browse answering whatever a test put nearby, so a screen that looks for
-/// bars never needs a network.
+/// bars never needs a network. [held] leaves the looking open after the last
+/// answer, which is how a screen still browsing is told from one that is done.
 final class MemoryFinder implements BarFinder {
   @override
   Transport get transport => Transport.lan;
 
   final List<Found> found;
+  final Completer<void>? held;
   var looks = 0;
 
-  MemoryFinder([this.found = const []]);
+  MemoryFinder([this.found = const [], this.held]);
 
   @override
-  Future<List<Found>> nearby() async {
+  Stream<List<Found>> nearby() async* {
     looks++;
-    return found;
+    if (found.isNotEmpty) yield found;
+    await held?.future;
   }
 }
 
@@ -166,8 +169,15 @@ final class MemoryChannel implements BarChannel {
 
   final Outcome<BarContent>? answer;
 
-  const MemoryChannel(this.answer, {this.transport = Transport.lan});
+  /// Where a test needs the ask to still be out while it looks at the screen:
+  /// completed when the answer should land.
+  final Completer<void>? held;
+
+  const MemoryChannel(this.answer, {this.held, this.transport = Transport.lan});
 
   @override
-  Future<Outcome<BarContent>?> fetch(BarSource source) async => answer;
+  Future<Outcome<BarContent>?> fetch(BarSource source) async {
+    await held?.future;
+    return answer;
+  }
 }

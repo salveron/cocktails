@@ -558,54 +558,53 @@ recipes:
     });
   });
 
-  /// FR-BAR-6, ADR 22: an offer outlives the run and an announcement does not,
-  /// so what the index says is offered goes up again on the next start.
-  group('what is offered is announced again at startup', () {
+  /// FR-BAR-6: sharing lasts as long as the app does — the server and the
+  /// announcement die with the process, so a record carried over from a run
+  /// that ended would be a switch claiming a network nothing is on.
+  group('an offer does not outlive the run', () {
     late MemoryOfferings offerings;
 
     Future<ProviderContainer> startedSharing(List<Offer> offers) async {
       offerings = MemoryOfferings();
-      final shared = bar.copyWith(offers: offers);
       final container = await startedOver(
-        MemoryBarStore.of(shared, stored),
+        MemoryBarStore.of(bar.copyWith(offers: offers), stored),
         clock: () => now,
         overrides: [
           offeringsProvider.overrideWithValue({Transport.lan: offerings}),
         ],
       );
-      // The re-announce runs past the build that starts it.
       await Future<void>.delayed(Duration.zero);
       return container;
     }
 
-    test('an offered bar is announced without being asked for', () async {
+    test('a bar the index says is offered opens not shared', () async {
+      final container = await startedSharing(const [
+        (via: Transport.lan, guests: []),
+      ]);
+      expect(
+        container.read(shelfProvider).requireValue.bars.single.offers,
+        isEmpty,
+      );
+    });
+
+    test('nothing is announced on the way in (NFR-5)', () async {
       await startedSharing(const [(via: Transport.lan, guests: [])]);
-      expect(offerings.offered, [(id: 'a1b2c3', name: 'Home bar')]);
-    });
-
-    test('a bar offering nothing announces nothing (NFR-5)', () async {
-      await startedSharing(const []);
       expect(offerings.offered, isEmpty);
+      expect(offerings.withdrawn, isEmpty);
     });
 
-    test('the record is left exactly as it was', () async {
+    test('nothing is in flight to be met', () async {
       final container = await startedSharing(const [
         (via: Transport.lan, guests: []),
       ]);
-      expect(container.read(shelfProvider).requireValue.bars.single.offers, [
-        const (via: Transport.lan, guests: <String>[]),
-      ]);
-      expect(store.savedShelf, isNull);
-    });
-
-    test('it is out until the network answers', () async {
-      final container = await startedSharing(const [
-        (via: Transport.lan, guests: []),
-      ]);
-      expect(container.read(sharingProvider)['a1b2c3'], isA<Announcing>());
-      offerings.out.single.complete();
-      await Future<void>.delayed(Duration.zero);
       expect(container.read(sharingProvider), isEmpty);
+    });
+
+    /// A bar that was never shared is untouched, so a load that changes nothing
+    /// writes nothing.
+    test('a shelf sharing nothing is left exactly as it was', () async {
+      await startedSharing(const []);
+      expect(store.savedShelf, isNull);
     });
   });
 

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cocktails/data/data.dart';
 import 'package:cocktails/state/state.dart';
 import 'package:cocktails/domain/domain.dart';
@@ -53,8 +55,8 @@ void main() {
     testWidgets('opens the room on the bar in hand', (tester) async {
       await pumpScreen(tester, const SettingsScreen());
       await tap(tester, find.text('Share'));
-      expect(find.widgetWithText(AppBar, 'Share'), findsOneWidget);
-      expect(find.text('Over the LAN'), findsOneWidget);
+      expect(find.widgetWithText(AppBar, 'Share "Home bar"'), findsOneWidget);
+      expect(find.text('Enable LAN'), findsOneWidget);
     });
 
     /// Not this device's to share, so it is absent rather than dimmed — the
@@ -352,12 +354,12 @@ void main() {
       );
       await tap(tester, find.text('Import'));
       expect(find.text('3 recipes'), findsOneWidget);
-      await tap(tester, find.text('Choose another file'));
+      await tap(tester, find.text('Select another file'));
       expect(find.text('0 recipes'), findsOneWidget);
       expect(find.text('3 recipes'), findsNothing);
       // Nothing to empty here: the file is what the screen is for, and the way
       // out of one is the way back.
-      expect(find.byTooltip('Leave it empty'), findsNothing);
+      expect(find.text('Leave it empty'), findsNothing);
     });
 
     testWidgets('a file the rules refuse changes nothing, and says what and '
@@ -517,6 +519,40 @@ void main() {
   });
 
   group('asking the source again, from the gear (FR-BAR-5)', () {
+    /// Reaching a source outlasts the tap, so the row it was asked from says
+    /// so where its icon stands, and says in one line what it came to.
+    testWidgets('the row turns while the source is being reached', (
+      tester,
+    ) async {
+      final held = Completer<void>();
+      await pumpScreen(
+        tester,
+        const SettingsScreen(),
+        store: MemoryBarStore.of(testGuestBar(), smallCollection),
+        overrides: [
+          channelsProvider.overrideWithValue({
+            Transport.file: MemoryChannel(
+              const Unreachable<BarContent>(UnreachableReason.notFound),
+              held: held,
+              transport: Transport.file,
+            ),
+          }),
+        ],
+      );
+      expect(find.byIcon(Icons.refresh), findsOneWidget);
+      await tester.tap(find.text('Refresh'));
+      await tester.pump(Duration.zero);
+      expect(find.byIcon(Icons.refresh), findsNothing);
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      held.complete();
+      await tester.pumpAndSettle();
+      expect(find.byIcon(Icons.refresh), findsOneWidget);
+      expect(
+        find.text('Could not refresh: its source could not be found.'),
+        findsOneWidget,
+      );
+    });
+
     Future<void> askThere(WidgetTester tester) async {
       await tap(tester, find.byTooltip('Settings'));
       await tap(tester, find.text('Refresh'));

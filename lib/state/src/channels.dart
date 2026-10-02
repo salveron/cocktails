@@ -40,10 +40,11 @@ const fileSource = FileBarChannel.source;
 /// finders, which are data's own and only the LAN has (ADR 22, ADR 04). A
 /// build with none answers nothing found, which is what a reader meets either
 /// way.
-final nearbyProvider = Provider<Future<List<Found>> Function()>(
-  (ref) => () async {
+final nearbyProvider = Provider<Stream<List<Found>> Function()>(
+  (ref) => () {
     final finder = ref.read(findersProvider)[Transport.lan];
-    return finder == null ? const <Found>[] : finder.nearby();
+    if (finder == null) return const Stream<List<Found>>.empty();
+    return finder.nearby();
   },
 );
 

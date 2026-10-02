@@ -13,12 +13,12 @@ abstract interface class BarChannel {
 }
 
 /// The guest's half of finding, which only the LAN has: a file arrives by hand
-/// and the cloud is asked by name. Asked while a reader looks, never left
-/// running (ADR 22).
+/// and the cloud is asked by name. Answers again as each device does and closes
+/// when the looking is over — never left running (ADR 22).
 abstract interface class BarFinder {
   Transport get transport;
 
-  Future<List<Found>> nearby();
+  Stream<List<Found>> nearby();
 }
 
 /// The owner's half, which only some transports have (FR-BAR-6): a file is

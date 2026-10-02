@@ -7,6 +7,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 import '../../theme.dart';
+import '../../wording.dart';
 import '../chips/color_marks.dart';
 import '../dialogs/scale_dialog.dart';
 import 'entry_card.dart';
@@ -66,7 +67,7 @@ class RecipeCard extends StatelessWidget {
     final availability = this.availability;
     final summary = [
       for (final line in recipe.lines) line.ingredients.join(_orSeparator),
-    ].join(' · ');
+    ].join(beside);
     return ExpandingCard(
       open: expanded,
       title: _recipeCardTitle(

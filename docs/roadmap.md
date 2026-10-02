@@ -203,10 +203,6 @@ offer or withdraw while a file was the only way a bar travelled.
   announced under, locked while anything is; a failure spoken once and left nowhere, the record
   having moved first (FR-BAR-6). Absent on a guest bar, whose own way in lands with M51.
   Depends: M46a.
-- [ ] **M48** — Any bar is shared from the list. *Deferred past M49–M51 at the human's call: the
-  guest's side lands before the bar list moves.* Delivers: the bars card's ⋮ reaching that same room
-  for a bar not in hand, and the card marking one that is shared
-  ([ui-design.md](ui-design.md#bars), FR-BAR-6). Depends: M47.
 - [x] **M49** — A guest refreshes over the LAN. Delivers: the LAN channel's `fetch` — the instance
   resolved afresh every ask, the offered list read by `readOfferings` behind its own version gate —
   and the three unreachable readings mapped onto where the ask stopped (FR-BAR-5/8,
@@ -218,6 +214,10 @@ offer or withdraw while a file was the only way a bar travelled.
   to before anything is fetched ([ui-design.md](ui-design.md#new-bar)); `reach` on the controller for
   the add's own fetch, and the source kept where the guest road takes it (FR-BAR-1/5/8).
   Depends: M49.
+- [ ] **M48** — Any bar is shared from the list. Delivers: the bars card's ⋮ reaching that same room
+  for a bar not in hand, and the card marking one that is shared
+  ([ui-design.md](ui-design.md#bars), FR-BAR-6). Held back until the guest's side had landed, so the
+  bar list moved once rather than twice. Depends: M47.
 - [ ] **M50a** — One name, one owned bar. Delivers: a name unique among the bars a device owns —
   guest bars unaffected, two readers' "Home bar" still standing side by side — refused on the new-bar
   and rename forms where the accident is made, so two identical cards can never reach a guest's
