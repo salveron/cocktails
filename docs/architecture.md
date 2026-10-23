@@ -163,6 +163,7 @@ bars:
   keytool -genkey -v -keystore <path>.jks -keyalg RSA -keysize 2048 -validity 10000 -alias cocktails
   ```
 - **A release build with no `key.properties` is refused**, not quietly signed with the debug key. A debug-signed APK cannot update one signed anywhere else, and the only way past that is an uninstall — which takes every bar on the device with it.
+- **The build's JDK is pinned to 21**, in `android/gradle/gradle-daemon-jvm.properties` and CI's `setup-java`, rather than left to whichever `java` leads `PATH`: a distro upgrade made that a JRE-only 25 with no compiler, and the local release build failed on a machine where nothing in the repo had moved. Gradle finds an installed JDK 21 itself and, with none, refuses by name instead of falling back. The other inputs were already fixed: `pubspec.lock`, the Gradle wrapper, AGP and Kotlin in `settings.gradle.kts`, and Flutter in CI.
 - CI builds the release APK against a throwaway key of its own. That is what puts R8 on every push rather than on the one machine that packages the real thing; debug builds never run it.
 
 ## Testing
