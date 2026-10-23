@@ -7,108 +7,44 @@ Technical design for [requirements.md](requirements.md); direction [vision.md](v
 - **Flutter (Dart)** targeting Android; desktop later ([ADR 01](adr/01-technology-stack.md)).
 - **Riverpod** for state management ([ADR 03](adr/03-app-structure-and-state.md)).
 - Development: Linux + physical Android phone over USB.
-- Minimal dependencies: `flutter_riverpod`, `yaml`, `path_provider`, `share_plus`, `file_selector`. 
-  Riverpod at 2.x (3.x adds unused packages). `scrollable_positioned_list` is the first taken for 
-  ergonomics rather than structure ([ADR 13](adr/13-lists-scroll-by-index.md)), and the bar it sets 
-  for the next: confined to one file, with the way out written down. `font_awesome_flutter` is the 
-  next, taken under that bar ([ADR 14](adr/14-the-dice-comes-off-font-awesome.md)) — by caret where 
-  the other is pinned, a package that still releases being the safer for keeping up with. `bonsoir` is 
-  the third taken under that bar and the first that speaks to a network — DNS-SD for the LAN 
-  transport, confined to one file with its replacement written down 
-  ([ADR 27](adr/27-nearby-comes-off-bonsoir.md), [ADR 22](adr/22-a-bar-travels-behind-one-seam.md)), 
-  by caret on the same reading as the one above. It brings the largest transitive tail here yet, five 
-  sub-packages and a D-Bus stack under the Linux one; the list is pinned to pubspec.yaml by test, so 
-  a package is named here in the change that takes it and never ahead of it.
+- Minimal dependencies: `flutter_riverpod`, `yaml`, `path_provider`, `share_plus`, `file_selector`. Riverpod at 2.x (3.x adds unused packages). `scrollable_positioned_list` is the first taken for ergonomics rather than structure ([ADR 13](adr/13-lists-scroll-by-index.md)), and the bar it sets for the next: confined to one file, with the way out written down. `font_awesome_flutter` is the next, taken under that bar ([ADR 14](adr/14-the-dice-comes-off-font-awesome.md)) — by caret where the other is pinned, a package that still releases being the safer for keeping up with. `bonsoir` is the third taken under that bar and the first that speaks to a network — DNS-SD for the LAN transport, confined to one file with its replacement written down ([ADR 27](adr/27-nearby-comes-off-bonsoir.md), [ADR 22](adr/22-a-bar-travels-behind-one-seam.md)), by caret on the same reading as the one above. It brings the largest transitive tail here yet, five sub-packages and a D-Bus stack under the Linux one; the list is pinned to pubspec.yaml by test, so a package is named here in the change that takes it and never ahead of it.
 
 ## System overview
 
 Offline app, many bars ([ADR 20](adr/20-the-app-holds-many-bars.md)), one resident (NFR-2).
 
-- One YAML file per bar, byte-identical to that bar's export, and an index carrying the records 
-  ([ADR 02](adr/02-persistence-and-export-format.md), [ADR 21](adr/21-the-file-carries-one-bar.md)).
-- Export: file copy of one bar. Import: validate, keep a copy, atomically replace one bar's 
-  contents, every other bar untouched.
-- Names are identity inside a bar; recipes reference by name, case-insensitive 
-  ([ADR 08](adr/08-names-ignore-case.md)). A bar's own name is a label, so a bar is told apart by an 
-  id the device minted and never shares.
-- Writes atomic (temp→rename); rolling backups, per bar and for the index. The app is the only 
-  writer of its store, and a guest bar's collection has no writer but the refresh that replaces it 
-  whole ([ADR 23](adr/23-nothing-writes-a-guest-bar.md)).
+- One YAML file per bar, byte-identical to that bar's export, and an index carrying the records ([ADR 02](adr/02-persistence-and-export-format.md), [ADR 21](adr/21-the-file-carries-one-bar.md)).
+- Export: file copy of one bar. Import: validate, keep a copy, atomically replace one bar's contents, every other bar untouched.
+- Names are identity inside a bar; recipes reference by name, case-insensitive ([ADR 08](adr/08-names-ignore-case.md)). A bar's own name is a label, so a bar is told apart by an id the device minted and never shares.
+- Writes atomic (temp→rename); rolling backups, per bar and for the index. The app is the only writer of its store, and a guest bar's collection has no writer but the refresh that replaces it whole ([ADR 23](adr/23-nothing-writes-a-guest-bar.md)).
 
 ## Bars
 
-The shelf's shape and its "nothing crosses" guarantee (FR-BAR-1) are
-[components.md](components.md#the-shelf-and-the-bar)'s; the reader's reading unit against the
-collection's owner-kept sizes is [ADR 21](adr/21-the-file-carries-one-bar.md)'s (FR-SET-1).
+The shelf's shape and its "nothing crosses" guarantee (FR-BAR-1) are [components.md](components.md#the-shelf-and-the-bar)'s; the reader's reading unit against the collection's owner-kept sizes is [ADR 21](adr/21-the-file-carries-one-bar.md)'s (FR-SET-1).
 
 **Guest bar is read-only** (FR-BAR-3/4), enforced at domain, data, and UI layers ([ADR 23](adr/23-nothing-writes-a-guest-bar.md)). Shopping destination absent rather than empty.
 
 ## Storage isolation
 
-Persistence behind interface only: `BarStore` names no file and answers an export with an opaque 
-location, so the store stays swappable by adapter replacement. The per-bar shape keeps that promise 
-better than the whole-database one it replaces — a bar is a row, which is what SQLite would ask for.
+Persistence behind interface only: `BarStore` names no file and answers an export with an opaque location, so the store stays swappable by adapter replacement. The per-bar shape keeps that promise better than the whole-database one it replaces — a bar is a row, which is what SQLite would ask for.
 
-- A save writes one file: the bar on show, or the index. Every other bar's bytes are neither read 
-  nor rewritten, which is what makes a save cost the same whatever the device holds (NFR-2). The 
-  index is written when a record moves — a rename, a refresh landing, an offer, a switch — never on 
-  a collection edit.
-- Recovery is per bar ([ADR 02](adr/02-persistence-and-export-format.md)): a bar that fails to 
-  decode opens on its newest decodable backup and says why, the bars beside it untouched. A lost 
-  index is rebuilt from the bar files, which carry their names, at the price of the modes, sources 
-  and refresh times — so it is backed up on the same terms.
-- **Migration**: a device carrying a format-1 `cocktails.yaml` and no index has it read as an import 
-  would read it ([ADR 21](adr/21-the-file-carries-one-bar.md)) and written out as the device's first 
-  owned bar, under a default name the reader may change (FR-BAR-2). The old file and its backups 
-  stay exactly where they are, being the net the migration runs over; a second run finds an index 
-  and does nothing.
+- A save writes one file: the bar on show, or the index. Every other bar's bytes are neither read nor rewritten, which is what makes a save cost the same whatever the device holds (NFR-2). The index is written when a record moves — a rename, a refresh landing, an offer, a switch — never on a collection edit.
+- Recovery is per bar ([ADR 02](adr/02-persistence-and-export-format.md)): a bar that fails to decode opens on its newest decodable backup and says why, the bars beside it untouched. A lost index is rebuilt from the bar files, which carry their names, at the price of the modes, sources and refresh times — so it is backed up on the same terms.
+- **Migration**: a device carrying a format-1 `cocktails.yaml` and no index has it read as an import would read it ([ADR 21](adr/21-the-file-carries-one-bar.md)) and written out as the device's first owned bar, under a default name the reader may change (FR-BAR-2). The old file and its backups stay exactly where they are, being the net the migration runs over; a second run finds an index and does nothing.
 
 ## Sharing
 
-Three ways a bar travels (FR-BAR-7/8/9) behind one seam 
-([ADR 22](adr/22-a-bar-travels-behind-one-seam.md)). A **source** is a transport plus what that 
-transport needs to ask again, kept with the guest bar so it refreshes from the thing it was added 
-from — or from another way the reader has since pointed it at, one value replaced rather than a list 
-chosen among (FR-BAR-5). A fetch answers a value, never an exception: what arrived, what stopped it being read (the 
-import's own judgement, FR-DAT-4), or that the source could not be reached — offline, not found, or 
-withdrawn — which leaves the bar readable as it stood and says which (FR-BAR-5). It may also answer 
-nothing at all, where the reader was asked and stood down.
+Three ways a bar travels (FR-BAR-7/8/9) behind one seam ([ADR 22](adr/22-a-bar-travels-behind-one-seam.md)). A **source** is a transport plus what that transport needs to ask again, kept with the guest bar so it refreshes from the thing it was added from — or from another way the reader has since pointed it at, one value replaced rather than a list chosen among (FR-BAR-5). A fetch answers a value, never an exception: what arrived, what stopped it being read (the import's own judgement, FR-DAT-4), or that the source could not be reached — offline, not found, or withdrawn — which leaves the bar readable as it stood and says which (FR-BAR-5). It may also answer nothing at all, where the reader was asked and stood down.
 
-- **File** (FR-BAR-7): the source is the reader, and holds no address to keep. A refresh opens the 
-  document picker, so a file-sourced bar cannot be told from any other file picked for it — what 
-  arrives replaces what stood, and the pick is the judgement; a picker dismissed leaves the bar 
-  exactly as it was, having failed at nothing. Nothing to withdraw, nothing announced. **One picked 
-  file has three destinations**, and which one it takes is settled on the one form that reads it: 
-  the open bar's contents replaced (FR-DAT-3), a new bar of the reader's own founded from it 
-  (FR-BAR-2), or a guest bar founded beside it (FR-BAR-7). Only the last keeps the source; none of 
-  the three takes the file's name for the bar's, that being the reader's to leave or change 
-  ([ADR 21](adr/21-the-file-carries-one-bar.md)).
-- **LAN** (FR-BAR-8): an owner's device announces itself once on DNS-SD and answers over a 
-  `dart:io` HTTP server — what it offers, and each offered bar's bytes on an unguessable path. **One 
-  server and one service instance per device**, whatever it shares; both come up with the first offer 
-  and down with the last withdrawal, so a device sharing nothing announces nothing (NFR-5). 
-  Discovery costs a package, the transfer none. A guest keeps the instance name and the bar's id 
-  rather than an address — a port outlives no app start — and resolves afresh on every ask, reading 
-  which of the three unreachable answers it gets off where the ask stopped: **no non-loopback 
-  interface** is `offline`, an instance that does not come back from a browse is `notFound`, and a 
-  list that reads without naming the bar — or a path that answers nothing — is `withdrawn` (ADR 22). 
-  The source it keeps is the bar's id and the instance name in one opaque string, the id leading, 
-  since only it has an alphabet the split can trust. Neither side 
-  leaves a browse running, and neither side runs at all once its app does not — so an offer lasts 
-  the run and no longer: the record is put back to not-shared at the next load rather than quietly 
-  putting a bar back on the network.
-- **Cloud** (FR-BAR-9): the one way asking an identity (NFR-3) and the one needing a server. The 
-  transport is declared and no adapter registered, the ways on offer being the ways that answer — so 
-  the choice waits without holding the other two up.
+- **File** (FR-BAR-7): the source is the reader, and holds no address to keep. A refresh opens the document picker, so a file-sourced bar cannot be told from any other file picked for it — what arrives replaces what stood, and the pick is the judgement; a picker dismissed leaves the bar exactly as it was, having failed at nothing. Nothing to withdraw, nothing announced. **One picked file has three destinations**, and which one it takes is settled on the one form that reads it: the open bar's contents replaced (FR-DAT-3), a new bar of the reader's own founded from it (FR-BAR-2), or a guest bar founded beside it (FR-BAR-7). Only the last keeps the source; none of the three takes the file's name for the bar's, that being the reader's to leave or change ([ADR 21](adr/21-the-file-carries-one-bar.md)).
+- **LAN** (FR-BAR-8): an owner's device announces itself once on DNS-SD and answers over a `dart:io` HTTP server — what it offers, and each offered bar's bytes on an unguessable path. **One server and one service instance per device**, whatever it shares; both come up with the first offer and down with the last withdrawal, so a device sharing nothing announces nothing (NFR-5). Discovery costs a package, the transfer none. A guest keeps the instance name and the bar's id rather than an address — a port outlives no app start — and resolves afresh on every ask, reading which of the three unreachable answers it gets off where the ask stopped: **no non-loopback interface** is `offline`, an instance that does not come back from a browse is `notFound`, and a list that reads without naming the bar — or a path that answers nothing — is `withdrawn` (ADR 22). The source it keeps is the bar's id and the instance name in one opaque string, the id leading, since only it has an alphabet the split can trust. Neither side leaves a browse running, and neither side runs at all once its app does not — so an offer lasts the run and no longer: the record is put back to not-shared at the next load rather than quietly putting a bar back on the network.
+- **Cloud** (FR-BAR-9): the one way asking an identity (NFR-3) and the one needing a server. The transport is declared and no adapter registered, the ways on offer being the ways that answer — so the choice waits without holding the other two up.
 
-Withdrawal (FR-BAR-6) stops an offer and nothing else: what a guest holds stays theirs, and their 
-next refresh is told the source is gone. Sharing is not confidentiality — the LAN path is 
-unguessable rather than authenticated, and a bar shared is a bar given.
+Withdrawal (FR-BAR-6) stops an offer and nothing else: what a guest holds stays theirs, and their next refresh is told the source is gone. Sharing is not confidentiality — the LAN path is unguessable rather than authenticated, and a bar shared is a bar given.
 
 ## Data format
 
-A bar's file — identical to that bar's export ([ADR 02](adr/02-persistence-and-export-format.md), 
-[ADR 21](adr/21-the-file-carries-one-bar.md)). Example carrying every construct:
+A bar's file — identical to that bar's export ([ADR 02](adr/02-persistence-and-export-format.md), [ADR 21](adr/21-the-file-carries-one-bar.md)). Example carrying every construct:
 
 ```yaml
 format: 2
@@ -154,48 +90,20 @@ recipes:
 
 Rules:
 
-- `format`: schema version, 2, and the version of the whole on-disk layout — the index below carries 
-  the same number, one bump moving both. Unsupported versions rejected (FR-DAT-4). **Format 1 is 
-  read on import and written back as 2**, its `made:` key ignored rather than reported, the one 
-  exception to unknown keys below; nothing else reads it, the device's own format-1 file being 
-  migrated through that same route.
-- `name`: the bar's own, under the same value rules as every other name and under no uniqueness rule 
-  at all (FR-BAR-1). Required; a format-1 file has none and is named by the reader adding it. Read 
-  where a bar is founded from the file and nowhere else — like `display`, it is what the reader 
-  starts from rather than what the bar is called ([ADR 21](adr/21-the-file-carries-one-bar.md)).
-- `units`: measurement vocabulary ([ADR 09](adr/09-units-are-a-vocabulary.md)). `plural` 
-  omitted where same as name. Absent = shipped seven (`part ml oz dash barspoon drop piece`). 
-  Present = whole vocabulary. All spellings unique under fold; `part`/`ml`/`oz` required.
-- `settings`: `part_ml` and `oz_ml` are the owner's, `display` the reader's — it and `name` are what 
-  a guest bar's refresh does not take (FR-BAR-5, [ADR 21](adr/21-the-file-carries-one-bar.md)).
-- Ingredient entries: `name` required; `stock` = `in`|`low`|`out` (default); `tags` and 
-  `aliases` (optional). Names and aliases: one namespace, unique under fold, no commas. 
-  References resolve by any spelling, stored under entry's name.
-- Tag entries: `name` and `color` required (palette: [ADR 07](adr/07-tag-colour.md)). 
-  Two vocabularies separate; one name may exist in both.
-- A `tags` list — on a recipe or on an ingredient — holds names only, resolved against that
-  side's vocabulary. The colour lives with the tag, once.
-- Line: `<amount> [unit] <ingredient>` with optional mark ` (base)` or ` (optional)`, 
-  never both ([ADR 06](adr/06-base-spirit-on-the-line.md)). Amount: decimal or range `a-b`. 
-  Unit: optional, resolves against vocabulary (name or plural), omitted = `part` (FR-REC-2). 
-  Writer emits singular for 1, plural otherwise. Accepts input plurals. Unknown units reported.
-- Alternatives on a line: `/`-separated, spaces optional on input, written back as ` / ` 
-  ([ADR 11](adr/11-substitutions-on-the-line.md), FR-REC-9). Split is lexical — after the unit, 
-  after the mark — so one amount, unit and mark govern the group and no reading depends on the 
-  vocabulary. `/` barred from every ingredient spelling; a name repeated on one line reported.
-- References must resolve to matching vocabulary; names unique within kind ([ADR 08](adr/08-names-ignore-case.md)). 
-  Spelling preserved. Value rules (FR-DAT-4): names non-empty, single-line, no surrounding 
-  whitespace; amounts positive, range ends ordered; no duplicate tags. Unknown keys are structural 
-  errors, and validation failures report the YAML line and the offending value.
-- App writes canonical form (fixed order, indentation, no comments) from a custom emitter spec'd 
-  here and pinned by round-trip tests. FR-DAT-5 covers content only: hand-written 
-  `1.50 2 dash 1 gin` normalises to `1.5 2 dashes 1 part gin`, byte-identical from the app's own 
-  output onward.
-- Tokens declared as enum fields (stock, display, mark, colour, mode, transport), not Dart 
-  identifiers (ADR 09).
+- `format`: schema version, 2, and the version of the whole on-disk layout — the index below carries the same number, one bump moving both. Unsupported versions rejected (FR-DAT-4). **Format 1 is read on import and written back as 2**, its `made:` key ignored rather than reported, the one exception to unknown keys below; nothing else reads it, the device's own format-1 file being migrated through that same route.
+- `name`: the bar's own, under the same value rules as every other name and under no uniqueness rule at all (FR-BAR-1). Required; a format-1 file has none and is named by the reader adding it. Read where a bar is founded from the file and nowhere else — like `display`, it is what the reader starts from rather than what the bar is called ([ADR 21](adr/21-the-file-carries-one-bar.md)).
+- `units`: measurement vocabulary ([ADR 09](adr/09-units-are-a-vocabulary.md)). `plural` omitted where same as name. Absent = shipped seven (`part ml oz dash barspoon drop piece`). Present = whole vocabulary. All spellings unique under fold; `part`/`ml`/`oz` required.
+- `settings`: `part_ml` and `oz_ml` are the owner's, `display` the reader's — it and `name` are what a guest bar's refresh does not take (FR-BAR-5, [ADR 21](adr/21-the-file-carries-one-bar.md)).
+- Ingredient entries: `name` required; `stock` = `in`|`low`|`out` (default); `tags` and `aliases` (optional). Names and aliases: one namespace, unique under fold, no commas. References resolve by any spelling, stored under entry's name.
+- Tag entries: `name` and `color` required (palette: [ADR 07](adr/07-tag-colour.md)). Two vocabularies separate; one name may exist in both.
+- A `tags` list — on a recipe or on an ingredient — holds names only, resolved against that side's vocabulary. The colour lives with the tag, once.
+- Line: `<amount> [unit] <ingredient>` with optional mark ` (base)` or ` (optional)`, never both ([ADR 06](adr/06-base-spirit-on-the-line.md)). Amount: decimal or range `a-b`. Unit: optional, resolves against vocabulary (name or plural), omitted = `part` (FR-REC-2). Writer emits singular for 1, plural otherwise. Accepts input plurals. Unknown units reported.
+- Alternatives on a line: `/`-separated, spaces optional on input, written back as ` / ` ([ADR 11](adr/11-substitutions-on-the-line.md), FR-REC-9). Split is lexical — after the unit, after the mark — so one amount, unit and mark govern the group and no reading depends on the vocabulary. `/` barred from every ingredient spelling; a name repeated on one line reported.
+- References must resolve to matching vocabulary; names unique within kind ([ADR 08](adr/08-names-ignore-case.md)). Spelling preserved. Value rules (FR-DAT-4): names non-empty, single-line, no surrounding whitespace; amounts positive, range ends ordered; no duplicate tags. Unknown keys are structural errors, and validation failures report the YAML line and the offending value.
+- App writes canonical form (fixed order, indentation, no comments) from a custom emitter spec'd here and pinned by round-trip tests. FR-DAT-5 covers content only: hand-written `1.50 2 dash 1 gin` normalises to `1.5 2 dashes 1 part gin`, byte-identical from the app's own output onward.
+- Tokens declared as enum fields (stock, display, mark, colour, mode, transport), not Dart identifiers (ADR 09).
 
-The index is device state rather than an export: it travels nowhere and is the one file no reader is 
-meant to open, written by the same canonical emitter and judged by the same rules.
+The index is device state rather than an export: it travels nowhere and is the one file no reader is meant to open, written by the same canonical emitter and judged by the same rules.
 
 ```yaml
 format: 2
@@ -207,30 +115,13 @@ bars:
   - {id: b3e1d7, name: Home bar, mode: guest, display: ml, refreshed: "2026-08-09T18:22:04.000Z", holds: {recipe: 40, ingredient: 55, tag: 3, unit: 7}, source: {via: lan, at: _cocktails._tcp/x, from: Home bar (b3e)}}
 ```
 
-One record, one line: the halves a mode rules out are left off as every default is, and a timestamp
-is quoted because its colons would otherwise end the scalar in flow context.
+One record, one line: the halves a mode rules out are left off as every default is, and a timestamp is quoted because its colons would otherwise end the scalar in flow context.
 
-`device` is what the LAN announces this device under
-([ADR 28](adr/28-the-device-is-named-by-its-reader.md)) — the reader's, judged by the same name
-rules as any other and left off entirely until they give one, where what the phone calls itself
-stands in. `id` is opaque, minted here, unique within the index and never written to a bar's own
-file. `mode` 
-is `owner`|`guest`; `via` is `file`|`lan`|`cloud`, `at` the transport's own business, `from` what to 
-call the source where one is read. `offers` is an owner's, one entry per way a bar is shared, 
-carrying the guests it names where the way can (FR-BAR-6); `source` and `refreshed` are a guest's,
-`updated` an owner's. `holds` is what the bar list reads it by, one count per `Holding` under a token
-of its own — optional, like `updated`: a record written before summaries existed carries neither, and
-the startup load counts that bar once and writes the index back (ADR 20). A `holds` missing a kind is
-dropped whole rather than read as a bar that holds none of it.
+`device` is what the LAN announces this device under ([ADR 28](adr/28-the-device-is-named-by-its-reader.md)) — the reader's, judged by the same name rules as any other and left off entirely until they give one, where what the phone calls itself stands in. `id` is opaque, minted here, unique within the index and never written to a bar's own file. `mode` is `owner`|`guest`; `via` is `file`|`lan`|`cloud`, `at` the transport's own business, `from` what to call the source where one is read. `offers` is an owner's, one entry per way a bar is shared, carrying the guests it names where the way can (FR-BAR-6); `source` and `refreshed` are a guest's, `updated` an owner's. `holds` is what the bar list reads it by, one count per `Holding` under a token of its own — optional, like `updated`: a record written before summaries existed carries neither, and the startup load counts that bar once and writes the index back (ADR 20). A `holds` missing a kind is dropped whole rather than read as a bar that holds none of it.
 
-`shopping` is what the optimizer is asked (FR-SET-2, [ADR 24](adr/24-the-tags-may-aim-the-optimizer.md)) 
-— the reader's, which is why it is here rather than in the bar's own file. Left off entirely while 
-nothing in it has moved, and written whole once anything has: absent means the defaults, so a record 
-written before it existed reads as the answer the app gave then and no migration runs. `budget` and 
-`most` must be values their screen offers, `validateShelf` refusing an index that says otherwise.
+`shopping` is what the optimizer is asked (FR-SET-2, [ADR 24](adr/24-the-tags-may-aim-the-optimizer.md)) — the reader's, which is why it is here rather than in the bar's own file. Left off entirely while nothing in it has moved, and written whole once anything has: absent means the defaults, so a record written before it existed reads as the answer the app gave then and no migration runs. `budget` and `most` must be values their screen offers, `validateShelf` refusing an index that says otherwise.
 
-The offered list is the one document written to the wire rather than to disk, and the only one a 
-stranger ever reads (FR-BAR-8, [ADR 22](adr/22-a-bar-travels-behind-one-seam.md)):
+The offered list is the one document written to the wire rather than to disk, and the only one a stranger ever reads (FR-BAR-8, [ADR 22](adr/22-a-bar-travels-behind-one-seam.md)):
 
 ```yaml
 lan_format: 1
@@ -239,127 +130,41 @@ bars:
   - {id: 5f2c9a, name: Home bar, path: 3f9c1e5a7b2d4e8f0a6c9b1d3e5f7a2c}
 ```
 
-`lan_format` is a number of its own, moving with the LAN protocol rather than with the schema above: 
-a storage bump must not turn a guest away from a list whose shape never changed, and turn it away at 
-discovery, before the bar's own version gate can speak. Three fields and no more — a projection of a 
-bar, never a record. What a device keeps to itself is not on the wire, nor which bar is open, nor a 
-guest bar's own source. `path` is drawn per run from secure randomness, is never stored, and may be 
-rotated freely; it is the whole of a shared bar's protection, a bar shared being a bar given.
+`lan_format` is a number of its own, moving with the LAN protocol rather than with the schema above: a storage bump must not turn a guest away from a list whose shape never changed, and turn it away at discovery, before the bar's own version gate can speak. Three fields and no more — a projection of a bar, never a record. What a device keeps to itself is not on the wire, nor which bar is open, nor a guest bar's own source. `path` is drawn per run from secure randomness, is never stored, and may be rotated freely; it is the whole of a shared bar's protection, a bar shared being a bar given.
 
 ## Domain computations
 
-- **Availability** (required lines only): all `in` = makeable; none `out` but some `low` = makeable-low; 
-  any `out` = missing. A line stands at its best-stocked alternative (`stockOfLine`, FR-REC-9). 
-  Derived provider, never stored. Lost ingredients read as `out`.
-- **Base spirit** (FR-DIS-4, [ADR 12](adr/12-base-spirit-narrows.md)): a predicate, not a placement. 
-  Every alternative of every base line counts, so a group matches under each ingredient it names; the 
-  spirits offered are read off the recipes, deduped by name key and read A→Z.
-- **Random pick** (FR-DIS-5): drawn from the rows on show, so every narrowing already holds; 
-  `canMake` is the one reading of what counts (low does, unjudged does not), shared with the 
-  optimizer below. The draw moves off the recipe already standing while another can be made, so a 
-  second roll always answers differently.
-- **Optimizer** (FR-DIS-6, [ADR 15](adr/15-the-optimizer-answers-with-the-best-few.md)): a missing 
-  recipe's gap is not one set of ingredients but a choice between several — any one alternative of a 
-  group closes its line (ADR 11) — so the ways of making it are the cross product over the lines it 
-  is short of, cut at N. The ingredients worth weighing are exactly those gaps', and every basket of ≤ N 
-  drawn from them is scored by the recipes some part of it closes. A basket must beat each of its 
-  own smaller selves, or it *is* one of them carrying a passenger; a sub-basket's recipes being 
-  always a subset, comparing counts settles it. Ranked by recipes unlocked, then fewest ingredients, 
-  then A→Z. Zero-yield never arises — it cannot beat its own parts. What counts as short is the 
-  one thing the reader sets ([ADR 16](adr/16-the-optimizer-buys-what-is-running-low.md)): out of 
-  stock, or anything short of full stock, which is what puts the ingredients running low in the pool. 
-  Keeping the best few *of each size* is also what makes one search answer every budget, since the 
-  ingredients a wider one adds close nothing on their own ([components.md](components.md#computations)).
-- **Line parsing**: shared parser/formatter, both routes (form, codec); takes unit vocabulary 
-  (decides unit vs. name). Codec reads `units` first.
-- **Display transforms** (FR-REC-7, FR-SET-1): factor multiplies amounts (range ends together); 
-  a line in one fixed unit converts into the one the bar's `display` names, through the two ml sizes 
-  ([ADR 17](adr/17-the-fixed-units-interconvert.md)). ×1 in the bar's own unit = the card at 
-  rest. Rounded to 2 decimals.
-- **A refresh lands whole** (FR-BAR-5): what arrives is judged as an imported file is (FR-DAT-4), and 
-  only then replaces the guest bar's collection and refresh time together. Nothing is merged and 
-  nothing compared; the bar's `display` survives by never having been in the payload and its `name` 
-  by being out of `refreshedAt`'s reach, and what fails to pass leaves the bar exactly as it was.
+- **Availability** (required lines only): all `in` = makeable; none `out` but some `low` = makeable-low; any `out` = missing. A line stands at its best-stocked alternative (`stockOfLine`, FR-REC-9). Derived provider, never stored. Lost ingredients read as `out`.
+- **Base spirit** (FR-DIS-4, [ADR 12](adr/12-base-spirit-narrows.md)): a predicate, not a placement. Every alternative of every base line counts, so a group matches under each ingredient it names; the spirits offered are read off the recipes, deduped by name key and read A→Z.
+- **Random pick** (FR-DIS-5): drawn from the rows on show, so every narrowing already holds; `canMake` is the one reading of what counts (low does, unjudged does not), shared with the optimizer below. The draw moves off the recipe already standing while another can be made, so a second roll always answers differently.
+- **Optimizer** (FR-DIS-6, [ADR 15](adr/15-the-optimizer-answers-with-the-best-few.md)): a missing recipe's gap is not one set of ingredients but a choice between several — any one alternative of a group closes its line (ADR 11) — so the ways of making it are the cross product over the lines it is short of, cut at N. The ingredients worth weighing are exactly those gaps', and every basket of ≤ N drawn from them is scored by the recipes some part of it closes. A basket must beat each of its own smaller selves, or it *is* one of them carrying a passenger; a sub-basket's recipes being always a subset, comparing counts settles it. Ranked by recipes unlocked, then fewest ingredients, then A→Z. Zero-yield never arises — it cannot beat its own parts. What counts as short is the one thing the reader sets ([ADR 16](adr/16-the-optimizer-buys-what-is-running-low.md)): out of stock, or anything short of full stock, which is what puts the ingredients running low in the pool. Keeping the best few *of each size* is also what makes one search answer every budget, since the ingredients a wider one adds close nothing on their own ([components.md](components.md#computations)).
+- **Line parsing**: shared parser/formatter, both routes (form, codec); takes unit vocabulary (decides unit vs. name). Codec reads `units` first.
+- **Display transforms** (FR-REC-7, FR-SET-1): factor multiplies amounts (range ends together); a line in one fixed unit converts into the one the bar's `display` names, through the two ml sizes ([ADR 17](adr/17-the-fixed-units-interconvert.md)). ×1 in the bar's own unit = the card at rest. Rounded to 2 decimals.
+- **A refresh lands whole** (FR-BAR-5): what arrives is judged as an imported file is (FR-DAT-4), and only then replaces the guest bar's collection and refresh time together. Nothing is merged and nothing compared; the bar's `display` survives by never having been in the payload and its `name` by being out of `refreshedAt`'s reach, and what fails to pass leaves the bar exactly as it was.
 
 ## Platform facts
 
-- App-private directory: `shelf.yaml` and `bars/<id>.yaml`, each with three rolling backups beside 
-  it (`shelf.backup-1/2/3.yaml`, `bars/<id>.backup-1/2/3.yaml`). The copies that leave or stand 
-  behind sit at the top: the shareable one under a basename folded from the bar's name 
-  (`home-bar.yaml`, `bar.yaml` where nothing survives the fold), so a guest holding three of them can 
-  tell one from another, and `cocktails-before-import.yaml` / `cocktails-before-delete.yaml`, the 
-  nets FR-DAT-3 and FR-BAR-2 ask for. Writes via `.tmp` + rename.
-- The copy leaves through the Android share sheet, over the `FileProvider` `share_plus` ships 
-  ([ADR 18](adr/18-data-crosses-the-edge-in-a-system-sheet.md)); the plugin re-copies it into 
-  `cacheDir/share_plus/`, so the receiving app sees the basename above. The share provider's 
-  manifest entry is the plugin's own, unlike the LAN transport's permissions two bullets down, which 
-  are the first that are ours (ADR 22).
-- A file comes back through `ACTION_OPEN_DOCUMENT` on `file_selector`, so no layer here holds a 
-  `content://` URI. The Android plugin answers with an `XFile.fromData` — the bytes, not a path to 
-  them — and `XFile.readAsString` **drops the encoding asked of it** on that branch, decoding byte 
-  per character; `Orange Curaçao` came back `Orange CuraÃ§ao`. The pick seam decodes UTF-8 itself and 
-  refuses malformed input rather than substituting, a U+FFFD being the same loss made quieter. The 
-  nets are written and never read: nothing in the app opens one, and app-private storage puts them 
-  past the reader as well. What they buy is that the bytes are still there — for a later version to 
-  offer, or for `adb` to pull — not a way back today.
-- DNS-SD announces and browses through the plugin's own platform APIs 
-  ([ADR 27](adr/27-nearby-comes-off-bonsoir.md)), and the app declares `INTERNET` and 
-  `CHANGE_WIFI_MULTICAST_STATE` itself rather than inheriting the same two the plugin merges in. 
-  **A service is reached at an address, never at a name**: a resolved service carries both, but 
-  Android resolves no `.local` hostname from a socket, so the address is what a fetch may use. Proven 
-  on the round trip, which also settled two things worth not rediscovering: the address may come back 
-  **IPv6-only** — the development machine answers one global IPv6 address and no IPv4 — so a URL 
-  built from it has to bracket the host; and a service is announced with its port but *found* without 
-  one, the port arriving only with the resolve, so nothing may be reached off a found service alone. 
-  The phone answered the rest: a register and a browse ask for **nothing beyond those two** — 
-  `NEARBY_WIFI_DEVICES` gates the Wi-Fi APIs rather than the NSD path, and discovery runs without it.
-- **The name the LAN announces is read from the phone's own settings**, through the app's first
-  `MethodChannel` and the only Kotlin it writes: `Settings.Global.DEVICE_NAME`, world-readable, no
-  permission and no manifest entry. It is the value the reader starts from and overwrites, never
-  what is announced on its own ([ADR 28](adr/28-the-device-is-named-by-its-reader.md)); a phone
-  that was never named, and any host that is not Android, answer nothing and the app falls back to
-  a constant of its own.
-- **A runtime local-network prompt is coming, and is dated rather than sudden.** `targetSdk` is 
-  Flutter's default taken as it moves, 36 today, and the NSD path asks for no permission of its own at 
-  that target (above). Android 16 makes local-network access 
-  restrictable opt-in, and Android 17 makes it mandatory behind `ACCESS_LOCAL_NETWORK` — a runtime 
-  permission with a system dialog. The day that default reaches 37 the reader meets it the first time 
-  they offer or look for a bar, and a refusal needs wording FR-BAR-8 does not have 
-  ([ADR 27](adr/27-nearby-comes-off-bonsoir.md)).
-- Android Auto Backup carries the whole app-private data directory, declared in `backup_rules.xml` 
-  (API 24–30) and `data_extraction_rules.xml` (31+, cloud backup and device transfer alike). The 
-  `root` domain rather than `file`: `path_provider`'s documents directory is `app_flutter/`, a 
-  sibling of `files/` and not a child, so a `file` rule would carry nothing at all. Tens of bars of 
-  hundreds of recipes run to single-digit MB, ×4 for the rolling backups beside them — inside the 
-  25 MB quota, which is what makes carrying the rotation affordable rather than worth excluding 
-  (neither rules format has a wildcard to exclude it with).
-- Application ID: `dev.salveron.cocktails`, and `.debug` besides on a debug build, so a device run 
-  installs its own app rather than asking to update the release one: the signatures differ, and the 
-  only way past that is the uninstall that takes every bar on the device with it. The share 
-  provider's authority is derived from the id and follows the suffix by itself. A debug build has 
-  its own storage, so what a device run reads is never the reader's own bars.
+- App-private directory: `shelf.yaml` and `bars/<id>.yaml`, each with three rolling backups beside it (`shelf.backup-1/2/3.yaml`, `bars/<id>.backup-1/2/3.yaml`). The copies that leave or stand behind sit at the top: the shareable one under a basename folded from the bar's name (`home-bar.yaml`, `bar.yaml` where nothing survives the fold), so a guest holding three of them can tell one from another, and `cocktails-before-import.yaml` / `cocktails-before-delete.yaml`, the nets FR-DAT-3 and FR-BAR-2 ask for. Writes via `.tmp` + rename.
+- The copy leaves through the Android share sheet, over the `FileProvider` `share_plus` ships ([ADR 18](adr/18-data-crosses-the-edge-in-a-system-sheet.md)); the plugin re-copies it into `cacheDir/share_plus/`, so the receiving app sees the basename above. The share provider's manifest entry is the plugin's own, unlike the LAN transport's permissions two bullets down, which are the first that are ours (ADR 22).
+- A file comes back through `ACTION_OPEN_DOCUMENT` on `file_selector`, so no layer here holds a `content://` URI. The Android plugin answers with an `XFile.fromData` — the bytes, not a path to them — and `XFile.readAsString` **drops the encoding asked of it** on that branch, decoding byte per character; `Orange Curaçao` came back `Orange CuraÃ§ao`. The pick seam decodes UTF-8 itself and refuses malformed input rather than substituting, a U+FFFD being the same loss made quieter. The nets are written and never read: nothing in the app opens one, and app-private storage puts them past the reader as well. What they buy is that the bytes are still there — for a later version to offer, or for `adb` to pull — not a way back today.
+- DNS-SD announces and browses through the plugin's own platform APIs ([ADR 27](adr/27-nearby-comes-off-bonsoir.md)), and the app declares `INTERNET` and `CHANGE_WIFI_MULTICAST_STATE` itself rather than inheriting the same two the plugin merges in. **A service is reached at an address, never at a name**: a resolved service carries both, but Android resolves no `.local` hostname from a socket, so the address is what a fetch may use. Proven on the round trip, which also settled two things worth not rediscovering: the address may come back **IPv6-only** — the development machine answers one global IPv6 address and no IPv4 — so a URL built from it has to bracket the host; and a service is announced with its port but *found* without one, the port arriving only with the resolve, so nothing may be reached off a found service alone. The phone answered the rest: a register and a browse ask for **nothing beyond those two** — `NEARBY_WIFI_DEVICES` gates the Wi-Fi APIs rather than the NSD path, and discovery runs without it.
+- **The name the LAN announces is read from the phone's own settings**, through the app's first `MethodChannel` and the only Kotlin it writes: `Settings.Global.DEVICE_NAME`, world-readable, no permission and no manifest entry. It is the value the reader starts from and overwrites, never what is announced on its own ([ADR 28](adr/28-the-device-is-named-by-its-reader.md)); a phone that was never named, and any host that is not Android, answer nothing and the app falls back to a constant of its own.
+- **A runtime local-network prompt is coming, and is dated rather than sudden.** `targetSdk` is Flutter's default taken as it moves, 36 today, and the NSD path asks for no permission of its own at that target (above). Android 16 makes local-network access restrictable opt-in, and Android 17 makes it mandatory behind `ACCESS_LOCAL_NETWORK` — a runtime permission with a system dialog. The day that default reaches 37 the reader meets it the first time they offer or look for a bar, and a refusal needs wording FR-BAR-8 does not have ([ADR 27](adr/27-nearby-comes-off-bonsoir.md)).
+- Android Auto Backup carries the whole app-private data directory, declared in `backup_rules.xml` (API 24–30) and `data_extraction_rules.xml` (31+, cloud backup and device transfer alike). The `root` domain rather than `file`: `path_provider`'s documents directory is `app_flutter/`, a sibling of `files/` and not a child, so a `file` rule would carry nothing at all. Tens of bars of hundreds of recipes run to single-digit MB, ×4 for the rolling backups beside them — inside the 25 MB quota, which is what makes carrying the rotation affordable rather than worth excluding (neither rules format has a wildcard to exclude it with).
+- Application ID: `dev.salveron.cocktails`, and `.debug` besides on a debug build, so a device run installs its own app rather than asking to update the release one: the signatures differ, and the only way past that is the uninstall that takes every bar on the device with it. The share provider's authority is derived from the id and follows the suffix by itself. A debug build has its own storage, so what a device run reads is never the reader's own bars.
 - Minimum Android: Flutter's own default, taken as it moves (minSdk 24, targetSdk 36 today).
 - UI: English only.
 
 ## Build & distribution
 
-- APK built locally, sideloaded; no Play Store yet. The universal APK carries three ABIs and runs 
-  about 53 MB; `--split-per-abi` roughly thirds it where one device is the target.
-- **Release keystore outside the repo**, named by `android/key.properties` (`storeFile` — relative 
-  to `android/` or absolute — `storePassword`, `keyAlias`, `keyPassword`). Both the properties file 
-  and `*.jks`/`*.keystore` are gitignored. Made once and kept, because it is the app's identity: 
-  Android tells two builds apart by signature, and Play Store would bind to this same certificate, 
-  so replacing it is not an option a later release has.
+- APK built locally, sideloaded; no Play Store yet. The universal APK carries three ABIs and runs about 53 MB; `--split-per-abi` roughly thirds it where one device is the target.
+- **Release keystore outside the repo**, named by `android/key.properties` (`storeFile` — relative to `android/` or absolute — `storePassword`, `keyAlias`, `keyPassword`). Both the properties file and `*.jks`/`*.keystore` are gitignored. Made once and kept, because it is the app's identity: Android tells two builds apart by signature, and Play Store would bind to this same certificate, so replacing it is not an option a later release has.
   ```
   keytool -genkey -v -keystore <path>.jks -keyalg RSA -keysize 2048 -validity 10000 -alias cocktails
   ```
-- **A release build with no `key.properties` is refused**, not quietly signed with the debug key. A 
-  debug-signed APK cannot update one signed anywhere else, and the only way past that is an 
-  uninstall — which takes every bar on the device with it.
-- CI builds the release APK against a throwaway key of its own. That is what puts R8 on every push 
-  rather than on the one machine that packages the real thing; debug builds never run it.
+- **A release build with no `key.properties` is refused**, not quietly signed with the debug key. A debug-signed APK cannot update one signed anywhere else, and the only way past that is an uninstall — which takes every bar on the device with it.
+- CI builds the release APK against a throwaway key of its own. That is what puts R8 on every push rather than on the one machine that packages the real thing; debug builds never run it.
 
 ## Testing
 
-Strategy and organization: [components.md](components.md#testing). CI: format check,
-`flutter analyze`, test suite, local APK build on every push.
+Strategy and organization: [components.md](components.md#testing). CI: format check, `flutter analyze`, test suite, local APK build on every push.

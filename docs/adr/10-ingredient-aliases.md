@@ -4,8 +4,7 @@
 
 ## Context
 
-[ADR 08](08-names-ignore-case.md) settled case; it left wording: "Bourbon Whiskey" and "bourbon" 
-are one ingredient but two to the vocabulary. Decided before aliases were built.
+[ADR 08](08-names-ignore-case.md) settled case; it left wording: "Bourbon Whiskey" and "bourbon" are one ingredient but two to the vocabulary. Decided before aliases were built.
 
 ## Decision
 

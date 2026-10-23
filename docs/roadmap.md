@@ -72,160 +72,63 @@ Milestones in dependency order. Scope: [requirements.md](requirements.md); desig
 
 ## Phase 7 — The app holds many bars
 
-**Pilot boundary.** Phases 0–6 are a complete product — one bar, kept and read and shared as a
-file. What follows is the next claim rather than the same one continued.
+**Pilot boundary.** Phases 0–6 are a complete product — one bar, kept and read and shared as a file. What follows is the next claim rather than the same one continued.
 
 - [x] **M30** — Shelf domain. Delivers: [ADR 20](adr/20-the-app-holds-many-bars.md), Bar, BarMode, Transport, BarSource, Offer, BarContent, Shelf, ShelfEdits, validateShelf, guest refusal [ADR 23](adr/23-nothing-writes-a-guest-bar.md). Depends: M29.
 - [x] **M31** — One file per bar. Delivers: [ADR 21](adr/21-the-file-carries-one-bar.md), BarStore, shelf.yaml, bars/<id>.yaml, atomic write, rotation, format 2 lands whole, cocktails.yaml migration. Depends: M30.
 - [x] **M32** — Shelf in state. Delivers: ShelfController, collectionProvider derived, openBarProvider, barWriterProvider (null for guest), export/import on open bar only, amend [ADR 23](adr/23-nothing-writes-a-guest-bar.md). Depends: M31.
 - [x] **M33** — Bars screen. Delivers: [ui-design.md](ui-design.md#bars), Switch bar in gear, openBar/addOwnedBar/renameBar/removeBar, card expands, summaryOf/Holding enum, loadIssues (FR-BAR-1/2). Depends: M32.
 - [x] **M33a** — Load answers once. Delivers: collectionProvider as plain Provider, spinner moved to _Home, no AsyncData wrapper, loadIssuesProvider as Notifier, Bar.copyWith narrowed, widget test harness updated. Depends: M33.
-- [x] **M33b** — The bar list says more, and says it at once. Delivers: `Bar.updated`/`Bar.summary` on
-  the record and the card's dated subtitle, Rename/Delete behind the row's ⋮; amends
-  [ADR 19](adr/19-a-destination-sends-the-reader-to-another.md),
-  [ADR 20](adr/20-the-app-holds-many-bars.md), [ADR 21](adr/21-the-file-carries-one-bar.md). Depends: M33a.
-- [x] **M34** — Guest bar is read-only. Delivers: every write control gated on `barWriterProvider`
-  being null, the optimizer destination absent on a guest, export still working (FR-DAT-1). Depends: M33a.
+- [x] **M33b** — The bar list says more, and says it at once. Delivers: `Bar.updated`/`Bar.summary` on the record and the card's dated subtitle, Rename/Delete behind the row's ⋮; amends [ADR 19](adr/19-a-destination-sends-the-reader-to-another.md), [ADR 20](adr/20-the-app-holds-many-bars.md), [ADR 21](adr/21-the-file-carries-one-bar.md). Depends: M33a.
+- [x] **M34** — Guest bar is read-only. Delivers: every write control gated on `barWriterProvider` being null, the optimizer destination absent on a guest, export still working (FR-DAT-1). Depends: M33a.
 
 ## Phase 8 — A bar travels by file
 
 - [x] **M35** — Sharing seam. Delivers: [ADR 22](adr/22-a-bar-travels-behind-one-seam.md), BarChannel, FetchOutcome, channelsProvider, refreshesProvider, file channel first (FR-BAR-7). Depends: M34.
-- [x] **M36** — One file, two destinations. Delivers: `BarFormScreen`, one form for founding and
-  importing; `addOwnedBar` (FR-BAR-2), swipe-to-refresh on a guest bar (FR-BAR-5). Depends: M35.
-- [x] **M36a** — A guest bar is the reader's to name. Delivers: `renameBar` on a guest bar, the import
-  review folded into `BarFormScreen`, Import becoming Refresh on a guest (FR-BAR-5); amends
-  [ADR 21](adr/21-the-file-carries-one-bar.md), [ADR 23](adr/23-nothing-writes-a-guest-bar.md). Depends: M36.
-- [x] **M36b** — One word per thing. Delivers: Inventory renamed Ingredients throughout, requirements
-  included (FR-ING-1/2/3); a bar card dated Updated/Refreshed rather than Loaded (ADR 20). Depends: M36a.
-- [x] **M36c** — The optimizer is asked, and a guest may look. Delivers: a Shopping settings screen
-  over `Bar.shopping` (ADR 21), aim/sift chips ([ADR 24](adr/24-the-tags-may-aim-the-optimizer.md),
-  FR-SET-2, FR-DIS-10); a guest bar reads tags, units and amounts read-only (FR-BAR-4). Depends: M36b.
+- [x] **M36** — One file, two destinations. Delivers: `BarFormScreen`, one form for founding and importing; `addOwnedBar` (FR-BAR-2), swipe-to-refresh on a guest bar (FR-BAR-5). Depends: M35.
+- [x] **M36a** — A guest bar is the reader's to name. Delivers: `renameBar` on a guest bar, the import review folded into `BarFormScreen`, Import becoming Refresh on a guest (FR-BAR-5); amends [ADR 21](adr/21-the-file-carries-one-bar.md), [ADR 23](adr/23-nothing-writes-a-guest-bar.md). Depends: M36.
+- [x] **M36b** — One word per thing. Delivers: Inventory renamed Ingredients throughout, requirements included (FR-ING-1/2/3); a bar card dated Updated/Refreshed rather than Loaded (ADR 20). Depends: M36a.
+- [x] **M36c** — The optimizer is asked, and a guest may look. Delivers: a Shopping settings screen over `Bar.shopping` (ADR 21), aim/sift chips ([ADR 24](adr/24-the-tags-may-aim-the-optimizer.md), FR-SET-2, FR-DIS-10); a guest bar reads tags, units and amounts read-only (FR-BAR-4). Depends: M36b.
 
 ## Phase 9 — The code says what it means
 
-No behaviour changes here but the first, which is a bug fix. The phase pays down what Phases 7 and 8
-left: one idea implemented four times, names that stopped meaning one thing, and four files past the
-size a reader holds. It stands before the LAN because the second `BarChannel` would otherwise copy
-what M36f settles.
+No behaviour changes here but the first, which is a bug fix. The phase pays down what Phases 7 and 8 left: one idea implemented four times, names that stopped meaning one thing, and four files past the size a reader holds. It stands before the LAN because the second `BarChannel` would otherwise copy what M36f settles.
 
-- [x] **M36d** — The name rule reaches the surface. Delivers: `nameKey` and its kin exported so a tag
-  chip folds a name the same way everywhere ([ADR 08](adr/08-names-ignore-case.md)), retiring three
-  private folds (amends [ADR 04](adr/04-module-boundaries.md)). Depends: M36c.
-- [x] **M36e** — Dead weight goes. Delivers: `MemoryBarStore` out of the shipped binary into
-  `test/support/`, and an `architecture_test` rule that no double ships. Depends: M36d.
-- [x] **M36f** — One home per algorithm: domain and data. Delivers: the bar coherence rules, the
-  `Outcome<T>` hierarchy and the token-carrying enums' `Tokened` each stated once instead of
-  several times. Depends: M36e.
-- [x] **M36g** — One home per algorithm: UI. Delivers: `ExpandingRow`, `Segments<T>`, `DialogFrame`
-  and `RevealServing` each replacing several hand-rolled copies across screens. Depends: M36f.
-- [x] **M36h** — One owner per value. Delivers: settings and screens reading a single live watch
-  instead of a mirrored copy resynced by `ref.listen`, so a moved default and a ticking clock each
-  take hold from one place. Depends: M36g.
-- [x] **M36i** — One word per thing. Delivers: `VocabularyList`/`VocabularyRow` → `EntryCardList`/
-  `EntryCard`, `BarPayload` → `BarContent`, `Shopping` → `ShoppingSettings`, and a run of smaller
-  renames converging one concept on one name apiece. Depends: M36h.
-- [x] **M36j** — Files find their size, one home per role. Delivers: `lib/ui` regrouped into
-  `screens/` and `widgets/{cards,chips,dialogs,forms,lists,notices}`
-  ([ADR 25](adr/25-the-ui-groups-by-subject.md)), every file over 600 lines split by subject within
-  it. Depends: M36i.
-- [x] **M36k** — The tests mirror the code. Delivers: `test/` holding one file per `lib/` file, named
-  for it ([rule and its two exemptions](components.md#where-a-test-lives)); yaml's one 1,609-line
-  file split among the four files that own its behaviour; test support folded into five files.
-  Depends: M36j.
+- [x] **M36d** — The name rule reaches the surface. Delivers: `nameKey` and its kin exported so a tag chip folds a name the same way everywhere ([ADR 08](adr/08-names-ignore-case.md)), retiring three private folds (amends [ADR 04](adr/04-module-boundaries.md)). Depends: M36c.
+- [x] **M36e** — Dead weight goes. Delivers: `MemoryBarStore` out of the shipped binary into `test/support/`, and an `architecture_test` rule that no double ships. Depends: M36d.
+- [x] **M36f** — One home per algorithm: domain and data. Delivers: the bar coherence rules, the `Outcome<T>` hierarchy and the token-carrying enums' `Tokened` each stated once instead of several times. Depends: M36e.
+- [x] **M36g** — One home per algorithm: UI. Delivers: `ExpandingRow`, `Segments<T>`, `DialogFrame` and `RevealServing` each replacing several hand-rolled copies across screens. Depends: M36f.
+- [x] **M36h** — One owner per value. Delivers: settings and screens reading a single live watch instead of a mirrored copy resynced by `ref.listen`, so a moved default and a ticking clock each take hold from one place. Depends: M36g.
+- [x] **M36i** — One word per thing. Delivers: `VocabularyList`/`VocabularyRow` → `EntryCardList`/ `EntryCard`, `BarPayload` → `BarContent`, `Shopping` → `ShoppingSettings`, and a run of smaller renames converging one concept on one name apiece. Depends: M36h.
+- [x] **M36j** — Files find their size, one home per role. Delivers: `lib/ui` regrouped into `screens/` and `widgets/{cards,chips,dialogs,forms,lists,notices}` ([ADR 25](adr/25-the-ui-groups-by-subject.md)), every file over 600 lines split by subject within it. Depends: M36i.
+- [x] **M36k** — The tests mirror the code. Delivers: `test/` holding one file per `lib/` file, named for it ([rule and its two exemptions](components.md#where-a-test-lives)); yaml's one 1,609-line file split among the four files that own its behaviour; test support folded into five files. Depends: M36j.
 
 ## Phase 10 — Every file names what it is responsible for
 
-Phase 9 asked whether a file was too big and whether a word meant one thing. It never asked what a
-file is *responsible for*, which is why `collection.dart` holds eight subjects, `availability.dart`
-mixes recipe availability with ingredient stock, and the shelf imports the optimizer for a value on
-`Bar`. One behaviour change only: `Bar.shopping` takes the mode rule every other mode-specific field
-already keeps. It stands before the LAN so the second `BarChannel` lands in a domain that has been
-asked the question.
+Phase 9 asked whether a file was too big and whether a word meant one thing. It never asked what a file is *responsible for*, which is why `collection.dart` holds eight subjects, `availability.dart` mixes recipe availability with ingredient stock, and the shelf imports the optimizer for a value on `Bar`. One behaviour change only: `Bar.shopping` takes the mode rule every other mode-specific field already keeps. It stands before the LAN so the second `BarChannel` lands in a domain that has been asked the question.
 
-- [x] **M37** — Dead weight and misfiled declarations. Delivers: `newBarId`'s unused `Random`
-  parameter gone; `data.dart` newly hiding `isStorableBarId`; `refreshes.dart` split into
-  `channels.dart` and itself. Depends: M36k.
-- [x] **M38** — One home per algorithm: domain and data. Delivers: the shelf's and the collection's
-  duplicate-name rules, `ShelfController`'s `Outcome` reads, and the yaml readers' "must be a
-  mapping" guard each stated once; `ShoppingSettings`'s wire tokens declared beside their fields.
-  Depends: M37.
-- [x] **M39** — One home per algorithm: UI. Delivers: one write-gate idiom across three screens, two
-  missing `mounted` guards fixed, `ToggleMembership`/`AmountView`/`say` each moved to the file that
-  owns the concern. Depends: M38.
-- [x] **M40** — The domain finds its shape. Delivers: 13 `domain/src/` files become 25 across
-  `collection/`, `shopping/` and `shelf/` in a one-way chain
-  ([ADR 26](adr/26-the-domain-groups-by-responsibility.md)); `Bar.shopping` becomes nullable and
-  owner-only, the one behaviour change (amends [ADR 21](adr/21-the-file-carries-one-bar.md),
-  [ADR 24](adr/24-the-tags-may-aim-the-optimizer.md)). Depends: M39.
-- [x] **M41** — The tests find their level. Delivers: `barChannelContract`, a 3-way split of
-  `ui_test_support.dart`, and `architecture_test.dart`'s sanity checks collapsed onto one table;
-  `expectIssue`/`copyWithContract` reached into the domain suites; eleven `List.unmodifiable`
-  contract checks removed and `list_controls.dart` gained its first test file. Depends: M40.
-- [x] **M42** — The docs say less, and mean it. Delivers: an anchor-resolution check in
-  `architecture_test.dart` landed first over all 126 links; [components.md](components.md) 1022 →
-  688 lines, its signature fences gone; this roadmap's own history compacted from M33b on (319 →
-  170); [ADR 20](adr/20-the-app-holds-many-bars.md), [ADR 21](adr/21-the-file-carries-one-bar.md)
-  freed of reversed alternatives and amendment narration, [ADR 02](adr/02-persistence-and-export-format.md)
-  marked superseded by them; [ui-design.md](ui-design.md) trimmed of its screen-content walks and
-  its Vocabulary editing section pointed at the widgets' own dartdoc. Depends: M41.
+- [x] **M37** — Dead weight and misfiled declarations. Delivers: `newBarId`'s unused `Random` parameter gone; `data.dart` newly hiding `isStorableBarId`; `refreshes.dart` split into `channels.dart` and itself. Depends: M36k.
+- [x] **M38** — One home per algorithm: domain and data. Delivers: the shelf's and the collection's duplicate-name rules, `ShelfController`'s `Outcome` reads, and the yaml readers' "must be a mapping" guard each stated once; `ShoppingSettings`'s wire tokens declared beside their fields. Depends: M37.
+- [x] **M39** — One home per algorithm: UI. Delivers: one write-gate idiom across three screens, two missing `mounted` guards fixed, `ToggleMembership`/`AmountView`/`say` each moved to the file that owns the concern. Depends: M38.
+- [x] **M40** — The domain finds its shape. Delivers: 13 `domain/src/` files become 25 across `collection/`, `shopping/` and `shelf/` in a one-way chain ([ADR 26](adr/26-the-domain-groups-by-responsibility.md)); `Bar.shopping` becomes nullable and owner-only, the one behaviour change (amends [ADR 21](adr/21-the-file-carries-one-bar.md), [ADR 24](adr/24-the-tags-may-aim-the-optimizer.md)). Depends: M39.
+- [x] **M41** — The tests find their level. Delivers: `barChannelContract`, a 3-way split of `ui_test_support.dart`, and `architecture_test.dart`'s sanity checks collapsed onto one table; `expectIssue`/`copyWithContract` reached into the domain suites; eleven `List.unmodifiable` contract checks removed and `list_controls.dart` gained its first test file. Depends: M40.
+- [x] **M42** — The docs say less, and mean it. Delivers: an anchor-resolution check in `architecture_test.dart` landed first over all 126 links; [components.md](components.md) 1022 → 688 lines, its signature fences gone; this roadmap's own history compacted from M33b on (319 → 170); [ADR 20](adr/20-the-app-holds-many-bars.md), [ADR 21](adr/21-the-file-carries-one-bar.md) freed of reversed alternatives and amendment narration, [ADR 02](adr/02-persistence-and-export-format.md) marked superseded by them; [ui-design.md](ui-design.md) trimmed of its screen-content walks and its Vocabulary editing section pointed at the widgets' own dartdoc. Depends: M41.
 
 ## Phase 11 — A bar travels over the LAN
 
-The first thing in the app to open a socket and the first to announce anything about itself, so it
-lands bottom-up: the package proven on a device before a server rests on it, the server before
-anything announces it, and the owner's side before the guest's — FR-BAR-6 having had nothing to
-offer or withdraw while a file was the only way a bar travelled.
+The first thing in the app to open a socket and the first to announce anything about itself, so it lands bottom-up: the package proven on a device before a server rests on it, the server before anything announces it, and the owner's side before the guest's — FR-BAR-6 having had nothing to offer or withdraw while a file was the only way a bar travelled.
 
-- [x] **M43** — Nearby is proven, and confined. Delivers: a DNS-SD package under the
-  [ADR 13](adr/13-lists-scroll-by-index.md) bar — one file, the way out written down — the pick and
-  its pinning ([ADR 22](adr/22-a-bar-travels-behind-one-seam.md)), a register-and-browse round trip
-  proven on the device, and the permissions it actually asks for
-  ([platform facts](architecture.md#platform-facts)). Depends: M42.
-- [x] **M44** — The device answers on a socket. Delivers: one `dart:io` `HttpServer` on an ephemeral
-  port, the offered list and one unguessable path per bar, 404 for everything else; the bytes read
-  through the store, so a served copy is the bar's own export
-  ([ADR 22](adr/22-a-bar-travels-behind-one-seam.md)). Depends: M43.
-- [x] **M45** — An offer announces, a withdrawal silences. Delivers: `BarOfferings` on the
-  [sharing seam](components.md#the-sharing-seam), one service instance per device, up with the first
-  offer and down with the last (FR-BAR-6, NFR-5). Depends: M44.
-- [x] **M46** — The offer is the reader's to make. Delivers: `offering`/`withdrawing` on
-  `ShelfEdits`, the owner-only write of `Bar.offers`, and what is announced now held beside the
-  refreshes in flight ([work in flight](components.md#work-in-flight)); shape only, the screen being
-  M47's (FR-BAR-6). Depends: M45.
-- [x] **M46a** — The device says who it is. Delivers: `device:` on the index and `Shelf.deviceName`
-  beside the open bar — the reader's, the phone's own name standing in until they give one, off the
-  app's first `MethodChannel` ([ADR 28](adr/28-the-device-is-named-by-its-reader.md)); and with a
-  name to announce under at last, `offeringsProvider` carrying the LAN adapter — `exportOf` for the
-  bytes — so what the index says is offered is announced again at startup (FR-BAR-6/8, NFR-5).
-  Depends: M46.
-- [x] **M47** — Settings opens on Sharing. Delivers: the room an owned bar is shared from
-  ([ui-design.md](ui-design.md#sharing)) — the LAN switch, and above it the name this device is
-  announced under, locked while anything is; a failure spoken once and left nowhere, the record
-  having moved first (FR-BAR-6). Absent on a guest bar, whose own way in lands with M51.
-  Depends: M46a.
-- [x] **M49** — A guest refreshes over the LAN. Delivers: the LAN channel's `fetch` — the instance
-  resolved afresh every ask, the offered list read by `readOfferings` behind its own version gate —
-  and the three unreachable readings mapped onto where the ask stopped (FR-BAR-5/8,
-  [ADR 22](adr/22-a-bar-travels-behind-one-seam.md)); one adapter now answering both halves, and
-  `barChannelContract` run over it across a real loopback round trip. Depends: M47.
-- [x] **M50** — A guest finds one nearby. Delivers: `BarFinder` and the `Found` entry
-  ([ADR 22](adr/22-a-bar-travels-behind-one-seam.md)), **From LAN** beside **From import** and the
-  dialog behind it — one browse, its answers grouped under the device offering them, the pick agreed
-  to before anything is fetched ([ui-design.md](ui-design.md#new-bar)); `reach` on the controller for
-  the add's own fetch, and the source kept where the guest road takes it (FR-BAR-1/5/8).
-  Depends: M49.
-- [ ] **M48** — Any bar is shared from the list. Delivers: the bars card's ⋮ reaching that same room
-  for a bar not in hand, and the card marking one that is shared
-  ([ui-design.md](ui-design.md#bars), FR-BAR-6). Held back until the guest's side had landed, so the
-  bar list moved once rather than twice. Depends: M47.
-- [ ] **M50a** — One name, one owned bar. Delivers: a name unique among the bars a device owns —
-  guest bars unaffected, two readers' "Home bar" still standing side by side — refused on the new-bar
-  and rename forms where the accident is made, so two identical cards can never reach a guest's
-  picker; FR-BAR-1 gains the clause and `validateShelf` the rule. Depends: M50.
-- [ ] **M51** — A guest bar refreshes from wherever the reader points it. Delivers: `resourced` on
-  `ShelfEdits` and the Sharing room opening on a guest bar for the first time — where it refreshes
-  from, and the reader's to point elsewhere — so a bar added from a file refreshes from a device
-  found nearby and back again (FR-BAR-5). Depends: M50.
+- [x] **M43** — Nearby is proven, and confined. Delivers: a DNS-SD package under the [ADR 13](adr/13-lists-scroll-by-index.md) bar — one file, the way out written down — the pick and its pinning ([ADR 22](adr/22-a-bar-travels-behind-one-seam.md)), a register-and-browse round trip proven on the device, and the permissions it actually asks for ([platform facts](architecture.md#platform-facts)). Depends: M42.
+- [x] **M44** — The device answers on a socket. Delivers: one `dart:io` `HttpServer` on an ephemeral port, the offered list and one unguessable path per bar, 404 for everything else; the bytes read through the store, so a served copy is the bar's own export ([ADR 22](adr/22-a-bar-travels-behind-one-seam.md)). Depends: M43.
+- [x] **M45** — An offer announces, a withdrawal silences. Delivers: `BarOfferings` on the [sharing seam](components.md#the-sharing-seam), one service instance per device, up with the first offer and down with the last (FR-BAR-6, NFR-5). Depends: M44.
+- [x] **M46** — The offer is the reader's to make. Delivers: `offering`/`withdrawing` on `ShelfEdits`, the owner-only write of `Bar.offers`, and what is announced now held beside the refreshes in flight ([work in flight](components.md#work-in-flight)); shape only, the screen being M47's (FR-BAR-6). Depends: M45.
+- [x] **M46a** — The device says who it is. Delivers: `device:` on the index and `Shelf.deviceName` beside the open bar — the reader's, the phone's own name standing in until they give one, off the app's first `MethodChannel` ([ADR 28](adr/28-the-device-is-named-by-its-reader.md)); and with a name to announce under at last, `offeringsProvider` carrying the LAN adapter — `exportOf` for the bytes — so what the index says is offered is announced again at startup (FR-BAR-6/8, NFR-5). Depends: M46.
+- [x] **M47** — Settings opens on Sharing. Delivers: the room an owned bar is shared from ([ui-design.md](ui-design.md#sharing)) — the LAN switch, and above it the name this device is announced under, locked while anything is; a failure spoken once and left nowhere, the record having moved first (FR-BAR-6). Absent on a guest bar, whose own way in lands with M51. Depends: M46a.
+- [x] **M49** — A guest refreshes over the LAN. Delivers: the LAN channel's `fetch` — the instance resolved afresh every ask, the offered list read by `readOfferings` behind its own version gate — and the three unreachable readings mapped onto where the ask stopped (FR-BAR-5/8, [ADR 22](adr/22-a-bar-travels-behind-one-seam.md)); one adapter now answering both halves, and `barChannelContract` run over it across a real loopback round trip. Depends: M47.
+- [x] **M50** — A guest finds one nearby. Delivers: `BarFinder` and the `Found` entry ([ADR 22](adr/22-a-bar-travels-behind-one-seam.md)), **From LAN** beside **From import** and the dialog behind it — one browse, its answers grouped under the device offering them, the pick agreed to before anything is fetched ([ui-design.md](ui-design.md#new-bar)); `reach` on the controller for the add's own fetch, and the source kept where the guest road takes it (FR-BAR-1/5/8). Depends: M49.
+- [ ] **M48** — Any bar is shared from the list. Delivers: the bars card's ⋮ reaching that same room for a bar not in hand, and the card marking one that is shared ([ui-design.md](ui-design.md#bars), FR-BAR-6). Held back until the guest's side had landed, so the bar list moved once rather than twice. Depends: M47.
+- [ ] **M50a** — One name, one owned bar. Delivers: a name unique among the bars a device owns — guest bars unaffected, two readers' "Home bar" still standing side by side — refused on the new-bar and rename forms where the accident is made, so two identical cards can never reach a guest's picker; FR-BAR-1 gains the clause and `validateShelf` the rule. Depends: M50.
+- [ ] **M51** — A guest bar refreshes from wherever the reader points it. Delivers: `resourced` on `ShelfEdits` and the Sharing room opening on a guest bar for the first time — where it refreshes from, and the reader's to point elsewhere — so a bar added from a file refreshes from a device found nearby and back again (FR-BAR-5). Depends: M50.
 
 ## Phase 12 — A bar travels over the cloud
 

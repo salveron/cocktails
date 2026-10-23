@@ -1,26 +1,20 @@
 # ADR: App structure and state management
 
-**Status:** Accepted. Search and filtering are presentation, not domain state; grouping left the
-domain's vocabulary entirely ([ADR 12](12-base-spirit-narrows.md)).
+**Status:** Accepted. Search and filtering are presentation, not domain state; grouping left the domain's vocabulary entirely ([ADR 12](12-base-spirit-narrows.md)).
 
 ## Context
 
-Many screens, shared collection. Derived state (availability, filters, optimizer) updates instant (NFR-2). 
-Hardest retrofit point.
+Many screens, shared collection. Derived state (availability, filters, optimizer) updates instant (NFR-2). Hardest retrofit point.
 
 ## Decision
 
 **Three layers with Riverpod for state management.**
 
-- **Domain**: pure Dart. Entities, availability, discovery, optimizer, validation. 
-  Unit-testable without device.
+- **Domain**: pure Dart. Entities, availability, discovery, optimizer, validation. Unit-testable without device.
 - **Data**: storage interface + YAML adapter. See [persistence ADR](02-persistence-and-export-format.md).
 - **Presentation**: Flutter screens/widgets, read through Riverpod providers.
 
-Riverpod holds collection in state providers; derived state (availability, optimizer) in computed 
-providers that cache and recompute on input change. Search, filter and order narrow a list where 
-it is drawn — widget state, not a provider, nothing collection-derived reading them 
-([components.md](../components.md#state-contracts)).
+Riverpod holds collection in state providers; derived state (availability, optimizer) in computed providers that cache and recompute on input change. Search, filter and order narrow a list where it is drawn — widget state, not a provider, nothing collection-derived reading them ([components.md](../components.md#state-contracts)).
 
 ## Alternatives considered
 

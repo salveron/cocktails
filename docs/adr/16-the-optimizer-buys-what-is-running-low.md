@@ -24,16 +24,7 @@ FR-DIS-6: optimizer evaluates out-of-stock combinations. FR-DIS-7: restock remin
 ## Consequences
 
 - FR-DIS-6 gains the switch; FR-DIS-7 stops asking for a separate list.
-- The optimizer's existing tests stand as the flag-off case, the low-ingredient one included — its
-  subject changes from "never bought" to "not bought unless restocking".
-- ADR 15's cost is cubic in the pool of ingredients worth weighing, and the switch grows that pool: a
-  bar with many low ingredients pays for it. Measured over one collection of 400 recipes and 120
-  ingredients at N=3, two fifths of them out and a fifth low: **58 ms plain, 100 ms restocking**. The
-  growth is real but far short of cubic, the pool being bounded by the gaps' own ingredients rather
-  than by the shelf. The performance test therefore times both readings over the one collection,
-  so the print says what the switch costs.
-- `canMake` does not move. The traffic light behind FR-DIS-1, the random pick behind FR-DIS-5 and
-  the recipe list's order all go on reading low as makeable — it is the optimizer's own goal that
-  shifts, and only while the switch is on.
-- A recipe already Ready is never bought for under either reading, so the switch can only ever
-  lengthen the list of baskets, never reorder the answers it already gave.
+- The optimizer's existing tests stand as the flag-off case, the low-ingredient one included — its subject changes from "never bought" to "not bought unless restocking".
+- ADR 15's cost is cubic in the pool of ingredients worth weighing, and the switch grows that pool: a bar with many low ingredients pays for it. Measured over one collection of 400 recipes and 120 ingredients at N=3, two fifths of them out and a fifth low: **58 ms plain, 100 ms restocking**. The growth is real but far short of cubic, the pool being bounded by the gaps' own ingredients rather than by the shelf. The performance test therefore times both readings over the one collection, so the print says what the switch costs.
+- `canMake` does not move. The traffic light behind FR-DIS-1, the random pick behind FR-DIS-5 and the recipe list's order all go on reading low as makeable — it is the optimizer's own goal that shifts, and only while the switch is on.
+- A recipe already Ready is never bought for under either reading, so the switch can only ever lengthen the list of baskets, never reorder the answers it already gave.

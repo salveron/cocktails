@@ -4,121 +4,49 @@
 
 ## Context
 
-FR-BAR-7/8/9 give a bar three ways to travel — a file, the LAN, the cloud — and FR-BAR-5 makes them
-interchangeable from above: a guest bar refreshes from whatever it was added from, and the app says
-the same things about the result whichever way it came. The three are wildly different underneath: a
-file needs the reader, the LAN needs discovery and a socket, the cloud needs a server and the only
-identity in the product (NFR-3).
+FR-BAR-7/8/9 give a bar three ways to travel — a file, the LAN, the cloud — and FR-BAR-5 makes them interchangeable from above: a guest bar refreshes from whatever it was added from, and the app says the same things about the result whichever way it came. The three are wildly different underneath: a file needs the reader, the LAN needs discovery and a socket, the cloud needs a server and the only identity in the product (NFR-3).
 
-The app has never made a network call. It has three seams of exactly this shape already —
-`barStoreProvider`, `sharerProvider`, `filePickerProvider` — where the platform crosses inside a
-provider body and a test replaces it with a recorder (ADR 18).
+The app has never made a network call. It has three seams of exactly this shape already — `barStoreProvider`, `sharerProvider`, `filePickerProvider` — where the platform crosses inside a provider body and a test replaces it with a recorder (ADR 18).
 
-FR-BAR-9's backend is a decision with cost outside the repo: money, an account, uptime, or a vendor.
-FR-BAR-7 and FR-BAR-8 must not wait on it.
+FR-BAR-9's backend is a decision with cost outside the repo: money, an account, uptime, or a vendor. FR-BAR-7 and FR-BAR-8 must not wait on it.
 
 ## Decision
 
-**A source is a value; a channel is an interface; the transports are adapters resolved at the
-composition root.** Shapes in [components.md](../components.md#the-sharing-seam).
+**A source is a value; a channel is an interface; the transports are adapters resolved at the composition root.** Shapes in [components.md](../components.md#the-sharing-seam).
 
-- **`BarSource` = transport + address + what to call it**, kept with the guest bar so a refresh has
-  something to ask again. Only the adapter reads the address; nothing above `data/` builds one. Which
-  way a bar refreshes is the reader's to change — one added from a file may be pointed at a device
-  nearby, and back — so a source is one value they may replace rather than a list the app chooses
-  among (FR-BAR-5).
-- **A fetch answers, never throws**: what arrived, what failed the import's own judgement
-  (FR-DAT-4), or that the source could not be reached — offline, not found, or withdrawn, a closed
-  set so the wording stays the UI's (FR-BAR-5). A fourth answer is *no answer*: the file
-  transport's fetch is a picker the reader may dismiss, and standing down is neither a refusal nor
-  a source that went silent. `UnreachableReason` lives in the domain rather than beside the
-  channel, `ui/` being what puts it into words and reading no further down than there.
-- **Three interfaces, not one**: every transport fetches; only some offer and withdraw; only one
-  finds. A way that cannot do a thing carries no method for it, so the file channel is honestly
-  one method wide.
-- **LAN = DNS-SD for finding, our own HTTP for carrying.** Discovery costs a package and the
-  transfer none. Which package, at what version and pinned how, is
-  [ADR 27](27-nearby-comes-off-bonsoir.md)'s — taken under the ADR 13 bar, so one file names it and
-  the way out of it is written down.
-- **One server and one service instance per device, not per bar.** The device announces itself once
-  and its `dart:io` `HttpServer` answers two things: what it offers — each bar's id, its name, and
-  the unguessable path its bytes are at — and those bytes. Announcing the device is what lets a
-  withdrawal be told from an owner gone quiet: the instance goes on answering while its list stops
-  naming the bar. It puts no bar name on the wire for any mDNS browser to read, and needs no TXT
-  record at all — the list is a document like every other one the app writes, and carries a format
-  of its own. That number moves with the LAN protocol rather than with the on-disk schema: the two
-  answer to different things, and a storage bump must not turn a guest away from a list whose shape
-  never changed — turning it away at discovery, before the bar's own version gate can speak.
-- **A guest keeps the instance name and the bar's id, never an address.** The port is ephemeral and
-  the lease is not the app's, so every fetch resolves the instance afresh, reads the list, and gets
-  the path it names. The path is therefore never stored, and the owner may rotate it freely. Two
-  bars of one name are told apart by the id the list carries (FR-BAR-1).
-- **Where the ask stopped is which reason it answers** (FR-BAR-5): no network of our own is
-  `offline`; an instance that will not resolve is `notFound` — the owner's device off, their app
-  shut, or another network; and an instance whose list no longer names the bar is `withdrawn`.
-- **The server is handed a function, not the store.** An offered bar is usually not the one on show
-  and only one collection is resident (ADR 20), so the adapter takes "the bytes of this bar id" and
-  the state layer composes it over a load and the canonical emitter — the seam `filePickerProvider`
-  already is, so a test needs neither socket nor file.
-- **Nothing is announced unless something is shared** (NFR-5): server and service come up with the
-  first offer and down with the last withdrawal. **Neither outlives the run**: the server dies with
-  the process, so a record still claiming an offer would be a switch pointing at a silent network.
-  The record is put back to not-shared when the app next loads, and sharing again is one tap — which
-  the reader is better served by than by a bar quietly back on the network at every start.
-- **A browse is never left running**, and never waited out for longer than its answer takes: it
-  yields each device as that device resolves, so a fetch stops at the instance it wants and a list
-  draws what it has while the rest come in. It closes at its window or when the reader stops looking. A multicast lock held around the clock is the one thing
-  on this path that would cost a battery.
-- **Withdrawal stops the offer and nothing else** (FR-BAR-6): a guest keeps what it holds, and its
-  next refresh is told the source is gone.
-- **The cloud transport is declared and unimplemented.** `Transport.cloud` exists so the index's
-  format need not change later; the registry has no adapter for it, and the ways offered are the
-  ways that answer. FR-BAR-7 and FR-BAR-8 ship without it.
+- **`BarSource` = transport + address + what to call it**, kept with the guest bar so a refresh has something to ask again. Only the adapter reads the address; nothing above `data/` builds one. Which way a bar refreshes is the reader's to change — one added from a file may be pointed at a device nearby, and back — so a source is one value they may replace rather than a list the app chooses among (FR-BAR-5).
+- **A fetch answers, never throws**: what arrived, what failed the import's own judgement (FR-DAT-4), or that the source could not be reached — offline, not found, or withdrawn, a closed set so the wording stays the UI's (FR-BAR-5). A fourth answer is *no answer*: the file transport's fetch is a picker the reader may dismiss, and standing down is neither a refusal nor a source that went silent. `UnreachableReason` lives in the domain rather than beside the channel, `ui/` being what puts it into words and reading no further down than there.
+- **Three interfaces, not one**: every transport fetches; only some offer and withdraw; only one finds. A way that cannot do a thing carries no method for it, so the file channel is honestly one method wide.
+- **LAN = DNS-SD for finding, our own HTTP for carrying.** Discovery costs a package and the transfer none. Which package, at what version and pinned how, is [ADR 27](27-nearby-comes-off-bonsoir.md)'s — taken under the ADR 13 bar, so one file names it and the way out of it is written down.
+- **One server and one service instance per device, not per bar.** The device announces itself once and its `dart:io` `HttpServer` answers two things: what it offers — each bar's id, its name, and the unguessable path its bytes are at — and those bytes. Announcing the device is what lets a withdrawal be told from an owner gone quiet: the instance goes on answering while its list stops naming the bar. It puts no bar name on the wire for any mDNS browser to read, and needs no TXT record at all — the list is a document like every other one the app writes, and carries a format of its own. That number moves with the LAN protocol rather than with the on-disk schema: the two answer to different things, and a storage bump must not turn a guest away from a list whose shape never changed — turning it away at discovery, before the bar's own version gate can speak.
+- **A guest keeps the instance name and the bar's id, never an address.** The port is ephemeral and the lease is not the app's, so every fetch resolves the instance afresh, reads the list, and gets the path it names. The path is therefore never stored, and the owner may rotate it freely. Two bars of one name are told apart by the id the list carries (FR-BAR-1).
+- **Where the ask stopped is which reason it answers** (FR-BAR-5): no network of our own is `offline`; an instance that will not resolve is `notFound` — the owner's device off, their app shut, or another network; and an instance whose list no longer names the bar is `withdrawn`.
+- **The server is handed a function, not the store.** An offered bar is usually not the one on show and only one collection is resident (ADR 20), so the adapter takes "the bytes of this bar id" and the state layer composes it over a load and the canonical emitter — the seam `filePickerProvider` already is, so a test needs neither socket nor file.
+- **Nothing is announced unless something is shared** (NFR-5): server and service come up with the first offer and down with the last withdrawal. **Neither outlives the run**: the server dies with the process, so a record still claiming an offer would be a switch pointing at a silent network. The record is put back to not-shared when the app next loads, and sharing again is one tap — which the reader is better served by than by a bar quietly back on the network at every start.
+- **A browse is never left running**, and never waited out for longer than its answer takes: it yields each device as that device resolves, so a fetch stops at the instance it wants and a list draws what it has while the rest come in. It closes at its window or when the reader stops looking. A multicast lock held around the clock is the one thing on this path that would cost a battery.
+- **Withdrawal stops the offer and nothing else** (FR-BAR-6): a guest keeps what it holds, and its next refresh is told the source is gone.
+- **The cloud transport is declared and unimplemented.** `Transport.cloud` exists so the index's format need not change later; the registry has no adapter for it, and the ways offered are the ways that answer. FR-BAR-7 and FR-BAR-8 ship without it.
 
 ## The cloud backend: for the human to decide
 
-Ranked, with what each costs *this* project — one developer, minimal dependencies, no backend and no
-accounts today, payloads of tens of KB, and an app that must stay offline-first.
+Ranked, with what each costs *this* project — one developer, minimal dependencies, no backend and no accounts today, payloads of tens of KB, and an app that must stay offline-first.
 
-1. **Supabase** — recommended. One dependency (`supabase_flutter`), real auth, and row-level
-   security expresses "the guests I named" as a policy rather than as our code. Self-hostable, so
-   the lock-in is soft. Costs: a sizeable transitive tail, and a free tier that pauses idle projects
-   — a bar that cannot be refreshed for a week until someone pokes the dashboard.
-2. **A small server of our own** — the smallest change to this codebase by a distance: the cloud
-   adapter is the LAN adapter with another base URL and a bearer token per guest, zero new packages.
-   Costs: hosting, a second codebase, and uptime becomes the developer's. "Guests they name" becomes
-   tokens the owner mints and hands over, which is a thinner reading of FR-BAR-9 than a policy is.
-3. **Firebase** — the safest ecosystem bet and the only one with no idle-pause worry; Google sign-in
-   is already on the device. Costs: the heaviest by far — several plugins, a Gradle plugin, a
-   generated config file, and the hardest of the four to leave.
-4. **A file host the owner already has** (Drive, Dropbox, a gist): no backend of ours, no account in
-   our app. Refused as an answer to FR-BAR-9 — a link cannot name its guests, which is the one thing
-   that requirement asks for beyond reach-from-anywhere.
+1. **Supabase** — recommended. One dependency (`supabase_flutter`), real auth, and row-level security expresses "the guests I named" as a policy rather than as our code. Self-hostable, so the lock-in is soft. Costs: a sizeable transitive tail, and a free tier that pauses idle projects — a bar that cannot be refreshed for a week until someone pokes the dashboard.
+2. **A small server of our own** — the smallest change to this codebase by a distance: the cloud adapter is the LAN adapter with another base URL and a bearer token per guest, zero new packages. Costs: hosting, a second codebase, and uptime becomes the developer's. "Guests they name" becomes tokens the owner mints and hands over, which is a thinner reading of FR-BAR-9 than a policy is.
+3. **Firebase** — the safest ecosystem bet and the only one with no idle-pause worry; Google sign-in is already on the device. Costs: the heaviest by far — several plugins, a Gradle plugin, a generated config file, and the hardest of the four to leave.
+4. **A file host the owner already has** (Drive, Dropbox, a gist): no backend of ours, no account in our app. Refused as an answer to FR-BAR-9 — a link cannot name its guests, which is the one thing that requirement asks for beyond reach-from-anywhere.
 
 ## Alternatives considered
 
-- **Per-transport code with no seam**: three add flows, three refresh flows, three error vocabularies.
-  Refused — FR-BAR-5 already says the guest sees one behaviour, so one abstraction is the honest
-  shape, and the file transport alone would otherwise leak a picker into the bar list.
-- **A raw socket protocol of our own over the LAN**: no HTTP, fewer bytes. Refused: HTTP is in
-  `dart:io` already, is trivially testable against a loopback server, and is what makes the cloud
-  adapter a near-copy of the LAN one.
-- **Authentication on the LAN path**: refused as out of proportion to FR-BAR-6's own words — a bar
-  shared is a bar given, and an unguessable path on a home network matches that exactly.
-- **One DNS-SD instance per offered bar**, the bar's name plus a discriminator off its id on the
-  wire. Refused: a withdrawn bar's instance simply vanishes, which is indistinguishable from an
-  owner whose phone is off, and FR-BAR-5 asks a guest to be told which. It also announces every
-  shared bar's name to anything browsing the network.
-- **A foreground service so an offer outlives the app**: would let a guest refresh while the owner's
-  phone is in a pocket. Refused for a notification and a permission the feature does not earn.
+- **Per-transport code with no seam**: three add flows, three refresh flows, three error vocabularies. Refused — FR-BAR-5 already says the guest sees one behaviour, so one abstraction is the honest shape, and the file transport alone would otherwise leak a picker into the bar list.
+- **A raw socket protocol of our own over the LAN**: no HTTP, fewer bytes. Refused: HTTP is in `dart:io` already, is trivially testable against a loopback server, and is what makes the cloud adapter a near-copy of the LAN one.
+- **Authentication on the LAN path**: refused as out of proportion to FR-BAR-6's own words — a bar shared is a bar given, and an unguessable path on a home network matches that exactly.
+- **One DNS-SD instance per offered bar**, the bar's name plus a discriminator off its id on the wire. Refused: a withdrawn bar's instance simply vanishes, which is indistinguishable from an owner whose phone is off, and FR-BAR-5 asks a guest to be told which. It also announces every shared bar's name to anything browsing the network.
+- **A foreground service so an offer outlives the app**: would let a guest refresh while the owner's phone is in a pocket. Refused for a notification and a permission the feature does not earn.
 
 ## Consequences
 
-- `data/` gains its first outward-facing adapters, and the app its first manifest entry of its own:
-  the internet permission ([architecture.md](../architecture.md#platform-facts)).
-- An offer lives while the owner's app does; Android reclaims the socket behind it. Both readers
-  being present is FR-BAR-8's own premise, so this is a limit rather than a gap.
-- A file-sourced bar refreshes by asking the reader for a file, which is the only interactive fetch —
-  legal because no fetch in this app is ever unattended (NFR-4/5 leave no room for polling).
-- The state layer gains work in flight: refreshes that outlive a gesture, and offers that outlive a
-  screen ([components.md](../components.md#work-in-flight)).
+- `data/` gains its first outward-facing adapters, and the app its first manifest entry of its own: the internet permission ([architecture.md](../architecture.md#platform-facts)).
+- An offer lives while the owner's app does; Android reclaims the socket behind it. Both readers being present is FR-BAR-8's own premise, so this is a limit rather than a gap.
+- A file-sourced bar refreshes by asking the reader for a file, which is the only interactive fetch — legal because no fetch in this app is ever unattended (NFR-4/5 leave no room for polling).
+- The state layer gains work in flight: refreshes that outlive a gesture, and offers that outlive a screen ([components.md](../components.md#work-in-flight)).
