@@ -9,6 +9,7 @@ import '../wording.dart';
 import '../widgets/cards/bar_holdings.dart';
 import '../widgets/dialogs/nearby_dialog.dart';
 import '../widgets/forms/editor_form.dart';
+import '../widgets/forms/field_issues.dart';
 import '../widgets/forms/form_fields.dart';
 import '../widgets/notices/empty_state.dart';
 import '../widgets/notices/failures.dart';
@@ -111,12 +112,12 @@ class _BarFormScreenState extends ConsumerState<BarFormScreen> {
       _road != _opened.road ||
       _name.text != _opened.name;
 
-  /// Nothing to save while the bar has no name, and nothing at all while a file
-  /// the app could not read is standing: founding an empty bar in its place, or
-  /// emptying a collection in its name, would each be a lie about the file.
-  bool get _canSave {
+  /// Nothing to save while the name is refused, and nothing at all while a file
+  /// the app could not read is standing: an empty bar founded in its place, or
+  /// a collection emptied in its name, would each be a lie about the file.
+  bool _canSave(List<ValidationIssue> nameIssues) {
     final picked = _picked;
-    return !_name.isBlank && (picked == null || picked.bar != null);
+    return nameIssues.isEmpty && (picked == null || picked.bar != null);
   }
 
   /// The name the road offers, in the field where the reader has not written
@@ -238,12 +239,19 @@ class _BarFormScreenState extends ConsumerState<BarFormScreen> {
     final arriving = picked?.bar;
     // Named wherever Replace is offered: that road is reached through the open
     // bar's own gear.
-    final open = ref.watch(openBarProvider)?.name ?? '';
+    final openBar = ref.watch(openBarProvider);
+    final open = openBar?.name ?? '';
+    final nameIssues = validateBarName(
+      _name.typed,
+      bars: ref.watch(barsProvider),
+      owned: _road != _Road.guest,
+      except: _road == _Road.replace ? openBar?.id : null,
+    );
     return EditorScaffold(
       title: _importing ? 'Import' : 'New bar',
       dirty: _dirty,
       discardTitle: _importing ? 'Discard this import?' : 'Discard this bar?',
-      onSave: _canSave ? () => unawaited(_save(arriving)) : null,
+      onSave: _canSave(nameIssues) ? () => unawaited(_save(arriving)) : null,
       // An import has nothing to put back: the file is what it is for.
       onReset: _importing || picked == null || _fetching
           ? null
@@ -254,7 +262,10 @@ class _BarFormScreenState extends ConsumerState<BarFormScreen> {
           // The pick is done on the way in when importing, so the screen is
           // there to be read rather than typed into.
           autofocus: !_importing,
-          decoration: const InputDecoration(hintText: 'Bar name'),
+          decoration: InputDecoration(
+            hintText: 'Bar name',
+            errorText: fieldError(_name.typed, nameIssues),
+          ),
         ),
         // No heading: the button says what it does, and the note under it says
         // what standing without one means.

@@ -29,16 +29,29 @@ void main() {
       expect(validateShelf(bars: const []), isEmpty);
     });
 
-    test('two bars of one name are no issue at all (FR-BAR-1)', () {
+    test('a guest bar\'s name collides with nothing (FR-BAR-1)', () {
       expect(
         validateShelf(
           bars: [
             ownedBar(),
             guestBar(name: 'Home bar'),
+            guestBar(id: 'c4f2e8', name: 'Home bar'),
           ],
         ),
         isEmpty,
       );
+    });
+
+    test('an owned name twice over is a duplicate, reported at the second', () {
+      final issue = validateShelf(
+        bars: [
+          ownedBar(),
+          ownedBar(id: 'c4f2e8', name: 'HOME bar'),
+        ],
+      ).single;
+      expect(issue.kind, ValidationIssueKind.duplicateName);
+      expect(issue.location, 'bars[1].name');
+      expect(issue.message, contains('HOME bar'));
     });
 
     test('an id twice over is a duplicate, reported at the second', () {
@@ -193,6 +206,46 @@ void main() {
         'bars[1].id',
         'bars[1].source',
       ]);
+    });
+  });
+
+  group('validateBarName', () {
+    final bars = [ownedBar(), guestBar(name: 'Pub')];
+
+    test('keeps every rule a name keeps, a clash aside', () {
+      for (final (name, kind) in [
+        ('', ValidationIssueKind.emptyName),
+        (' Pub', ValidationIssueKind.whitespaceInName),
+        ('Pub\nquiz', ValidationIssueKind.lineBreakInName),
+      ]) {
+        final issue = validateBarName(name, bars: bars, owned: true).single;
+        expect(issue.kind, kind, reason: name);
+        expect(issue.path, isEmpty, reason: name);
+      }
+    });
+
+    test('refuses an owned bar the name of another, under the fold', () {
+      final issue = validateBarName('HOME bar', bars: bars, owned: true).single;
+      expect(issue.kind, ValidationIssueKind.duplicateName);
+      expect(issue.message, contains('HOME bar'));
+    });
+
+    test('lets the bar being renamed keep, or recase, its own', () {
+      for (final name in ['Home bar', 'home bar']) {
+        expect(
+          validateBarName(name, bars: bars, owned: true, except: '5f2c9a'),
+          isEmpty,
+          reason: name,
+        );
+      }
+    });
+
+    test('lets an owned bar take a guest bar\'s name', () {
+      expect(validateBarName('Pub', bars: bars, owned: true), isEmpty);
+    });
+
+    test('lets a guest bar take any name at all (FR-BAR-1)', () {
+      expect(validateBarName('Home bar', bars: bars, owned: false), isEmpty);
     });
   });
 }

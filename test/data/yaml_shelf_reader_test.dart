@@ -166,7 +166,7 @@ bars:
       }
     });
 
-    test('two bars of one name are two records (FR-BAR-1)', () {
+    test('a guest bar may carry an owned bar\'s name (FR-BAR-1)', () {
       final records = indexOf(
         codec.encodeIndex((
           bars: [home, guest],
@@ -366,6 +366,17 @@ bars: []
         '  - {id: a1, name: Bea, mode: owner}\n',
       );
       expect(issues.first.issue.message, contains('Duplicate bar id'));
+    });
+
+    test('two owned bars of one name are reported at the second', () {
+      final issues = indexRejected(
+        'format: 2\nopen:\n'
+        'bars:\n'
+        '  - {id: a1, name: Ada, mode: owner}\n'
+        '  - {id: b2, name: ADA, mode: owner}\n',
+      );
+      expect(issues.single.issue.message, contains('Duplicate bar name'));
+      expect(issues.single.line, 5);
     });
 
     test('a record missing what every bar needs is reported', () {

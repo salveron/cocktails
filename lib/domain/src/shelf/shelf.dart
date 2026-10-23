@@ -102,11 +102,19 @@ List<ValidationIssue> deviceNameProblems(String? deviceName) =>
         basePath: const ['device'],
       );
 
+/// Whether an owned bar other than [except] (by id) already carries [name],
+/// under the fold every name keeps (ADR-08). The one question both the shelf's
+/// own coherence and a form's name field ask (FR-BAR-1).
+bool ownedNameTaken(Iterable<Bar> bars, String name, {String? except}) => bars
+    .any((bar) => bar.isOwned && bar.id != except && bar.name.sameName(name));
+
 /// The shelf's own coherence, beyond any one bar's ([coherenceProblems]): no
 /// two bars share an id — compared exactly, ADR-08's fold being a rule for
-/// names, not ids — and the open bar, if any, is one of them. The [Shelf]
-/// constructor throws the first; shelf_validation.dart's `validateShelf`
-/// reports every one, so the rule and its wording live once for both.
+/// names, not ids — no two owned bars share a name, a guest's being a label
+/// that collides with nothing (FR-BAR-1), and the open bar, if any, is one of
+/// them. The [Shelf] constructor throws the first; shelf_validation.dart's
+/// `validateShelf` reports every one, so the rule and its wording live once
+/// for both.
 List<({List<Object> path, String message, bool duplicate})> shelfProblems({
   required List<Bar> bars,
   String? openId,
@@ -118,6 +126,13 @@ List<({List<Object> path, String message, bool duplicate})> shelfProblems({
       problems.add((
         path: ['bars', i, 'id'],
         message: 'Duplicate bar id: "${bars[i].id}"',
+        duplicate: true,
+      ));
+    }
+    if (bars[i].isOwned && ownedNameTaken(bars.take(i), bars[i].name)) {
+      problems.add((
+        path: ['bars', i, 'name'],
+        message: duplicateNameMessage('bar', bars[i].name),
         duplicate: true,
       ));
     }

@@ -45,14 +45,35 @@ void main() {
       });
     });
 
-    test('two bars may carry one name (FR-BAR-1)', () {
-      final shelf = Shelf(
-        bars: [
-          ownedBar(),
-          guestBar(name: 'Home bar'),
-        ],
-      );
-      expect(shelf.bars.map((bar) => bar.name), ['Home bar', 'Home bar']);
+    group('a name is an owned bar\'s alone to keep (FR-BAR-1)', () {
+      test('a guest bar may carry it, and so may another guest', () {
+        final shelf = Shelf(
+          bars: [
+            ownedBar(),
+            guestBar(name: 'Home bar'),
+            guestBar(id: 'c4f2e8', name: 'Home bar'),
+          ],
+        );
+        expect(shelf.bars.map((bar) => bar.name), everyElement('Home bar'));
+      });
+
+      test('rejects a second owned bar of it, under the fold (ADR-08)', () {
+        expect(
+          () => Shelf(
+            bars: [
+              ownedBar(),
+              ownedBar(id: 'c4f2e8', name: 'home BAR'),
+            ],
+          ),
+          throwsA(
+            isA<ArgumentError>().having(
+              (e) => e.message,
+              'message',
+              allOf(contains('Duplicate bar name'), contains('home BAR')),
+            ),
+          ),
+        );
+      });
     });
 
     test('rejects two bars of one id', () {

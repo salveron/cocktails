@@ -134,6 +134,12 @@ class _BarsScreenState extends ConsumerState<BarsScreen> {
       title: 'Rename bar',
       hintText: 'What to name it',
       initial: bar.name,
+      validate: (name) => validateBarName(
+        name,
+        bars: ref.read(barsProvider),
+        owned: bar.isOwned,
+        except: bar.id,
+      ),
     );
     if (name == null || !mounted) return;
     await ref.read(shelfProvider.notifier).renameBar(bar.id, name);

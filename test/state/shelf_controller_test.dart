@@ -481,10 +481,13 @@ recipes:
       expect(store.savedBars[founded.id]?.$2, arrived);
     });
 
-    test('two bars may carry one name (FR-BAR-1)', () async {
-      final store = twoBars();
-      final container = await started(store);
-      await controllerOf(container).addOwnedBar(bar.name);
+    test('a guest bar may carry an owned bar\'s name (FR-BAR-1)', () async {
+      final container = await started(twoBars());
+      await controllerOf(container).addGuestBar(
+        bar.name,
+        guest.source!,
+        payloadFor(guest, otherCollection),
+      );
       final names = [for (final b in container.read(barsProvider)) b.name];
       expect(names.where((name) => name == bar.name), hasLength(2));
     });

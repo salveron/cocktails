@@ -77,6 +77,14 @@ void main() {
       expect(saveEnabled(tester), isFalse);
     });
 
+    testWidgets("another owned bar's name is refused, with the reason "
+        '(FR-BAR-1)', (tester) async {
+      await openForm(tester);
+      await typeInto(tester, barNameField, 'home BAR');
+      expect(find.text('Duplicate bar name: "home BAR"'), findsOneWidget);
+      expect(saveEnabled(tester), isFalse);
+    });
+
     testWidgets('an untouched form pops without asking', (tester) async {
       await openForm(tester);
       await back(tester);
@@ -271,6 +279,16 @@ void main() {
       final made = founded(store);
       expect(made.bar.mode, BarMode.guest);
       expect(made.bar.name, 'Cellar');
+    });
+
+    testWidgets('it may take an owned bar\'s name, which the owned road may '
+        'not (FR-BAR-1)', (tester) async {
+      await withFile(tester, sharedFile);
+      await typeInto(tester, barNameField, 'Home bar');
+      expect(saveEnabled(tester), isTrue);
+      await tap(tester, find.text('Owned'));
+      expect(find.text('Duplicate bar name: "Home bar"'), findsOneWidget);
+      expect(saveEnabled(tester), isFalse);
     });
 
     testWidgets('nothing on the shelf is moved to make room', (tester) async {

@@ -291,6 +291,34 @@ void main() {
       await chooseOnRow(tester, 'Anna', 'Rename');
       expect(tester.widget<TextField>(dialogField).controller?.text, 'Anna');
     });
+
+    testWidgets("another owned bar's name is refused, whatever its case "
+        '(FR-BAR-1)', (tester) async {
+      await openBars(tester);
+      await chooseOnRow(tester, 'Anna', 'Rename');
+      await type(tester, 'HOME bar');
+      expect(find.text('Duplicate bar name: "HOME bar"'), findsOneWidget);
+      expect(saveEnabled(tester), isFalse);
+    });
+
+    testWidgets("a bar's own name is no clash, so it may be recased", (
+      tester,
+    ) async {
+      await openBars(tester);
+      await chooseOnRow(tester, 'Anna', 'Rename');
+      await type(tester, 'ANNA');
+      expect(find.textContaining('Duplicate'), findsNothing);
+      expect(saveEnabled(tester), isTrue);
+    });
+
+    testWidgets("a guest bar may take an owned bar's name (FR-BAR-1)", (
+      tester,
+    ) async {
+      await openBars(tester, store: MemoryBarStore.over([home, ada], {}));
+      await chooseOnRow(tester, "Ada's bar", 'Rename');
+      await type(tester, 'Home bar');
+      expect(saveEnabled(tester), isTrue);
+    });
   });
 
   group('deleting a bar', () {

@@ -6,7 +6,7 @@
 
 FR-BAR-1 turns the one collection into any number of them, owned and guest alike, with one on show and nothing crossing between. `Collection` was the whole database: the store loaded it, one provider held it, every screen read it, every query took it. Something has to sit above it, and the choice decides what a bar costs, how "nothing crosses" is enforced, and how much of the app moves.
 
-NFR-2 sets the scale: tens of bars, hundreds of recipes each — thousands to tens of thousands of recipes in total, megabytes of YAML — and reaching another bar has to be instant. FR-BAR-1 also says names are labels: two bars may carry one, so a name cannot be a key.
+NFR-2 sets the scale: tens of bars, hundreds of recipes each — thousands to tens of thousands of recipes in total, megabytes of YAML — and reaching another bar has to be instant. FR-BAR-1 also says names are labels: a guest bar may carry any, so a name cannot be a key.
 
 ## Decision
 

@@ -71,25 +71,19 @@ Future<Tag?> promptForTag(
 
 /// Get a name and nothing else, or null if cancelled — the entry dialog with
 /// every part only a vocabulary needs left out, so a bar is named the way an
-/// ingredient is (`bars_screen.dart`). Blank is the one rule: bar names are
-/// labels and two may be alike (FR-BAR-1).
+/// ingredient is (`bars_screen.dart`). [validate] judges the name as it will be
+/// saved, trimmed.
 Future<String?> promptForName(
   BuildContext context, {
   required String title,
   required String hintText,
+  required List<ValidationIssue> Function(String name) validate,
   String initial = '',
 }) async => (await promptEntry(
   context,
   title: title,
   hintText: hintText,
-  validate: (entry) => [
-    if (entry.name.trim().isEmpty)
-      ValidationIssue(
-        const [],
-        ValidationIssueKind.emptyName,
-        'A name of spaces is no name',
-      ),
-  ],
+  validate: (entry) => validate(entry.name.trim()),
   initial: initial,
   aliases: null,
   color: null,

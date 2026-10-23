@@ -123,7 +123,7 @@ Pure Dart, no I/O, no clock, no randomness taken from ambient state — anything
 
 `Bar` carries the fields a mode splits in two: `shopping` and `offers` are an owner's, `source` and `refreshed` a guest's (FR-SET-2, ADR 21, ADR 24), the two shared fields being `name` (a label, not an identity — FR-BAR-1) and the reader's own `display` (FR-SET-1). `id` is opaque and minted on-device, compared exactly rather than folded, so two ids differing in case are two bars. `ShelfEdits` (`shelf_edits.dart`, as `CollectionEdits` is `collection_edits.dart`) is `Shelf`'s own set of pure derivations — adding, replacing or removing a bar by id, opening one, and `refreshedWith` for a guest's incoming payload.
 
-`Shelf`'s constructor throws `ArgumentError` on a broken shelf, the programmer contract `Collection`'s own constructor already keeps: ids unique, `openId` naming a bar that exists, and the mode deciding which half of a record a bar may carry. That coherence sits on `Shelf` rather than on `Bar` for the reason `Ingredient` has no invariants and `Collection` has them all: `validateShelf` takes bars already built, so a rule `Bar`'s constructor kept would be one an untrusted index could never be *reported* on — it would crash on the way in instead. `collection` is an empty `Collection` while no bar is open, and no screen can read it then — the shell offers no destination without a bar ([architecture.md](architecture.md#bars)). `Offer` is a record, comparing its fields with `==`, so `Bar` compares the guest lists inside its offers itself, two offers built apart being equal in every part but list identity.
+`Shelf`'s constructor throws `ArgumentError` on a broken shelf, the programmer contract `Collection`'s own constructor already keeps: ids unique, owned names unique under the fold (FR-BAR-1), `openId` naming a bar that exists, and the mode deciding which half of a record a bar may carry. That coherence sits on `Shelf` rather than on `Bar` for the reason `Ingredient` has no invariants and `Collection` has them all: `validateShelf` takes bars already built, so a rule `Bar`'s constructor kept would be one an untrusted index could never be *reported* on — it would crash on the way in instead. `collection` is an empty `Collection` while no bar is open, and no screen can read it then — the shell offers no destination without a bar ([architecture.md](architecture.md#bars)). `Offer` is a record, comparing its fields with `==`, so `Bar` compares the guest lists inside its offers itself, two offers built apart being equal in every part but list identity.
 
 **One collection is resident**, which is what makes FR-BAR-1's "nothing crosses" a fact rather than a rule: there is no second `Collection` for a search, a draw or a jump to reach into, and `Collection`'s memoised lookups stay built for the bar on show and thrown away with it, so tens of bars cost one bar's worth of index.
 
@@ -154,7 +154,7 @@ Enum on-disk spelling is declared as a field, never inferred from the Dart ident
 Name uniqueness checked in two places:
 
 - `Collection` constructor throws `ArgumentError` on duplicate (programmer contract: existing Collection is well-formed). `Shelf`'s does the same for its own invariants.
-- `validateCollection` returns issues, never throws (data contract: untrusted input reported, not crashed). Works on loose parts before Collection construction. `validateShelf` is its counterpart over the index's parts, reusing the same kinds — an id twice over is a `duplicateName`, an unreadable token a `malformedValue`.
+- `validateCollection` returns issues, never throws (data contract: untrusted input reported, not crashed). Works on loose parts before Collection construction. `validateShelf` is its counterpart over the index's parts, reusing the same kinds — an id or an owned name twice over is a `duplicateName`, an unreadable token a `malformedValue`.
 
 Both use single `duplicateNameIndexes` in `names.dart`.
 
@@ -182,7 +182,7 @@ Grammar in [architecture.md](architecture.md#data-format). This file enforces sy
 
 ### Validation
 
-Contract and rationale: [ADR 05](adr/05-validation-contract.md). `ValidationIssueKind` names each rule that can fail (grammar's own — ADR 06/11, unit sizes — ADR 17, and the codec's own shape errors among them); `ValidationIssue` carries the `kind`, a data-format `path` and a ready-to-display `message`. `validateCollection`, `validateRecipe`, `validateIngredient`, `validateTag` and `validateShelf` all answer a `List<ValidationIssue>`, empty meaning valid.
+Contract and rationale: [ADR 05](adr/05-validation-contract.md). `ValidationIssueKind` names each rule that can fail (grammar's own — ADR 06/11, unit sizes — ADR 17, and the codec's own shape errors among them); `ValidationIssue` carries the `kind`, a data-format `path` and a ready-to-display `message`. `validateCollection`, `validateRecipe`, `validateIngredient`, `validateTag`, `validateBarName` and `validateShelf` all answer a `List<ValidationIssue>`, empty meaning valid.
 
 Issues collected in one pass (no fail-fast), top-to-bottom like file (settings, units, ingredients, tags, recipes, within each by index). Lets codec render as-is. `ValidationIssue` has value equality.
 

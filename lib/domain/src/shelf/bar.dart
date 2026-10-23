@@ -33,7 +33,7 @@ final class Bar {
   /// file. Compared exactly — an id is opaque, not a name (ADR-08's fold).
   final String id;
 
-  /// A label — two bars may carry one (FR-BAR-1).
+  /// A label, unique among owned bars only (FR-BAR-1).
   final String name;
   final BarMode mode;
 

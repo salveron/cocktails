@@ -297,6 +297,22 @@ void main() {
       expect(find.byType(SnackBar), findsNothing);
     });
 
+    testWidgets("replacing keeps the open bar's own name, and takes no other "
+        "owned bar's (FR-BAR-1)", (tester) async {
+      final anna = Bar(id: 'anna01', name: 'Anna', mode: BarMode.owner);
+      await pumpScreen(
+        tester,
+        const SettingsScreen(),
+        store: MemoryBarStore.over([testBar(), anna], {}),
+        picker: () async => pickedFile,
+      );
+      await tap(tester, find.text('Import'));
+      expect(saveEnabled(tester), isTrue);
+      await typeInto(tester, barNameField, 'anna');
+      expect(find.text('Duplicate bar name: "anna"'), findsOneWidget);
+      expect(saveEnabled(tester), isFalse);
+    });
+
     testWidgets('both roads are offered, and the chosen one says what it '
         'does', (tester) async {
       await importOver(tester, () async => pickedFile);

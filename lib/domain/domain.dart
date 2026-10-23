@@ -19,7 +19,7 @@ export 'src/collection/unit_sizes.dart';
 export 'src/issues.dart' hide checkName, addProblems, Problem;
 export 'src/names.dart' show nameKey, nameKeys, compareNames, NameComparison;
 export 'src/shelf/bar.dart' hide summaryOf;
-export 'src/shelf/shelf.dart';
+export 'src/shelf/shelf.dart' hide ownedNameTaken;
 export 'src/shelf/shelf_edits.dart';
 export 'src/shelf/shelf_validation.dart';
 export 'src/shelf/sharing.dart';
