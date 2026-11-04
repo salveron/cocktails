@@ -97,7 +97,6 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
             onCommit: (name) => unawaited(_shelf.renameBar(bar.id, name)),
           ),
           const FieldNote('Name the file and the bar on LAN.'),
-          const SectionLabel('File'),
           SizedBox(
             width: double.infinity,
             child: FilledButton.tonalIcon(
@@ -126,10 +125,10 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
     );
     final locked = _lockedBy(offering: offering, elsewhere: elsewhere);
     return [
-      const SectionLabel('Device name'),
+      const SectionLabel('LAN device name'),
       CommittedField(
         initial: _deviceName,
-        hintText: 'Device name',
+        hintText: 'LAN device name',
         enabled: !offering && !elsewhere,
         onCommit: (name) => unawaited(_shelf.renameDevice(name)),
       ),

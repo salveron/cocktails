@@ -88,15 +88,16 @@ class _Entries extends ConsumerWidget {
             subtitle: 'Export as a file or share over LAN',
             page: ShareScreen(open.id),
           ),
-        // The one file row, read by mode: an owned bar takes a file in, a guest
-        // asks its source for a newer one (FR-BAR-5/7). The same exchange from
-        // either side, so neither dims to make room.
+        // The one way in, read by mode: an owned bar takes a bar in from a file
+        // or a device nearby, a guest asks its source for a newer one (FR-BAR-5,
+        // FR-DAT-3). The same exchange from either side, so neither dims to make
+        // room.
         if (writable)
-          _Entry.acts(
+          const _Entry.opens(
             icon: Icons.file_open_outlined,
             title: 'Import',
-            subtitle: 'Replace all, or add as a guest',
-            act: () => unawaited(_import(context, ref)),
+            subtitle: 'Bring in a bar from a file or LAN',
+            page: BarFormScreen.importing(),
           )
         else
           _Entry.acts(
@@ -151,19 +152,6 @@ Future<void> _refresh(BuildContext context, WidgetRef ref) async {
   say(messenger, said);
 }
 
-/// Takes a file off the system's picker and puts what is in it in front of the
-/// reader (FR-DAT-3/4). Nothing is touched here: the form is where a road is
-/// agreed to, and it is the same form a bar is founded on — one file, the same
-/// three questions, whichever end it was picked from (FR-BAR-7).
-Future<void> _import(BuildContext context, WidgetRef ref) async {
-  final navigator = Navigator.of(context);
-  final picked = await pickBar(context, ref);
-  if (picked == null) return;
-  await navigator.push(
-    MaterialPageRoute<void>(builder: (_) => BarFormScreen.importing(picked)),
-  );
-}
-
 /// One row of the menu: what it is, and what a tap does with it. A row that
 /// travels wears the chevron saying so; a row that acts where it stands
 /// carries none, which is the whole of the telling. A row [enabled] is false on
@@ -180,7 +168,7 @@ class _Entry extends StatelessWidget {
   }) : act = null,
        working = false;
 
-  /// A row that acts is drawn only where the act is on offer, so none of them
+  /// A row that acts is drawn only where the act is on offer, so it never
   /// dims: what a guest bar cannot do it is not asked to refuse.
   const _Entry.acts({
     required this.icon,

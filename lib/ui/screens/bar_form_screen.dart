@@ -25,7 +25,7 @@ enum _Road { own, replace, guest }
 /// with it (FR-DAT-3/4). Null where nothing came back to judge: picking nothing
 /// is nothing done, and a picker that would not open says so where it stands
 /// rather than leaving the screen silent.
-Future<ImportReview?> pickBar(BuildContext context, WidgetRef ref) async {
+Future<ImportReview?> _pickBar(BuildContext context, WidgetRef ref) async {
   final picker = ref.read(filePickerProvider);
   final shelf = ref.read(shelfProvider.notifier);
   ImportReview? review;
@@ -41,20 +41,22 @@ Future<ImportReview?> pickBar(BuildContext context, WidgetRef ref) async {
 }
 
 /// One pushed page for a bar arriving: what to call it, where its contents come
-/// from, and what becomes of the file (FR-BAR-2/7, FR-DAT-3). Founding and
-/// importing ask the same three questions of the same file, so they are one
+/// from, and what becomes of them (FR-BAR-2/7/8, FR-DAT-3). Founding and
+/// importing ask the same three questions of the same bar, so they are one
 /// screen reached two ways — a dialog once held the name and nothing else, and
 /// a second screen held the counts and nothing else (docs/ui-design.md#new-bar).
 class BarFormScreen extends ConsumerStatefulWidget {
-  /// FR-BAR-2/7: a bar founded here, left empty or filled from a picked file.
-  const BarFormScreen.founding({super.key}) : arriving = null;
+  /// FR-BAR-2/7/8: a bar founded here, left empty or filled from a file or a
+  /// device nearby.
+  const BarFormScreen.founding({super.key}) : importing = false;
 
-  /// FR-DAT-3, FR-BAR-7: a file already picked, bound for the open bar or for a
-  /// guest bar of its own.
-  const BarFormScreen.importing(ImportReview this.arriving, {super.key});
+  /// FR-DAT-3, FR-BAR-7/8: the open bar replaced from a file or a device
+  /// nearby, or a guest bar of its own made of one.
+  const BarFormScreen.importing({super.key}) : importing = true;
 
-  /// The file the screen opened on; null where the reader picks their own.
-  final ImportReview? arriving;
+  /// The entry the screen was reached by, which decides what the owner's road
+  /// does and whether a bar of nothing is one to save.
+  final bool importing;
 
   @override
   ConsumerState<BarFormScreen> createState() => _BarFormScreenState();
@@ -84,18 +86,17 @@ class _BarFormScreenState extends ConsumerState<BarFormScreen> {
   /// stands.
   String _suggested = '';
 
-  /// What the screen opened holding, so backing out asks only where the reader
+  /// The name the screen opened with, so backing out asks only where the reader
   /// has moved something themselves.
-  late final ({ImportReview? picked, _Road road, String name}) _opened;
+  late final String _openedName;
 
   @override
   void initState() {
     super.initState();
-    _picked = widget.arriving;
-    _road = widget.arriving == null ? _Road.own : _Road.replace;
+    _road = _startRoad;
     // No build yet to watch it through, so this one read stands alone.
     _suggest(ref.read(openBarProvider)?.name ?? '');
-    _opened = (picked: _picked, road: _road, name: _name.text);
+    _openedName = _name.text;
     _name.addListener(() => setState(() {}));
   }
 
@@ -105,19 +106,23 @@ class _BarFormScreenState extends ConsumerState<BarFormScreen> {
     super.dispose();
   }
 
-  bool get _importing => widget.arriving != null;
+  bool get _importing => widget.importing;
 
-  bool get _dirty =>
-      _picked != _opened.picked ||
-      _road != _opened.road ||
-      _name.text != _opened.name;
+  /// The road the entry opens on, and the one dropping what is in hand returns
+  /// to: the owner's.
+  _Road get _startRoad => _importing ? _Road.replace : _Road.own;
+
+  bool get _dirty => _picked != null || _name.text != _openedName;
 
   /// Nothing to save while the name is refused, and nothing at all while a file
   /// the app could not read is standing: an empty bar founded in its place, or
-  /// a collection emptied in its name, would each be a lie about the file.
+  /// a collection emptied in its name, would each be a lie about the file. An
+  /// import has nothing to do with nothing in hand, where founding has an empty
+  /// bar to make.
   bool _canSave(List<ValidationIssue> nameIssues) {
     final picked = _picked;
-    return nameIssues.isEmpty && (picked == null || picked.bar != null);
+    final contents = picked == null ? !_importing : picked.bar != null;
+    return nameIssues.isEmpty && contents;
   }
 
   /// The name the road offers, in the field where the reader has not written
@@ -137,7 +142,7 @@ class _BarFormScreenState extends ConsumerState<BarFormScreen> {
   }
 
   Future<void> _pick(String open) async {
-    final picked = await pickBar(context, ref);
+    final picked = await _pickBar(context, ref);
     if (picked == null || !mounted) return;
     _source = fileSource;
     setState(() {
@@ -151,7 +156,7 @@ class _BarFormScreenState extends ConsumerState<BarFormScreen> {
     setState(() {
       _picked = null;
       _source = fileSource;
-      _road = _Road.own;
+      _road = _startRoad;
     });
     _suggest(open);
   }
@@ -180,13 +185,13 @@ class _BarFormScreenState extends ConsumerState<BarFormScreen> {
     _suggest(open);
   }
 
-  /// What a bar arriving lands on: **Guest**, which is what a bar someone else
-  /// shared usually is, and the road that keeps the source it came by
-  /// (FR-BAR-5). A file that will not read offers no road at all, so the screen
-  /// keeps the one it opened on — there is nothing to be a guest of, and
-  /// nothing to put in place of a collection.
-  _Road _arrivedRoad(ImportReview arrived) =>
-      arrived.bar == null ? _opened.road : _Road.guest;
+  /// What a bar arriving lands on: **Guest** where one is being founded, the
+  /// road that keeps the source it came by (FR-BAR-5), and Replace where the
+  /// open bar is being imported into. A file that will not read offers no road
+  /// at all, so the screen keeps the one it opened on.
+  _Road _arrivedRoad(ImportReview arrived) => arrived.bar == null
+      ? _startRoad
+      : (_importing ? _Road.replace : _Road.guest);
 
   void _chose(_Road road, String open) {
     if (road == _road) return;
@@ -252,15 +257,11 @@ class _BarFormScreenState extends ConsumerState<BarFormScreen> {
       dirty: _dirty,
       discardTitle: _importing ? 'Discard this import?' : 'Discard this bar?',
       onSave: _canSave(nameIssues) ? () => unawaited(_save(arriving)) : null,
-      // An import has nothing to put back: the file is what it is for.
-      onReset: _importing || picked == null || _fetching
-          ? null
-          : () => _dropFile(open),
+      onReset: picked == null || _fetching ? null : () => _dropFile(open),
       children: [
         TextField(
           controller: _name,
-          // The pick is done on the way in when importing, so the screen is
-          // there to be read rather than typed into.
+          // An import starts from the name of the bar it is bound for.
           autofocus: !_importing,
           decoration: InputDecoration(
             hintText: 'Bar name',
@@ -277,14 +278,16 @@ class _BarFormScreenState extends ConsumerState<BarFormScreen> {
           // Closed while a bar is on its way: which roads exist is the entry's
           // to say, whether either may be taken now is the fetch's.
           open: !_fetching,
-          // Importing is a file already in hand, so the road that would replace
-          // it with something off the network is not one this entry offers.
-          onFind: _importing ? null : () => unawaited(_findNearby(open)),
+          onFind: () => unawaited(_findNearby(open)),
           onPick: () => unawaited(_pick(open)),
         ),
         if (_fetching) const Looking(),
         if (picked == null && !_fetching)
-          const FieldNote('Start empty, or fill the bar from a file or LAN.'),
+          FieldNote(
+            _importing
+                ? 'Replace the bar from a file or LAN, or add it as a guest.'
+                : 'Start empty, or fill the bar from a file or LAN.',
+          ),
         if (picked != null && arriving == null && !_fetching)
           _RefusedFileNote(picked: picked, importing: _importing, open: open),
         if (arriving != null && !_fetching)
@@ -374,8 +377,6 @@ class _ArrivedContent extends StatelessWidget {
 /// ever staying lit: each leaves the screen and comes back with contents rather
 /// than settling into a state. The labels say which road *and* what a second
 /// tap would do, so a road already taken reads as one that may be taken again.
-/// Where the file road stands alone — the import entry, which opens on a file
-/// already picked — it is a button rather than a segment of one.
 class _Source extends StatelessWidget {
   const _Source({
     required this.taken,
@@ -388,46 +389,31 @@ class _Source extends StatelessWidget {
   /// segment that stays lit, and the only label that changes.
   final _Way? taken;
 
-  /// Whether either road may be taken now; which of them exist is [onFind]'s.
+  /// Whether either road may be taken now.
   final bool open;
 
-  final VoidCallback? onFind;
+  final VoidCallback onFind;
   final VoidCallback onPick;
 
   /// A road not taken reads as it did before any was: the reader is not being
-  /// told they may pick "another" of something they never picked. Alone, the
-  /// file button has the width for the whole phrase; sharing a row, each half
-  /// has about half a phone and would ellipsize.
-  String _labelOf(_Way way) => switch ((way, way == taken, onFind == null)) {
-    (_Way.file, false, _) => 'From import',
-    (_Way.file, true, true) => 'Select another file',
-    (_Way.file, true, false) => 'Another file',
-    (_Way.lan, false, _) => 'From LAN',
-    (_Way.lan, true, _) => 'Another bar',
+  /// told they may pick "another" of something they never picked. Short,
+  /// because the two share a row and each half has about half a phone.
+  String _labelOf(_Way way) => switch ((way, way == taken)) {
+    (_Way.file, false) => 'From import',
+    (_Way.file, true) => 'Another file',
+    (_Way.lan, false) => 'From LAN',
+    (_Way.lan, true) => 'Another bar',
   };
 
   @override
-  Widget build(BuildContext context) {
-    final onFind = this.onFind;
-    if (onFind == null) {
-      return SizedBox(
-        width: double.infinity,
-        child: FilledButton.tonalIcon(
-          onPressed: open ? onPick : null,
-          icon: const Icon(Icons.file_open_outlined),
-          label: Text(_labelOf(_Way.file)),
-        ),
-      );
-    }
-    return SegmentedActions<_Way>(
-      values: _Way.values,
-      taken: taken,
-      labelOf: _labelOf,
-      iconOf: (way) =>
-          way == _Way.file ? Icons.file_open_outlined : Icons.wifi_tethering,
-      onAct: open ? (way) => way == _Way.file ? onPick() : onFind() : null,
-    );
-  }
+  Widget build(BuildContext context) => SegmentedActions<_Way>(
+    values: _Way.values,
+    taken: taken,
+    labelOf: _labelOf,
+    iconOf: (way) =>
+        way == _Way.file ? Icons.file_open_outlined : Icons.wifi_tethering,
+    onAct: open ? (way) => way == _Way.file ? onPick() : onFind() : null,
+  );
 }
 
 /// The two roads, named so the segments have something to be.

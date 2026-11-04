@@ -27,15 +27,21 @@ void main() {
   final sharedFile = fileOf(recipeCollection);
 
   /// The form as a reader reaches it, over a store holding [smallCollection]
-  /// in one owned bar, with the system's picker answering [picked].
+  /// in one owned bar, with the system's picker answering [picked] — founding
+  /// a bar from the list, or, with [importing], from the open bar's gear.
   Future<MemoryBarStore> openForm(
     WidgetTester tester, {
     Future<String?> Function()? picked,
     List<Override> overrides = const [],
+    bool importing = false,
   }) async {
     final store = MemoryBarStore.of(testBar(), smallCollection);
     await pumpApp(tester, store: store, picker: picked, overrides: overrides);
     await tap(tester, find.byTooltip('Settings'));
+    if (importing) {
+      await tap(tester, find.text('Import'));
+      return store;
+    }
     await tap(tester, find.text('Change bar'));
     await tap(tester, find.byTooltip('New bar'));
     return store;
@@ -308,9 +314,11 @@ void main() {
       List<Found> found = const [(source: ada, name: "Ada's bar")],
       Outcome<BarContent>? fetched,
       Completer<void>? held,
+      bool importing = false,
     }) async {
       final store = await openForm(
         tester,
+        importing: importing,
         overrides: [
           findersProvider.overrideWithValue({
             Transport.lan: MemoryFinder(found),
@@ -444,18 +452,98 @@ void main() {
       expect(find.text('3 recipes'), findsOneWidget);
     });
 
-    /// An import opens on a file already in hand, so the road that would put
-    /// something off the network in its place is not one that entry offers.
-    testWidgets('importing offers the file road alone', (tester) async {
-      await pumpApp(
+    /// FR-DAT-3: the same two roads in, with Replace where founding has Owned.
+    group('on the import entry', () {
+      testWidgets('opens on nothing in hand, bound for the bar in hand', (
         tester,
-        store: MemoryBarStore.of(testBar(), smallCollection),
-        picker: () async => sharedFile,
-      );
-      await tap(tester, find.byTooltip('Settings'));
-      await tap(tester, find.text('Import'));
-      expect(find.text('Select another file'), findsOneWidget);
-      expect(find.text('From LAN'), findsNothing);
+      ) async {
+        await openForm(tester, importing: true);
+        expect(find.widgetWithText(AppBar, 'Import'), findsOneWidget);
+        expect(
+          tester.widget<TextField>(barNameField).controller?.text,
+          'Home bar',
+        );
+        expect(find.text('From import'), findsOneWidget);
+        expect(find.text('From LAN'), findsOneWidget);
+        // Nothing to be a guest of, and nothing to put in place of the bar.
+        expect(find.text('Mode'), findsNothing);
+        expect(saveEnabled(tester), isFalse);
+        expect(find.text('Reset'), findsNothing);
+        expect(find.text('Discard this import?'), findsNothing);
+        await back(tester);
+        expect(find.widgetWithText(AppBar, 'Settings'), findsOneWidget);
+      });
+
+      testWidgets('a bar chosen nearby lands on Replace and puts its contents '
+          'in the open bar, keeping no source', (tester) async {
+        final store = await withNearby(tester, importing: true);
+        await tap(tester, find.text("Ada's bar · Ada", findRichText: true));
+        await tap(tester, find.text('Select'));
+        expect(find.text('Another bar'), findsOneWidget);
+        expect(find.text('Replace'), findsOneWidget);
+        expect(find.text('Owned'), findsNothing);
+        // The open bar's own name, an import not being a rename.
+        expect(
+          tester.widget<TextField>(barNameField).controller?.text,
+          'Home bar',
+        );
+        await tap(tester, find.text('Save'));
+        final replaced = founded(store);
+        expect(replaced.bar.id, testBar().id);
+        expect(replaced.bar.mode, BarMode.owner);
+        expect(replaced.bar.source, isNull);
+        expect(replaced.collection, recipeCollection);
+        expect(
+          store.snapshots[ExportPurpose.beforeImport]?.$2,
+          smallCollection,
+        );
+        expect(find.text('3 recipes imported.'), findsOneWidget);
+      });
+
+      testWidgets('the guest road keeps the source it came from and leaves '
+          'the open bar alone', (tester) async {
+        final store = await withNearby(tester, importing: true);
+        await tap(tester, find.text("Ada's bar · Ada", findRichText: true));
+        await tap(tester, find.text('Select'));
+        await tap(tester, find.text('Guest'));
+        await tap(tester, find.text('Save'));
+        final made = founded(store);
+        expect(made.bar.mode, BarMode.guest);
+        expect(made.bar.source, ada);
+        expect(made.collection, recipeCollection);
+        expect(store.savedBars[testBar().id], isNull);
+        expect(store.snapshots, isEmpty);
+      });
+
+      testWidgets('a file in hand may be given up for nothing', (tester) async {
+        await openForm(tester, importing: true, picked: () async => sharedFile);
+        await tap(tester, find.text('From import'));
+        expect(find.text('Another file'), findsOneWidget);
+        await tap(tester, find.text('Reset'));
+        expect(find.text('3 recipes'), findsNothing);
+        expect(find.text('Mode'), findsNothing);
+        expect(find.text('From import'), findsOneWidget);
+        expect(
+          tester.widget<TextField>(barNameField).controller?.text,
+          'Home bar',
+        );
+        expect(saveEnabled(tester), isFalse);
+      });
+
+      testWidgets('a source that could not be reached leaves it on nothing', (
+        tester,
+      ) async {
+        await withNearby(
+          tester,
+          importing: true,
+          fetched: const Unreachable(UnreachableReason.notFound),
+        );
+        await tap(tester, find.text("Ada's bar · Ada", findRichText: true));
+        await tap(tester, find.text('Select'));
+        expect(find.byType(SnackBar), findsOneWidget);
+        expect(find.text('Mode'), findsNothing);
+        expect(saveEnabled(tester), isFalse);
+      });
     });
   });
 }

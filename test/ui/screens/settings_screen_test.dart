@@ -42,11 +42,28 @@ void main() {
         matching: find.byIcon(Icons.chevron_right),
       );
       expect(chevronOn('Tags'), findsOneWidget);
-      // Every way out is a room of its own, so it travels.
+      // Every way out is a room of its own, and the way in a form of its own,
+      // so both travel.
       expect(chevronOn('Share'), findsOneWidget);
-      // Import acts: what it opens: what it opens is the system's picker, and where it
-      // goes afterwards depends on what came back.
-      expect(chevronOn('Import'), findsNothing);
+      expect(chevronOn('Import'), findsOneWidget);
+    });
+
+    testWidgets('Refresh acts where it stands, so it carries none', (
+      tester,
+    ) async {
+      await pumpOver(
+        tester,
+        const SettingsScreen(),
+        smallCollection,
+        bar: testGuestBar(),
+      );
+      expect(
+        find.descendant(
+          of: find.widgetWithText(ListTile, 'Refresh'),
+          matching: find.byIcon(Icons.chevron_right),
+        ),
+        findsNothing,
+      );
     });
   });
 
@@ -98,8 +115,9 @@ void main() {
     /// cannot be read off the store and pass for the file's.
     final pickedFile = fileOf(recipeCollection);
 
-    /// The Import row tapped over a store holding [smallCollection], with the
-    /// system's picker answering [picked] — a file, nothing, or a refusal.
+    /// The Import row tapped over a store holding [smallCollection], and the
+    /// file road taken with the system's picker answering [picked] — a file,
+    /// nothing, or a refusal.
     Future<MemoryBarStore> importOver(
       WidgetTester tester,
       Future<String?> Function() picked,
@@ -112,6 +130,7 @@ void main() {
         picker: picked,
       );
       await tap(tester, find.text('Import'));
+      await tap(tester, find.text('From import'));
       return store;
     }
 
@@ -213,7 +232,7 @@ void main() {
     testWidgets('the replace lands, keeping a copy of what it replaced '
         '(FR-DAT-3)', (tester) async {
       final store = await importOver(tester, () async => pickedFile);
-      // Replace is the road the screen opens on, the file having been picked
+      // Replace is the road the file lands on, the screen having been reached
       // from the open bar's own gear.
       await tap(tester, find.text('Save'));
       expect(store.saved, recipeCollection);
@@ -255,6 +274,7 @@ void main() {
         picker: () async => pickedFile,
       );
       await tap(tester, find.text('Import'));
+      await tap(tester, find.text('From import'));
       expect(saveEnabled(tester), isTrue);
       await typeInto(tester, barNameField, 'anna');
       expect(find.text('Duplicate bar name: "anna"'), findsOneWidget);
@@ -287,15 +307,12 @@ void main() {
       expect(tester.widget<TextField>(barNameField).controller?.text, 'Cellar');
     });
 
-    testWidgets('one arrived at with a file is left without being asked', (
+    testWidgets('one with a file picked asks before it is left', (
       tester,
     ) async {
       await importOver(tester, () async => pickedFile);
       await tap(tester, find.byTooltip('Back'));
-      // Nothing was typed and nothing chosen, so there is nothing to discard:
-      // the pick that opened this screen is not an edit the reader made on it.
-      expect(find.text('Discard this import?'), findsNothing);
-      expect(find.widgetWithText(AppBar, 'Settings'), findsOneWidget);
+      expect(find.text('Discard this import?'), findsOneWidget);
     });
 
     testWidgets('another file may be chosen in place of the one on show', (
@@ -313,13 +330,11 @@ void main() {
         },
       );
       await tap(tester, find.text('Import'));
+      await tap(tester, find.text('From import'));
       expect(find.text('3 recipes'), findsOneWidget);
-      await tap(tester, find.text('Select another file'));
+      await tap(tester, find.text('Another file'));
       expect(find.text('0 recipes'), findsOneWidget);
       expect(find.text('3 recipes'), findsNothing);
-      // Nothing to empty here: the file is what the screen is for, and the way
-      // out of one is the way back.
-      expect(find.text('Leave it empty'), findsNothing);
     });
 
     testWidgets('a file the rules refuse changes nothing, and says what and '
@@ -346,7 +361,10 @@ void main() {
 
     testWidgets('a reader who picks nothing has done nothing', (tester) async {
       final store = await importOver(tester, () async => null);
-      expect(find.widgetWithText(AppBar, 'Import'), findsNothing);
+      // Still on the form, with nothing in hand to save.
+      expect(find.widgetWithText(AppBar, 'Import'), findsOneWidget);
+      expect(find.text('From import'), findsOneWidget);
+      expect(saveEnabled(tester), isFalse);
       expect(find.byType(SnackBar), findsNothing);
       expect(store.saveCount, 0);
     });
@@ -372,6 +390,7 @@ void main() {
         picker: () async => pickedFile,
       );
       await tap(tester, find.text('Import'));
+      await tap(tester, find.text('From import'));
       await tap(tester, find.text('Save'));
       expect(find.textContaining('Could not import'), findsOneWidget);
       // Still on the form: leaving for a collection that never reached the
@@ -389,6 +408,7 @@ void main() {
       );
       await tap(tester, find.byTooltip('Settings'));
       await tap(tester, find.text('Import'));
+      await tap(tester, find.text('From import'));
       await tap(tester, find.text('Save'));
       // Two screens back, where what was imported is: a list of recipes that
       // were not there a moment ago is the answer no sentence improves on.

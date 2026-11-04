@@ -84,7 +84,7 @@ FR-VOC-2 left for FR-REC-8 in [ADR 06](adr/06-base-spirit-on-the-line.md); its n
 
 - **FR-DAT-1** Single action exports one bar (vocabularies, stock, recipes, line marks, settings) to one text file; shareable via platform file sharing. A guest bar exports as an owned one does (FR-BAR-4).
 - **FR-DAT-2** Export file is human-readable, self-describing (editable without app, by person or AI); carries format version.
-- **FR-DAT-3** Single action imports a file into an owned bar — establishing a new one, or **replacing one that exists**, which requires explicit confirmation and auto-exports that bar's current state beforehand (previous state recoverable). Every other bar is untouched. The same file may instead be added as a guest bar (FR-BAR-7).
+- **FR-DAT-3** Single action imports a file, or a bar found on the LAN (FR-BAR-8), into an owned bar — establishing a new one, or **replacing one that exists**, which requires explicit confirmation and auto-exports that bar's current state beforehand (previous state recoverable). Every other bar is untouched. The same file or bar may instead be added as a guest bar (FR-BAR-7, FR-BAR-8).
 - **FR-DAT-4** Import validates before applying. On structural/referential error (unknown ingredient, duplicate name, malformed amount, unsupported version): nothing changed; app reports what and where.
 - **FR-DAT-5** Export/import round-trip losslessly (export, import unmodified, export again = identical).
 

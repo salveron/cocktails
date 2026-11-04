@@ -81,7 +81,7 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  final deviceField = field('Device name');
+  final deviceField = field('LAN device name');
   final nameOfBar = field('Bar name');
 
   group('the way a bar travels', () {
