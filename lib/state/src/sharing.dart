@@ -1,4 +1,4 @@
-/// Work in flight on the owner's side: an offer outlives the gesture that made
+/// Work in flight on the sharing side: an offer outlives the gesture that made
 /// it, and the screens are told what it is doing only through here
 /// (docs/components.md#work-in-flight).
 library;

@@ -148,20 +148,17 @@ void main() {
       expect(issue.location, 'bars[0].updated');
     });
 
-    test('a guest bar is not this device\'s to share (FR-BAR-6)', () {
-      final issue = validateShelf(
-        bars: [
-          Bar(
-            id: 'b3e1d7',
-            name: 'Ada\'s bar',
-            mode: BarMode.guest,
-            source: aSource,
-            offers: const [(via: Transport.lan, guests: [])],
-          ),
-        ],
-      ).single;
-      expect(issue.kind, ValidationIssueKind.malformedValue);
-      expect(issue.location, 'bars[0].offers[0]');
+    /// A guest already hands the same collection over as a file, so no way a
+    /// bar travels is refused on whose it is (FR-BAR-6).
+    test('a guest bar may be shared like an owned one', () {
+      expect(
+        validateShelf(
+          bars: [
+            guestBar(offers: const [(via: Transport.lan, guests: [])]),
+          ],
+        ),
+        isEmpty,
+      );
     });
 
     test('a guest bar names no optimizer of its own (ADR 21/24)', () {
@@ -185,10 +182,12 @@ void main() {
         (via: Transport.lan, guests: <String>[]),
         (via: Transport.lan, guests: ['ada']),
       ];
-      final issue = validateShelf(bars: [ownedBar(offers: twice)]).single;
-      expect(issue.kind, ValidationIssueKind.duplicateName);
-      expect(issue.location, 'bars[0].offers[1]');
-      expect(issue.message, contains('lan'));
+      for (final bar in [ownedBar(offers: twice), guestBar(offers: twice)]) {
+        final issue = validateShelf(bars: [bar]).single;
+        expect(issue.kind, ValidationIssueKind.duplicateName);
+        expect(issue.location, 'bars[0].offers[1]');
+        expect(issue.message, contains('lan'));
+      }
     });
 
     test('every issue is collected, none of them fatal', () {

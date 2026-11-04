@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:cocktails/domain/domain.dart';
 import 'package:cocktails/state/state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -15,9 +16,9 @@ import 'tags_screen.dart';
 import 'units_screen.dart';
 
 /// Settings pushed from app bar gear: the vocabularies that travel, then the
-/// one exchange read twice — the file leaving and the file coming back, which
-/// is why both live here rather than drifting apart (ADR 18,
-/// docs/ui-design.md#data).
+/// two ways data crosses the edge — every way a bar leaves, behind one row, and
+/// the way one comes back in, which is why both live here rather than drifting
+/// apart (ADR 18, docs/ui-design.md#data).
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
@@ -43,7 +44,6 @@ class _Entries extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final open = ref.watch(openBarProvider);
-    final shared = ref.watch(offeringsProvider).isEmpty ? null : open?.id;
     // Reaching a source outlasts the tap, so the row it was asked from says so
     // where its icon stands (FR-BAR-5).
     final reaching = ref.watch(refreshesProvider)[open?.id] is Reaching;
@@ -79,13 +79,15 @@ class _Entries extends ConsumerWidget {
           page: const ShoppingSettingsScreen(),
           enabled: writable,
         ),
-        // A guest already holds what the file would carry (FR-DAT-1).
-        _Entry.acts(
-          icon: Icons.ios_share,
-          title: 'Export',
-          subtitle: 'Share all as one text file',
-          act: () => unawaited(_export(context, ref)),
-        ),
+        // Every way this bar leaves, a guest's as an owner's: a guest already
+        // holds what a file or the LAN would carry (FR-DAT-1, FR-BAR-6).
+        if (open != null)
+          _Entry.opens(
+            icon: Icons.ios_share,
+            title: 'Share',
+            subtitle: 'Export as a file or share over LAN',
+            page: ShareScreen(open.id),
+          ),
         // The one file row, read by mode: an owned bar takes a file in, a guest
         // asks its source for a newer one (FR-BAR-5/7). The same exchange from
         // either side, so neither dims to make room.
@@ -100,19 +102,9 @@ class _Entries extends ConsumerWidget {
           _Entry.acts(
             icon: Icons.refresh,
             title: 'Refresh',
-            subtitle: 'Get a newer copy from the source',
+            subtitle: _refreshCaption(open?.source),
             working: reaching,
             act: () => unawaited(_refresh(context, ref)),
-          ),
-        // Below the file rows, an export being an act where an offer is a
-        // standing arrangement; absent on a guest bar and where this build
-        // shares by no way at all (FR-BAR-6, docs/ui-design.md#sharing).
-        if (writable && shared != null)
-          _Entry.opens(
-            icon: Icons.wifi_tethering,
-            title: 'Share',
-            subtitle: 'Offer this bar to devices nearby',
-            page: ShareScreen(shared),
           ),
         // Last, being the way out of this bar rather than anything in it.
         const _Entry.opens(
@@ -126,18 +118,13 @@ class _Entries extends ConsumerWidget {
   }
 }
 
-/// Writes the copy and hands it to the system's sheet (FR-DAT-1). The sheet
-/// opening is the whole answer, so only a failure speaks — and a reader who
-/// dismisses the sheet has done nothing, which is not one.
-Future<void> _export(BuildContext context, WidgetRef ref) async {
-  final sharer = ref.read(sharerProvider);
-  final shelf = ref.read(shelfProvider.notifier);
-  await wentThrough(
-    ScaffoldMessenger.of(context),
-    'Could not export',
-    () async => sharer(await shelf.export()),
-  );
-}
+/// What a refresh asks, by the way the bar came: a guest refreshes from that
+/// one source and no other (FR-BAR-5), so the row says which it is.
+String _refreshCaption(BarSource? source) => switch (source?.via) {
+  Transport.file => 'Pick a newer file',
+  Transport.lan => 'Ask the sharing device again',
+  Transport.cloud || null => 'Ask the source for a newer copy',
+};
 
 /// FR-BAR-5: a guest bar's source asked again from the gear — the pull's own
 /// question, put where a reader who came looking for it will look. What it came

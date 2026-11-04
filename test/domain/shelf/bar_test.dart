@@ -129,6 +129,17 @@ void main() {
       expect(bar.updated, isNull);
     });
 
+    /// The one place a file's three parts are put together, so an export and a
+    /// copy served over the LAN cannot differ in which of them they read.
+    test('contentWith reads the record\'s name and unit over the contents', () {
+      final bar = guestBar(name: 'Mine now', display: FixedUnit.oz);
+      expect(bar.contentWith(_twoIngredients), (
+        name: 'Mine now',
+        display: FixedUnit.oz,
+        collection: _twoIngredients,
+      ));
+    });
+
     test('neither stamp is a copy\'s to move', () {
       final at = DateTime.utc(2026, 3, 1, 18);
       final bar = ownedBar().summarised(_twoIngredients, at: at);

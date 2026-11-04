@@ -21,7 +21,7 @@ abstract interface class BarFinder {
   Stream<List<Found>> nearby();
 }
 
-/// The owner's half, which only some transports have (FR-BAR-6): a file is
+/// The sharing half, which only some transports have (FR-BAR-6): a file is
 /// handed over rather than offered, so there is nothing to withdraw after it.
 abstract interface class BarOfferings {
   Transport get transport;

@@ -213,8 +213,8 @@ void main() {
     });
   });
 
-  /// FR-BAR-6: an owned bar is shared one way at a time, and each way is
-  /// separate from the rest.
+  /// FR-BAR-6: a bar is shared one way at a time, and each way is separate
+  /// from the rest.
   group('offering and withdrawing', () {
     Shelf sharedOver(List<Transport> vias) => Shelf(
       bars: [
@@ -225,7 +225,7 @@ void main() {
       ],
     );
 
-    test('offering a way adds it to an owned bar', () {
+    test('offering a way adds it to the bar', () {
       final shelf = sharedOver(const []).offering('5f2c9a', Transport.lan);
       expect(shelf.barWithId('5f2c9a')!.offers, [
         (via: Transport.lan, guests: const <String>[]),
@@ -270,18 +270,13 @@ void main() {
       expect(shelf.withdrawing('nobody', Transport.lan), same(shelf));
     });
 
-    /// A guest bar is shared by its owner and by nobody else (ADR 23), so this
-    /// is a mistake rather than a no-op.
-    test('sharing a guest bar throws, either way', () {
-      final shelf = sharedOver(const []);
-      expect(
-        () => shelf.offering('b3e1d7', Transport.lan),
-        throwsArgumentError,
-      );
-      expect(
-        () => shelf.withdrawing('b3e1d7', Transport.lan),
-        throwsArgumentError,
-      );
+    /// An offer is a record edit, which a guest bar takes as it takes a rename:
+    /// what is refused it is the collection (ADR 23).
+    test('a guest bar is offered and withdrawn like an owned one', () {
+      final offered = sharedOver(const []).offering('b3e1d7', Transport.lan);
+      expect(offered.barWithId('b3e1d7')!.offeredBy(Transport.lan), isTrue);
+      final withdrawn = offered.withdrawing('b3e1d7', Transport.lan);
+      expect(withdrawn.barWithId('b3e1d7')!.offers, isEmpty);
     });
   });
 }

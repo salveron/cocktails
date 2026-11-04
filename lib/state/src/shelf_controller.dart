@@ -178,14 +178,21 @@ final class ShelfController extends AsyncNotifier<Shelf> {
     await _publish(shelf.withBar(bar.copyWith(shopping: shopping)));
   }
 
-  /// A shareable copy and where it went, opaque so the screen hands it on
-  /// unread (FR-DAT-1, FR-BAR-4).
-  Future<String> export() async {
+  /// A shareable copy of the bar [id] names, any bar, and where it went —
+  /// opaque so the screen hands it on unread (FR-DAT-1, FR-BAR-4).
+  Future<String> export(String id) async {
     final shelf = await future;
     return ref
         .read(barStoreProvider)
-        .exportSnapshot(shelf.open!, shelf.collection);
+        .exportSnapshot(shelf.barWithId(id)!, await _residentOrRead(shelf, id));
   }
+
+  /// [id]'s contents: in hand where it is the bar on show, a read of its file
+  /// otherwise — no other collection is resident (ADR 20).
+  Future<Collection> _residentOrRead(Shelf shelf, String id) async =>
+      id == shelf.openId
+      ? shelf.collection
+      : await _collectionOf(ref.read(barStoreProvider), id, <String>[]);
 
   /// What [text] holds, judged before anything is touched (FR-DAT-3/4). A
   /// decode never answers [Empty] or [Unreachable]; only here for [Outcome]'s
@@ -353,15 +360,13 @@ final class ShelfController extends AsyncNotifier<Shelf> {
     await _publish(shelf.namingDevice(name));
   }
 
-  /// FR-BAR-6: an owned bar offered by [via]. The intent is recorded before the
-  /// network hears anything, so an announcement that fails is reported rather
-  /// than quietly un-offering the bar (ADR 22). A guest bar is its owner's to
-  /// share, and one already offered this way is left alone.
+  /// FR-BAR-6: a bar offered by [via], a guest's as an owner's. The intent is
+  /// recorded before the network hears anything, so an announcement that fails
+  /// is reported rather than quietly un-offering the bar (ADR 22).
   Future<void> offerBar(String id, Transport via) async {
     final shelf = await future;
     final bar = shelf.barWithId(id);
-    if (bar == null || !bar.isOwned) return;
-    if (bar.offeredBy(via)) return;
+    if (bar == null || bar.offeredBy(via)) return;
     await _publish(shelf.offering(id, via));
     ref.read(sharingProvider.notifier).announcing(id);
     await _telling(id, via, (offerings) => offerings.offer(id, bar.name));
@@ -372,8 +377,7 @@ final class ShelfController extends AsyncNotifier<Shelf> {
   Future<void> withdrawBar(String id, Transport via) async {
     final shelf = await future;
     final bar = shelf.barWithId(id);
-    if (bar == null || !bar.isOwned) return;
-    if (!bar.offeredBy(via)) return;
+    if (bar == null || !bar.offeredBy(via)) return;
     await _publish(shelf.withdrawing(id, via));
     ref.read(sharingProvider.notifier).silencing(id);
     await _telling(id, via, (offerings) => offerings.withdraw(id));
@@ -417,12 +421,16 @@ final class ShelfController extends AsyncNotifier<Shelf> {
 
   /// FR-BAR-2/3: what the bar is called here — the reader's on a guest bar as
   /// on their own, a label on someone else's collection rather than an edit to
-  /// it, and kept across every refresh as the reading unit is (ADR 21).
+  /// it, and kept across every refresh as the reading unit is (ADR 21). A bar
+  /// on offer is listed by name, so each way offering it is told the new one.
   Future<void> renameBar(String id, String name) async {
     final shelf = await future;
     final bar = shelf.barWithId(id);
     if (bar == null || bar.name == name) return;
     await _publish(shelf.withBar(bar.copyWith(name: name)));
+    for (final offer in bar.offers) {
+      await _telling(id, offer.via, (offerings) => offerings.offer(id, name));
+    }
   }
 
   /// FR-BAR-2: the copy first, then the bar. The record goes before the file it
@@ -433,16 +441,11 @@ final class ShelfController extends AsyncNotifier<Shelf> {
     final bar = shelf.barWithId(id);
     if (bar == null) return;
     final store = ref.read(barStoreProvider);
-    // Only an owned bar is copied: a guest's contents are its owner's, and
-    // FR-BAR-3 removes one touching nothing. Any bar but the one on show is
-    // read back for it, no other collection being resident (ADR 20).
+    // A guest's contents are its owner's, so only an owned bar is copied.
     if (bar.isOwned) {
-      final collection = id == shelf.openId
-          ? shelf.collection
-          : await _collectionOf(store, id, <String>[]);
       await store.exportSnapshot(
         bar,
-        collection,
+        await _residentOrRead(shelf, id),
         purpose: ExportPurpose.beforeDelete,
       );
     }

@@ -45,7 +45,7 @@ final class Bar {
   /// 24 amended).
   final ShoppingSettings? shopping;
 
-  /// An owner's, one per way the bar is shared (FR-BAR-6).
+  /// One per way the bar is shared, a guest's as an owner's (FR-BAR-6).
   final List<Offer> offers;
 
   /// A guest's, with [refreshed] the last time it answered.
@@ -108,6 +108,10 @@ final class Bar {
     updated: updated ?? this.updated,
     summary: summary ?? this.summary,
   );
+
+  /// The bar as a file carries it, so an export and a LAN copy are one document.
+  BarContent contentWith(Collection collection) =>
+      (name: name, display: display, collection: collection);
 
   /// What a copy may change, null meaning "keep". Neither stamp moves either
   /// — both date contents, and a copy that renames a bar has not touched them.
@@ -195,14 +199,17 @@ Map<Holding, int> summaryOf(Collection collection) => {
   Holding.unit: collection.units.length,
 };
 
-/// The mode decides which half of a record a bar may carry (FR-BAR-3/6). One
-/// list; `Shelf`'s constructor throws the first entry and
-/// shelf_validation.dart's `_checkRecord` reports every one, so a rule or its
-/// wording changes once. [duplicate] is the only fact `_checkRecord` needs
-/// back to place a [ValidationIssueKind] without this file naming one.
+/// The mode decides which half of a record a bar may carry (FR-BAR-3); offers
+/// belong to either (FR-BAR-6). One list: `Shelf`'s constructor throws the first
+/// entry and `_checkRecord` reports every one, so a rule or its wording changes
+/// once. [duplicate] is all `_checkRecord` needs back to place a
+/// [ValidationIssueKind] without this file naming one.
 List<({List<Object> path, String message, bool duplicate})> coherenceProblems(
   Bar bar,
-) => bar.isOwned ? _ownedProblems(bar) : _guestProblems(bar);
+) => [
+  ...(bar.isOwned ? _ownedProblems(bar) : _guestProblems(bar)),
+  ..._offerProblems(bar),
+];
 
 typedef _CoherenceProblem = ({
   List<Object> path,
@@ -226,6 +233,11 @@ List<_CoherenceProblem> _ownedProblems(Bar bar) {
       duplicate: false,
     ));
   }
+  return problems;
+}
+
+List<_CoherenceProblem> _offerProblems(Bar bar) {
+  final problems = <_CoherenceProblem>[];
   final vias = <Transport>{};
   for (var o = 0; o < bar.offers.length; o++) {
     final via = bar.offers[o].via;
@@ -246,13 +258,6 @@ List<_CoherenceProblem> _guestProblems(Bar bar) {
     problems.add((
       path: const ['source'],
       message: 'A guest bar needs the source it refreshes from: "${bar.name}"',
-      duplicate: false,
-    ));
-  }
-  for (var o = 0; o < bar.offers.length; o++) {
-    problems.add((
-      path: ['offers', o],
-      message: 'A guest bar is not this device\'s to share: "${bar.name}"',
       duplicate: false,
     ));
   }

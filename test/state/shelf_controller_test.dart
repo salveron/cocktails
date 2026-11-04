@@ -149,7 +149,7 @@ void main() {
     test('a guest bar exports like any other (FR-DAT-1)', () async {
       final seeded = MemoryBarStore.of(visiting, stored);
       final container = await started(seeded);
-      expect(await controllerOf(container).export(), isNotEmpty);
+      expect(await controllerOf(container).export(visiting.id), isNotEmpty);
       expect(seeded.snapshots[ExportPurpose.share]?.$2, stored);
     });
   });
@@ -196,14 +196,34 @@ void main() {
       'export hands the store the collection on screen (FR-DAT-1)',
       () async {
         final container = await started();
-        expect(await controllerOf(container).export(), isNotEmpty);
+        expect(await controllerOf(container).export(bar.id), isNotEmpty);
         expect(store.snapshots[ExportPurpose.share]?.$2, stored);
       },
     );
 
+    /// The room a bar is shared from takes it by id, and the bar it was opened
+    /// on need not be the one on show: its contents are read back for it, no
+    /// other collection being resident (ADR 20).
+    test('a bar not on show is exported from its own file', () async {
+      final elsewhere = Bar(
+        id: 'd4e5f6',
+        name: 'Beach bar',
+        mode: BarMode.owner,
+      );
+      final other = Collection(ingredients: [Ingredient('rum')]);
+      final seeded = MemoryBarStore.over(
+        [bar, elsewhere],
+        {bar.id: stored, elsewhere.id: other},
+      );
+      final container = await started(seeded);
+      await controllerOf(container).export(elsewhere.id);
+      expect(seeded.snapshots[ExportPurpose.share]?.$1.id, elsewhere.id);
+      expect(seeded.snapshots[ExportPurpose.share]?.$2, other);
+    });
+
     test('an export asked for before the load waits for it', () async {
       final container = containerFor(store);
-      await controllerOf(container).export();
+      await controllerOf(container).export(bar.id);
       expect(store.snapshots[ExportPurpose.share]?.$2, stored);
     });
 
@@ -215,7 +235,7 @@ void main() {
               issueAt(4),
             ], recovered: contentOf(stored));
       final container = await started(damaged);
-      await controllerOf(container).export();
+      await controllerOf(container).export(bar.id);
       expect(damaged.snapshots[ExportPurpose.share]?.$2, stored);
     });
 
@@ -296,7 +316,7 @@ recipes:
 
     test('the copy it keeps is not the one an export shares', () async {
       final container = await started();
-      await controllerOf(container).export();
+      await controllerOf(container).export(bar.id);
       await controllerOf(container).replaceOpen(bar.name, contentOf(incoming));
       // Two copies, two purposes: the export slot still holds what went out to
       // a reader, so an import cannot write over it.
@@ -318,7 +338,7 @@ recipes:
       () async {
         final container = await started();
         final controller = controllerOf(container);
-        await controller.export();
+        await controller.export(bar.id);
         final (record, exported) = store.snapshots[ExportPurpose.share]!;
         final review = controller.review(
           const YamlCodec().encode(contentOf(exported)),

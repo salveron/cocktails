@@ -36,11 +36,7 @@ base class MemoryBarStore implements BarStore {
   /// empty. Generative, so a specialising double can chain to it.
   MemoryBarStore.of(Bar bar, [Collection? collection])
     : shelfOutcome = Ok((bars: [bar], openId: bar.id, deviceName: null)) {
-    barOutcomes[bar.id] = Ok((
-      name: bar.name,
-      display: bar.display,
-      collection: collection ?? Collection(),
-    ));
+    barOutcomes[bar.id] = Ok(bar.contentWith(collection ?? Collection()));
   }
 
   /// The same for a shelf of more than one: [bars] with the first open, each
@@ -54,11 +50,9 @@ base class MemoryBarStore implements BarStore {
          deviceName: null,
        )) {
     for (final bar in bars) {
-      barOutcomes[bar.id] = Ok((
-        name: bar.name,
-        display: bar.display,
-        collection: collections[bar.id] ?? Collection(),
-      ));
+      barOutcomes[bar.id] = Ok(
+        bar.contentWith(collections[bar.id] ?? Collection()),
+      );
     }
   }
 
@@ -80,11 +74,7 @@ base class MemoryBarStore implements BarStore {
     savedBars[bar.id] = (bar, collection);
     saved = collection;
     saveCount++;
-    barOutcomes[bar.id] = Ok((
-      name: bar.name,
-      display: bar.display,
-      collection: collection,
-    ));
+    barOutcomes[bar.id] = Ok(bar.contentWith(collection));
   }
 
   @override

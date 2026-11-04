@@ -42,16 +42,17 @@ void main() {
         matching: find.byIcon(Icons.chevron_right),
       );
       expect(chevronOn('Tags'), findsOneWidget);
-      expect(chevronOn('Export'), findsNothing);
-      // Import acts too: what it opens is the system's picker, and where it
+      // Every way out is a room of its own, so it travels.
+      expect(chevronOn('Share'), findsOneWidget);
+      // Import acts: what it opens: what it opens is the system's picker, and where it
       // goes afterwards depends on what came back.
       expect(chevronOn('Import'), findsNothing);
     });
   });
 
-  /// FR-BAR-6: the room is an owner's, and it is a row rather than a shape
-  /// only where this build has a way to share at all (ADR 22).
-  group('the sharing row', () {
+  /// FR-BAR-6: the room holds every way a bar leaves — the file as much as the
+  /// LAN — so its row stands on any bar, and Export is no row of its own.
+  group('the share row', () {
     testWidgets('opens the room on the bar in hand', (tester) async {
       await pumpScreen(tester, const SettingsScreen());
       await tap(tester, find.text('Share'));
@@ -59,84 +60,35 @@ void main() {
       expect(find.text('Enable LAN'), findsOneWidget);
     });
 
-    /// Not this device's to share, so it is absent rather than dimmed — the
-    /// rule every other thing a guest bar cannot do already keeps (FR-BAR-4).
-    testWidgets('is absent on a guest bar', (tester) async {
+    /// A guest already hands the same collection over as a file, so the LAN is
+    /// no more refused it than the file is (FR-BAR-4, FR-BAR-6).
+    testWidgets('stands on a guest bar too, and opens the room on it', (
+      tester,
+    ) async {
       await pumpScreen(
         tester,
         const SettingsScreen(),
         store: MemoryBarStore.of(testGuestBar(), smallCollection),
       );
-      expect(find.text('Share'), findsNothing);
-      expect(find.text('Change bar'), findsOneWidget);
+      await tap(tester, find.text('Share'));
+      expect(find.widgetWithText(AppBar, 'Share "Ada\'s bar"'), findsOneWidget);
+      expect(find.text('Enable LAN'), findsOneWidget);
     });
 
-    testWidgets('is absent where nothing in this build shares', (tester) async {
+    testWidgets('replaces the Export row', (tester) async {
+      await pumpScreen(tester, const SettingsScreen());
+      expect(find.text('Export'), findsNothing);
+    });
+
+    testWidgets('stands where this build shares by no way over a network', (
+      tester,
+    ) async {
       await pumpScreen(
         tester,
         const SettingsScreen(),
         overrides: [offeringsProvider.overrideWithValue(const {})],
       );
-      expect(find.text('Share'), findsNothing);
-    });
-  });
-
-  group('export', () {
-    /// The location the export answered with, and the copy the store was
-    /// handed to make it.
-    Future<(List<String>, MemoryBarStore)> exportOver(
-      WidgetTester tester, {
-      Future<void> Function(String)? sharer,
-    }) async {
-      final shared = <String>[];
-      final store = MemoryBarStore.of(testBar(), smallCollection);
-      await pumpScreen(
-        tester,
-        const SettingsScreen(),
-        store: store,
-        sharer: sharer ?? (location) async => shared.add(location),
-      );
-      await tap(tester, find.text('Export'));
-      return (shared, store);
-    }
-
-    testWidgets('export hands the copy to the sheet (FR-DAT-1)', (
-      tester,
-    ) async {
-      final (shared, store) = await exportOver(tester);
-      expect(shared, ['memory:share']);
-      // What went out is the collection on screen, not a file re-read (ADR 18).
-      expect(store.snapshots[ExportPurpose.share]?.$2, smallCollection);
-    });
-
-    testWidgets('the row acts where it stands, and does not travel', (
-      tester,
-    ) async {
-      await exportOver(tester);
-      expect(find.widgetWithText(AppBar, 'Settings'), findsOneWidget);
-    });
-
-    testWidgets('a sheet that opened says nothing more', (tester) async {
-      await exportOver(tester);
-      expect(find.byType(SnackBar), findsNothing);
-    });
-
-    testWidgets('a failed export is the only thing that speaks', (
-      tester,
-    ) async {
-      await exportOver(
-        tester,
-        sharer: (_) async => throw Exception('no room on disk'),
-      );
-      expect(find.textContaining('Could not export'), findsOneWidget);
-      expect(find.textContaining('no room on disk'), findsOneWidget);
-    });
-
-    testWidgets('an Error is a failure too, not silence', (tester) async {
-      // Nothing awaits the export, so anything uncaught reaches a reader as
-      // nothing happening at all — the one outcome worse than a refusal.
-      await exportOver(tester, sharer: (_) async => throw StateError('adrift'));
-      expect(find.textContaining('Could not export'), findsOneWidget);
+      expect(find.text('Share'), findsOneWidget);
     });
   });
 
@@ -470,7 +422,7 @@ void main() {
       // The owner's vocabularies and sizes are the guest's to read (FR-BAR-4),
       // so every row leading to one opens; the optimizer is absent there, so
       // its settings are the one thing with nothing to say.
-      for (final row in ['Tags', 'Units', 'Amounts', 'Export', 'Change bar']) {
+      for (final row in ['Tags', 'Units', 'Amounts', 'Share', 'Change bar']) {
         expect(live(tester, row), isTrue, reason: row);
       }
       expect(live(tester, 'Shopping'), isFalse);
@@ -502,7 +454,7 @@ void main() {
         'Units',
         'Amounts',
         'Shopping',
-        'Export',
+        'Share',
         'Import',
       ]) {
         expect(live(tester, row), isTrue, reason: row);
@@ -510,22 +462,37 @@ void main() {
       // Nothing to ask: an owned bar has no source (FR-BAR-5).
       expect(find.text('Refresh'), findsNothing);
     });
+  });
 
-    /// A guest already holds what the file would carry (FR-DAT-1).
-    testWidgets('export works on a guest bar', (tester) async {
-      var shared = 0;
+  group('asking the source again, from the gear (FR-BAR-5)', () {
+    /// A guest refreshes from the way it was added and no other, so the row
+    /// says which that is.
+    testWidgets('the row names the source the bar came by', (tester) async {
       await pumpScreen(
         tester,
         const SettingsScreen(),
         store: MemoryBarStore.of(testGuestBar(), smallCollection),
-        sharer: (_) async => shared++,
       );
-      await tap(tester, find.text('Export'));
-      expect(shared, 1);
-    });
-  });
+      expect(find.text('Pick a newer file'), findsOneWidget);
 
-  group('asking the source again, from the gear (FR-BAR-5)', () {
+      final nearby = Bar(
+        id: 'guest2',
+        name: "Bo's bar",
+        mode: BarMode.guest,
+        source: const BarSource(
+          via: Transport.lan,
+          at: 'bo/Pixel',
+          from: 'Pixel',
+        ),
+      );
+      await pumpScreen(
+        tester,
+        const SettingsScreen(),
+        store: MemoryBarStore.of(nearby, smallCollection),
+      );
+      expect(find.text('Ask the sharing device again'), findsOneWidget);
+    });
+
     /// Reaching a source outlasts the tap, so the row it was asked from says
     /// so where its icon stands, and says in one line what it came to.
     testWidgets('the row turns while the source is being reached', (

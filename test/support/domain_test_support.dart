@@ -115,6 +115,7 @@ Bar guestBar({
   String name = 'Ada\'s bar',
   FixedUnit display = FixedUnit.part,
   BarSource? source = aSource,
+  List<Offer> offers = const [],
   DateTime? refreshed,
   Map<Holding, int>? summary,
 }) => Bar(
@@ -123,6 +124,7 @@ Bar guestBar({
   mode: BarMode.guest,
   display: display,
   source: source,
+  offers: offers,
   refreshed: refreshed,
   summary: summary,
 );

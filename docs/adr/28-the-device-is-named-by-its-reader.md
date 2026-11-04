@@ -26,11 +26,11 @@ Nothing in the app had one. The index carried `format`, `open` and `bars` — ba
 - **The first owned bar's name.** No dependency, no key, no field — and a lie the moment a second bar is offered from the same device, moving again whenever that bar is renamed or deleted.
 - **Asking at first run**, beside the first bar. Refused: a question put to every reader, including the many who never share, at the moment they have least reason to care.
 - **Overwriting the field with the granted name.** One name everywhere, but the network silently rewrites the reader's typing, and the suffix outlives the device that caused it.
-- **Renaming while announced, re-announcing under the new name.** The lock's opposite. Refused for now: until a guest bar can be pointed at another source (FR-BAR-5), a stale instance name is a guest bar that can never refresh again, and no screen would have said so.
+- **Renaming while announced, re-announcing under the new name.** The lock's opposite. Refused: a guest's source keeps the instance name and is never re-pointed (FR-BAR-5), so a stale instance name is a guest bar that can never refresh again, and no screen would have said so.
 
 ## Consequences
 
 - **The app's first Kotlin and first `MethodChannel`**, in `MainActivity`, behind `platformNameProvider` — a seam a test overrides like any other ([ADR 18](18-data-crosses-the-edge-in-a-system-sheet.md)). No manifest entry and no permission: the setting is world-readable.
 - `offeringsProvider` carries the LAN adapter at last, so an offer reaches the network and FR-BAR-6's *"announced again at startup"* becomes something the app does rather than something it intends.
-- A rename still strands a guest that kept the old instance name. The repair is re-sourcing (FR-BAR-5), and until it lands the lock is the whole of the protection.
+- A rename still strands a guest that kept the old instance name. The repair is adding the bar again by the LAN (FR-BAR-5), so the lock is the whole of the protection.
 - The index gains its first key that is about the device rather than about a bar; `validateShelf` judges it under the same name rules as everything else ([ADR 08](08-names-ignore-case.md)).

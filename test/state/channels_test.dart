@@ -68,11 +68,42 @@ void main() {
     test('what is served is the bar\'s own export (ADR 22)', () async {
       final bar = ownedBar();
       final store = MemoryBarStore.of(bar, docCollection());
-      expect(await exportOf(store, bar.id), canonicalText);
+      expect(await exportOf(store, bar), canonicalText);
+    });
+
+    /// A rename and a unit pick move the index and no bar file, so the file's
+    /// own header is what a guest would otherwise be handed (FR-BAR-6).
+    test(
+      'the name and unit served are the record\'s, not the file\'s',
+      () async {
+        final stale = ownedBar();
+        final store = MemoryBarStore.of(stale, docCollection());
+        final moved = stale.copyWith(name: 'Cellar', display: FixedUnit.ml);
+        final served = await exportOf(store, moved);
+        expect(const YamlCodec().decode(served!), isA<Ok<BarContent>>());
+        final content =
+            (const YamlCodec().decode(served) as Ok<BarContent>).value;
+        expect(content.name, 'Cellar');
+        expect(content.display, FixedUnit.ml);
+      },
+    );
+
+    test('a guest bar is served as it was last refreshed', () async {
+      final guest = guestBar();
+      final store = MemoryBarStore.of(guest, docCollection());
+      final served = await exportOf(store, guest);
+      final content =
+          (const YamlCodec().decode(served!) as Ok<BarContent>).value;
+      expect(content.name, guest.name);
+      expect(content.collection, docCollection());
     });
 
     test('a bar the store cannot answer for is served nothing', () async {
-      expect(await exportOf(MemoryBarStore(), 'nothing'), isNull);
+      expect(await exportOf(MemoryBarStore(), ownedBar()), isNull);
+    });
+
+    test('a bar the shelf does not hold is served nothing', () async {
+      expect(await exportOf(MemoryBarStore(), null), isNull);
     });
   });
 }

@@ -1,4 +1,4 @@
-/// How an owner shares a bar, why a guest's source might not answer, and what a
+/// How a bar is shared, why a guest's source might not answer, and what a
 /// browse turns up — all here rather than beside the channel, `ui/` reading the
 /// domain and no further down (ADR-22).
 library;
@@ -23,8 +23,8 @@ enum Transport implements Tokened {
 /// errors onto it and the wording stays the UI's.
 enum UnreachableReason { offline, notFound, withdrawn }
 
-/// One way an owner shares a bar, naming its guests where the transport can
-/// name them and empty where it cannot (FR-BAR-6).
+/// One way a bar is shared, naming its guests where the transport can name them
+/// and empty where it cannot (FR-BAR-6).
 typedef Offer = ({Transport via, List<String> guests});
 
 /// One bar a browse turned up (FR-BAR-8): where to keep it from, and what its

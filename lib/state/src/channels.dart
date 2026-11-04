@@ -15,7 +15,10 @@ import 'seams.dart';
 final _lanProvider = Provider<LanBarChannel>((ref) {
   final store = ref.watch(barStoreProvider);
   final lan = LanBarChannel(
-    bytesOf: (id) => exportOf(store, id),
+    bytesOf: (id) => exportOf(
+      store,
+      ref.read(barsProvider).where((bar) => bar.id == id).firstOrNull,
+    ),
     deviceName: () => ref.read(deviceNameProvider),
   );
   ref.onDispose(lan.stop);
@@ -52,18 +55,24 @@ final findersProvider = Provider<Map<Transport, BarFinder>>(
   (ref) => Map.unmodifiable({Transport.lan: ref.watch(_lanProvider)}),
 );
 
-/// The owner's half, which only some ways have: a file is handed over rather
+/// The sharing half, which only some ways have: a file is handed over rather
 /// than offered. An offer over a way absent here stands on the record and is
 /// announced by nothing.
 final offeringsProvider = Provider<Map<Transport, BarOfferings>>(
   (ref) => Map.unmodifiable({Transport.lan: ref.watch(_lanProvider)}),
 );
 
-/// What a stranger is served for the bar [id]: a load and the canonical
-/// emitter, so a copy taken over the wire and one sent as a file are the same
-/// document. Null reads on the wire as a bar not offered (ADR 22).
-Future<String?> exportOf(BarStore store, String id) async =>
-    switch (await store.loadBar(id)) {
-      Ok(:final value) => const YamlCodec().encode(value),
-      _ => null,
-    };
+/// What a stranger is served for [bar]: its record's name and reading unit over
+/// what its file holds, through the canonical emitter — so a copy taken over
+/// the wire and one sent as a file are the same document. The record rather
+/// than the file's own header, since a rename or a unit pick moves the index
+/// and no bar file. Null reads on the wire as a bar not offered (ADR 22).
+Future<String?> exportOf(BarStore store, Bar? bar) async {
+  if (bar == null) return null;
+  return switch (await store.loadBar(bar.id)) {
+    Ok(:final value) => const YamlCodec().encode(
+      bar.contentWith(value.collection),
+    ),
+    _ => null,
+  };
+}

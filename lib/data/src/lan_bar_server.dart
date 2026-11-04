@@ -1,4 +1,4 @@
-/// The owner's half on the wire
+/// The sharing half on the wire
 /// ([ADR 22](../../../docs/adr/22-a-bar-travels-behind-one-seam.md)): one
 /// server per device, answering what it offers and each offered bar's export
 /// bytes on a path nobody guesses. Everything else is a 404.

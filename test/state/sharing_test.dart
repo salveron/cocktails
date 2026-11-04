@@ -152,26 +152,81 @@ void main() {
     });
   });
 
-  /// A guest bar is its owner's to share (ADR 23), and the controller turns
-  /// back rather than throwing — nothing offers one in the first place.
-  test('a guest bar is not shared from here', () async {
-    final guest = Bar(
-      id: 'b3e1d7',
-      name: "Bo's bar",
-      mode: BarMode.guest,
-      source: const BarSource(via: Transport.file, at: '', from: ''),
-      refreshed: now,
-      summary: summaryOf(stored),
-    );
-    final seeded =
-        MemoryBarStore((bars: [bar, guest], openId: bar.id, deviceName: null))
-          ..barOutcomes[bar.id] = Ok(contentOf(stored))
-          ..barOutcomes[guest.id] = Ok(contentOf(stored));
-    final container = await sharing(seeded: seeded);
+  final guest = Bar(
+    id: 'b3e1d7',
+    name: "Bo's bar",
+    mode: BarMode.guest,
+    source: const BarSource(via: Transport.file, at: '', from: ''),
+    refreshed: now,
+    summary: summaryOf(stored),
+  );
 
-    await controllerOf(container).offerBar(guest.id, Transport.lan);
+  MemoryBarStore withGuest() =>
+      MemoryBarStore((bars: [bar, guest], openId: bar.id, deviceName: null))
+        ..barOutcomes[bar.id] = Ok(contentOf(stored))
+        ..barOutcomes[guest.id] = Ok(contentOf(stored));
 
-    expect(barIn(container, guest.id).offers, isEmpty);
-    expect(offerings.offered, isEmpty);
+  /// A guest already hands the collection over as a file, so offering it over
+  /// the LAN is the same act with the same refusals — what is not written is
+  /// the collection (FR-BAR-6, ADR 23).
+  test('a guest bar is shared from here like an owned one', () async {
+    final container = await sharing(seeded: withGuest());
+
+    final offering = controllerOf(container).offerBar(guest.id, Transport.lan);
+    await pumpEventQueue();
+    offerings.out.last.complete();
+    await offering;
+
+    expect(barIn(container, guest.id).offeredBy(Transport.lan), isTrue);
+    expect(offerings.offered.single, (id: guest.id, name: guest.name));
+    expect(barIn(container, guest.id).source, guest.source);
+  });
+
+  group('renaming a bar on offer', () {
+    /// An offer is listed by name, so a rename the room makes has to reach the
+    /// list: offering again is how a way is renamed (ADR 22).
+    test('lists it again under the new name', () async {
+      final container = await sharing();
+      await offered(container);
+      final renaming = controllerOf(container).renameBar(bar.id, 'Cellar');
+      await pumpEventQueue();
+      offerings.out.last.complete();
+      await renaming;
+      expect(offerings.offered.last, (id: bar.id, name: 'Cellar'));
+      expect(barIn(container).name, 'Cellar');
+      expect(barIn(container).offers.map((o) => o.via), [Transport.lan]);
+    });
+
+    test('a bar not on offer tells the network nothing', () async {
+      final container = await sharing();
+      await controllerOf(container).renameBar(bar.id, 'Cellar');
+      expect(offerings.offered, isEmpty);
+    });
+
+    test('a guest bar on offer is listed under the reader\'s name', () async {
+      final container = await sharing(seeded: withGuest());
+      final offering = controllerOf(
+        container,
+      ).offerBar(guest.id, Transport.lan);
+      await pumpEventQueue();
+      offerings.out.last.complete();
+      await offering;
+      final renaming = controllerOf(container).renameBar(guest.id, 'Mine now');
+      await pumpEventQueue();
+      offerings.out.last.complete();
+      await renaming;
+      expect(offerings.offered.last, (id: guest.id, name: 'Mine now'));
+    });
+
+    /// The record is the truth and the list a report of it, so a list that
+    /// would not take the new name leaves the rename standing.
+    test('a list that refuses the name leaves the rename standing', () async {
+      final container = await sharing();
+      await offered(container);
+      offerings.refusing = Exception('no network');
+      await controllerOf(container).renameBar(bar.id, 'Cellar');
+      expect(barIn(container).name, 'Cellar');
+      expect(sharingOf(container, bar.id), isA<SharingFailed>());
+    });
   });
 }

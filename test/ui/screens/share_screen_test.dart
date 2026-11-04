@@ -1,11 +1,12 @@
 /// The room a bar is shared from (FR-BAR-6, docs/ui-design.md#sharing): the
-/// switch that offers and withdraws, and the name the device is announced
-/// under (ADR 28) — the one control on the screen the reader may not always
-/// move.
+/// bar's name, the file it leaves as, and the switch that offers and withdraws
+/// it over the LAN beside the name the device is announced under (ADR 28) — the
+/// one control on the screen the reader may not always move.
 library;
 
 import 'dart:async';
 
+import 'package:cocktails/data/data.dart';
 import 'package:cocktails/domain/domain.dart';
 import 'package:cocktails/state/state.dart';
 import 'package:cocktails/ui/screens/share_screen.dart';
@@ -28,10 +29,15 @@ void main() {
   /// (ADR 22). [phone] is what the device calls itself before the reader has.
   late ProviderContainer container;
 
+  /// [of] is the bar the room opens on, the one on show where it is left out —
+  /// a bar card's ⋮ opens the same room on one that is not.
   Future<MemoryBarStore> pumpRoom(
     WidgetTester tester, {
     List<Bar>? bars,
+    String? of,
     String phone = 'Pixel 8',
+    Future<void> Function(String)? sharer,
+    bool lan = true,
   }) async {
     offerings = MemoryOfferings();
     final shelf = bars ?? [testBar()];
@@ -40,11 +46,14 @@ void main() {
     });
     container = await pumpScreen(
       tester,
-      ShareScreen(shelf.first.id),
+      ShareScreen(of ?? shelf.first.id),
       store: store,
+      sharer: sharer,
       overrides: [
         platformNameProvider.overrideWithValue(phone),
-        offeringsProvider.overrideWithValue({Transport.lan: offerings}),
+        offeringsProvider.overrideWithValue({
+          if (lan) Transport.lan: offerings,
+        }),
       ],
     );
     return store;
@@ -73,6 +82,7 @@ void main() {
   }
 
   final deviceField = field('Device name');
+  final nameOfBar = field('Bar name');
 
   group('the way a bar travels', () {
     testWidgets('names the bar it is acting on, in its own title', (
@@ -175,6 +185,175 @@ void main() {
         find.text('Another bar is shared. Turn sharing off to rename.'),
         findsOneWidget,
       );
+    });
+  });
+
+  group('what the bar is called', () {
+    testWidgets('starts at the bar\'s own name', (tester) async {
+      await pumpRoom(tester);
+      expect(tester.widget<TextField>(nameOfBar).controller?.text, 'Home bar');
+    });
+
+    /// The bar's one name, so the title, the card and what a guest browses all
+    /// follow it from the one record (FR-BAR-1/3).
+    testWidgets('leaving the field renames the bar itself', (tester) async {
+      final store = await pumpRoom(tester);
+      await typeInto(tester, nameOfBar, 'Cellar');
+      await leaveTheField(tester);
+      expect(store.savedShelf?.bars.first.name, 'Cellar');
+      expect(find.widgetWithText(AppBar, 'Share "Cellar"'), findsOneWidget);
+    });
+
+    testWidgets('a field only looked at renames nothing', (tester) async {
+      final store = await pumpRoom(tester);
+      await tester.tap(nameOfBar);
+      await leaveTheField(tester);
+      expect(store.savedShelf?.bars.first.name, 'Home bar');
+    });
+
+    testWidgets('a blank field gives back the name that stood', (tester) async {
+      final store = await pumpRoom(tester);
+      await typeInto(tester, nameOfBar, '');
+      await leaveTheField(tester);
+      expect(tester.widget<TextField>(nameOfBar).controller?.text, 'Home bar');
+      expect(store.savedShelf?.bars.first.name, 'Home bar');
+    });
+
+    /// FR-BAR-1: the rule the rename dialog keeps, said under the field while
+    /// the name is typed and kept when the reader leaves it.
+    testWidgets('an owned bar\'s name that clashes is refused', (tester) async {
+      final beach = Bar(id: 'test02', name: 'Beach bar', mode: BarMode.owner);
+      final store = await pumpRoom(tester, bars: [testBar(), beach]);
+      await typeInto(tester, nameOfBar, 'beach BAR');
+      expect(find.text('Duplicate bar name: "beach BAR"'), findsOneWidget);
+      await leaveTheField(tester);
+      expect(tester.widget<TextField>(nameOfBar).controller?.text, 'Home bar');
+      expect(store.savedShelf?.bars.first.name, 'Home bar');
+    });
+
+    /// A guest bar's name is a label on someone else's collection, and clashes
+    /// with nothing (FR-BAR-1, FR-BAR-3).
+    testWidgets('a guest bar takes any name, and clashes with none', (
+      tester,
+    ) async {
+      final store = await pumpRoom(tester, bars: [testGuestBar(), testBar()]);
+      await typeInto(tester, nameOfBar, 'Home bar');
+      expect(find.textContaining('Duplicate'), findsNothing);
+      await leaveTheField(tester);
+      expect(store.savedShelf?.bars.first.name, 'Home bar');
+    });
+
+    /// The list a guest browses names the bar, so a rename mid-offer reaches it
+    /// — and the device's name, which a guest's source keeps, stays locked.
+    testWidgets('a bar on offer is listed under its new name', (tester) async {
+      await pumpRoom(tester);
+      await flip(tester);
+      await answer(tester);
+      await typeInto(tester, nameOfBar, 'Cellar');
+      await leaveTheField(tester);
+      offerings.out.last.complete();
+      await tester.pumpAndSettle();
+      expect(offerings.offered.last, (id: 'test01', name: 'Cellar'));
+      expect(tester.widget<TextField>(nameOfBar).enabled, isTrue);
+      expect(tester.widget<TextField>(deviceField).enabled, isFalse);
+    });
+  });
+
+  group('the file the bar leaves as', () {
+    Future<List<String>> exportOver(
+      WidgetTester tester, {
+      Future<void> Function(String)? sharer,
+      List<Bar>? bars,
+      String? of,
+    }) async {
+      final shared = <String>[];
+      await pumpRoom(
+        tester,
+        bars: bars,
+        of: of,
+        sharer: sharer ?? (location) async => shared.add(location),
+      );
+      await tap(tester, find.text('Export as file'));
+      return shared;
+    }
+
+    testWidgets('hands the copy to the system\'s sheet (FR-DAT-1)', (
+      tester,
+    ) async {
+      expect(await exportOver(tester), ['memory:share']);
+    });
+
+    testWidgets('acts where it stands, saying nothing once the sheet opened', (
+      tester,
+    ) async {
+      await exportOver(tester);
+      expect(find.widgetWithText(AppBar, 'Share "Home bar"'), findsOneWidget);
+      expect(find.byType(SnackBar), findsNothing);
+    });
+
+    testWidgets('a failed export is the only thing that speaks', (
+      tester,
+    ) async {
+      await exportOver(
+        tester,
+        sharer: (_) async => throw Exception('no room on disk'),
+      );
+      expect(find.textContaining('Could not export'), findsOneWidget);
+      expect(find.textContaining('no room on disk'), findsOneWidget);
+    });
+
+    testWidgets('an Error is a failure too, not silence', (tester) async {
+      await exportOver(tester, sharer: (_) async => throw StateError('adrift'));
+      expect(find.textContaining('Could not export'), findsOneWidget);
+    });
+
+    /// A guest already holds what the file would carry (FR-DAT-1, FR-BAR-4).
+    testWidgets('works on a guest bar', (tester) async {
+      expect(await exportOver(tester, bars: [testGuestBar()]), [
+        'memory:share',
+      ]);
+    });
+
+    /// The room takes its bar by id, so the file is that bar's rather than the
+    /// one on show.
+    testWidgets('is the bar the room was opened on, not the one on show', (
+      tester,
+    ) async {
+      final beach = Bar(id: 'test02', name: 'Beach bar', mode: BarMode.owner);
+      final store = await pumpRoom(
+        tester,
+        bars: [testBar(), beach],
+        of: beach.id,
+        sharer: (_) async {},
+      );
+      await tap(tester, find.text('Export as file'));
+      expect(store.snapshots[ExportPurpose.share]?.$1.id, beach.id);
+    });
+  });
+
+  group('a guest bar in the room', () {
+    /// FR-BAR-6: the same way the same switch, a guest already handing the
+    /// collection over as a file.
+    testWidgets('is offered over the LAN like an owned one', (tester) async {
+      final store = await pumpRoom(tester, bars: [testGuestBar()]);
+      expect(find.widgetWithText(AppBar, 'Share "Ada\'s bar"'), findsOneWidget);
+      await flip(tester);
+      await answer(tester);
+      expect(offerings.offered, [(id: 'guest1', name: "Ada's bar")]);
+      expect(store.savedShelf?.bars.first.offeredBy(Transport.lan), isTrue);
+      expect(tester.widget<SwitchListTile>(theSwitch).value, isTrue);
+    });
+  });
+
+  group('where this build has no LAN', () {
+    /// A way with no adapter is absent rather than dimmed (ADR 22); the file
+    /// and the name stand, so the room is never empty.
+    testWidgets('only the LAN\'s own controls are absent', (tester) async {
+      await pumpRoom(tester, lan: false);
+      expect(find.text('Enable LAN'), findsNothing);
+      expect(deviceField, findsNothing);
+      expect(nameOfBar, findsOneWidget);
+      expect(find.text('Export as file'), findsOneWidget);
     });
   });
 

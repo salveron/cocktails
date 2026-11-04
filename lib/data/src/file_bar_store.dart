@@ -94,7 +94,7 @@ final class FileBarStore implements BarStore {
         ExportPurpose.beforeDelete => _beforeDeleteName,
       }}',
     );
-    await _write(copy, _codec.encode(_payloadOf(bar, collection)));
+    await _write(copy, _codec.encode(bar.contentWith(collection)));
     return copy.path;
   });
 
@@ -192,7 +192,7 @@ final class FileBarStore implements BarStore {
 
   Future<void> _writeBar(Bar bar, Collection collection) => _writeRotating(
     File(_barPath(bar.id)),
-    _codec.encode(_payloadOf(bar, collection)),
+    _codec.encode(bar.contentWith(collection)),
   );
 
   Future<void> _writePendingShelf() async {
@@ -243,9 +243,6 @@ final class FileBarStore implements BarStore {
   static String _backupPath(String path, int index) =>
       '${path.substring(0, path.length - '.yaml'.length)}'
       '.backup-$index.yaml';
-
-  static BarContent _payloadOf(Bar bar, Collection collection) =>
-      (name: bar.name, display: bar.display, collection: collection);
 
   /// A bar's name folded to something a file system and a stranger's downloads
   /// folder both take, `bar` where nothing survives the fold.

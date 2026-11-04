@@ -158,21 +158,13 @@ void main() {
       );
     });
 
-    test('rejects a guest bar offering what is not this device\'s to give', () {
-      expect(
-        () => Shelf(
-          bars: [
-            Bar(
-              id: 'a',
-              name: 'Ada\'s bar',
-              mode: BarMode.guest,
-              source: aSource,
-              offers: const [(via: Transport.lan, guests: [])],
-            ),
-          ],
-        ),
-        throwsArgumentError,
+    test('holds a guest bar on offer, as it holds an owned one (FR-BAR-6)', () {
+      final shelf = Shelf(
+        bars: [
+          guestBar(offers: const [(via: Transport.lan, guests: [])]),
+        ],
       );
+      expect(shelf.bars.single.offeredBy(Transport.lan), isTrue);
     });
 
     test('rejects a guest bar naming an optimizer of its own (ADR 21/24)', () {

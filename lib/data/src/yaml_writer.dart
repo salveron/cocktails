@@ -120,7 +120,7 @@ String encodeShelf(ShelfIndex records) {
 }
 
 /// One record, one line: the halves a mode rules out are left off as every
-/// default is, so an owner carries no source and a guest no offers.
+/// default is, so an owner carries no source and a guest no optimizer settings.
 List<String> _barEntry(Bar bar) {
   final refreshed = bar.refreshed;
   final updated = bar.updated;
