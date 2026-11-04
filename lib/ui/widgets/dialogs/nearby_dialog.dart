@@ -166,7 +166,7 @@ class _NothingNearby extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => const MutedText(
-    'Nothing is shared on this network. Both devices have to be on it, '
-    "with the owner's app open.",
+    'Nothing is shared on the network. To find a bar, put both devices on '
+    "the same network and keep the owner's app open.",
   );
 }

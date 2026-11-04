@@ -91,9 +91,7 @@ class _IngredientsScreenState extends ConsumerState<IngredientsScreen>
       empty: const EmptyState(
         icon: Icons.inventory_2_outlined,
         title: 'No ingredients yet',
-        message:
-            'Every ingredient the recipes here use is listed, with what is '
-            'in stock.',
+        message: 'Add recipes or ingredients to track what is in stock.',
       ),
     );
   }

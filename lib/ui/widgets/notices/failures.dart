@@ -36,7 +36,7 @@ class _LoadIssuesState extends ConsumerState<LoadIssues> {
       return const SizedBox.shrink();
     }
     return _Banner(
-      'Some saved data could not be read:\n${issues.join('\n')}',
+      'Could not read parts of the saved data:\n${issues.join('\n')}',
       onDismiss: () => setState(() => _dismissed = issues),
     );
   }
@@ -83,7 +83,7 @@ class RefusedFile extends StatelessWidget {
             const SizedBox(width: 8),
             Expanded(
               child: Text(
-                'This file cannot be read',
+                'Could not read the file',
                 style: theme.textTheme.titleMedium,
               ),
             ),
@@ -105,8 +105,7 @@ class RefusedFile extends StatelessWidget {
 String? refreshSaid(RefreshState? standing, String bar) => switch (standing) {
   null || Reaching() => null,
   RefreshRefused(:final issues) =>
-    'What arrived could not be read, so "$bar" stands as it '
-        'was:\n${issues.join('\n')}',
+    'Could not read the data ("$bar" was not changed):\n${issues.join('\n')}',
   // One line: a source that did not answer is met by a reader who asked for
   // one thing and got nothing, and the bar standing as it was is what they are
   // already looking at.
@@ -123,20 +122,20 @@ String? sharingSaid(SharingState? standing, {required bool offering}) =>
       null || Announcing() || Silencing() => null,
       SharingFailed() =>
         offering
-            ? 'Shared, but this device could not announce it.'
-            : 'Withdrawn, but the network could not be told.',
+            ? 'Could not announce the bar to the network.'
+            : 'Withdrawn, but could not tell the network.',
     };
 
 /// Why a bar found nearby did not arrive (FR-BAR-8) — the add's reading of the
 /// same three, where [refreshSaid] carries the refresh's.
 String nearbySaid(UnreachableReason why, String bar) =>
-    '"$bar" could not be added: ${_because(why)}';
+    'Could not add "$bar": ${_because(why)}';
 
 /// The three ways a source goes unreached, worded nowhere else (ADR 22).
 String _because(UnreachableReason why) => switch (why) {
-  UnreachableReason.offline => 'this device is offline.',
-  UnreachableReason.notFound => 'its source could not be found.',
-  UnreachableReason.withdrawn => 'its owner has stopped sharing it.',
+  UnreachableReason.offline => 'device offline.',
+  UnreachableReason.notFound => 'source not found.',
+  UnreachableReason.withdrawn => 'owner stopped sharing.',
 };
 
 class _Banner extends StatelessWidget {

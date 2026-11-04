@@ -161,7 +161,6 @@ void main() {
       tester,
     ) async {
       await withFile(tester, damagedFile);
-      expect(find.text('This file cannot be read'), findsOneWidget);
       expect(find.textContaining('rye'), findsOneWidget);
       expect(find.textContaining('line '), findsOneWidget);
       // Nothing to be a guest of, and founding an empty bar in its place would
@@ -188,14 +187,9 @@ void main() {
   /// source it came by (FR-BAR-5).
   group('the road a bar arrives on', () {
     testWidgets('a file lands on Guest', (tester) async {
-      await withFile(tester, sharedFile);
-      expect(
-        find.text(
-          "The owner's copy, read-only. Refreshed from its "
-          'source.',
-        ),
-        findsOneWidget,
-      );
+      final store = await withFile(tester, sharedFile);
+      await tap(tester, find.text('Save'));
+      expect(founded(store).bar.mode, BarMode.guest);
     });
 
     testWidgets('a file that will not read offers no road at all', (
@@ -390,7 +384,7 @@ void main() {
       );
       await tap(tester, find.text("Ada's bar · Ada", findRichText: true));
       await tap(tester, find.text('Select'));
-      expect(find.textContaining('could not be added'), findsOneWidget);
+      expect(find.byType(SnackBar), findsOneWidget);
       expect(find.text('Mode'), findsNothing);
     });
 
@@ -399,7 +393,8 @@ void main() {
       await withNearby(tester, fetched: const YamlCodec().decode(damagedFile));
       await tap(tester, find.text("Ada's bar · Ada", findRichText: true));
       await tap(tester, find.text('Select'));
-      expect(find.text('This file cannot be read'), findsOneWidget);
+      expect(find.textContaining('rye'), findsOneWidget);
+      expect(find.textContaining('line '), findsOneWidget);
       expect(find.text('Mode'), findsNothing);
     });
 

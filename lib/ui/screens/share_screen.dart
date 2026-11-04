@@ -132,7 +132,7 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
             standing: standing,
             onShare: (offering) => unawaited(_share(offering)),
           ),
-          const FieldNote('LAN sharing works only until the app is closed.'),
+          const FieldNote('Keep the app open to share over LAN.'),
         ],
       ),
     );

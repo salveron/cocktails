@@ -83,8 +83,8 @@ class _BarsScreenState extends ConsumerState<BarsScreen> {
               icon: Icons.liquor_outlined,
               title: 'No bars',
               message:
-                  'A bar holds one collection — its recipes, its ingredients, and '
-                  'the tags and units they are written in.',
+                  'Create a bar to keep recipes, ingredients, tags and units '
+                  'together.',
             )
           : ListView(
               padding: const EdgeInsets.only(top: 8, bottom: 88),
@@ -151,7 +151,7 @@ class _BarsScreenState extends ConsumerState<BarsScreen> {
     final agreed = await confirmDialog(
       context,
       title: 'Delete "${bar.name}"?',
-      message: 'Everything in it goes with it. A copy is kept first.',
+      message: 'Delete the bar and everything inside. A backup is kept.',
       cancel: 'Cancel',
       confirm: 'Delete',
     );
@@ -231,7 +231,7 @@ class _BarCounts extends StatelessWidget {
     final summary = bar.summary;
     if (summary == null) {
       return Text(
-        'This bar could not be read.',
+        'Could not read the bar.',
         style: TextStyle(color: Theme.of(context).colorScheme.error),
       );
     }

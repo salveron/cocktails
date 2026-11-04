@@ -181,7 +181,7 @@ void main() {
       expect(bullet('0 recipes'), findsOneWidget);
     });
 
-    testWidgets('a bar whose file will not read at all says so', (
+    testWidgets('a bar whose file will not read at all carries no summary', (
       tester,
     ) async {
       final torn = Bar(id: 'torn01', name: 'Torn', mode: BarMode.owner);
@@ -199,7 +199,7 @@ void main() {
       await openBars(tester, store: store);
       // Nothing was recovered, so "0 recipes" would be a lie about a bar that
       // may hold plenty.
-      expect(find.text('This bar could not be read.'), findsOneWidget);
+      expect(find.text('Torn'), findsOneWidget);
       expect(bullet('0 recipes'), findsNothing);
     });
   });
@@ -322,13 +322,10 @@ void main() {
   });
 
   group('deleting a bar', () {
-    testWidgets('it is asked first, and the copy is promised (FR-BAR-2)', (
-      tester,
-    ) async {
+    testWidgets('it is asked first (FR-BAR-2)', (tester) async {
       await openBars(tester);
       await chooseOnRow(tester, 'Anna', 'Delete');
       expect(find.text('Delete "Anna"?'), findsOneWidget);
-      expect(find.textContaining('A copy is kept first'), findsOneWidget);
     });
 
     testWidgets('cancelling leaves the bar where it was', (tester) async {

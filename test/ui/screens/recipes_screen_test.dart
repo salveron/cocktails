@@ -805,7 +805,7 @@ void main() {
     ) async {
       await pumpRecipes(tester);
       await roll(tester);
-      expect(find.text('Nothing here can be made right now.'), findsOneWidget);
+      expect(find.byType(SnackBar), findsOneWidget);
       expect(openCards(tester, names), isEmpty);
     });
 

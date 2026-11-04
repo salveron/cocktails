@@ -59,7 +59,7 @@ class _Entries extends ConsumerWidget {
         const _Entry.opens(
           icon: Icons.straighten_outlined,
           title: 'Units',
-          subtitle: 'What lines are measured in',
+          subtitle: 'Define the units lines are measured in',
           page: UnitsScreen(),
         ),
         // The pick is the reader's on any bar and the sizes are the owner's, so
@@ -67,7 +67,7 @@ class _Entries extends ConsumerWidget {
         const _Entry.opens(
           icon: Icons.swap_horiz,
           title: 'Amounts',
-          subtitle: 'How amounts read and convert',
+          subtitle: 'Set how amounts read and convert',
           page: AmountsScreen(),
         ),
         // The one row that dims, the optimizer being absent on a guest bar and
@@ -75,7 +75,7 @@ class _Entries extends ConsumerWidget {
         _Entry.opens(
           icon: Icons.shopping_cart_outlined,
           title: 'Shopping',
-          subtitle: 'What the optimizer is asked',
+          subtitle: 'Set what the optimizer looks for',
           page: const ShoppingSettingsScreen(),
           enabled: writable,
         ),
@@ -100,7 +100,7 @@ class _Entries extends ConsumerWidget {
           _Entry.acts(
             icon: Icons.refresh,
             title: 'Refresh',
-            subtitle: 'Ask its source for a newer copy',
+            subtitle: 'Get a newer copy from the source',
             working: reaching,
             act: () => unawaited(_refresh(context, ref)),
           ),
@@ -118,7 +118,7 @@ class _Entries extends ConsumerWidget {
         const _Entry.opens(
           icon: Icons.liquor_outlined,
           title: 'Change bar',
-          subtitle: 'Every bar this device holds',
+          subtitle: 'Switch, create or manage bars',
           page: BarsScreen(),
         ),
       ],

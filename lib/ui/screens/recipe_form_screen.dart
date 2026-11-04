@@ -241,9 +241,8 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
   Future<bool> _offerToAdd(List<String> names) => confirmDialog(
     context,
     title: 'Add missing ingredients?',
-    message: 'These are not in the ingredients yet:',
+    message: 'Not in the ingredients yet:',
     bullets: names,
-    footer: 'Saving adds them, out of stock.',
     cancel: 'Cancel',
     confirm: 'Add and save',
   );

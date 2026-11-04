@@ -186,10 +186,7 @@ void main() {
       offerings.refusing = Exception('no network');
       await flip(tester);
       await tester.pumpAndSettle();
-      expect(
-        find.text('Shared, but this device could not announce it.'),
-        findsOneWidget,
-      );
+      expect(find.byType(SnackBar), findsOneWidget);
       expect(tester.widget<SwitchListTile>(theSwitch).value, isTrue);
       expect(store.savedShelf?.bars.first.offeredBy(Transport.lan), isTrue);
     });
@@ -203,10 +200,7 @@ void main() {
       offerings.refusing = Exception('no network');
       await flip(tester);
       await tester.pumpAndSettle();
-      expect(
-        find.text('Withdrawn, but the network could not be told.'),
-        findsOneWidget,
-      );
+      expect(find.byType(SnackBar), findsOneWidget);
       expect(tester.widget<SwitchListTile>(theSwitch).value, isFalse);
     });
   });

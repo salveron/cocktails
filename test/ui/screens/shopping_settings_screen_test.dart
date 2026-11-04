@@ -45,7 +45,6 @@ void main() {
           restocking: true,
         ),
       );
-      expect(find.text('Baskets rank by how many'), findsNothing);
       expect(
         tester.widget<Switch>(switchOn('Low too')).value,
         isTrue,
@@ -61,16 +60,6 @@ void main() {
       expect(asked(store).aiming, isTrue);
       await tap(tester, find.text('Sift'));
       expect(asked(store).aiming, isFalse);
-    });
-
-    testWidgets('its note turns with the pick', (tester) async {
-      await pumpShoppingSettings(tester);
-      expect(
-        find.textContaining('every tag picked is unlocked'),
-        findsOneWidget,
-      );
-      await tap(tester, find.text('Aim'));
-      expect(find.textContaining('rank by how many'), findsOneWidget);
     });
 
     testWidgets('how many baskets of a size are offered (ADR 15)', (

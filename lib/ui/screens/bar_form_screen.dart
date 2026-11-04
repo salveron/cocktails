@@ -284,10 +284,7 @@ class _BarFormScreenState extends ConsumerState<BarFormScreen> {
         ),
         if (_fetching) const Looking(),
         if (picked == null && !_fetching)
-          const FieldNote(
-            'Empty unless something fills it — an export another owner sent, '
-            'or a bar shared nearby.',
-          ),
+          const FieldNote('Start empty, or fill the bar from a file or LAN.'),
         if (picked != null && arriving == null && !_fetching)
           _RefusedFileNote(picked: picked, importing: _importing, open: open),
         if (arriving != null && !_fetching)
@@ -361,11 +358,9 @@ class _ArrivedContent extends StatelessWidget {
       ),
       // One line each: the choice is read at a glance or not at all.
       FieldNote(switch (road) {
-        _Road.own => 'A copy to edit here. Nothing refreshes it.',
-        _Road.replace =>
-          'Replace everything this bar holds now. A copy is kept.',
-        _Road.guest =>
-          "The owner's copy, read-only. Refreshed from its source.",
+        _Road.own => 'Edit a copy here, with no source to refresh from.',
+        _Road.replace => 'Replace everything the bar holds. A copy is kept.',
+        _Road.guest => "Read the owner's copy, refreshed from the source.",
       }),
       const SectionLabel('Contents'),
       BarHoldings(arriving.collection),

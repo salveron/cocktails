@@ -67,8 +67,8 @@ extension on TagKind {
       hint: 'Recipe tag name',
       blockedByNoun: 'recipes',
       blurb:
-          'A tag groups recipes that belong together — sour, classic, tiki '
-          '— and wears a colour of its own.',
+          'Add a tag to group recipes — sour, classic, tiki — and give the '
+          'tag a colour.',
     ),
     TagKind.ingredient => (
       tab: 'Ingredient',
@@ -77,8 +77,8 @@ extension on TagKind {
       hint: 'Ingredient tag name',
       blockedByNoun: 'ingredients',
       blurb:
-          'A tag groups ingredients that belong together — citrus, syrup, '
-          'homemade — and wears a colour of its own.',
+          'Add a tag to group ingredients — citrus, syrup, homemade — and '
+          'give the tag a colour.',
     ),
   };
 }

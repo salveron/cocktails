@@ -40,7 +40,7 @@ final class FileBarChannel implements BarChannel {
     ValidationIssue(
       const [],
       ValidationIssueKind.malformedValue,
-      'That file could not be read: $error',
+      'Could not read the file: $error',
     ),
     null,
   );

@@ -46,7 +46,7 @@ class _Home extends ConsumerWidget {
       return Scaffold(
         body: EmptyState(
           icon: Icons.error_outline,
-          title: 'The saved data could not be opened',
+          title: 'Could not open the saved data',
           message: '$failure',
         ),
       );

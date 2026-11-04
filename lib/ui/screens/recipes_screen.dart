@@ -120,8 +120,8 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
         icon: Icons.local_bar_outlined,
         title: 'No recipes yet',
         message:
-            'Recipes added here appear in this list, marked with what can be '
-            'made from the ingredients in stock.',
+            'Add a recipe to see what can be made from the ingredients in '
+            'stock.',
       ),
     );
   }
@@ -186,7 +186,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen>
       besides: _rolled,
     );
     if (drawn == null) {
-      say(ScaffoldMessenger.of(context), 'Nothing here can be made right now.');
+      say(ScaffoldMessenger.of(context), 'Nothing to make right now.');
       return null;
     }
     setState(() {

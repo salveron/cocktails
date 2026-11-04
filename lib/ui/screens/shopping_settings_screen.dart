@@ -62,8 +62,10 @@ class _Entries extends StatelessWidget {
       ),
       FieldNote(
         shopping.aiming
-            ? 'Baskets rank by how many of those recipes they unlock.'
-            : 'Baskets are kept where every tag picked is unlocked.',
+            ? 'Order baskets by how many recipes with a picked tag they '
+                  'unlock.'
+            : 'Order baskets by how many recipes they unlock, then hide '
+                  'baskets missing a picked tag.',
       ),
       const SectionLabel('Baskets'),
       SizedBox(
@@ -76,7 +78,7 @@ class _Entries extends StatelessWidget {
               onSettle(shopping.copyWith(keptPerSize: keptPerSize)),
         ),
       ),
-      const FieldNote('How many of each size the list offers.'),
+      const FieldNote('Set how many of each size to list.'),
       const SectionLabel('Opens at'),
       SizedBox(
         width: double.infinity,
@@ -87,7 +89,7 @@ class _Entries extends StatelessWidget {
           onPick: (budget) => onSettle(shopping.copyWith(budget: budget)),
         ),
       ),
-      const FieldNote('The budget the shopping screen starts on.'),
+      const FieldNote('Set the budget the shopping screen starts on.'),
       _Toggle(
         title: 'Low too',
         note: 'Start with what is running low counted as short.',

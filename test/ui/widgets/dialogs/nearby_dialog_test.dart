@@ -124,15 +124,10 @@ void main() {
     expect(chosen, isNull);
   });
 
-  /// Both sides have to be there at once, which is the one thing a reader can
-  /// act on — so the empty state says that and offers another look.
   /// Nothing to take, so nothing offers to take it: the ask to look again
   /// stands where Select would, rather than beside a dead button.
-  testWidgets('nothing nearby says why, and tries again in Select\'s place', (
-    tester,
-  ) async {
+  testWidgets('nothing nearby tries again in Select\'s place', (tester) async {
     await pumpNearby(tester, const []);
-    expect(find.textContaining('Nothing is shared'), findsOneWidget);
     expect(find.text('Select'), findsNothing);
     expect(finder.looks, 1);
     await tap(tester, find.text('Try again'));

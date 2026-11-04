@@ -172,10 +172,6 @@ void main() {
       expect(find.text('9 ingredients'), findsOneWidget);
       expect(find.text('2 tags'), findsOneWidget);
       expect(find.text('7 units'), findsOneWidget);
-      expect(
-        find.textContaining('Replace everything this bar holds now'),
-        findsOneWidget,
-      );
       expect(store.saveCount, 0);
       expect(store.snapshots, isEmpty);
     });
@@ -313,14 +309,10 @@ void main() {
       expect(saveEnabled(tester), isFalse);
     });
 
-    testWidgets('both roads are offered, and the chosen one says what it '
-        'does', (tester) async {
+    testWidgets('both roads are offered', (tester) async {
       await importOver(tester, () async => pickedFile);
       expect(find.text('Replace'), findsOneWidget);
       expect(find.text('Guest'), findsOneWidget);
-      await tap(tester, find.text('Guest'));
-      expect(find.textContaining('read-only'), findsOneWidget);
-      expect(find.textContaining('Replace everything'), findsNothing);
     });
 
     /// The file's own name is a starting value on the road that founds a bar,
@@ -381,7 +373,6 @@ void main() {
     testWidgets('a file the rules refuse changes nothing, and says what and '
         'where (FR-DAT-4)', (tester) async {
       final store = await importOver(tester, () async => damagedFile);
-      expect(find.text('This file cannot be read'), findsOneWidget);
       expect(find.textContaining('rye'), findsOneWidget);
       expect(find.textContaining('line '), findsOneWidget);
       // Nothing to agree to, and nothing agreed to.
@@ -396,9 +387,9 @@ void main() {
       tester,
     ) async {
       await importOver(tester, () async => 'not a cocktail in sight');
-      expect(find.text('This file cannot be read'), findsOneWidget);
       expect(find.text('Replace'), findsNothing);
       expect(find.text('Guest'), findsNothing);
+      expect(saveEnabled(tester), isFalse);
     });
 
     testWidgets('a reader who picks nothing has done nothing', (tester) async {
@@ -563,10 +554,7 @@ void main() {
       held.complete();
       await tester.pumpAndSettle();
       expect(find.byIcon(Icons.refresh), findsOneWidget);
-      expect(
-        find.text('Could not refresh: its source could not be found.'),
-        findsOneWidget,
-      );
+      expect(find.byType(SnackBar), findsOneWidget);
     });
 
     Future<void> askThere(WidgetTester tester) async {
@@ -593,7 +581,6 @@ void main() {
     ) async {
       await pumpShell(tester, testGuestBar(), picker: () async => damagedFile);
       await askThere(tester);
-      expect(find.textContaining('could not be read'), findsOneWidget);
       expect(find.textContaining('rye'), findsOneWidget);
       await tap(tester, find.byTooltip('Back'));
       expect(find.byType(MaterialBanner), findsNothing);

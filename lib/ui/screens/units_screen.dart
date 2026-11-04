@@ -77,9 +77,8 @@ class _UnitsScreenState extends ConsumerState<UnitsScreen> {
       children: [
         MutedText(
           writable
-              ? 'A plural left empty reads like the name. "$partUnit", '
-                    '"$mlUnit" and "$ozUnit" cannot be renamed or deleted — '
-                    'amounts convert between them.'
+              ? 'Leave a plural empty to reuse the name. "$partUnit", '
+                    '"$mlUnit" and "$ozUnit" cannot be renamed or deleted.'
               : "The owner's units. A plural left empty reads like the name.",
         ),
         const SizedBox(height: 16),

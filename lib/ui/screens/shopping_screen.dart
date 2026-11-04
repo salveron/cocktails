@@ -23,7 +23,7 @@ String _countOf(Purchase purchase) =>
 /// What the switch widens the search to, spelt out where two words on it
 /// cannot (FR-DIS-7, ADR 16).
 const _lowMeans =
-    'Buys the ingredients running low alongside the ones out of stock.';
+    'Buy the ingredients running low along with the ingredients out of stock.';
 
 /// What to buy next (FR-DIS-6, FR-DIS-7, FR-DIS-10): the baskets of exactly the
 /// budget's worth of ingredients, best first, narrowed to the categories
@@ -278,9 +278,7 @@ class _EmptyBaskets extends StatelessWidget {
       return const EmptyState(
         icon: Icons.local_bar_outlined,
         title: 'No recipes yet',
-        message:
-            'Add a few recipes and the ingredients that unlock the most of them '
-            'appear here.',
+        message: 'Add a few recipes to see which ingredients unlock the most.',
       );
     }
     if (purchases.isEmpty) {
