@@ -1,6 +1,6 @@
 # Roadmap
 
-Milestones in dependency order. Scope: [requirements.md](requirements.md); design: [architecture.md](architecture.md), [components.md](components.md), [ui-design.md](ui-design.md); rationale: [ADRs](adr/). Phases 0–6: single bar; Phases 7–8 and 11: FR-BAR-1..8; Phases 9–10 carry no new requirement.
+Milestones in dependency order. Scope: [requirements.md](requirements.md); design: [architecture.md](architecture.md), [components.md](components.md), [ui-design.md](ui-design.md); rationale: [ADRs](adr/). Phases 0–6: single bar; Phases 7–8 and 11: FR-BAR-1..8; Phases 9–10 carry no new requirement; Phase X adds iOS as a target.
 
 ## Phase 0 — Foundation
 
@@ -130,3 +130,20 @@ It is the first code to open a socket and to announce the device, so it lands bo
 - [x] **M51** — Every way out of a bar sits in one room. Delivers: Settings' Export and Share merged into one **Share** row, its room gaining **Bar name** and **Export as file**, one name behind both; a guest bar can be offered over the LAN as an owned one (FR-BAR-4/5/6, NFR-5); amends [ADR 22](adr/22-a-bar-travels-behind-one-seam.md), [ADR 28](adr/28-the-device-is-named-by-its-reader.md). Depends: M50a.
 - [x] **M51a** — Every way in to a bar is one form. Delivers: **Import** opens the [New bar](ui-design.md#new-bar) form with **From import | From LAN** and **Replace | Guest**, so the open bar is replaced from a nearby device as from a file (FR-DAT-3, FR-BAR-8). Depends: M51.
 - [x] **M48** — Any bar is shared from the list. Delivers: **Share** in the bars card's ⋮, opening the Sharing room on any bar, owned or guest ([bars](ui-design.md#bars), FR-BAR-6); every card's trailing sits inset like its text, and `EntryCard` takes the menu as `menu`. Depends: M51.
+
+## Phase X — The app reaches the iPhone
+
+Nothing above the platform edge changes: the same Dart gains a second target. It lands toolchain first, then the target with the build that proves it, then each platform edge where only a device can answer, identity last. Numbered last so other phases can land before it.
+
+**Open questions:**
+1. How the Simulator checks run without a Mac: a CI smoke test, a rented Mac, or build-only.
+2. How the app gets onto a real iPhone (M59): TestFlight with a paid account, or a free Apple ID.
+3. The wording when the reader refuses local network access, which changes FR-BAR-8 (M57).
+
+- [ ] **M53** — The toolchain moves. Delivers: Flutter 3.44 → current stable on the desk and in CI, the lockfile's patch bumps within today's carets, GitHub actions at v5; no behaviour change, the release APK still building. Depends: M48.
+- [ ] **M54** — The iPhone target, and the build that proves it. Delivers: `ios/` on Swift Package Manager with no CocoaPods, bundle id `dev.salveron.cocktails` with `.debug` on Debug as on Android, iPhone only (NFR-1), minimum iOS Flutter's default; a macOS CI job building the release app unsigned on every push; requirements, [ADR 01](adr/01-technology-stack.md) and the [stack](architecture.md#technology-stack) naming iOS, and a new ADR for building and testing it from a Linux desk. Depends: M53.
+- [ ] **M55** — A file crosses the edge on iOS. Delivers: export through the share sheet and import through the document picker proven on the Simulator ([ADR 18](adr/18-data-crosses-the-edge-in-a-system-sheet.md), FR-DAT-1/3, FR-BAR-7); the device-name channel left unanswered, iOS giving no app the phone's own name, so the fallback stands (amends [ADR 28](adr/28-the-device-is-named-by-its-reader.md)); findings in [platform facts](architecture.md#platform-facts). Depends: M54.
+- [ ] **M56** — Nearby is proven on iOS. Delivers: `NSBonjourServices` and `NSLocalNetworkUsageDescription` declared; an offer announced, found and fetched on the Simulator ([ADR 27](adr/27-nearby-comes-off-bonsoir.md)); `onANetwork` judged against the link-local interfaces iOS always holds, so offline still reads offline (FR-BAR-5). Depends: M55.
+- [ ] **M57** — A refused local network says so. Delivers: how a refusal reaches the app proven first; iOS's refusal, and Android 17's `ACCESS_LOCAL_NETWORK` with it, read as one reason wherever a bar is offered or looked for (FR-BAR-8 amended). Depends: M56.
+- [ ] **M58** — An offer outlives the background. Delivers: the server and its announcement rebuilt on resume where iOS reclaimed the listening socket while suspended, so an offer lasts as long as the app on both platforms ([sharing](architecture.md#sharing), FR-BAR-6, NFR-5). Depends: M56.
+- [ ] **M59** — The iPhone build takes identity. Delivers: signing named by a gitignored file and a release refused without it, as on Android; the `local_bar` icon from the Android source; `Documents/` carried by the iCloud device backup as Auto Backup carries Android's; the way onto a phone the new ADR settles. Depends: M58.
