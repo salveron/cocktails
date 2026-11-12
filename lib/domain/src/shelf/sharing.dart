@@ -1,12 +1,9 @@
-/// How a bar is shared, why a guest's source might not answer, and what a
-/// browse turns up — all here rather than beside the channel, `ui/` reading the
-/// domain and no further down (ADR-22).
+/// Sharing vocabulary the domain owns, so `ui/` never reads past it (ADR-22).
 library;
 
 import '../tokens.dart';
 
-/// A way a bar travels (FR-BAR-7/8/9). `cloud` is declared ahead of its adapter
-/// so the index's format need not move when one lands (ADR-22).
+/// Transports (FR-BAR-7/8); `cloud` is declared ahead of its adapter (ADR-22).
 enum Transport implements Tokened {
   file('file'),
   lan('lan'),
@@ -19,20 +16,16 @@ enum Transport implements Tokened {
   static Transport? fromToken(String text) => enumFromToken(values, text);
 }
 
-/// Why a source did not answer (FR-BAR-5). Closed, so an adapter maps its own
-/// errors onto it and the wording stays the UI's.
+/// Why a source did not answer (FR-BAR-5). Wording stays the UI's.
 enum UnreachableReason { offline, notFound, withdrawn }
 
-/// One way a bar is shared, naming its guests where the transport can name them
-/// and empty where it cannot (FR-BAR-6).
+/// One way a bar is shared (FR-BAR-6); guests only if the transport names them.
 typedef Offer = ({Transport via, List<String> guests});
 
-/// One bar a browse turned up (FR-BAR-8): where to keep it from, and what its
-/// owner calls it — the device offering it being [BarSource.from]'s to say.
+/// A bar a browse found (FR-BAR-8); `name` is what its owner calls it.
 typedef Found = ({BarSource source, String name});
 
-/// Where a guest bar refreshes from (FR-BAR-5). [at] is the transport's own
-/// address, opaque above data/; [from] is what to call it where a source reads.
+/// Where a guest bar refreshes from (FR-BAR-5). [at] is opaque above data/.
 final class BarSource {
   final Transport via;
   final String at;

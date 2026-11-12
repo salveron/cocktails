@@ -1,6 +1,4 @@
-/// Shelf edits as pure derivations; kept separate so shelf.dart holds shape
-/// only. An edit naming no bar returns the shelf unchanged, as a collection
-/// edit naming no entry does; writing the wrong kind of bar throws.
+/// Shelf edits as pure derivations, so shelf.dart holds shape only.
 library;
 
 import '../collection/collection.dart';
@@ -10,8 +8,7 @@ import 'sharing.dart';
 import 'shelf.dart';
 
 extension ShelfEdits on Shelf {
-  /// The open bar's collection, replaced and the record restamped [at]. Every
-  /// collection edit ends here, so a guest bar is refused once
+  /// Every collection edit ends here, refusing a guest bar once
   /// ([ADR 23](../../../docs/adr/23-nothing-writes-a-guest-bar.md)).
   Shelf withCollection(Collection collection, DateTime at) {
     final bar = open;
@@ -26,28 +23,25 @@ extension ShelfEdits on Shelf {
     ).copyWith(collection: collection);
   }
 
-  /// Adds [bar], or replaces the record standing under its id.
   Shelf withBar(Bar bar) =>
       copyWith(bars: upserted(bars, bar, [(b) => b.id == bar.id]));
 
-  /// FR-BAR-2: closing is [Shelf]'s own default state, so this names no field.
+  /// FR-BAR-2: closing is Shelf's own default state, so no field is named.
   Shelf withoutBar(String id) {
     final remaining = without(bars, (bar) => bar.id == id);
     if (remaining.length == bars.length) return this;
     return openId == id ? Shelf(bars: remaining) : copyWith(bars: remaining);
   }
 
-  /// The switch: the record and the bytes at once (ADR-20).
+  /// The record and the bytes change together (ADR-20).
   Shelf opening(String id, Collection collection) =>
       copyWith(openId: id, collection: collection);
 
-  /// FR-BAR-8: what this device announces itself as, the reader's to choose
-  /// (ADR 28) and judged by [Shelf] under the rules every name keeps.
+  /// FR-BAR-8: the reader chooses this device's announced name (ADR 28).
   Shelf namingDevice(String name) =>
       name == deviceName ? this : copyWith(deviceName: name);
 
-  /// FR-BAR-6: [id] offered by [via], every other way left standing. Offering
-  /// one already offered changes nothing: one offer per transport is coherence.
+  /// FR-BAR-6: one offer per transport, so offering twice changes nothing.
   Shelf offering(String id, Transport via) {
     final bar = barWithId(id);
     if (bar == null || bar.offeredBy(via)) return this;
@@ -56,8 +50,7 @@ extension ShelfEdits on Shelf {
     );
   }
 
-  /// FR-BAR-6: the offer by [via] dropped and nothing else — every other way
-  /// stays open, and what a guest already holds stays theirs.
+  /// FR-BAR-6: drops only this offer; guests keep what they already hold.
   Shelf withdrawing(String id, Transport via) {
     final bar = barWithId(id);
     if (bar == null) return this;
@@ -66,8 +59,7 @@ extension ShelfEdits on Shelf {
     return withBar(bar.copyWith(offers: left));
   }
 
-  /// FR-BAR-5: the owner's collection replaced, stamped [at]. Never [Bar.name]
-  /// or [Bar.display], the reader's picks (ADR-21).
+  /// FR-BAR-5: a refresh spares the reader's name and display (ADR-21).
   Shelf refreshedWith(String id, BarContent payload, DateTime at) {
     final bar = barWithId(id);
     if (bar == null) return this;

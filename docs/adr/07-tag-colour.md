@@ -4,7 +4,7 @@
 
 ## Context
 
-Colour persistence, two vocabularies (ingredients vs. recipes). Decided before any screen was built on either.
+Colour persistence, two vocabularies (ingredients vs. recipes).
 
 ## Decision
 
@@ -33,4 +33,3 @@ Colour persistence, two vocabularies (ingredients vs. recipes). Decided before a
 - Gain FR-VOC-4/INV-3. Per-vocabulary renames.
 - Deletion blocked own-side only.
 - Old shapes (no colour) rejected as errors.
-- Tag screens read token→swatch map.

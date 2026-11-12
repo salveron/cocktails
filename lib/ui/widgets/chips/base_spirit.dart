@@ -8,18 +8,13 @@ import '../../palette.dart';
 import '../lists/list_terms.dart';
 import 'color_marks.dart';
 
-/// What the list is narrowed to by base spirit (FR-DIS-4, ADR 12) — a record,
-/// so a null *spirit*, the recipes marking no base, is told apart from a null
-/// _pick_, which is no narrowing at all.
+/// A base narrowing (FR-DIS-4, ADR 12): a record, so a null spirit (no base)
+/// differs from a null pick (no narrowing at all).
 typedef BasePick = ({String? spirit});
 
-/// What the list is narrowed to, and the menu settling it: any base, no base,
-/// or one of the spirits the collection is built on (FR-DIS-4, ADR 12). Shaped
-/// like the tag chips it stands among, but neutral — an ingredient's name is
-/// neither a tag nor a signal, and the chip names its own dimension so it
-/// cannot be read as a tag that happens to be called "Base". The menu carries
-/// its pick wrapped, since a bare null selection is how [PopupMenuButton]
-/// reports a menu dismissed — and "Any base" is a null pick.
+/// The menu's pick is wrapped: a bare null is how [PopupMenuButton] reports a
+/// dismissal, and "Any base" is a null pick (FR-DIS-4, ADR 12).
+/// Neutral, not a tag: "Base:" names its dimension so it cannot pass for one.
 class BaseSpiritChip extends StatelessWidget {
   const BaseSpiritChip({
     required this.spirits,
@@ -44,8 +39,7 @@ class BaseSpiritChip extends StatelessWidget {
         _item('No base', (spirit: null)),
         for (final spirit in spirits) _item(spirit, (spirit: spirit)),
       ],
-      // Ringed like a picked tag while it narrows, and ringed in the clear
-      // besides, so the chip stands in line with the tags either way.
+      // Ringed whether or not it narrows, so it lines up with the tags.
       child: ColorChip(
         'Base: ${chosen == null ? 'Any' : chosen.spirit ?? 'None'}',
         swatch: neutralSwatch(Theme.of(context).colorScheme),
@@ -55,7 +49,6 @@ class BaseSpiritChip extends StatelessWidget {
     );
   }
 
-  /// One offering, the one in force wearing the tick.
   PopupMenuItem<({BasePick? pick})> _item(String label, BasePick? pick) =>
       PopupMenuItem(
         value: (pick: pick),
@@ -71,10 +64,8 @@ class BaseSpiritChip extends StatelessWidget {
       );
 }
 
-/// The base spirit chip and what it keeps (FR-DIS-4, ADR 12). A pick gone
-/// stale — renamed, deleted, or its last base mark cleared — is absent from
-/// what the collection offers, so it stops narrowing rather than emptying
-/// the list.
+/// A pick gone stale (renamed, deleted, or unmarked as a base) stops
+/// narrowing rather than emptying the list (FR-DIS-4).
 ListFilter<Recipe>? baseFilter(
   Collection collection, {
   required BasePick? base,
@@ -83,7 +74,7 @@ ListFilter<Recipe>? baseFilter(
   final spirits = baseSpirits(collection);
   if (spirits.isEmpty) return null;
   final chosen = _standingPick(collection, spirits, base);
-  // Spelled out once, read as both what narrows and what the reader is told.
+  // Spelled out once: it both narrows and is what the reader is told.
   final narrowing = switch (chosen) {
     null => null,
     (spirit: null) => 'no base at all',
@@ -94,15 +85,13 @@ ListFilter<Recipe>? baseFilter(
     test: (recipe) => chosen == null || marksBase(recipe, chosen.spirit),
     narrowing: narrowing,
     picks: [?narrowing],
-    // Not a tag: a base spirit has no place among names a caller would
-    // search or dot recipes by.
+    // Not a tag: a base spirit is no name to search or dot recipes by.
     tagPicks: const [],
   );
 }
 
-/// [pick] as the collection spells it now, or null where it no longer stands
-/// among [spirits] — a rename recased still narrows (ADR 08); one renamed in
-/// earnest stops.
+/// [pick] as the collection spells it now, or null when not among [spirits].
+/// A rename recased still narrows (ADR 08); one renamed in earnest stops.
 BasePick? _standingPick(
   Collection collection,
   List<String> spirits,

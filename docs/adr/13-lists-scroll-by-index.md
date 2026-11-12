@@ -4,9 +4,9 @@
 
 ## Context
 
-FR-DIS-5's random pick has to put the recipe it names under the eye. The shape chosen is that the list opens that recipe's card and scrolls to it — the pick read on the same card as any other recipe, so the recipe view keeps one home. Decided before the pick was built.
+FR-DIS-5's random pick has to put the recipe it names under the eye. The list opens that recipe's card and scrolls to it, so the pick reads on the same card as any other recipe and the recipe view keeps one home.
 
-`ListView.builder` builds lazily: a row outside the viewport has no `BuildContext`, so `Scrollable.ensureVisible` cannot reach it, and cards expand in place, so the rows have no uniform height to compute an offset from. The app carries no scroll machinery at all today — no `ScrollController`, no `GlobalKey`.
+`ListView.builder` builds lazily: a row outside the viewport has no `BuildContext`, so `Scrollable.ensureVisible` cannot reach it; cards expand in place, so rows have no uniform height to compute an offset from. The app has no scroll machinery today: no `ScrollController`, no `GlobalKey`.
 
 ## Decision
 
@@ -29,7 +29,7 @@ FR-DIS-5's random pick has to put the recipe it names under the eye. The shape c
 
 - A fifth dependency, and a bar for the sixth.
 - All four lists change scroll implementation, though only the recipes reveal a row; scroll physics becomes the package's rather than `ListView`'s.
-- `EntryCardList` gains the ability to reveal a name. The recipes screen learns no scrolling.
-- **A reveal is by index only where the row is out of view.** A row the reader can already see is reached in pixels, off the last measurement the package took — so a reveal asked for in the same frame as a height change aims at where the row *was*, and a tall card shutting above it carries the row clean off the top of the list. The reveal therefore waits for the measurement that follows it: `ItemPositionsListener` firing is the signal that the rows have settled. A frame callback is not enough — the package registers its own during the frame, so it runs *after* anything scheduled before it.
-- A test can no longer reach a row with `tester.scrollUntilVisible` on a bare finder: the list holds more than one `Scrollable`, so the finder is ambiguous. A row is reached by being revealed — which is what a reader does anyway.
+- `EntryCardList` can reveal a name. The recipes screen learns no scrolling.
+- **A reveal is by index only where the row is out of view.** A visible row is reached in pixels, off the last measurement the package took, so a reveal asked for in the same frame as a height change aims at where the row *was*; a tall card shutting above it carries the row off the top. The reveal therefore waits for the next measurement: `ItemPositionsListener` firing signals that the rows have settled. A frame callback is not enough: the package registers its own during the frame, so it runs *after* anything scheduled before it.
+- A test cannot reach a row with `tester.scrollUntilVisible` on a bare finder: the list holds more than one `Scrollable`, so the finder is ambiguous. Tests reveal a row instead, as a reader does.
 - A dead package is a known, costed edit rather than a redesign.

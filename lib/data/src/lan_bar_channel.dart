@@ -1,9 +1,7 @@
 /// The LAN transport, both halves
 /// ([ADR 22](../../../docs/adr/22-a-bar-travels-behind-one-seam.md)): the
-/// owner's, one server and one announcement per device coming up with the first
-/// offer and down with the last withdrawal (FR-BAR-6, NFR-5); and the guest's,
-/// which owns nothing at all — every fetch resolves the instance afresh, reads
-/// what it offers and takes the path that names (FR-BAR-5/8).
+/// owner's one server and announcement per device (FR-BAR-6, NFR-5); the
+/// guest's owns nothing and resolves each fetch afresh (FR-BAR-5/8).
 library;
 
 import 'dart:convert';
@@ -26,8 +24,7 @@ final class LanBarChannel implements BarChannel, BarFinder, BarOfferings {
   final LanBrowser _browser;
   final LanReach _reach;
 
-  /// Kept as the futures rather than what they answer, so two offers at once
-  /// raise one server and one announcement between them rather than each.
+  /// Held as futures so concurrent offers share one server and announcement.
   Future<LanBarServer>? _serving;
   Future<LanAnnouncement>? _announcing;
 
@@ -39,10 +36,8 @@ final class LanBarChannel implements BarChannel, BarFinder, BarOfferings {
     this._reach = onANetwork,
   });
 
-  /// Where a bar found nearby is kept from: the instance to resolve again and
-  /// the id to look for in what it offers, never an address (ADR 22). The id
-  /// leads, being the half with a fixed alphabet, so the instance keeps
-  /// whatever name the network granted it, separators and all.
+  /// The instance to re-resolve and the id to find, never an address (ADR 22).
+  /// The id leads, having no '/', so an instance name may contain one.
   static BarSource sourceFor({
     required String barId,
     required String instance,
@@ -51,11 +46,7 @@ final class LanBarChannel implements BarChannel, BarFinder, BarOfferings {
   @override
   Transport get transport => Transport.lan;
 
-  /// FR-BAR-5/8: the instance resolved afresh, its list read, and the bytes
-  /// taken from the path it names. Where the ask stopped is which of the three
-  /// readings it answers (ADR 22) — this device off any network, an instance
-  /// that will not resolve, or one whose list no longer names the bar. Never
-  /// throws: a fetch answers.
+  /// Each failed step answers its reason and never throws (FR-BAR-5/8, ADR 22).
   @override
   Future<Outcome<BarContent>?> fetch(BarSource source) async {
     final asked = _askedFor(source);
@@ -63,9 +54,7 @@ final class LanBarChannel implements BarChannel, BarFinder, BarOfferings {
     if (!await _reach()) return _unreached(UnreachableReason.offline);
     final service = await _resolve(asked.instance);
     if (service == null) return _unreached(UnreachableReason.notFound);
-    // A list that will not read is an instance that cannot be asked; one that
-    // reads without naming the bar, or a path answering nothing, is an owner
-    // who has withdrawn it.
+    // Unreadable list: not askable. Missing bar or document: withdrawn.
     final listed = readOfferings(await _read(service, lanListPath) ?? '');
     if (listed == null) return _unreached(UnreachableReason.notFound);
     final offered = listed[asked.barId];
@@ -75,11 +64,8 @@ final class LanBarChannel implements BarChannel, BarFinder, BarOfferings {
     return const YamlCodec().decode(document);
   }
 
-  /// FR-BAR-8: every bar every device nearby says it offers, answered again
-  /// each time another device does rather than once at the end, so a reader may
-  /// take the first thing they recognise. A device that will not say what it
-  /// offers is left out — there is nothing they could do with it — and the
-  /// stream closing on an empty answer is what "nothing nearby" means.
+  /// Yields as each device answers (FR-BAR-8), so a first match can act early.
+  /// Devices that cannot list bars are skipped; no yield means none nearby.
   @override
   Stream<List<Found>> nearby() async* {
     final found = <Found>[];
@@ -106,8 +92,7 @@ final class LanBarChannel implements BarChannel, BarFinder, BarOfferings {
     ];
   }
 
-  /// The two halves [BarSource.at] carries, or null where it carries neither —
-  /// a hand-edited index reads as a source that cannot be found.
+  /// Null where [BarSource.at] lacks either half, as a hand-edited index may.
   ({String barId, String instance})? _askedFor(BarSource source) {
     final split = source.at.indexOf('/');
     if (split <= 0 || split == source.at.length - 1) return null;
@@ -117,9 +102,6 @@ final class LanBarChannel implements BarChannel, BarFinder, BarOfferings {
     );
   }
 
-  /// The instance under that name and nothing else: the browse is left the
-  /// moment it answers, so a fetch waits for the device it wants rather than
-  /// for every device there might be.
   Future<LanService?> _resolve(String instance) async {
     try {
       await for (final service in _browser()) {
@@ -131,9 +113,8 @@ final class LanBarChannel implements BarChannel, BarFinder, BarOfferings {
     }
   }
 
-  /// What [service] answers at [path], or null where nothing readable came
-  /// back — every address tried in turn, an IPv6-only answer being one of the
-  /// shapes a device comes back in (ADR 27).
+  /// Tries each address in turn, IPv6-only ones included (ADR 27);
+  /// null when none reads.
   Future<String?> _read(LanService service, String path) async {
     final client = HttpClient();
     try {
@@ -163,8 +144,7 @@ final class LanBarChannel implements BarChannel, BarFinder, BarOfferings {
     await (_announcing ??= _announcer(name: _deviceName(), port: server.port));
   }
 
-  /// Withdrawing what was never offered is not an error: nothing is announced
-  /// on its behalf, so there is nothing to silence.
+  /// Withdrawing what was never offered is not an error (nothing to silence).
   @override
   Future<void> withdraw(String barId) async {
     final serving = _serving;
@@ -174,9 +154,8 @@ final class LanBarChannel implements BarChannel, BarFinder, BarOfferings {
     if (!server.isOffering) await stop();
   }
 
-  /// Both halves down at once — the last withdrawal's ending, and the
-  /// composition root's on disposal. What is offered stands on the record
-  /// either way, and is announced again at the next start (ADR 22).
+  /// Both halves down at once, on the last withdrawal or on disposal. Offers
+  /// stay on the record and are announced again at the next start (ADR 22).
   Future<void> stop() async {
     final serving = _serving;
     final announcing = _announcing;

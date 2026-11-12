@@ -1,5 +1,3 @@
-/// Which transport carries a bar, and what a bar picked off each is kept
-/// under — the registry the sharing seam is resolved through (ADR 22).
 library;
 
 import 'package:cocktails/data/data.dart';
@@ -9,9 +7,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'derived.dart';
 import 'seams.dart';
 
-/// Both halves of the LAN in one adapter, since one device is one server and
-/// one announcement (ADR 22); the announced name a supplier, so a rename needs
-/// no rebuild (ADR 28).
+/// Both LAN halves in one adapter, since one device is one server (ADR 22).
+/// The announced name is a supplier, so a rename needs no rebuild (ADR 28).
 final _lanProvider = Provider<LanBarChannel>((ref) {
   final store = ref.watch(barStoreProvider);
   final lan = LanBarChannel(
@@ -25,10 +22,8 @@ final _lanProvider = Provider<LanBarChannel>((ref) {
   return lan;
 });
 
-/// The ways a bar travels, by transport — replaced wholesale by fakes, so
-/// nothing above learns what a network is. One absent here has no adapter in
-/// this build: how `Transport.cloud` waits, and what a refresh meets as
-/// [Unreachable] (ADR 22).
+/// Replaced wholesale by fakes, so nothing above learns what a network is.
+/// `Transport.cloud` has no adapter yet; refreshes meet [Unreachable] (ADR 22).
 final channelsProvider = Provider<Map<Transport, BarChannel>>(
   (ref) => Map.unmodifiable({
     Transport.file: FileBarChannel(ref.watch(filePickerProvider)),
@@ -36,13 +31,10 @@ final channelsProvider = Provider<Map<Transport, BarChannel>>(
   }),
 );
 
-/// What a file-picked bar is kept under: no screen builds an address (ADR 22).
+/// Where a file-picked bar is kept: no screen builds an address (ADR 22).
 const fileSource = FileBarChannel.source;
 
-/// What is offered nearby, in one ask (FR-BAR-8) — a screen's way to the
-/// finders, which are data's own and only the LAN has (ADR 22, ADR 04). A
-/// build with none answers nothing found, which is what a reader meets either
-/// way.
+/// Offers nearby (FR-BAR-8); with no finder, none found (ADR 22, ADR 04).
 final nearbyProvider = Provider<Stream<List<Found>> Function()>(
   (ref) => () {
     final finder = ref.read(findersProvider)[Transport.lan];
@@ -55,18 +47,13 @@ final findersProvider = Provider<Map<Transport, BarFinder>>(
   (ref) => Map.unmodifiable({Transport.lan: ref.watch(_lanProvider)}),
 );
 
-/// The sharing half, which only some ways have: a file is handed over rather
-/// than offered. An offer over a way absent here stands on the record and is
-/// announced by nothing.
+/// An offer over an absent transport is recorded but never announced.
 final offeringsProvider = Provider<Map<Transport, BarOfferings>>(
   (ref) => Map.unmodifiable({Transport.lan: ref.watch(_lanProvider)}),
 );
 
-/// What a stranger is served for [bar]: its record's name and reading unit over
-/// what its file holds, through the canonical emitter — so a copy taken over
-/// the wire and one sent as a file are the same document. The record rather
-/// than the file's own header, since a rename or a unit pick moves the index
-/// and no bar file. Null reads on the wire as a bar not offered (ADR 22).
+/// Name and unit come from the record, since renames move the index alone.
+/// Canonical emit, so wire and file copies match (ADR 22); null: not offered.
 Future<String?> exportOf(BarStore store, Bar? bar) async {
   if (bar == null) return null;
   return switch (await store.loadBar(bar.id)) {

@@ -4,14 +4,14 @@
 
 ## Context
 
-Recipes often work with any one of several ingredients — cognac or vodka, lemon or lime. The pilot ruled substitutions out, so such a recipe was written twice or written wrong. Reversing that is a product decision; how it is written is this one. Decided before substitutions were built.
+Recipes often work with any one of several ingredients — cognac or vodka, lemon or lime. The pilot ruled substitutions out, so such a recipe was written twice or written wrong. Reversing that is a product decision; how it is written is this one.
 
 ## Decision
 
 **A recipe line names one or more ingredients; any one of them on hand makes the line.**
 
 - `RecipeLine.ingredients` is `List<String>`, never empty; no singular accessor.
-- Separator is `/` — `1 part cognac / vodka (base)`. Split after unit and mark decided; mark governs group.
+- Separator is `/`: `1 part cognac / vodka (base)`. Split after unit and mark decided; mark governs group.
 - `/` reserved from all ingredient spellings (name, alias) to prevent ambiguity.
 - Cards display "or", file holds `/`.
 - Availability: `stockOfLine` (best of group). Line missing only if all alternatives missing.
@@ -33,6 +33,6 @@ Recipes often work with any one of several ingredients — cognac or vodka, lemo
 - Substitutions leave the out-of-pilot list; FR-REC-9 new, Ingredient and Availability amended.
 - `ValidationIssueKind` gains `separatorInName` and `duplicateAlternative`.
 - A file holding `/` in an ingredient spelling is refused, with the reason and the line.
-- `displayRecipeLine` becomes `displayMeasure` — the body it returned transformed nothing, and a card writes its own now. `formatLineBody` is private again.
-- **Base-spirit browsing** must decide whether a group marked `(base)` files its recipe under every alternative spirit (FR-DIS-4) — dissolved by [ADR 12](12-base-spirit-narrows.md), which makes base a predicate: a group matches under every alternative it names.
-- **The optimizer** must count a group as satisfied by any one purchase (FR-DIS-6) — which reshaped its search rather than adjusting it: what a missing recipe needs stops being one set of ingredients and becomes a choice between several, so the ways of making it are the cross product over the lines it is short of ([ADR 15](15-the-optimizer-answers-with-the-best-few.md)).
+- `displayRecipeLine` becomes `displayMeasure`: the body it returned transformed nothing, and a card writes its own now. `formatLineBody` is private again.
+- **Base-spirit browsing** asked whether a `(base)` group files under every alternative spirit (FR-DIS-4); [ADR 12](12-base-spirit-narrows.md) dissolved it by making base a predicate: a group matches under every alternative it names.
+- **The optimizer** must count a group as satisfied by any one purchase (FR-DIS-6). That reshaped its search rather than adjusting it: a missing recipe's needs stop being one set of ingredients and become a choice between several, so its ways of making it are the cross product over the lines it is short of ([ADR 15](15-the-optimizer-answers-with-the-best-few.md)).

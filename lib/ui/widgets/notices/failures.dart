@@ -1,10 +1,6 @@
-/// What the app could not do, put to the reader: the two banners standing above
-/// every destination — the last load's issues (FR-DAT-4) and the open bar's last
-/// refresh where it did not land (FR-BAR-5) — and the refusal a picked file
-/// gets. Two banners rather than one, a torn file on disk and a source that
-/// would not answer being different news; one home for the words, so a
-/// failure is worded once however the reader meets it. `snackbar.dart` carries
-/// the shape a spoken message takes, failure or success alike.
+/// Failure wording, kept in one home so a failure reads the same wherever met.
+/// Two banners: a torn file and an unreachable source are different news.
+/// The shape of any spoken message, failure or success, is `snackbar.dart`'s.
 library;
 
 import 'package:cocktails/domain/domain.dart';
@@ -16,9 +12,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../theme.dart';
 import '../cards/bullet_runs.dart';
 
-/// What a load could not read (FR-DAT-4), above every destination until the
-/// reader dismisses it. Dismissal is of the issues on show rather than of the
-/// banner: crossing to a bar whose file is torn has something new to say.
+/// What a load could not read (FR-DAT-4); dismissing hides only these issues.
 class LoadIssues extends ConsumerStatefulWidget {
   const LoadIssues({super.key});
 
@@ -42,10 +36,7 @@ class _LoadIssuesState extends ConsumerState<LoadIssues> {
   }
 }
 
-/// What the open bar's last refresh came to, where it did not land (FR-BAR-5).
-/// Silent while one is out — the swipe's own spinner says that — and again the
-/// moment another is asked for. Dismissing tells the map the reader has heard
-/// it, so this and a screen that said it in a snackbar cannot say it twice.
+/// A failed refresh (FR-BAR-5). Dismissing it stops a snackbar repeating it.
 class RefreshFailure extends ConsumerWidget {
   const RefreshFailure({super.key});
 
@@ -62,9 +53,8 @@ class RefreshFailure extends ConsumerWidget {
   }
 }
 
-/// Why the file was not read, and where (FR-DAT-4), under the one sentence that
-/// matters — [standing], what is true despite it, which differs by what the
-/// file was about to be used for. There is nothing here to agree to.
+/// A refused file (FR-DAT-4). [standing] is what stays true despite it;
+/// there is nothing here to agree to.
 class RefusedFile extends StatelessWidget {
   const RefusedFile(this.issues, {required this.standing, super.key});
 
@@ -98,25 +88,18 @@ class RefusedFile extends StatelessWidget {
   }
 }
 
-/// What a refresh of [bar] came to, in the app's own words, and null where
-/// there is nothing to report — no ask, one still out, or one that landed, which
-/// the reader's own lists answer better than a sentence. The one wording, met as
-/// a banner where they pulled and as a snackbar where they tapped.
+/// What a refresh of [bar] came to, or null when there is nothing to say:
+/// none asked, one still out, or one landed (the lists already show that).
 String? refreshSaid(RefreshState? standing, String bar) => switch (standing) {
   null || Reaching() => null,
   RefreshRefused(:final issues) =>
     'Could not read the data ("$bar" was not changed):\n${issues.join('\n')}',
-  // One line: a source that did not answer is met by a reader who asked for
-  // one thing and got nothing, and the bar standing as it was is what they are
-  // already looking at.
+  // One line: the bar is as it was, and the reader is already looking at it.
   RefreshUnreachable(:final why) => 'Could not refresh: ${_because(why)}',
 };
 
-/// What a change to a bar's sharing came to, and null where there is nothing
-/// to report — nothing out, one still out, or one that went through, which the
-/// switch answers better than a sentence. The record moves first and the
-/// network second (ADR 22), so what failed is the announcement and never the
-/// offer: the switch is telling the truth either way.
+/// What a sharing change came to, or null when there is nothing to say.
+/// The record moves first (ADR 22), so only the announcement can fail.
 String? sharingSaid(SharingState? standing, {required bool offering}) =>
     switch (standing) {
       null || Announcing() || Silencing() => null,
@@ -126,12 +109,11 @@ String? sharingSaid(SharingState? standing, {required bool offering}) =>
             : 'Withdrawn, but could not tell the network.',
     };
 
-/// Why a bar found nearby did not arrive (FR-BAR-8) — the add's reading of the
-/// same three, where [refreshSaid] carries the refresh's.
+/// Why a nearby bar did not arrive (FR-BAR-8), in the same three reasons.
 String nearbySaid(UnreachableReason why, String bar) =>
     'Could not add "$bar": ${_because(why)}';
 
-/// The three ways a source goes unreached, worded nowhere else (ADR 22).
+/// The three ways a source goes unreached, worded only here (ADR 22).
 String _because(UnreachableReason why) => switch (why) {
   UnreachableReason.offline => 'device offline.',
   UnreachableReason.notFound => 'source not found.',

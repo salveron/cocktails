@@ -4,7 +4,7 @@
 
 ## Context
 
-[ADR 08](08-names-ignore-case.md) settled case; it left wording: "Bourbon Whiskey" and "bourbon" are one ingredient but two to the vocabulary. Decided before aliases were built.
+[ADR 08](08-names-ignore-case.md) settled case; it left wording: "Bourbon Whiskey" and "bourbon" are one ingredient but two to the vocabulary.
 
 ## Decision
 
@@ -29,7 +29,6 @@
 ## Consequences
 
 - FR-VOC-1 gains aliases, FR-ING-1 searches them, FR-VOC-6 new.
-- `aliases` key on entry; every spelling unique under fold.
 - Recipe form no longer creates near-duplicates.
 - Files with aliases rewrite canonical (like unit plurals).
 - Name index carries aliases (built once per collection).

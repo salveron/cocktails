@@ -11,7 +11,7 @@ Telegram channel cannot answer: what can I make, what's missing, which purchase 
 One app: recipe collection + home-bar ingredients.
 
 - **Structured recipes** — ingredients with measurements, tags, free-text notes.
-- **Live availability** — stock determines automatically which recipes are makeable.
+- **Live availability** — stock determines which recipes are makeable.
 - **Discovery** — search, filter by ingredient/tag/base spirit; shopping optimizer finds which 2–3 ingredients unlock the most new drinks.
 - **Portable data** — export/import one human-readable text file; bulk work outside the app.
 - **Bars of one's own, and others' to read** — the device holds several: each owned bar the reader's to keep and to share, each guest bar someone else's, read as it last arrived.
@@ -22,6 +22,7 @@ Compatible but out of scope (see [requirements.md](requirements.md#out-of-scope)
 
 - PC/desktop app.
 - Formalized preparation, dedicated glassware/garnish fields, photos.
+- Sharing over the cloud — an owner offers a bar to guests they name, who add it and refresh it from anywhere. The one way asking an identity (backend options: [ADR 22](adr/22-a-bar-travels-behind-one-seam.md#the-cloud-backend-open-until-it-is-scheduled)).
 - Likes and dislikes on the recipe card — one vote each way per recipe, and a guest voting from their own app on the recipes of the owner whose bar they read.
 
 ## Constraints

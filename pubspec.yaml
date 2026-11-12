@@ -1,8 +1,7 @@
 name: cocktails
 description: Personal cocktail recipe and inventory app.
 publish_to: none
-# versionName+versionCode, read straight by android/app/build.gradle.kts. The
-# code only ever climbs: Android refuses an update that lowers it.
+# versionName+versionCode, read by android/app/build.gradle.kts; the code only climbs.
 version: 1.0.0+1
 
 environment:
@@ -11,24 +10,14 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  # DNS-SD for the LAN transport, confined to lan_discovery.dart under the
-  # ADR 13 bar (ADR 27). By caret: it still releases, which ADR 14 reads as
-  # the cheaper half of that risk.
+  # DNS-SD, confined to lan_discovery.dart (ADR 13, ADR 27).
   bonsoir: ^7.1.5
-  # The document picker, the share sheet's other half (ADR 18). By caret: a
-  # finished plugin surface published by flutter.dev is stable, not dormant.
   file_selector: ^1.1.0
   flutter_riverpod: ^2.6.1
-  # By caret, unlike the one below: this one still releases, so keeping up is
-  # the cheaper reading of its risk (ADR 14).
   font_awesome_flutter: ^11.0.0
   path_provider: ^2.1.6
-  # Pinned exactly: dormant since 0.3.8, so a release would want reviewing
-  # rather than resolving into the build (ADR 13).
+  # Pinned exactly: dormant since 0.3.8 (ADR 13).
   scrollable_positioned_list: 0.3.8
-  # The share sheet, and the FileProvider it ships with it (ADR 18). By caret,
-  # under the same rule as the one above — it released a fortnight before it
-  # was taken.
   share_plus: ^13.3.0
   yaml: ^3.1.3
 

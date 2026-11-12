@@ -7,8 +7,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      # Pinned rather than left to the runner image: a runner default moving
-      # under us fails the build. Same major as android/gradle/gradle-daemon-jvm.properties.
+      # Pinned: a moving runner default would fail the build. Same major as gradle-daemon-jvm.properties.
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -21,16 +20,12 @@ jobs:
       - run: dart format --set-exit-if-changed .
       - run: flutter analyze
       - run: flutter test
-      # A throwaway key, so the real one never leaves the machine that holds it.
-      # The build below refuses to run without one, by design.
+      # Throwaway key: the release build refuses to run without one.
       - run: |
           keytool -genkeypair -keystore "$RUNNER_TEMP/ci.jks" -alias ci \
             -storepass ci-throwaway -keypass ci-throwaway \
             -keyalg RSA -keysize 2048 -validity 30 -dname "CN=CI, O=cocktails"
           printf 'storeFile=%s\nstorePassword=ci-throwaway\nkeyAlias=ci\nkeyPassword=ci-throwaway\n' \
             "$RUNNER_TEMP/ci.jks" > android/key.properties
-      # The only check that exercises the Gradle side, and release rather than
-      # debug because that is the build that ships: R8 runs here and nowhere
-      # else, so a plugin its shrinking breaks fails on a push instead of on
-      # the one machine that packages the APK.
+      # Release, not debug: R8 runs only here, so a plugin its shrinking breaks fails on push.
       - run: flutter build apk --release

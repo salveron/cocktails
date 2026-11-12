@@ -4,7 +4,7 @@
 
 ## Context
 
-Base was ingredient flag (global). Wrong: bourbon base in Sour, modifier elsewhere. Per-recipe (FR-DIS-4). Base never optional; marks mutually exclusive. Decided before either screen naming a base was built.
+Base was ingredient flag (global). Wrong: bourbon base in Sour, modifier elsewhere. Per-recipe (FR-DIS-4). Base never optional; marks mutually exclusive.
 
 ## Decision
 
@@ -24,6 +24,6 @@ Base was ingredient flag (global). Wrong: bourbon base in Sour, modifier elsewhe
 ## Consequences
 
 - FR-VOC-2→FR-REC-8. FR-DIS-4 keys on marked lines.
-- The ingredient entry loses the flag, the recipe form gains the mark, and the recipe list narrows by that mark rather than grouping on it ([ADR 12](12-base-spirit-narrows.md)).
+- Recipe form gains the mark; recipe list narrows by it rather than grouping on it ([ADR 12](12-base-spirit-narrows.md)).
 - Old files rejected as unknown-key.
 - All ingredient info stays one line (FR-DAT-2).
