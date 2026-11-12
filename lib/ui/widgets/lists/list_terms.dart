@@ -9,9 +9,10 @@ const alphabetical = {'Name': alike};
 
 int alike(Object? entry) => 0;
 
-/// [picks] is `entry_list`'s change key; [tagPicks] are names to search or dot by.
+/// [chips] ride the list's one chip row; [picks] is `entry_list`'s change key;
+/// [tagPicks] are names to search or dot by.
 typedef ListFilter<T> = ({
-  Widget row,
+  List<Widget> chips,
   bool Function(T entry) test,
   String? narrowing,
   List<String> picks,

@@ -7,6 +7,7 @@ library;
 
 import 'package:cocktails/domain/domain.dart';
 import 'package:cocktails/ui/screens/ingredients_screen.dart';
+import 'package:cocktails/ui/widgets/lists/list_controls.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -36,7 +37,7 @@ void main() {
       await openSort(tester);
       await sortBy(tester, 'Name');
       await openSort(tester);
-      expect(find.byType(FilterChip), findsNothing);
+      expect(find.byType(OrderChip), findsNothing);
       expect(_namesOn(tester), ['absinthe', 'campari', 'gin']);
     });
 

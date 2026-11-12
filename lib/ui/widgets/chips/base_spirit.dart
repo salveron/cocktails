@@ -44,7 +44,7 @@ class BaseSpiritChip extends StatelessWidget {
         'Base: ${chosen == null ? 'Any' : chosen.spirit ?? 'None'}',
         swatch: neutralSwatch(Theme.of(context).colorScheme),
         chosen: chosen != null,
-        opensMenu: true,
+        trailing: const Icon(Icons.arrow_drop_down),
       ),
     );
   }
@@ -81,7 +81,7 @@ ListFilter<Recipe>? baseFilter(
     (spirit: final spirit) => '$spirit as its base',
   };
   return (
-    row: BaseSpiritChip(spirits: spirits, chosen: chosen, onPick: onPick),
+    chips: [BaseSpiritChip(spirits: spirits, chosen: chosen, onPick: onPick)],
     test: (recipe) => chosen == null || marksBase(recipe, chosen.spirit),
     narrowing: narrowing,
     picks: [?narrowing],

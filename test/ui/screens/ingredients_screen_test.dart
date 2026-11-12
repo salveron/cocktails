@@ -3,7 +3,6 @@ import 'package:cocktails/state/state.dart';
 import 'package:cocktails/ui/palette.dart';
 import 'package:cocktails/ui/screens/ingredients_screen.dart';
 import 'package:cocktails/ui/widgets/chips/color_marks.dart';
-import 'package:cocktails/ui/widgets/chips/tag_choices.dart';
 import 'package:cocktails/ui/widgets/lists/list_controls.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -405,14 +404,24 @@ void main() {
       expect(namesOn(tester), ['absinthe', 'campari', 'gin']);
     });
 
-    testWidgets('the orders open under the search, above the legend', (
+    testWidgets('the orders join the legend, ahead of its tags', (
       tester,
     ) async {
       await pumpIngredients(tester);
       await openSort(tester);
-      final orders = tester.getTopLeft(find.byType(FilterChip).first).dy;
-      expect(orders, greaterThan(tester.getBottomLeft(searchBox).dy));
-      expect(orders, lessThan(tester.getTopLeft(find.byType(TagChoices)).dy));
+      final orders = tester.getTopLeft(orderChip('Stock'));
+      expect(orders.dy, greaterThan(tester.getBottomLeft(searchBox).dy));
+      expect(chipRow, findsOneWidget);
+      expect(
+        orders.dx,
+        lessThan(
+          tester.getTopLeft(find.widgetWithText(ColorChip, 'citrus')).dx,
+        ),
+      );
+      expect(
+        orders.dy,
+        tester.getTopLeft(find.widgetWithText(ColorChip, 'citrus')).dy,
+      );
     });
   });
 
@@ -441,7 +450,7 @@ void main() {
       await pumpIngredients(tester);
       final scroller = tester.widget<SingleChildScrollView>(
         find.descendant(
-          of: find.byType(TagChoices),
+          of: chipRow,
           matching: find.byType(SingleChildScrollView),
         ),
       );
@@ -452,10 +461,10 @@ void main() {
       tester,
     ) async {
       await pumpIngredients(tester, smallCollection);
-      expect(find.byType(TagChoices), findsNothing);
+      expect(chipRow, findsNothing);
 
       await pumpIngredients(tester);
-      expect(find.byType(TagChoices), findsOneWidget);
+      expect(chipRow, findsOneWidget);
       expect(find.widgetWithText(ColorChip, 'homemade'), findsOneWidget);
     });
 

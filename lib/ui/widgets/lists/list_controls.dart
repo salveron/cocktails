@@ -1,16 +1,18 @@
-/// A searchable list's chrome: the search field and the sort it opens, the
-/// filter's own row, and the two buttons that stand over the list — everything
+/// A searchable list's chrome: the search field with the sort inside it, the
+/// one chip row, and the two buttons that stand over the list — everything
 /// but the list itself, which is `entry_list.dart`'s (ADR 13).
 library;
 
 import 'package:flutter/material.dart';
 
+import '../../palette.dart';
+import '../chips/color_marks.dart';
 import '../notices/empty_state.dart';
 import 'list_terms.dart';
 
-/// The search field, the sort chips it opens, the filter's own row, and
-/// [list] — the rows on show, or what stands in for them where there are
-/// none.
+/// The search field, the chip row — the sort orders it opens, then the
+/// filter's chips — and [list], the rows on show, or what stands in for them
+/// where there are none.
 class SearchableList<T> extends StatelessWidget {
   const SearchableList({
     required this.search,
@@ -42,7 +44,16 @@ class SearchableList<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final filter = this.filter;
+    final chips = [
+      if (picking)
+        for (final label in orders.keys)
+          OrderChip(
+            label,
+            backwards: label == order ? backwards : null,
+            onPick: onPick,
+          ),
+      ...?filter?.chips,
+    ];
     return Column(
       // Full width: search and filter controls.
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -57,14 +68,9 @@ class SearchableList<T> extends StatelessWidget {
             onPressed: onTogglePicking,
           ),
         ),
-        if (picking)
-          _OrderChips(
-            labels: orders.keys,
-            order: order,
-            backwards: backwards,
-            onPick: onPick,
-          ),
-        if (filter != null) filter.row,
+        // Keyed on [picking] so a row scrolled aside starts over at the
+        // orders, which join it at the front.
+        if (chips.isNotEmpty) ChipRow(key: ValueKey(picking), chips: chips),
         Expanded(child: list),
       ],
     );
@@ -72,7 +78,8 @@ class SearchableList<T> extends StatelessWidget {
 }
 
 /// Search field with clear button (caller owns controller/rebuild). [trailing]
-/// rides beside the field, for what acts on the list rather than on the text.
+/// rides inside the field after the clear button, for what acts on the list
+/// rather than on the text.
 class SearchField extends StatelessWidget {
   const SearchField({
     required this.controller,
@@ -86,74 +93,89 @@ class SearchField extends StatelessWidget {
   final Widget? trailing;
 
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-    child: Row(
-      children: [
-        Expanded(
-          child: TextField(
-            controller: controller,
-            textInputAction: TextInputAction.search,
-            decoration: InputDecoration(
-              hintText: hintText,
-              isDense: true,
-              border: const OutlineInputBorder(),
-              prefixIcon: const Icon(Icons.search),
-              suffixIcon: controller.text.isEmpty
-                  ? null
-                  : IconButton(
-                      icon: const Icon(Icons.clear),
-                      tooltip: 'Clear',
-                      onPressed: controller.clear,
-                    ),
-            ),
-          ),
+  Widget build(BuildContext context) {
+    final trailing = this.trailing;
+    final clearable = controller.text.isNotEmpty;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+      child: TextField(
+        controller: controller,
+        textInputAction: TextInputAction.search,
+        decoration: InputDecoration(
+          hintText: hintText,
+          isDense: true,
+          border: const OutlineInputBorder(),
+          prefixIcon: const Icon(Icons.search),
+          suffixIcon: !clearable && trailing == null
+              ? null
+              : Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (clearable)
+                      IconButton(
+                        icon: const Icon(Icons.clear),
+                        tooltip: 'Clear',
+                        onPressed: controller.clear,
+                      ),
+                    ?trailing,
+                  ],
+                ),
         ),
-        ?trailing,
-      ],
+      ),
+    );
+  }
+}
+
+/// Chips on one line, scrolling sideways: the sort orders, a screen's own
+/// narrowing and the tags share it.
+class ChipRow extends StatelessWidget {
+  const ChipRow({required this.chips, super.key});
+
+  final List<Widget> chips;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+    child: SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(spacing: 8, children: chips),
     ),
   );
 }
 
-/// The orders offered, the one in force wearing which way it is read.
-class _OrderChips extends StatelessWidget {
-  const _OrderChips({
-    required this.labels,
-    required this.order,
+/// An order offered, wearing which way it is read while it is in force:
+/// [backwards] is null for an order that is not.
+class OrderChip extends StatelessWidget {
+  const OrderChip(
+    this.label, {
     required this.backwards,
     required this.onPick,
+    super.key,
   });
 
-  final Iterable<String> labels;
-  final String order;
-  final bool backwards;
+  final String label;
+  final bool? backwards;
   final void Function(String label) onPick;
 
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
-    child: SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Wrap(
-        spacing: 8,
-        children: [
-          for (final label in labels)
-            FilterChip(
-              label: Text(label),
-              avatar: label != order
-                  ? null
-                  : Icon(
-                      backwards ? Icons.arrow_upward : Icons.arrow_downward,
-                      semanticLabel: backwards ? 'backwards' : 'forwards',
-                    ),
-              selected: label == order,
-              showCheckmark: false,
-              onSelected: (_) => onPick(label),
-            ),
-        ],
+  Widget build(BuildContext context) {
+    final backwards = this.backwards;
+    return InkWell(
+      onTap: () => onPick(label),
+      borderRadius: chipRadius,
+      child: ColorChip(
+        label,
+        swatch: neutralSwatch(Theme.of(context).colorScheme),
+        chosen: backwards != null,
+        trailing: backwards == null
+            ? null
+            : Icon(
+                backwards ? Icons.arrow_upward : Icons.arrow_downward,
+                semanticLabel: backwards ? 'backwards' : 'forwards',
+              ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 /// What stands over the list: the draw above the add, the two alike in size

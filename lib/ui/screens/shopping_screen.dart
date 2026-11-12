@@ -12,6 +12,7 @@ import '../widgets/cards/entry_card.dart';
 import '../widgets/chips/color_marks.dart';
 import '../widgets/chips/tag_choices.dart';
 import '../widgets/forms/form_fields.dart';
+import '../widgets/lists/list_controls.dart';
 import '../widgets/lists/list_terms.dart';
 import '../widgets/notices/empty_state.dart';
 
@@ -96,7 +97,7 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
           onBudget: (budget) => setState(() => _budgetOverride = budget),
           onRestocking: (on) => setState(() => _restockingOverride = on),
         ),
-        ?filter?.row,
+        if (filter != null) ChipRow(chips: filter.chips),
         Expanded(
           child: onShow.isEmpty
               ? _EmptyBaskets(
@@ -149,7 +150,7 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
     );
     if (sifting == null || !aiming) return sifting;
     return (
-      row: sifting.row,
+      chips: sifting.chips,
       test: (_) => true,
       narrowing: sifting.tagPicks.isEmpty ? null : 'any tag picked',
       picks: sifting.picks,

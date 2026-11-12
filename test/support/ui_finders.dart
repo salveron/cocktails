@@ -150,25 +150,33 @@ Future<void> goTo(WidgetTester tester, String label) => tap(
 /// A bulleted name in a card's body.
 Finder bullet(String name) => find.text('• $name');
 
+/// The list's one chip row: the orders, then the filter's chips.
+final chipRow = find.byType(ChipRow);
+
 /// Opens the orders the list can be read in, or shuts them again.
 Future<void> openSort(WidgetTester tester) =>
     tap(tester, find.byTooltip('Sort'));
 
-/// Reads the list by [order]; the row has to be open, so this opens it.
+/// The chip offering [order].
+Finder orderChip(String order) => find.widgetWithText(OrderChip, order);
+
+/// Reads the list by [order]; the chips have to be out, so this brings them.
 Future<void> sortBy(WidgetTester tester, String order) async {
-  if (!tester.any(find.byType(FilterChip))) await openSort(tester);
-  await tap(tester, find.widgetWithText(FilterChip, order));
+  if (!tester.any(find.byType(OrderChip))) await openSort(tester);
+  await tap(tester, orderChip(order));
 }
 
 /// Which order the chips say is in force, and whether it reads backwards.
 (String, bool) sortedBy(WidgetTester tester) {
   final chosen = tester
-      .widgetList<FilterChip>(find.byType(FilterChip))
-      .firstWhere((chip) => chip.selected);
-  return (
-    (chosen.label as Text).data!,
-    (chosen.avatar! as Icon).icon == Icons.arrow_upward,
-  );
+      .widgetList<ColorChip>(
+        find.descendant(
+          of: find.byType(OrderChip),
+          matching: find.byType(ColorChip),
+        ),
+      )
+      .firstWhere((chip) => chip.trailing != null);
+  return (chosen.label, (chosen.trailing! as Icon).icon == Icons.arrow_upward);
 }
 
 /// The list's own pinned field, told apart from any field a dialog opens.
@@ -224,7 +232,7 @@ Future<void> chooseTag(WidgetTester tester, String name) => tap(
 
 /// The base-spirit chip (FR-DIS-4): opens a menu rather than toggling.
 final baseChip = find.byWidgetPredicate(
-  (widget) => widget is ColorChip && widget.opensMenu,
+  (widget) => widget is ColorChip && widget.label.startsWith('Base: '),
 );
 
 String basePick(WidgetTester tester) =>
@@ -242,7 +250,12 @@ Future<void> pickBase(WidgetTester tester, String label) async {
 /// Toggles the tag [name] in a chip row — the filter or the form's picker.
 Future<void> pickTag(WidgetTester tester, String name) => tap(
   tester,
-  find.descendant(of: find.byType(TagChoices), matching: find.text(name)),
+  find.descendant(
+    of: find.byWidgetPredicate(
+      (widget) => widget is ChipRow || widget is TagChoices,
+    ),
+    matching: find.text(name),
+  ),
 );
 
 /// Every dot on the row named [name], in the order they are drawn.

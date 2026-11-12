@@ -4,7 +4,6 @@ import 'package:cocktails/domain/domain.dart';
 import 'package:cocktails/state/state.dart';
 import 'package:cocktails/ui/screens/recipes_screen.dart';
 import 'package:cocktails/ui/widgets/chips/color_marks.dart';
-import 'package:cocktails/ui/widgets/chips/tag_choices.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -431,10 +430,10 @@ void main() {
       tester,
     ) async {
       await pumpRecipes(tester, stockedCollection);
-      expect(find.byType(TagChoices), findsNothing);
+      expect(chipRow, findsNothing);
 
       await pumpRecipes(tester);
-      expect(find.byType(TagChoices), findsOneWidget);
+      expect(chipRow, findsOneWidget);
       expect(find.widgetWithText(ColorChip, 'sour'), findsOneWidget);
     });
 
@@ -549,6 +548,28 @@ void main() {
               tester.getRect(chipOf(tester, pair.first)).right,
       ];
       expect(gaps.first, gaps.last);
+    });
+
+    testWidgets('the orders stand in line before it, one gap apart', (
+      tester,
+    ) async {
+      await pumpRecipes(tester);
+      await openSort(tester);
+      final base = tester.getRect(chipOf(tester, 'Base: Any'));
+      final orders = [
+        for (final order in ['Availability', 'Name'])
+          tester.getRect(chipOf(tester, order)),
+      ];
+      expect(orders.first.left, lessThan(orders.last.left));
+      expect(orders.last.right, lessThan(base.left));
+      for (final order in orders) {
+        expect(order.top, base.top);
+        expect(order.height, base.height);
+      }
+      expect(
+        base.left - orders.last.right,
+        orders.last.left - orders.first.right,
+      );
     });
 
     testWidgets('it wears the ring a picked tag does while it narrows', (

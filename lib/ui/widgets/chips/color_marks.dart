@@ -18,7 +18,7 @@ class ColorChip extends StatelessWidget {
     this.label, {
     required this.swatch,
     this.chosen,
-    this.opensMenu = false,
+    this.trailing,
     super.key,
   });
 
@@ -28,12 +28,14 @@ class ColorChip extends StatelessWidget {
   /// If true/false, show ring; if null, no ring (not a choice).
   final bool? chosen;
 
-  /// If true, wear the arrow saying a tap opens a menu rather than toggling.
-  final bool opensMenu;
+  /// An [Icon] after the label: the arrow saying a tap opens a menu, or the
+  /// way an order is read. It takes the label's ink and line height.
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
     final chosen = this.chosen;
+    final trailing = this.trailing;
     final style = Theme.of(
       context,
     ).textTheme.labelMedium?.copyWith(color: swatch.ink);
@@ -44,23 +46,25 @@ class ColorChip extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
       ),
       child: Padding(
-        padding: EdgeInsets.fromLTRB(10, 4, opensMenu ? 2 : 10, 4),
-        child: opensMenu
-            ? Row(
+        padding: EdgeInsets.fromLTRB(10, 4, trailing == null ? 10 : 2, 4),
+        child: trailing == null
+            ? text
+            : Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   text,
-                  // Sized to the label's own line, so a chip opening a menu
-                  // stands exactly as tall as one that toggles; a theme
+                  // Sized to the label's own line, so a chip wearing an icon
+                  // stands exactly as tall as one that does not; a theme
                   // dropping either number falls back to labelMedium's own.
-                  Icon(
-                    Icons.arrow_drop_down,
-                    size: (style?.fontSize ?? 12) * (style?.height ?? 1.33),
-                    color: swatch.ink,
+                  IconTheme(
+                    data: IconThemeData(
+                      size: (style?.fontSize ?? 12) * (style?.height ?? 1.33),
+                      color: swatch.ink,
+                    ),
+                    child: trailing,
                   ),
                 ],
-              )
-            : text,
+              ),
       ),
     );
     if (chosen == null) return chip;

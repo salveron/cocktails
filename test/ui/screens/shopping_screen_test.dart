@@ -1,7 +1,6 @@
 import 'package:cocktails/domain/domain.dart';
 import 'package:cocktails/ui/screens/shopping_screen.dart';
 import 'package:cocktails/ui/widgets/chips/color_marks.dart';
-import 'package:cocktails/ui/widgets/chips/tag_choices.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -336,14 +335,14 @@ void main() {
       tester,
     ) async {
       await pumpShopping(tester);
-      expect(find.byType(TagChoices), findsNothing);
+      expect(chipRow, findsNothing);
     });
 
     testWidgets('the chips stand between the controls and the list', (
       tester,
     ) async {
       await pumpShopping(tester, taggedCollection);
-      final chips = tester.getCenter(find.byType(TagChoices)).dy;
+      final chips = tester.getCenter(chipRow).dy;
       expect(chips, greaterThan(tester.getCenter(find.text('Buy')).dy));
       expect(
         chips,
