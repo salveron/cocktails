@@ -184,10 +184,8 @@ class _IngredientCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) => EntryCard(
     title: DottedName(ingredient.name, tags: tags, worn: ingredient.tags),
-    trailing: Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [StockChip(ingredient.stock), RowMenu(actions)],
-    ),
+    trailing: StockChip(ingredient.stock),
+    menu: RowMenu(actions),
     onTap: onTap,
   );
 }

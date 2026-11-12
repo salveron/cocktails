@@ -96,7 +96,8 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
             ),
             onCommit: (name) => unawaited(_shelf.renameBar(bar.id, name)),
           ),
-          const FieldNote('Name the file and the bar on LAN.'),
+          // The gap a field leaves above the button below it on the Import form.
+          const SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
             child: FilledButton.tonalIcon(

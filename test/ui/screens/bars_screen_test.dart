@@ -272,6 +272,34 @@ void main() {
     });
   });
 
+  group('sharing a bar', () {
+    testWidgets('the room opens on the card, not on the bar in hand', (
+      tester,
+    ) async {
+      await openBars(tester);
+      await chooseOnRow(tester, 'Anna', 'Share');
+      // Home bar is the one open: sharing Anna needs no crossing into her
+      // (FR-BAR-6).
+      expect(find.widgetWithText(AppBar, 'Share "Anna"'), findsOneWidget);
+    });
+
+    testWidgets('a guest bar is shared like any other (FR-BAR-6)', (
+      tester,
+    ) async {
+      await openBars(tester, store: MemoryBarStore.over([home, ada], {}));
+      await chooseOnRow(tester, "Ada's bar", 'Share');
+      expect(find.widgetWithText(AppBar, 'Share "Ada\'s bar"'), findsOneWidget);
+    });
+
+    testWidgets('back from the room is back on the list', (tester) async {
+      await openBars(tester);
+      await chooseOnRow(tester, 'Anna', 'Share');
+      await tap(tester, find.byTooltip('Back'));
+      expect(find.byType(BarsScreen), findsOneWidget);
+      expect(find.widgetWithText(AppBar, 'Bars'), findsOneWidget);
+    });
+  });
+
   group('renaming a bar', () {
     testWidgets('the card and the title behind it both follow', (tester) async {
       await openBars(tester);

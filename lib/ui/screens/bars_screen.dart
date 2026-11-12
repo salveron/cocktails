@@ -14,6 +14,7 @@ import '../widgets/dialogs/confirm_dialog.dart';
 import '../widgets/dialogs/entry_dialog.dart';
 import '../widgets/notices/empty_state.dart';
 import 'bar_form_screen.dart';
+import 'share_screen.dart';
 
 /// A stamp as a reader tells the time: the largest whole unit it has been, and
 /// "just now" under a minute. Coarse on purpose — how current a bar is answers
@@ -93,6 +94,7 @@ class _BarsScreenState extends ConsumerState<BarsScreen> {
                   _BarCard(
                     bar: bar,
                     now: now,
+                    onShare: () => unawaited(_share(bar)),
                     onRename: () => unawaited(_rename(bar)),
                     onDelete: () => unawaited(_delete(bar)),
                     onOpen: () => unawaited(_open(bar)),
@@ -127,6 +129,12 @@ class _BarsScreenState extends ConsumerState<BarsScreen> {
   Future<void> _add() => Navigator.of(context).push(
     MaterialPageRoute<void>(builder: (_) => const BarFormScreen.founding()),
   );
+
+  /// FR-BAR-6: the Share room on [bar] itself, which is not the one in hand —
+  /// sharing a bar without crossing into it first is what this door is for.
+  Future<void> _share(Bar bar) => Navigator.of(
+    context,
+  ).push(MaterialPageRoute<void>(builder: (_) => ShareScreen(bar.id)));
 
   Future<void> _rename(Bar bar) async {
     final name = await promptForName(
@@ -175,6 +183,7 @@ class _BarCard extends StatelessWidget {
   const _BarCard({
     required this.bar,
     required this.now,
+    required this.onShare,
     required this.onRename,
     required this.onDelete,
     required this.onOpen,
@@ -182,6 +191,7 @@ class _BarCard extends StatelessWidget {
 
   final Bar bar;
   final DateTime now;
+  final VoidCallback onShare;
   final VoidCallback onRename;
   final VoidCallback onDelete;
   final VoidCallback onOpen;
@@ -192,15 +202,11 @@ class _BarCard extends StatelessWidget {
     return EntryCard(
       title: Text(bar.name),
       subtitle: standing == null ? null : Text(standing),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          BarModeChip(bar.mode),
-          // Offered on a guest bar too: what a bar is called here is the
-          // reader's, as the unit it reads in is (FR-BAR-3, ADR 21).
-          RowMenu({'Rename': onRename, 'Delete': onDelete}),
-        ],
-      ),
+      trailing: BarModeChip(bar.mode),
+      // Share and Rename are offered on a guest bar too: a guest already holds
+      // what a file or the LAN would carry (FR-BAR-6), and what a bar is called
+      // here is the reader's, as the unit it reads in is (FR-BAR-3, ADR 21).
+      menu: RowMenu({'Share': onShare, 'Rename': onRename, 'Delete': onDelete}),
       body: _BarCounts(bar),
       onTap: onOpen,
     );

@@ -85,13 +85,8 @@ class RecipeCard extends StatelessWidget {
         resting: resting,
         onReach: onReach,
       ),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (availability != null) AvailabilityChip(availability),
-          RowMenu(actions),
-        ],
-      ),
+      trailing: availability == null ? null : AvailabilityChip(availability),
+      menu: RowMenu(actions),
       onToggle: onToggle,
     );
   }

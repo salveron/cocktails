@@ -93,6 +93,16 @@ void main() {
       expect(find.text('Enable LAN'), findsOneWidget);
     });
 
+    testWidgets('the file button stands a field\'s gap below the name, as on '
+        'the Import form', (tester) async {
+      await pumpRoom(tester);
+      expect(
+        tester.getRect(find.byType(FilledButton)).top -
+            tester.getRect(nameOfBar).bottom,
+        16,
+      );
+    });
+
     testWidgets('the switch offers the bar and announces it', (tester) async {
       final store = await pumpRoom(tester);
       await flip(tester);

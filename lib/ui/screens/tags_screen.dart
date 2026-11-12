@@ -102,7 +102,7 @@ class _TagTab extends ConsumerWidget {
         title: Align(alignment: Alignment.centerLeft, child: TagChip(tag)),
         // An empty menu draws nothing at all, so a guest's rows lose the ⋮
         // rather than gaining one that opens onto nothing.
-        trailing: RowMenu(
+        menu: RowMenu(
           writer == null
               ? const {}
               : {
